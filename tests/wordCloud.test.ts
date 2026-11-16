@@ -1,7 +1,21 @@
 import { describe, it, expect } from "vitest";
 import { computeSampleBlockFrequencies } from "@/lib/resultsAggregation";
-import { buildFlavorCloud, buildTasterCloud, sharedLabelKeys, ALL_BLOCK_IDS, capWords } from "@/lib/wordCloud";
-import { FLAVOR_WHEEL } from "@/lib/constants";
+import {
+  buildFlavorCloud,
+  buildTasterCloud,
+  sharedLabelKeys,
+  wordKey,
+  ALL_BLOCK_IDS,
+  capWords,
+} from "@/lib/wordCloud";
+import { resolveDescriptor } from "@/lib/descriptors";
+import {
+  FLAVOR_WHEEL,
+  ACIDITY_CATA,
+  SWEETNESS_CATA,
+  MOUTHFEEL_CATA,
+  MAIN_TASTES,
+} from "@/lib/constants";
 
 const leaves = FLAVOR_WHEEL.filter((n) => n.level === 3);
 const [A, B, C] = [leaves[0], leaves[1], leaves[2]];
@@ -76,8 +90,96 @@ describe("buildFlavorCloud", () => {
       ev("u2", { aroma_desc: [A.id], fragancia_desc: [C.id] }),
     ]);
     const keys = sharedLabelKeys(f, { kind: "session" }, "general");
-    expect(keys.has(A.label_es.toLowerCase())).toBe(true);
-    expect(keys.has(B.label_es.toLowerCase())).toBe(false);
+    expect(keys.has(wordKey("flavor", A.label_es))).toBe(true);
+    expect(keys.has(wordKey("flavor", B.label_es))).toBe(false);
+  });
+});
+
+// A-03: acidity "Suave" and mouthfeel "Suave" are two different descriptors
+// that happen to share a label. They must never be added up.
+describe("descriptors that share a label across blocks (A-03)", () => {
+  const ACIDITY_SOFT = "acidity:soft";
+  const MOUTHFEEL_SOFT = "mouthfeel:smooth";
+
+  it("the two ids really are different descriptors with the same label and different colours", () => {
+    const a = resolveDescriptor(ACIDITY_SOFT, "es")!;
+    const m = resolveDescriptor(MOUTHFEEL_SOFT, "es")!;
+    expect(a.label).toBe("Suave");
+    expect(m.label).toBe("Suave");
+    expect(a.color).not.toBe(m.color);
+  });
+
+  const f = freq([
+    ev("u1", { acidez_desc: [ACIDITY_SOFT], sensacion_desc: [MOUTHFEEL_SOFT] }),
+    ev("u2", { acidez_desc: [ACIDITY_SOFT] }),
+    ev("u3", { acidez_desc: [ACIDITY_SOFT], sensacion_desc: [MOUTHFEEL_SOFT] }),
+    ev("u4", { sensacion_desc: [MOUTHFEEL_SOFT] }),
+  ]);
+
+  it("keeps them as two words with their own counts and colours (general scope)", () => {
+    const words = buildFlavorCloud(f, { kind: "session" }, ALL_BLOCK_IDS);
+    const soft = words.filter((w) => w.label === "Suave");
+    expect(soft).toHaveLength(2);
+    const acidity = soft.find((w) => w.id === ACIDITY_SOFT)!;
+    const mouthfeel = soft.find((w) => w.id === MOUTHFEEL_SOFT)!;
+    expect(acidity.count).toBe(3);
+    expect(mouthfeel.count).toBe(3);
+    expect(acidity.color).toBe(resolveDescriptor(ACIDITY_SOFT)!.color);
+    expect(mouthfeel.color).toBe(resolveDescriptor(MOUTHFEEL_SOFT)!.color);
+    expect(acidity.breakdown).toEqual([{ stageId: "acidez", label: "Acidez", count: 3 }]);
+    expect(mouthfeel.breakdown).toEqual([{ stageId: "sensacion", label: "Sensación", count: 3 }]);
+    // Every word has its own key and its own id (the cloud uses both).
+    expect(new Set(words.map((w) => w.key)).size).toBe(words.length);
+    expect(new Set(words.map((w) => w.id)).size).toBe(words.length);
+  });
+
+  it("each block's own cloud shows only its own word", () => {
+    const [a] = buildFlavorCloud(f, { kind: "session" }, ["acidez"]);
+    const [m] = buildFlavorCloud(f, { kind: "session" }, ["sensacion"]);
+    expect(a).toMatchObject({ id: ACIDITY_SOFT, count: 3 });
+    expect(m).toMatchObject({ id: MOUTHFEEL_SOFT, count: 3 });
+  });
+
+  it("hide-singles filters each word by its own people, not by the shared label", () => {
+    // Acidity "Suave": two cuppers. Mouthfeel "Suave": one cupper.
+    const g = freq([
+      ev("u1", { acidez_desc: [ACIDITY_SOFT], sensacion_desc: [MOUTHFEEL_SOFT] }),
+      ev("u2", { acidez_desc: [ACIDITY_SOFT] }),
+    ]);
+    const scope = { kind: "session" } as const;
+    const words = buildFlavorCloud(g, scope, ALL_BLOCK_IDS);
+    const shared = sharedLabelKeys(g, scope, "general");
+    const kept = words.filter((w) => shared.has(w.key));
+    expect(kept.map((w) => w.id)).toEqual([ACIDITY_SOFT]);
+  });
+
+  it("flavour words named in fragancia and in sabor are still one word", () => {
+    const g = freq([ev("u1", { fragancia_desc: [A.id], sabor_desc: [A.id] })]);
+    const words = buildFlavorCloud(g, { kind: "session" }, ALL_BLOCK_IDS);
+    expect(words).toHaveLength(1);
+    expect(words[0].count).toBe(2);
+  });
+
+  it("the main taste 'sweet' and the flavour 'sweet' share an id and a label: still two words, with distinct keys", () => {
+    // The one id the Gusto block and the flavour wheel have in common (the
+    // cloud must key a word by `key`, never by `id`).
+    const sharedIds = MAIN_TASTES.map((t) => t.id).filter((id) => FLAVOR_WHEEL.some((n) => n.id === id));
+    expect(sharedIds).toEqual(["sweet"]);
+
+    const g = freq([ev("u1", { gustos: ["sweet"], aroma_desc: ["sweet"] }), ev("u2", { gustos: ["sweet"] })]);
+    const words = buildFlavorCloud(g, { kind: "session" }, ALL_BLOCK_IDS);
+    const sweet = words.filter((w) => w.id === "sweet");
+    expect(sweet).toHaveLength(2);
+    expect(sweet.map((w) => w.count).sort()).toEqual([1, 2]);
+    expect(new Set(words.map((w) => w.key)).size).toBe(words.length);
+  });
+
+  it("no id repeats inside the acidity, sweetness and mouthfeel lists", () => {
+    const ids = [...ACIDITY_CATA, ...SWEETNESS_CATA, ...MOUTHFEEL_CATA].flatMap((fam) => [
+      fam.id,
+      ...fam.subItems.map((s) => s.id),
+    ]);
+    expect(new Set(ids).size).toBe(ids.length);
   });
 });
 

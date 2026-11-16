@@ -20,7 +20,6 @@ import {
   buildFlavorCloud,
   buildTasterCloud,
   sharedLabelKeys,
-  labelKey,
   ALL_BLOCK_IDS,
   type FlavorCloudScope,
 } from "@/lib/wordCloud";
@@ -146,7 +145,7 @@ export function DescriptoresTab({
     const words = buildFlavorCloud(descriptorFrequency, scope, blockIds, locale === "en" ? "en" : "es");
     if (!hideSinglesActive) return words;
     const shared = sharedLabelKeys(descriptorFrequency, scope, blockId);
-    return words.filter((w) => shared.has(labelKey(w.label)));
+    return words.filter((w) => shared.has(w.key));
   }, [descriptorFrequency, sampleId, blockId, locale, hideSinglesActive]);
 
   const tasterCloudWords = useMemo(() => {

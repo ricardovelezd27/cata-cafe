@@ -128,8 +128,10 @@ export function WordCloud({
   const lastWidthRef = useRef(-1);
   const [layout, setLayout] = useState<Layout | null>(null);
   // Tap/click pins a word and shows its per-stage breakdown as a caption —
-  // touch has no hover, so the title tooltip alone is not enough.
-  const [pinnedId, setPinnedId] = useState<string | null>(null);
+  // touch has no hover, so the title tooltip alone is not enough. Pinned by
+  // `key`, not `id`: the main taste "sweet" and the flavour "sweet" are two
+  // words with one id.
+  const [pinnedKey, setPinnedKey] = useState<string | null>(null);
 
   const shown = useMemo(() => capWords(words, maxWords), [words, maxWords]);
 
@@ -161,7 +163,7 @@ export function WordCloud({
     };
   }, [shown]);
 
-  const pinned = shown.find((w) => w.id === pinnedId) ?? null;
+  const pinned = shown.find((w) => w.key === pinnedKey) ?? null;
   const describe = (w: CloudWord) => {
     const tail = formatBreakdown(w);
     return tail ? `${w.label} · ${w.count} — ${tail}` : `${w.label} · ${w.count}`;
@@ -195,11 +197,11 @@ export function WordCloud({
             {layout.placed.map((p) => (
               <button
                 type="button"
-                key={p.word.id}
+                key={p.word.key}
                 title={describe(p.word)}
                 aria-label={describe(p.word)}
-                aria-pressed={pinnedId === p.word.id}
-                onClick={() => setPinnedId((cur) => (cur === p.word.id ? null : p.word.id))}
+                aria-pressed={pinnedKey === p.word.key}
+                onClick={() => setPinnedKey((cur) => (cur === p.word.key ? null : p.word.key))}
                 style={{
                   position: "absolute",
                   left: p.cx,
@@ -214,8 +216,8 @@ export function WordCloud({
                   background: "none",
                   border: 0,
                   padding: 0,
-                  opacity: pinned && pinned.id !== p.word.id ? 0.45 : 1,
-                  textDecoration: pinnedId === p.word.id ? "underline" : "none",
+                  opacity: pinned && pinned.key !== p.word.key ? 0.45 : 1,
+                  textDecoration: pinnedKey === p.word.key ? "underline" : "none",
                   textUnderlineOffset: 3,
                 }}
               >

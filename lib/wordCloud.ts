@@ -32,6 +32,12 @@ import {
 
 export type CloudWord = {
   id: string;
+  /**
+   * What identifies this word inside one cloud: its vocabulary (`descriptorFamily`)
+   * plus its lower-cased label (`wordKey`). Two descriptors of different
+   * vocabularies never share a key, even when they share a label.
+   */
+  key: string;
   label: string;
   color: string;
   /** Total mentions, summed over every contributing stage. */
@@ -51,6 +57,21 @@ export function capWords<T>(words: readonly T[], max: number): T[] {
 }
 
 export const labelKey = (label: string) => label.trim().toLocaleLowerCase();
+
+/**
+ * The vocabulary a perceptual block draws its descriptors from. Nariz and Boca
+ * pick from ONE vocabulary (the flavour wheel), so the same word named in
+ * fragancia and in sabor is one word. Every other block has its own list
+ * (acidity, sweetness, mouthfeel, main tastes): its words are a different
+ * thing even when the label reads the same (acidity "Suave" is not mouthfeel
+ * "Suave", audit A-03).
+ */
+export function descriptorFamily(blockId: string): string {
+  return blockId === "nariz" || blockId === "boca" ? "flavor" : blockId;
+}
+
+/** The merge key of a word: vocabulary + lower-cased label. */
+export const wordKey = (family: string, label: string) => `${family}|${labelKey(label)}`;
 
 function addBreakdown(word: CloudWord, stageId: string, label: string, count: number) {
   const list = (word.breakdown ??= []);
@@ -89,18 +110,21 @@ export function buildFlavorCloud(
 
   // One word per descriptor: size = mentions summed over the selected stages
   // (a cupper who lists "chocolate" in fragancia AND aroma counts twice).
-  // Entries whose label matches case-insensitively (e.g. a L1 "Floral" and its
-  // L2 of the same name) merge into one word.
+  // Entries of the SAME vocabulary whose label matches case-insensitively (e.g.
+  // a L1 "Floral" and its L2 of the same name) merge into one word. Entries of
+  // different vocabularies never merge: acidity "Suave" and mouthfeel "Suave"
+  // stay two words, each with its own count and colour.
   const merged = new Map<string, CloudWord>();
   const add = (
     d: { id: string; label: string; color: string; count: number },
     stageId: string,
     stageLabel: string,
+    blockId: string,
   ) => {
-    const key = labelKey(d.label);
+    const key = wordKey(descriptorFamily(blockId), d.label);
     let word = merged.get(key);
     if (!word) {
-      word = { id: d.id, label: d.label, color: d.color, count: 0, breakdown: [] };
+      word = { id: d.id, key, label: d.label, color: d.color, count: 0, breakdown: [] };
       merged.set(key, word);
     }
     word.count += d.count;
@@ -113,11 +137,11 @@ export function buildFlavorCloud(
       const attrs = (block?.attrs ?? []).filter((a) => a.descKey);
       if (sample.stages && attrs.length > 0) {
         for (const attr of attrs) {
-          for (const d of sample.stages[attr.id] ?? []) add(d, attr.id, attr.label[locale]);
+          for (const d of sample.stages[attr.id] ?? []) add(d, attr.id, attr.label[locale], blockId);
         }
       } else {
         // Older aggregation shape without stages: block-level counts only.
-        for (const d of sample.blocks[blockId] ?? []) add(d, blockId, blockId);
+        for (const d of sample.blocks[blockId] ?? []) add(d, blockId, blockId, blockId);
       }
     }
   }
@@ -126,11 +150,17 @@ export function buildFlavorCloud(
 }
 
 /**
- * Label keys of descriptors that at least TWO different cuppers picked on the
- * same sample, for the given block (or the "general" pseudo-block). Uses the
- * per-cupper-deduped `blocks` counts, so one person naming a word in both
- * fragancia and aroma — or on two samples — is still a "single person" word.
- * Backs the "hide single-person descriptors" toggle.
+ * Word keys (`CloudWord.key`) of descriptors that at least TWO different
+ * cuppers picked on the same sample, for the given block (or the "general"
+ * pseudo-block). Uses the per-cupper-deduped `blocks` counts, so one person
+ * naming a word in both fragancia and aroma — or on two samples — is still a
+ * "single person" word. Backs the "hide single-person descriptors" toggle.
+ *
+ * Keys carry the descriptor's vocabulary, so a word shared by two cuppers in
+ * acidity does not let a one-person mouthfeel word of the same label through.
+ * The "general" pseudo-block has no block of its own: each descriptor takes
+ * the vocabulary of the real block it was counted in (the id spaces of the
+ * blocks are disjoint, so one id never belongs to two vocabularies).
  */
 export function sharedLabelKeys(
   freq: SampleBlockFreq[],
@@ -141,8 +171,18 @@ export function sharedLabelKeys(
     scope.kind === "session" ? freq : freq.filter((s) => s.sampleId === scope.sampleId);
   const keys = new Set<string>();
   for (const sample of samples) {
+    const familyOfId = new Map<string, string>();
+    if (blockId === "general") {
+      for (const [realBlockId, list] of Object.entries(sample.blocks)) {
+        if (realBlockId === "general") continue;
+        for (const d of list) familyOfId.set(d.id, descriptorFamily(realBlockId));
+      }
+    }
     for (const d of sample.blocks[blockId] ?? []) {
-      if (d.count > 1) keys.add(labelKey(d.label));
+      if (d.count > 1) {
+        const family = blockId === "general" ? (familyOfId.get(d.id) ?? "general") : descriptorFamily(blockId);
+        keys.add(wordKey(family, d.label));
+      }
     }
   }
   return keys;
@@ -169,21 +209,23 @@ export function buildTasterCloud(
 ): CloudWord[] {
   // Same rule as the group cloud: mentions summed per stage, one word per
   // descriptor, case-insensitive label merge.
-  const stageAttrs = (PERCEPTUAL_BLOCKS as readonly { attrs?: readonly PerceptualBlockAttr[] }[])
-    .flatMap((b) => b.attrs ?? [])
+  const stageAttrs = (
+    PERCEPTUAL_BLOCKS as readonly { id: string; attrs?: readonly PerceptualBlockAttr[] }[]
+  )
+    .flatMap((b) => (b.attrs ?? []).map((attr) => ({ attr, blockId: b.id })))
     .filter(
-    (a) => a.descKey && (FLAVOR_DESC_KEYS as readonly string[]).includes(a.descKey),
-  );
+      ({ attr }) => attr.descKey && (FLAVOR_DESC_KEYS as readonly string[]).includes(attr.descKey),
+    );
   const merged = new Map<string, CloudWord>();
   for (const blob of samples) {
-    for (const attr of stageAttrs) {
+    for (const { attr, blockId } of stageAttrs) {
       for (const id of collectDescriptors(blob, [attr.descKey!])) {
         const info = resolveDescriptor(id, locale);
         if (!info) continue;
-        const key = labelKey(info.label);
+        const key = wordKey(descriptorFamily(blockId), info.label);
         let word = merged.get(key);
         if (!word) {
-          word = { id, label: info.label, color: info.color, count: 0, breakdown: [] };
+          word = { id, key, label: info.label, color: info.color, count: 0, breakdown: [] };
           merged.set(key, word);
         }
         word.count += 1;
