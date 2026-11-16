@@ -1,0 +1,904 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Maqueta de resultados</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&display=swap">
+<style>
+/* R0 mock of the results page. NOT app code: invented data, tokens copied from app/globals.css.
+   Layout: a dark mock toolbar, then ONE framed app page (tiles, coffee cards, sentences, notes).
+   The frame is a size container, so every arrangement follows the frame's width, not the window's. */
+:root{
+  --surface:#fff8f6; --surface-lowest:#ffffff; --surface-low:#fcf1ee; --surface-container:#f6ece8;
+  --surface-high:#f0e6e3; --surface-highest:#ebe0dd;
+  --on-surface:#1f1b19; --on-surface-variant:#424843; --outline:#727973; --outline-variant:#c1c8c2;
+  --primary:#153526; --primary-container:#2c4c3b; --on-primary:#ffffff; --primary-fixed:#c7ebd4;
+  --primary-fixed-dim:#abcfb8; --on-primary-fixed:#002113;
+  --secondary:#9d4326; --secondary-container:#fd8c6a; --secondary-fixed:#ffdbd0;
+  --error:#ba1a1a; --error-container:#ffdad6; --on-error-container:#93000a;
+  --warning-container:#f6e388; --on-warning-container:#574600;
+  --stage:#153526; --stage-deep:#0e2a1c; --stage-raised:#1d4532;
+  --fl-floral:#b07d2f; --fl-fruity:#c0552a; --fl-sweet:#a07040; --fl-sour:#ba1a1a; --fl-green:#456553;
+  --fl-nutty:#6b5240; --fl-spice:#8b5e3c; --fl-roasted:#332f2a; --fl-other:#5e5a55;
+  --font-display:'Newsreader',Georgia,'Times New Roman',serif;
+  --font-ui:'Hanken Grotesk',system-ui,-apple-system,sans-serif;
+  --radius-card:16px; --radius-pill:9999px;
+  --shadow-card:0 1px 3px rgba(31,27,25,.06);
+  --shadow-stage-card:0 24px 60px -24px rgba(8,24,16,.55);
+  /* the mock's own chrome (not part of the design) */
+  --mk-bg:#26221f; --mk-fg:#f9efeb; --mk-line:#5a524d; --mk-ground:#e2d8d5;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--mk-ground);color:var(--on-surface);font-family:var(--font-ui);font-size:14px;line-height:1.5}
+button,select,textarea{font:inherit;color:inherit}
+h1,h2,h3,h4,p{margin:0}
+ul,ol{margin:0;padding:0;list-style:none}
+:focus-visible{outline:2px solid var(--primary-container);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+
+/* ---------- mock toolbar ---------- */
+.mk{background:var(--mk-bg);color:var(--mk-fg)}
+.mk-in{padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));max-width:1440px;margin:0 auto}
+.mk summary{cursor:pointer;font-weight:600;min-height:32px;display:flex;align-items:center;gap:8px;list-style:none}
+.mk summary::-webkit-details-marker{display:none}
+.mk summary::after{content:"controles";font-weight:400;font-size:12px;text-decoration:underline;margin-left:auto}
+.mk[open] summary::after{content:"ocultar"}
+.mk-tag{white-space:nowrap;font-size:11px;letter-spacing:.1em;text-transform:uppercase;border:1px solid var(--mk-line);border-radius:999px;padding:2px 8px}
+.mk-grid{display:flex;flex-wrap:wrap;gap:10px 18px;padding-top:10px}
+.mk-f{display:flex;flex-direction:column;gap:3px;font-size:12px;min-width:0}
+.mk-f select{background:#3a3430;color:var(--mk-fg);border:1px solid var(--mk-line);border-radius:8px;padding:6px 8px;min-height:36px;max-width:100%}
+.mk-views{display:flex;gap:6px;flex-wrap:wrap;padding-top:10px}
+.mk-views button{background:transparent;border:1px solid var(--mk-line);border-radius:999px;padding:6px 14px;min-height:36px;cursor:pointer}
+.mk-views button[aria-pressed="true"]{background:var(--mk-fg);color:var(--mk-bg);border-color:var(--mk-fg)}
+.mk-note{font-size:12px;opacity:.8;padding-top:8px;max-width:80ch}
+
+/* ---------- the frame = the app's content column ---------- */
+.wrap{padding-block:0 40px}
+.frame{container-type:inline-size;container-name:app;margin:0 auto;background:var(--surface);min-height:70vh;position:relative}
+body[data-w="375"] .frame{max-width:375px;margin-top:16px;outline:1px solid var(--outline)}
+body[data-w="768"] .frame{max-width:768px;margin-top:16px;outline:1px solid var(--outline)}
+.page{padding-block:16px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));max-width:1200px;margin:0 auto;display:flex;flex-direction:column;gap:32px}
+@container app (min-width:768px){.page{padding-block:24px 56px;padding-left:24px;padding-right:24px;gap:40px}}
+
+/* ---------- type (the audit's ladder B on a 14 px root) ---------- */
+.t-page{font-family:var(--font-display);font-size:26.25px;font-weight:500;line-height:1.15;text-wrap:balance}
+.t-section{font-family:var(--font-display);font-size:21px;font-weight:500;line-height:1.2;text-wrap:balance}
+.t-card{font-family:var(--font-display);font-size:17.5px;font-weight:500;line-height:1.25}
+.t-cap{font-size:12.25px;color:var(--on-surface-variant);line-height:1.45}
+.t-lbl{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--on-surface-variant)}
+.num{font-family:var(--font-display);font-variant-numeric:tabular-nums;font-weight:500;color:var(--on-surface)}
+.tn{font-variant-numeric:tabular-nums}
+b,.b{font-weight:600}
+
+/* ---------- controls of the design ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:0 20px;border-radius:var(--radius-pill);font-weight:500;font-size:14px;cursor:pointer;border:1px solid transparent;background:none;white-space:nowrap;text-decoration:none}
+.btn-primary{background:var(--primary-container);color:var(--on-primary)}
+.btn-secondary{border-color:var(--primary-container);color:var(--primary-container)}
+.btn-sm{padding:0 14px;font-size:12.25px}
+.ta{display:inline-flex;align-items:center;min-height:44px;background:none;border:0;padding:0;color:var(--primary-container);font-weight:600;font-size:12.25px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.badge{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--outline);border-radius:var(--radius-pill);padding:1px 8px;font-size:12px;color:var(--on-surface-variant);white-space:nowrap}
+.notice{display:flex;gap:10px;align-items:flex-start;background:var(--surface-container);border-radius:12px;padding:12px 14px;font-size:14px}
+.notice.warn{background:var(--warning-container);color:var(--on-warning-container)}
+.notice svg{flex:none;margin-top:3px}
+.tabs{display:flex;gap:8px}
+.tab{min-height:44px;padding:0 16px;border-radius:var(--radius-pill);border:1px solid var(--outline-variant);background:none;cursor:pointer;color:var(--on-surface-variant);font-weight:500;display:inline-flex;align-items:center;gap:8px}
+.tab[aria-selected="true"]{background:var(--primary-fixed);border-color:var(--primary-container);color:var(--on-primary-fixed);font-weight:600}
+.tab .ct{background:var(--surface-lowest);border:1px solid var(--outline);border-radius:999px;font-size:12px;min-width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px;color:var(--on-surface)}
+
+/* ---------- header, with and without the cover ---------- */
+.hd{display:flex;flex-direction:column;gap:6px}
+.hd-row{display:flex;flex-direction:column;gap:12px}
+@container app (min-width:768px){.hd-row{flex-direction:row;align-items:flex-end;justify-content:space-between}}
+.facts{display:flex;flex-wrap:wrap;gap:4px 14px}
+.facts span{display:inline-flex;align-items:center;gap:5px}
+.cover{background:linear-gradient(180deg,var(--stage) 0%,var(--stage-deep) 100%);color:var(--surface)}
+.cover-in{max-width:1200px;margin:0 auto;padding-block:20px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:20px}
+@container app (min-width:768px){.cover-in{padding-block:36px 72px;padding-left:24px;padding-right:24px;grid-template-columns:1.2fr 1fr;align-items:center}}
+.cover .t-lbl{color:var(--secondary-container)}
+.cover .t-cap,.cover .ta{color:var(--primary-fixed)}
+.cover .t-page{font-size:31.5px}
+.cover .btn-secondary{border-color:var(--surface);color:var(--surface)}
+.cover-fig{display:flex;flex-direction:column;gap:8px}
+.cover-fig svg{width:100%;height:auto;max-width:420px}
+.page.under-cover{margin-top:-40px;padding-top:0}
+.page.under-cover .tiles > .tile:first-child,.page.under-cover .tiles > .tile:nth-child(2){box-shadow:var(--shadow-stage-card)}
+
+/* ---------- section heading (paper) ---------- */
+.sh{display:flex;flex-direction:column;gap:2px;margin-bottom:12px}
+@container app (min-width:768px){.sh{margin-bottom:16px}}
+.sec{display:flex;flex-direction:column}
+
+/* ---------- tiles ---------- */
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tile{grid-column:1/-1;background:var(--surface-lowest);border:1px solid var(--outline-variant);border-radius:var(--radius-card);padding:16px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.tile.half{grid-column:span 1}
+.tile.half.odd{grid-column:1/-1}
+.tile .fact{font-size:26.25px;line-height:1.1}
+.tile .fact.big{font-size:31.5px}
+@container app (min-width:768px){
+  .tiles{grid-template-columns:repeat(3,1fr);gap:16px;grid-auto-flow:dense}
+  .tile{padding:20px;grid-column:span 1}
+  .tile.half,.tile.half.odd{grid-column:span 1}
+  .multi button svg{max-width:124px}
+  .tile.t-m{grid-column:span 2}
+  .tile.t-l{grid-column:1/-1}
+  .tile.r2{grid-row:span 2}.tile.r3{grid-row:span 3}.tile.r4{grid-row:span 4}
+}
+.kv{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
+.people{display:flex;flex-wrap:wrap;gap:5px}
+.people i{width:14px;height:14px;border-radius:50%;display:block;background:var(--primary-container)}
+.people i.out{background:none;border:2px solid var(--on-surface-variant)}
+.people i.no{background:none;border:2px dashed var(--outline)}
+.leg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--on-surface-variant)}
+.leg span{display:inline-flex;align-items:center;gap:5px}
+.mk-g{width:12px;height:12px;border-radius:50%;background:var(--secondary);display:inline-block;flex:none}
+.mk-m{width:12px;height:12px;border-radius:50%;background:var(--surface-lowest);border:3px solid var(--primary-container);display:inline-block;flex:none}
+.mk-w{width:18px;height:2px;background:var(--on-surface-variant);display:inline-block}
+.mk-r{width:0;height:14px;border-left:2px dashed var(--outline);display:inline-block}
+.bar1{height:10px;border-radius:999px;background:var(--surface-high);position:relative;overflow:hidden}
+.bar1 i{position:absolute;inset:0 auto 0 0;background:var(--on-surface-variant);border-radius:999px}
+
+/* ---------- ranking strip ---------- */
+.rk{container-type:inline-size;container-name:rk}
+.rk-axis,.strip{position:relative}
+.rk-axis{height:18px;font-size:12px;color:var(--on-surface-variant)}
+.rk-axis span{position:absolute;top:0;transform:translateX(-50%);white-space:nowrap}
+.rk-axis span:first-child{transform:none}.rk-axis span:last-child{transform:translateX(-100%)}
+.rk-list{display:flex;flex-direction:column}
+.rk-head{display:grid;grid-template-columns:28px 1fr auto;gap:2px 8px}
+.rk-head .rk-axis{grid-column:2/-1}
+.rk-row{display:grid;grid-template-columns:28px 1fr auto;grid-template-areas:"n name score" "n strip strip" "n ctx ctx";gap:2px 8px;padding:10px 0;border-top:1px solid var(--surface-highest);align-items:center;background:none;border-left:0;border-right:0;border-bottom:0;text-align:left;cursor:pointer;width:100%}
+.rk-row:hover{background:var(--surface-low)}
+.rk-row{position:relative}
+.rk-row.tie::before{content:"";position:absolute;left:1px;top:14px;bottom:-34px;width:3px;border-radius:2px;background:var(--on-surface);z-index:1}
+.rk-n{padding-left:8px}
+.mk-t{width:3px;height:16px;border-radius:2px;background:var(--on-surface);display:inline-block}
+.rk-n{grid-area:n;font-size:21px;align-self:start;color:var(--on-surface-variant)}
+.rk-name{grid-area:name;min-width:0}
+.rk-score{grid-area:score;font-size:21px;text-align:right}
+.rk-ctx{grid-area:ctx}
+.strip{grid-area:strip;height:26px}
+.strip::before{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:var(--outline-variant)}
+.strip .neutral,.strip .refl{position:absolute;top:0;bottom:0;width:0;border-left:1px solid var(--surface-highest)}
+.strip .refl{border-left:2px dashed var(--outline)}
+.strip .wh{position:absolute;top:50%;height:2px;margin-top:-1px;background:var(--on-surface-variant)}
+.strip .wh::before,.strip .wh::after{content:"";position:absolute;top:-4px;height:10px;width:2px;background:var(--on-surface-variant)}
+.strip .wh::before{left:0}.strip .wh::after{right:0}
+.strip .g,.strip .m{position:absolute;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%}
+.strip .g{background:var(--secondary);border:2px solid var(--surface-lowest)}
+.strip .m{background:var(--surface-lowest);border:3px solid var(--primary-container)}
+@container rk (min-width:600px){
+  .rk-row{grid-template-columns:28px minmax(120px,1fr) minmax(200px,1.6fr) 150px;grid-template-areas:"n name strip score" "n ctx strip score";align-items:center}
+  .rk-head{grid-template-columns:28px minmax(120px,1fr) minmax(200px,1.6fr) 150px}
+  .rk-head .rk-axis{grid-column:3}
+}
+
+/* ---------- coffee cards ---------- */
+.cards{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -16px;padding:2px 16px 6px;scroll-padding:0 16px}
+.card{flex:0 0 82%;max-width:320px;scroll-snap-align:start;background:var(--surface-lowest);border:1px solid var(--outline-variant);border-radius:var(--radius-card);padding:16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.card-top{display:flex;gap:12px;justify-content:space-between;align-items:flex-start}
+.card-n{font-size:21px;color:var(--on-surface-variant);min-width:24px}
+.card .score{font-size:31.5px;line-height:1}
+.card .mini{flex:none;width:76px}
+.card .ta{align-self:flex-start;margin-top:auto}
+.card ul.top{display:flex;flex-direction:column;gap:4px}
+.steps{display:flex;gap:6px;justify-content:center;padding-top:8px;flex-wrap:wrap}
+.rail-step{width:20px;height:20px;border-radius:50%;border:1px solid var(--outline);font-size:11px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;color:var(--on-surface-variant);font-variant-numeric:tabular-nums}
+.rail-step.on{background:var(--on-surface);border-color:var(--on-surface);color:var(--surface)}
+@container app (min-width:768px){
+  .cards{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;overflow:visible;margin:0;padding:0}
+  .card{max-width:none;padding:20px}
+  .steps{display:none}
+}
+@container app (min-width:1100px){.cards{grid-template-columns:repeat(3,1fr)}}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block;flex:none}
+.frow{display:grid;grid-template-columns:minmax(96px,34%) 1fr auto;gap:8px;align-items:center;font-size:12.25px}
+.frow .nm{display:flex;align-items:center;gap:6px;min-width:0}
+.frow .tr{height:10px;border-radius:999px;background:var(--surface-high);position:relative;overflow:hidden}
+.frow .tr i{position:absolute;inset:0 auto 0 0;border-radius:999px}
+.frow .ct{white-space:nowrap;font-variant-numeric:tabular-nums}
+.me{font-size:12px;border:1px solid var(--primary-container);color:var(--primary-container);border-radius:999px;padding:0 6px;font-weight:600;margin-left:4px}
+
+/* ---------- flavour drawings ---------- */
+.fv{width:100%;height:auto;display:block;font-family:var(--font-ui)}
+.fv.full{max-width:360px;margin:0 auto}
+.fv text{font-size:12.5px;fill:var(--on-surface-variant)}
+.fv text .c{font-weight:700;fill:var(--on-surface)}
+.fv text.z{fill:var(--outline)}
+.multi{display:grid;grid-template-columns:repeat(4,1fr);gap:10px 6px}
+.multi button{background:none;border:0;padding:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0;text-align:center;font-size:12px;line-height:1.3;color:var(--on-surface-variant)}
+.multi button svg{width:100%;max-width:96px;height:auto}
+.multi button b{color:var(--on-surface)}
+.mx{width:100%;border-collapse:collapse;font-size:12.25px}
+.mx th{font-weight:600;text-align:center;padding:4px 2px}
+.mx th[scope=row]{text-align:left;font-weight:500;white-space:nowrap;padding-right:6px}
+.mx td{text-align:center;padding:3px 2px;font-variant-numeric:tabular-nums}
+.mx td i{display:block;height:5px;border-radius:3px;margin:1px auto 0;min-width:2px}
+.mx td.z{color:var(--outline)}
+.scrollx{overflow-x:auto}
+
+/* ---------- sheet ---------- */
+.sheet-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid var(--outline-variant);padding-bottom:4px}
+.blk{display:flex;flex-direction:column;gap:10px;background:var(--surface-lowest);border:1px solid var(--outline-variant);border-radius:var(--radius-card);padding:16px}
+.sheet-grid{display:flex;flex-direction:column;gap:12px}
+@container app (min-width:768px){.blk{padding:20px}.sheet-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}}
+.sheet-col{display:flex;flex-direction:column;gap:12px;min-width:0}
+@container app (min-width:768px){.sheet-col{gap:16px}}
+.dp{display:flex;flex-direction:column;gap:2px}
+.dp-row{display:grid;grid-template-columns:minmax(92px,30%) 1fr 74px;gap:8px;align-items:center;font-size:12.25px;min-height:28px}
+.dp-tr{position:relative;height:22px}
+.dp-tr::before{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:var(--outline-variant)}
+.dp-tr .tk{position:absolute;top:6px;bottom:6px;width:1px;background:var(--surface-highest)}
+.dp-tr .g,.dp-tr .m{position:absolute;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%}
+.dp-tr .g{background:var(--secondary);border:2px solid var(--surface-lowest)}
+.dp-tr .m{background:var(--surface-lowest);border:3px solid var(--primary-container)}
+.dp-val{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.dp-ax{display:grid;grid-template-columns:minmax(92px,30%) 1fr 74px;gap:8px;font-size:12px;color:var(--on-surface-variant)}
+.dp-ax div{display:flex;justify-content:space-between}
+.dl{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:14px}
+.dl dt{color:var(--on-surface-variant)}.dl dd{margin:0}
+details.disc summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weight:600;color:var(--primary-container)}
+.cup{display:inline-flex;align-items:center;gap:6px;color:var(--on-error-container);background:var(--error-container);border-radius:999px;padding:2px 10px;font-size:12.25px;font-weight:600}
+
+/* ---------- learnings, reflection ---------- */
+.learn{display:grid;gap:12px}
+@container app (min-width:768px){.learn{grid-template-columns:1fr 1fr;gap:16px}}
+.learn-col{background:var(--surface-lowest);border:1px solid var(--outline-variant);border-radius:var(--radius-card);padding:16px;display:flex;flex-direction:column;gap:4px}
+.learn li{padding:10px 0;border-top:1px solid var(--surface-highest);font-size:14px}
+.learn li:first-child{border-top:0}
+.learn li .t-cap{display:block}
+.refl{display:flex;flex-direction:column;gap:12px;max-width:720px}
+.refl-item{background:var(--surface-lowest);border:1px solid var(--outline-variant);border-radius:var(--radius-card);padding:16px;display:flex;flex-direction:column;gap:8px}
+.refl textarea{width:100%;min-height:76px;border:1px solid var(--outline-variant);border-radius:16px;padding:10px 12px;background:var(--surface-lowest);resize:vertical;font-size:14px}
+.refl-foot{display:flex;justify-content:space-between;align-items:center;gap:8px}
+
+/* ---------- owner panel ---------- */
+.pm{border-collapse:collapse;font-size:12.25px;min-width:640px;width:100%}
+.pm th,.pm td{padding:6px 8px;text-align:right;font-variant-numeric:tabular-nums;border-bottom:1px solid var(--surface-highest);white-space:nowrap}
+.pm th:first-child,.pm td:first-child{text-align:left;position:sticky;left:0;background:var(--surface-lowest)}
+.pm thead th{font-weight:600;color:var(--on-surface-variant)}
+.pm td.b1{background:var(--warning-container)}.pm td.b2{background:var(--error-container)}
+.pm td.ex{color:var(--outline);text-decoration:line-through}
+.pm .grp{font-weight:700;border-left:2px solid var(--outline-variant)}
+.rows{display:flex;flex-direction:column}
+.rows > div{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;justify-content:space-between;padding:10px 0;border-top:1px solid var(--surface-highest)}
+.rows > div:first-child{border-top:0}
+.al{display:grid;grid-template-columns:86px 1fr 96px;gap:8px;align-items:center;font-size:12.25px;padding:5px 0}
+
+/* ---------- the candidates view ---------- */
+.cands{display:grid;gap:16px}
+@container app (min-width:1000px){.cands{grid-template-columns:repeat(3,1fr)}}
+.cand{background:var(--surface-lowest);border:1px solid var(--outline-variant);border-radius:var(--radius-card);padding:16px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.cand.rec{border:2px solid var(--primary-container)}
+.cand h4{font-size:12.25px;font-weight:600;color:var(--on-surface-variant);letter-spacing:.04em;text-transform:uppercase}
+.cand .facts-l li{font-size:12.25px;padding:5px 0;border-top:1px solid var(--surface-highest)}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pair figure{margin:0;text-align:center;font-size:12.25px}
+.legend3{display:grid;gap:8px}
+@container app (min-width:768px){.legend3{grid-template-columns:repeat(3,1fr)}}
+.legend3 div{background:var(--surface-container);border-radius:12px;padding:10px 12px;font-size:12.25px}
+.legend3 b{display:block;font-size:14px}
+.serA{color:var(--primary-container)}.serB{color:var(--secondary)}
+.sw{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin-right:4px}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+</style>
+
+<details class="mk" id="mk">
+  <summary class="mk-in" style="padding-block:10px 0"><span class="mk-tag">Maqueta R0</span> Resultados · datos inventados</summary>
+  <div class="mk-in" style="padding-top:0">
+    <div class="mk-views" role="group" aria-label="Qué ver">
+      <button type="button" data-view="page" aria-pressed="true">La página</button>
+      <button type="button" data-view="cands" aria-pressed="false">Sabores: los tres candidatos</button>
+    </div>
+    <div class="mk-grid" id="mk-grid">
+      <label class="mk-f">Quién mira<select id="c-role"><option value="part">Participante</option><option value="owner">Organizador</option></select></label>
+      <label class="mk-f">Estado de la sesión<select id="c-state">
+        <option value="closed">Grupo, cerrada (combinada)</option>
+        <option value="open">Grupo, abierta</option>
+        <option value="solo">Individual, cerrada</option>
+        <option value="desc">Grupo, descriptiva</option>
+        <option value="aff">Grupo, afectiva</option>
+        <option value="two">Grupo de dos catadores</option>
+        <option value="excl">Catador excluido</option>
+      </select></label>
+      <label class="mk-f">Referencia<select id="c-ref"><option value="anchor">Fija (79.00)</option><option value="free">Libre</option><option value="none">Sin referencia</option></select></label>
+      <label class="mk-f">Portada oscura<select id="c-cover"><option value="off">Sin portada</option><option value="on">Con portada</option></select></label>
+      <label class="mk-f">Visual de sabores<select id="c-vis"><option value="wheel">A · Rueda contada</option><option value="terrain">B · Terreno</option><option value="bars">C · Barras contadas</option></select></label>
+      <label class="mk-f">Ancho<select id="c-w"><option value="full">El de esta pantalla</option><option value="375">Teléfono, 375 px</option><option value="768">Tablet, 768 px</option></select></label>
+    </div>
+    <p class="mk-note">Esta barra oscura no es parte del diseño. Todo lo que está debajo es la propuesta. Cafés, catadores y números son inventados; nada se guarda.</p>
+  </div>
+</details>
+<div class="wrap"><main class="frame" id="frame"></main></div>
+
+<script>
+"use strict";
+/* ============ state ============ */
+const $ = (s) => document.querySelector(s);
+const S = { view: "page", role: "part", state: "closed", ref: "anchor", cover: "off", vis: "wheel", w: "full", tab: "res", sample: null, y: 0 };
+new URLSearchParams(location.search).forEach((v, k) => { if (k in S) S[k] = v; });
+
+/* ============ invented data ============ */
+const ATTR = ["Fragancia", "Aroma", "Sabor", "Regusto", "Acidez", "Dulzor", "Sensación en boca", "Global"];
+const INTS = ["Fragancia", "Aroma", "Sabor", "Regusto", "Acidez", "Dulzor", "Sensación en boca"];
+const FAM = [
+  { k: "floral", l: ["Floral"], c: "var(--fl-floral)" },
+  { k: "fruity", l: ["Frutal"], c: "var(--fl-fruity)" },
+  { k: "sour", l: ["Ácido /", "Fermentado"], s: "Ácido", c: "var(--fl-sour)" },
+  { k: "green", l: ["Verde /", "Vegetal"], s: "Verde", c: "var(--fl-green)" },
+  { k: "other", l: ["Otro"], c: "var(--fl-other)" },
+  { k: "roasted", l: ["Tostado"], c: "var(--fl-roasted)" },
+  { k: "spice", l: ["Especia"], c: "var(--fl-spice)" },
+  { k: "nutty", l: ["Nueces /", "Cacao"], s: "Nueces", c: "var(--fl-nutty)" },
+  { k: "sweet", l: ["Dulce"], c: "var(--fl-sweet)" },
+];
+const famName = (f) => f.l.join(" ");
+const famOf = (k) => FAM.find((f) => f.k === k);
+/* fam = people (of 7) who chose anything in each family, in FAM order.
+   desc = [descriptor, family, block, people (of 7), chosen by the viewer] */
+const RAW = [
+  { id: "E", name: "Base (lavado)", ref: 1, g: 79, sd: null, mine: [5, 5, 5, 5, 5, 5, 5, 5], ga: [5, 5, 5, 5, 5, 5, 5, 5],
+    free: { g: 81.5, sd: 2.4, mine: [6, 6, 6, 5, 5, 6, 5, 6], ga: [5.6, 5.5, 5.6, 5.3, 5.2, 5.6, 5.4, 5.6] },
+    fam: [1, 2, 1, 1, 0, 2, 0, 4, 4],
+    desc: [["Nuez", "nutty", "Boca", 4, 0], ["Caramelo", "sweet", "Nariz", 3, 1], ["Chocolate", "nutty", "Boca", 3, 0], ["Cítrico", "fruity", "Acidez", 2, 0]] },
+  { id: "G", name: "Ámbar (natural)", g: 88.75, sd: 2.9, mine: [8, 7, 8, 7, 8, 7, 6, 7], ga: [7.1, 7.0, 7.3, 6.7, 7.0, 6.8, 6.4, 6.6],
+    fam: [5, 7, 3, 0, 0, 0, 1, 1, 5],
+    desc: [["Frutos rojos", "fruity", "Boca", 6, 1], ["Jazmín", "floral", "Nariz", 4, 0], ["Miel", "sweet", "Dulzor", 4, 1], ["Cítrico", "fruity", "Acidez", 4, 1], ["Caramelo", "sweet", "Nariz", 3, 0], ["Vinoso", "sour", "Boca", 2, 0], ["Canela", "spice", "Nariz", 1, 0]] },
+  { id: "C", name: "Granate (natural)", g: 88, sd: 4.6, mine: [6, 6, 6, 6, 7, 6, 5, 6], ga: [6.9, 6.9, 7.1, 6.6, 7.3, 6.4, 6.1, 6.4],
+    fam: [2, 6, 5, 0, 0, 1, 2, 0, 4],
+    desc: [["Frutos rojos", "fruity", "Boca", 5, 0], ["Vinoso", "sour", "Boca", 5, 1], ["Fruta madura", "fruity", "Nariz", 4, 0], ["Panela", "sweet", "Dulzor", 3, 1], ["Clavo", "spice", "Nariz", 2, 0], ["Rosa", "floral", "Nariz", 2, 0]] },
+  { id: "A", name: "Niebla (lavado)", g: 85.5, sd: 2.1, mine: [7, 7, 6, 6, 7, 7, 5, 6], ga: [6.6, 6.4, 6.3, 6.0, 6.1, 6.4, 6.0, 6.1],
+    fam: [6, 4, 1, 2, 0, 0, 0, 2, 5],
+    desc: [["Jazmín", "floral", "Nariz", 5, 1], ["Té negro", "floral", "Boca", 4, 0], ["Miel", "sweet", "Dulzor", 4, 0], ["Cítrico", "fruity", "Acidez", 3, 1], ["Almendra", "nutty", "Boca", 2, 0], ["Herbáceo", "green", "Nariz", 2, 0]] },
+  { id: "H", name: "Cedro (honey)", g: 84.25, sd: 3.3, n: 6, mine: [6, 6, 6, 6, 7, 7, 5, 6], ga: [6.0, 6.1, 6.1, 5.9, 5.6, 6.3, 6.1, 5.9],
+    fam: [1, 2, 0, 1, 0, 3, 2, 6, 5],
+    desc: [["Cacao", "nutty", "Boca", 6, 1], ["Nuez", "nutty", "Nariz", 4, 0], ["Caramelo", "sweet", "Dulzor", 4, 1], ["Pan tostado", "roasted", "Nariz", 3, 0], ["Canela", "spice", "Boca", 2, 0]] },
+  { id: "B", name: "Brisa (lavado)", twin: "F", g: 83.5, sd: 3.0, mine: [6, 6, 6, 6, 6, 6, 6, 6], ga: [5.9, 5.9, 6.0, 5.7, 5.9, 5.9, 5.7, 5.9],
+    fam: [3, 4, 2, 1, 0, 1, 0, 3, 5],
+    desc: [["Panela", "sweet", "Dulzor", 4, 0], ["Cítrico", "fruity", "Acidez", 4, 1], ["Almendra", "nutty", "Boca", 3, 0], ["Manzanilla", "floral", "Nariz", 3, 1]] },
+  { id: "F", name: "Brisa (lavado)", twin: "B", g: 82.75, sd: 3.8, mine: [6, 6, 6, 5, 6, 6, 5, 6], ga: [5.7, 5.9, 5.9, 5.4, 5.7, 5.9, 5.4, 5.8],
+    fam: [2, 4, 2, 2, 0, 1, 0, 4, 4],
+    desc: [["Almendra", "nutty", "Boca", 4, 1], ["Cítrico", "fruity", "Acidez", 3, 1], ["Panela", "sweet", "Dulzor", 3, 0], ["Herbáceo", "green", "Nariz", 2, 0]] },
+  { id: "D", name: "Musgo (lavado)", g: 78.25, sd: 5.2, mine: [5, 5, 5, 5, 6, 5, 5, 6], ga: [5.6, 5.6, 5.7, 5.4, 6.0, 5.6, 5.6, 5.9], myDed: 6, def: 1,
+    fam: [0, 1, 2, 5, 3, 4, 0, 2, 1],
+    desc: [["Herbáceo", "green", "Nariz", 5, 1], ["Ahumado", "roasted", "Boca", 3, 0], ["Papel", "other", "Boca", 3, 1], ["Cereal", "roasted", "Nariz", 2, 0], ["Agrio", "sour", "Acidez", 2, 0]] },
+];
+
+/* ============ small helpers ============ */
+const q = (v) => Math.round(v * 4) / 4;
+const f2 = (v) => v.toFixed(2);
+const f1 = (v) => v.toFixed(1);
+const sg = (v, d = 2) => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(d);
+const total = (a, ded) => q(0.65625 * a.reduce((x, y) => x + y, 0) + 52.75) - (ded || 0);
+const X = (v) => Math.max(0, Math.min(100, ((v - 58) / 42) * 100));
+const sSd = (sd, n) => (sd == null || n < 2 ? null : sd * Math.sqrt(n / (n - 1)));
+const mean = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : null);
+const IC = {
+  info: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg>',
+  dl: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 4v11m0 0l-4-4m4 4l4-4M5 19h14"/></svg>',
+  back: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>',
+  fwd: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>',
+};
+
+/* ============ the model: what this viewer may see in this state ============ */
+function model() {
+  const st = S.state, solo = st === "solo", closed = st !== "open";
+  const owner = solo ? true : st === "excl" ? false : S.role === "owner";
+  const isGroup = !solo, canGroup = isGroup && (closed || owner);
+  const hasScore = st !== "desc", hasFlav = st !== "aff", two = st === "two";
+  const N = two ? 2 : 8, nD = canGroup ? (two ? 2 : 7) : 1;
+  const reveal = closed || owner;
+  const list = RAW.filter((s) => !(s.ref && S.ref === "none")).map((s) => {
+    const free = !!s.ref && S.ref === "free";
+    const pinned = !!s.ref && S.ref === "anchor" && hasScore;
+    const mineA = free ? s.free.mine : s.mine, ga = free ? s.free.ga : s.ga;
+    const my = hasScore ? total(mineA, s.myDed) : null;
+    let g = null;
+    if (canGroup && hasScore) {
+      const n = two ? 2 : s.n || 7;
+      g = { score: free ? s.free.g : s.g, sd: two || pinned ? null : free ? s.free.sd : s.sd, n, N };
+    }
+    const fam = hasFlav ? (canGroup ? s.fam.map((c) => (two ? Math.round((c / 7) * 2) : c)) : s.fam.map((c) => (c >= 4 ? 1 : 0))) : null;
+    const desc = !hasFlav ? [] : canGroup
+      ? s.desc.map((d) => ({ l: d[0], f: d[1], b: d[2], c: two ? Math.max(1, Math.round((d[3] / 7) * 2)) : d[3], me: !!d[4] }))
+      : s.desc.filter((d) => d[4]).map((d) => ({ l: d[0], f: d[1], b: d[2], c: 1, me: true }));
+    return { id: s.id, label: "Muestra " + s.id, name: reveal ? s.name : null, isRef: !!s.ref, pinned, free, mineA, ga, my, g, fam, desc, raw: s,
+      score: g ? g.score : my, basis: g ? "g" : my != null ? "m" : null, rank: null, gap: false, sup: !!g && g.n < 3, ind: !!g && g.n >= 3 && g.n < 6 };
+  });
+  const ref = list.find((s) => s.isRef) || null;
+  const rankIt = hasScore && (canGroup || solo);
+  let ranked = list.filter((s) => !s.isRef);
+  if (rankIt) {
+    ranked = ranked.slice().sort((a, b) => b.score - a.score);
+    ranked.forEach((r, i) => { const p = ranked[i - 1]; r.rank = p && f2(p.score) === f2(r.score) ? p.rank : i + 1; });
+    ranked.forEach((r, i) => {
+      for (const o of [ranked[i - 1], ranked[i + 1]]) {
+        if (!o) continue;
+        const a = r.g ? sSd(r.g.sd, r.g.n) : null, b = o.g ? sSd(o.g.sd, o.g.n) : null;
+        const spread = a == null ? b : b == null ? a : Math.max(a, b);
+        if (Math.abs(r.score - o.score) < Math.max(1, spread == null ? 0 : 0.5 * spread)) { r.gap = true; r.gapWith = r.gapWith || o; }
+      }
+    });
+  }
+  if (rankIt) ranked.forEach((r, i) => { const o = ranked[i + 1]; r.tieNext = !!o && r.gap && o.gap && (r.gapWith === o || o.gapWith === r || (() => { const a = r.g ? sSd(r.g.sd, r.g.n) : null, b = o.g ? sSd(o.g.sd, o.g.n) : null; const sp = a == null ? b : b == null ? a : Math.max(a, b); return Math.abs(r.score - o.score) < Math.max(1, sp == null ? 0 : 0.5 * sp); })()); });
+  const first = rankIt ? ranked.find((r) => !r.sup) || null : null;
+  const refScore = ref && ref.score != null ? ref.score : null;
+  list.forEach((s) => { s.delta = !s.isRef && s.score != null && refScore != null ? s.score - refScore : null; });
+  const order = ref ? [ref, ...ranked] : ranked;
+  return { st, solo, closed, owner, isGroup, canGroup, hasScore, hasFlav, two, N, nD, list, ref, ranked, rankIt, first, order, excl: st === "excl",
+    teach: closed, cmp: canGroup && closed && !two };
+}
+
+/* ============ flavour drawings (hand-drawn SVG; one geometry for all three) ============ */
+const ANG = (i) => i * 40 - 20;
+const r1 = (v) => Math.round(v * 10) / 10;
+function pol(cx, cy, r, a) { const t = ((a - 90) * Math.PI) / 180; return [r1(cx + r * Math.cos(t)), r1(cy + r * Math.sin(t))]; }
+function sector(cx, cy, r0, rr, a0, a1) {
+  const [x0, y0] = pol(cx, cy, rr, a0), [x1, y1] = pol(cx, cy, rr, a1), [x2, y2] = pol(cx, cy, r0, a1), [x3, y3] = pol(cx, cy, r0, a0);
+  return `M${x0} ${y0}A${rr} ${rr} 0 0 1 ${x1} ${y1}L${x2} ${y2}A${r0} ${r0} 0 0 0 ${x3} ${y3}Z`;
+}
+function rings(cx, cy, r0, R, n) {
+  let o = "";
+  const ks = n <= 10 ? Array.from({ length: n }, (_, i) => i + 1) : [n / 4, n / 2, (3 * n) / 4, n];
+  for (const k of ks) o += `<circle cx="${cx}" cy="${cy}" r="${r1(r0 + ((R - r0) * k) / n)}" fill="none" style="stroke:${k === n ? "var(--outline)" : "var(--outline-variant)"}" stroke-width="${k === n ? 1 : 0.7}"/>`;
+  return o;
+}
+function labels(cx, cy, R, texts, short) {
+  let o = "";
+  FAM.forEach((f0, i) => {
+    const f = short && f0.s ? { l: [f0.s] } : f0;
+    const a = ANG(i), t = ((a - 90) * Math.PI) / 180, sx = Math.cos(t), sy = Math.sin(t);
+    let [x, y] = pol(cx, cy, R + 11, a);
+    const anchor = sx > 0.3 ? "start" : sx < -0.3 ? "end" : "middle";
+    const lines = f.l.length;
+    y += sy < -0.5 ? -(lines - 1) * 14 : sy > 0.5 ? 11 : 4 - (lines - 1) * 7;
+    const v = texts[i];
+    o += `<text x="${x}" y="${r1(y)}" text-anchor="${anchor}" class="${v.zero ? "z" : ""}">` +
+      f.l.map((ln, j) => `<tspan x="${x}" dy="${j ? 14 : 0}">${ln}${j === lines - 1 ? ` <tspan class="c">${v.t}</tspan>` : ""}</tspan>`).join("") + `</text>`;
+  });
+  return o;
+}
+const aria = (label, counts, n) => `${label}: ` + FAM.map((f, i) => `${famName(f)} ${counts[i]} de ${n}`).join(", ");
+
+function wheel(counts, n, label, o = {}) {
+  const mini = !!o.mini, W = mini ? 80 : 320, H = mini ? 80 : 246, cx = W / 2, cy = H / 2, R = mini ? 36 : o.b ? 76 : 80, r0 = mini ? 6 : 14;
+  let s = mini ? `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" style="stroke:var(--outline)" stroke-width="1"/>` : rings(cx, cy, r0, R, n);
+  FAM.forEach((f, i) => {
+    const a = ANG(i);
+    if (o.b) { /* two coffees: each family's sector split in two petals, the first solid, the second tinted and outlined */
+      const ca = counts[i], cb = o.b[i];
+      if (ca) s += `<path d="${sector(cx, cy, r0, r0 + ((R - r0) * ca) / n, a - 17, a - 1)}" style="fill:${f.c}"/>`;
+      if (cb) s += `<path d="${sector(cx, cy, r0, r0 + ((R - r0) * cb) / n, a + 1, a + 17)}" style="fill:${f.c};fill-opacity:.32;stroke:${f.c}" stroke-width="1.2"/>`;
+    } else if (counts[i]) s += `<path d="${sector(cx, cy, r0, r0 + ((R - r0) * counts[i]) / n, a - 17, a + 17)}" style="fill:${f.c}"/>`;
+  });
+  if (!mini) s += labels(cx, cy, R, counts.map((c, i) => ({ t: o.b ? `${c}·${o.b[i]}` : c, zero: !c && !(o.b && o.b[i]) })), !!o.b);
+  return `<svg class="fv${mini ? "" : " full"}" viewBox="0 0 ${W} ${H}" ${mini ? 'aria-hidden="true"' : `role="img" aria-label="${aria(label, counts, n)}"`}>${s}</svg>`;
+}
+function blob(cx, cy, r0, R, counts, n) {
+  const P = counts.map((c, i) => pol(cx, cy, r0 + ((R - r0) * c) / n, ANG(i))), L = P.length;
+  let d = `M${P[0][0]} ${P[0][1]}`;
+  for (let i = 0; i < L; i++) {
+    const p0 = P[(i - 1 + L) % L], p1 = P[i], p2 = P[(i + 1) % L], p3 = P[(i + 2) % L];
+    d += `C${r1(p1[0] + (p2[0] - p0[0]) / 6)} ${r1(p1[1] + (p2[1] - p0[1]) / 6)} ${r1(p2[0] - (p3[0] - p1[0]) / 6)} ${r1(p2[1] - (p3[1] - p1[1]) / 6)} ${p2[0]} ${p2[1]}`;
+  }
+  return { d: d + "Z", P };
+}
+function terrain(counts, n, label, o = {}) {
+  const mini = !!o.mini, W = mini ? 80 : 320, H = mini ? 80 : 246, cx = W / 2, cy = H / 2, R = mini ? 36 : o.b ? 76 : 80, r0 = mini ? 6 : 14;
+  let s = mini ? `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" style="stroke:var(--outline)" stroke-width="1"/><circle cx="${cx}" cy="${cy}" r="${(R + r0) / 2}" fill="none" style="stroke:var(--outline-variant)" stroke-width=".7"/>` : rings(cx, cy, r0, R, n);
+  const series = o.b ? [[counts, "var(--primary-container)"], [o.b, "var(--secondary)"]] : [[counts, "var(--primary-container)"]];
+  series.forEach(([cs, col]) => {
+    const b = blob(cx, cy, r0, R, cs, n);
+    s += `<path d="${b.d}" style="fill:${col};fill-opacity:.24;stroke:${col}" stroke-width="${mini ? 1.5 : 2}" stroke-linejoin="round"/>`;
+    if (!mini) b.P.forEach((p, i) => { if (cs[i]) s += `<circle cx="${p[0]}" cy="${p[1]}" r="4" style="fill:${o.b ? col : FAM[i].c};stroke:var(--surface-lowest)" stroke-width="1.5"/>`; });
+  });
+  if (!mini) s += labels(cx, cy, R, counts.map((c, i) => ({ t: o.b ? `${c}·${o.b[i]}` : c, zero: !c && !(o.b && o.b[i]) })), !!o.b);
+  return `<svg class="fv${mini ? "" : " full"}" viewBox="0 0 ${W} ${H}" ${mini ? 'aria-hidden="true"' : `role="img" aria-label="${aria(label, counts, n)}"`}>${s}</svg>`;
+}
+function frow(name, col, c, n, me) {
+  return `<li class="frow"><span class="nm"><i class="dot" style="background:${col}"></i><span>${name}${me ? '<span class="me">tú</span>' : ""}</span></span><span class="tr"><i style="width:${(c / n) * 100}%;background:${col}"></i></span><span class="ct"><b>${c}</b> de ${n}</span></li>`;
+}
+function famBars(counts, n, top) {
+  let rows = FAM.map((f, i) => ({ f, c: counts[i] })).filter((r) => r.c > 0).sort((a, b) => b.c - a.c);
+  if (top) rows = rows.slice(0, top);
+  return `<ul class="top" style="display:flex;flex-direction:column;gap:6px">${rows.map((r) => frow(famName(r.f), r.f.c, r.c, n)).join("")}</ul>`;
+}
+function pairBars(a, b, n) {
+  const rows = FAM.map((f, i) => ({ f, a: a[i], b: b[i] })).filter((r) => r.a || r.b).sort((x, y) => y.a + y.b - (x.a + x.b));
+  return `<ul style="display:flex;flex-direction:column;gap:8px">${rows.map((r) => `<li class="frow"><span class="nm"><i class="dot" style="background:${r.f.c}"></i><span>${famName(r.f)}</span></span><span style="display:flex;flex-direction:column;gap:2px"><span class="tr"><i style="width:${(r.a / n) * 100}%;background:${r.f.c}"></i></span><span class="tr"><i style="width:${(r.b / n) * 100}%;background:${r.f.c};opacity:.45"></i></span></span><span class="ct"><b>${r.a}</b> · <b>${r.b}</b></span></li>`).join("")}</ul>`;
+}
+function matrix(samples, n) {
+  const fams = FAM.map((f, i) => ({ f, i })).filter((x) => samples.some((s) => s.fam[x.i] > 0));
+  return `<div class="scrollx"><table class="mx"><caption class="sr">Personas que encontraron cada familia de sabor, por muestra, de ${n} catadores</caption><thead><tr><th scope="col"><span class="sr">Familia</span></th>${samples.map((s) => `<th scope="col">${s.id}</th>`).join("")}</tr></thead><tbody>${fams.map((x) => `<tr><th scope="row"><i class="dot" style="background:${x.f.c};margin-right:5px"></i>${famName(x.f)}</th>${samples.map((s) => { const c = s.fam[x.i]; return c ? `<td>${c}<i style="width:${Math.max(3, (c / n) * 22)}px;background:${x.f.c}"></i></td>` : `<td class="z">·</td>`; }).join("")}</tr>`).join("")}</tbody></table></div>`;
+}
+const topFam = (counts) => { let b = 0; counts.forEach((c, i) => { if (c > counts[b]) b = i; }); return { f: FAM[b], c: counts[b] }; };
+function flavFull(kind, s, n) {
+  if (kind === "wheel") return wheel(s.fam, n, "Familias de sabor de " + s.label);
+  if (kind === "terrain") return terrain(s.fam, n, "Familias de sabor de " + s.label);
+  return famBars(s.fam, n);
+}
+function flavMini(kind, s, n) {
+  if (kind === "wheel") return wheel(s.fam, n, "", { mini: 1 });
+  if (kind === "terrain") return terrain(s.fam, n, "", { mini: 1 });
+  return "";
+}
+
+/* ============ shared pieces ============ */
+const ctx = (s) => { if (!s.g) return ""; const p = []; if (s.g.sd != null) p.push("± " + f1(s.g.sd)); p.push(`${s.g.n} de ${s.g.N} incluidos`); return p.join(" · "); };
+const flags = (s) => (s.ind ? ' <span class="badge">indicativo</span>' : "") + (s.gap ? ' <span class="badge">sin diferencia clara</span>' : "");
+const ann = (t) => `<p class="notice" style="border:1px dashed var(--outline);background:none;font-size:12.25px"><span><b>Nota de la maqueta.</b> ${t}</span></p>`;
+const sh = (name, title, assertion) => `<div class="sh"><span class="t-lbl">${name}</span><h2 class="t-section">${title}</h2>${assertion ? `<p class="t-cap">${assertion}</p>` : ""}</div>`;
+function strip(s, M) {
+  let o = `<span class="neutral" style="left:${X(79)}%"></span>`;
+  if (M.ref && M.ref.score != null) o += `<span class="refl" style="left:${X(M.ref.score)}%"></span>`;
+  if (s.g && s.g.sd != null) { const a = X(s.g.score - s.g.sd), b = X(s.g.score + s.g.sd); o += `<span class="wh" style="left:${a}%;width:${b - a}%"></span>`; }
+  if (s.g) o += `<span class="g" style="left:${X(s.g.score)}%"></span>`;
+  if (s.my != null) o += `<span class="m" style="left:${X(s.my)}%"></span>`;
+  return `<span class="strip" aria-hidden="true">${o}</span>`;
+}
+const mineTxt = (s) => (s.g && s.my != null ? `tú <b>${f2(s.my)}</b>` + (s.g.n >= 3 ? ` · diferencia ${sg(s.my - s.g.score)}` : "") : "");
+
+/* ============ header and cover ============ */
+function factsRow(M) {
+  const fmt = M.st === "desc" ? "Descriptiva" : M.st === "aff" ? "Afectiva" : "Combinada";
+  const who = M.solo ? "Individual" : M.two ? "2 catadores" : "9 catadores";
+  return `<div class="facts t-cap"><span>14 nov 2026</span><span>${fmt}</span><span>${M.list.length} muestras${M.hasScore ? ", 2 tazas por muestra" : ""}</span><span>${who}</span><span>${M.closed ? "Cerrada el 14 nov 2026" : "Abierta"}</span></div>`;
+}
+function header(M, onCover) {
+  const exp = `<button class="btn btn-secondary" type="button" data-exp aria-expanded="${!!S.exp}">${IC.dl}Exportar</button>`;
+  return `<header class="hd"><button class="ta" type="button" style="align-self:flex-start">${IC.back}Sesiones</button>
+    <div class="hd-row"><div style="display:flex;flex-direction:column;gap:6px;min-width:0"><span class="t-lbl">${onCover ? "Cata cerrada" : "Resultados"}</span><h1 class="t-page">Cata de alineación de noviembre</h1>${factsRow(M)}</div>${exp}</div></header>`;
+}
+function cover(M) {
+  let dots = "";
+  const ids = M.list.map((s) => s.id);
+  ids.forEach((id, k) => {
+    const gx = 22 + (k % 4) * 100, gy = 14 + Math.floor(k / 4) * 96;
+    for (let i = 0; i < 16; i++) dots += `<circle cx="${gx + (i % 4) * 16}" cy="${gy + Math.floor(i / 4) * 16}" r="4" style="fill:var(--primary-fixed)" fill-opacity="${0.55 + ((i * 7 + k * 3) % 5) * 0.09}"/>`;
+    dots += `<text x="${gx + 24}" y="${gy + 78}" text-anchor="middle" style="fill:var(--surface);font:600 15px var(--font-ui)">${id}</text>`;
+  });
+  return `<div class="cover"><div class="cover-in"><div>${header(M, true)}</div>
+    <figure class="cover-fig" style="margin:0"><svg viewBox="0 0 400 196" role="img" aria-label="128 tazas catadas: 8 muestras, 2 tazas por muestra, 8 catadores">${dots}</svg>
+    <figcaption class="t-cap">Cada punto es una taza catada: 8 muestras, 2 tazas, 8 catadores. Dibujo fijo, sin movimiento y sin puntajes.</figcaption></figure></div></div>`;
+}
+function exportList(M) {
+  if (!S.exp) return "";
+  const docs = [["Formulario CVA", "Tu hoja de cata, para ver o descargar en PDF."], ["Mi resumen", "Tus puntajes y los del grupo, en PDF."]];
+  if (M.owner) docs.push(["Ficha técnica", "El informe de la sesión para quien organiza."], ["Datos por catador (CSV)", "Una fila por evaluación, con nombres."], ["CSV sin nombres", "Lo mismo, con códigos; se puede compartir."]);
+  return `<div class="blk" id="exp"><span class="t-lbl">Exportar (paquete S1: una hoja, no seis botones)</span><div class="rows">${docs.map((d) => `<div><span><b>${d[0]}</b><br><span class="t-cap">${d[1]}</span></span><button class="btn btn-secondary btn-sm" type="button">Abrir</button></div>`).join("")}</div></div>`;
+}
+
+/* ============ tiles ============ */
+function tFirst(M) {
+  if (!M.hasScore || !M.rankIt) return "";
+  if (!M.first) return `<section class="tile"><span class="t-lbl">Primera del ranking</span><p>Con ${M.N} catadores no se nombra una primera ni se muestra la dispersión. Los puntajes son una primera señal.</p></section>`;
+  const s = M.first, second = M.ranked[M.ranked.indexOf(s) + 1];
+  const tie = s.gap && second ? `<span class="badge" style="align-self:flex-start;white-space:normal">sin diferencia clara con ${second.label} (a ${f2(s.score - second.score)})</span>` : "";
+  return `<section class="tile"><span class="t-lbl">${M.solo ? "Primera de tu ranking" : "Primera del ranking"}</span>
+    <div><h3 class="t-card">${s.label}</h3><p class="t-cap">${s.name || ""}</p></div>
+    <div class="kv"><span class="num fact big">${f2(s.score)}</span><span class="t-cap tn">${ctx(s)}</span></div>${s.g && s.my != null ? `<p class="t-cap tn">${mineTxt(s)}</p>` : ""}${s.delta != null ? `<p class="t-cap tn">Δ ${sg(s.delta)} vs. referencia</p>` : ""}${tie}
+    <button class="ta" type="button" data-open="${s.id}" style="align-self:flex-start">Ver ficha</button></section>`;
+}
+function tRank(M, cls) {
+  if (!M.hasScore) return "";
+  const lbl = M.canGroup ? "Ranking del panel" : M.solo ? "Tu ranking" : "Tus puntajes";
+  const rows = M.ranked.map((s, i) => {
+    const mine = s.g && s.my != null ? ` · tú <b>${f2(s.my)}</b>` : "";
+    const c = s.g ? ctx(s) + mine : M.solo ? "" : "enviada";
+    const nx = M.ranked[i + 1];
+    return `<button type="button" class="rk-row${s.tieNext ? " tie" : ""}" data-open="${s.id}"><span class="rk-n num">${s.rank ?? i + 1}</span><span class="rk-name"><b>${s.label}</b>${s.name ? ` <span class="t-cap">${s.name}</span>` : ""}</span><span class="rk-score num">${f2(s.score)}</span>${strip(s, M)}<span class="rk-ctx t-cap tn">${c}${s.ind ? ' <span class="badge">indicativo</span>' : ""}${s.tieNext ? `<span class="sr"> Sin diferencia clara con ${nx.label}.</span>` : ""}</span></button>`;
+  }).join("");
+  const leg = `<div class="leg">${M.canGroup ? '<span><i class="mk-g"></i>grupo</span>' : ""}<span><i class="mk-m"></i>tú</span>${M.canGroup && !M.two ? '<span><i class="mk-w"></i>dispersión (±)</span>' : ""}${M.ref ? `<span><i class="mk-r"></i>referencia ${f2(M.ref.score)}</span>` : ""}${M.ranked.some((r) => r.tieNext) ? '<span><i class="mk-t"></i>une muestras sin diferencia clara</span>' : ""}</div>`;
+  return `<section class="tile rk ${cls}"><span class="t-lbl">${lbl}</span><p class="t-cap">Puntaje Café Sensible (base CVA). 79 es el punto neutro y 100 el máximo.${M.rankIt ? "" : " En el orden en que cataste: el ranking aparece al cierre."}</p>${leg}
+    <div class="rk-head"><span></span><div class="rk-axis" aria-hidden="true"><span style="left:0">58</span><span style="left:50%">79</span><span style="left:100%">100</span></div><span></span></div>
+    <div class="rk-list">${rows}</div></section>`;
+}
+function tFlav(M, cls) {
+  if (!M.hasFlav) return "";
+  const n = M.nD, ss = M.order;
+  let body;
+  if (S.vis === "bars") body = matrix(ss, n);
+  else body = `<div class="multi">${ss.map((s) => { const t = topFam(s.fam); return `<button type="button" data-open="${s.id}">${flavMini(S.vis, s, n)}<span><b>${s.id}</b>${s.isRef ? " ref." : ""}<br>${t.c ? `${famName(t.f).split(" /")[0]} ${t.c}` : "sin datos"}</span></button>`; }).join("")}</div>`;
+  const cap = M.canGroup ? `Personas que encontraron cada familia de sabor, de ${n} catadores. La misma familia está siempre en el mismo lugar.` : "Las familias de sabor que marcaste tú en cada muestra.";
+  return `<section class="tile ${cls}"><span class="t-lbl">${M.canGroup ? "Lo que encontró el panel" : "Lo que encontraste"}</span><h3 class="t-card">El sabor de cada café</h3><p class="t-cap">${cap}</p>${body}</section>`;
+}
+function youStats(M) { const rs = M.ranked.filter((r) => r.g && r.my != null && !r.sup); const d = rs.map((r) => r.my - r.g.score); return { n: rs.length, above: d.filter((x) => x > 0).length, mean: mean(d) }; }
+function tYou(M) {
+  if (!(M.canGroup && M.closed)) return "";
+  const y = youStats(M);
+  let o = `<section class="tile"><span class="t-lbl">Tú y el panel</span>`;
+  if (M.hasScore && y.n) o += `<div class="kv"><span class="num fact">${y.above} de ${y.n}</span><span class="t-cap">muestras en las que puntuaste por encima del grupo</span></div><p class="t-cap tn">Diferencia media: <b>${sg(y.mean)}</b> puntos.</p>`;
+  else if (M.hasScore) o += `<p class="t-cap">La comparación con el grupo aparece desde 3 catadores incluidos.</p>`;
+  if (M.hasFlav) o += M.two
+    ? `<p class="t-cap">La coincidencia de descriptores aparece desde 3 catadores.</p>`
+    : `<div style="display:flex;flex-direction:column;gap:4px"><span class="b">Coincidencia de descriptores</span><div class="bar1" role="img" aria-label="21 de 34"><i style="width:62%"></i></div><p class="t-cap tn"><b>21 de 34</b> (62 %): de los descriptores que eligió la mayoría del panel, los que también elegiste tú. No es una nota.</p></div>`;
+  return o + `</section>`;
+}
+function tRef(M) {
+  const r = M.ref; if (!r) return "";
+  if (!M.hasScore) return `<section class="tile half"><span class="t-lbl">Referencia</span><h3 class="t-card">${r.label}</h3><p class="t-cap">Se cató primero. En una sesión descriptiva no hay puntaje que fijar.</p></section>`;
+  if (r.pinned) return `<section class="tile half"><span class="t-lbl">Referencia fija</span><div><h3 class="t-card">${r.label}</h3><span class="num fact">79.00</span></div><p class="t-cap">Todos la puntúan en 79.00: es un ejercicio de Café Sensible, no del CVA. Fuera del ranking; las diferencias (Δ) se miden contra ella.</p></section>`;
+  return `<section class="tile half"><span class="t-lbl">Referencia libre</span><div><h3 class="t-card">${r.label}</h3><span class="num fact">${f2(r.score)}</span></div><p class="t-cap tn">${r.g ? ctx(r) + ". " : ""}Todos la puntuaron como cualquier muestra. Fuera del ranking; Δ contra su ${r.g ? "promedio" : "puntaje"}.</p></section>`;
+}
+function tWho(M) {
+  if (M.solo) return "";
+  if (M.two) return `<section class="tile half"><span class="t-lbl">Quiénes cataron</span><span class="num fact">2 de 2</span><div class="people"><i></i><i></i></div><p class="t-cap">incluidos. Con dos personas, el promedio del grupo deja ver los valores de la otra.</p></section>`;
+  const open = !M.closed;
+  return `<section class="tile half"><span class="t-lbl">Quiénes cataron</span><span class="num fact">${open ? "8 de 9" : "7 de 8"}</span>
+    <div class="people" aria-hidden="true">${"<i></i>".repeat(7)}<i class="out"></i><i class="no"></i></div>
+    <p class="t-cap">${open ? "enviaron. La sesión sigue abierta." : "incluidos. 9 se unieron, 8 enviaron, 1 excluido de los resultados."}</p></section>`;
+}
+function tDef(M) {
+  if (!M.hasScore || M.two) return "";
+  const grp = M.canGroup;
+  return `<section class="tile half"><span class="t-lbl">Tazas con defecto</span><span class="num fact">${grp ? "2 tazas" : "1 taza"}</span><p class="t-cap">Muestra D · fenólico.${grp ? " Marcadas por 2 de 7 catadores." : ""}</p><button class="ta" type="button" data-open="D" style="align-self:flex-start">Ver Muestra D</button></section>`;
+}
+function tPend(M) {
+  if (!(M.owner && M.isGroup && M.closed) || M.two) return "";
+  return `<section class="tile half"><span class="t-lbl">Pendiente en el panel</span><span class="num fact">2</span><p class="t-cap">1 evaluación tardía por decidir y 1 nota después del cierre.</p><button class="ta" type="button" data-tab="panel" style="align-self:flex-start">Abrir el panel</button></section>`;
+}
+function tiles(M) {
+  const first = tFirst(M), you = tYou(M);
+  const small = [tRef(M), tWho(M), tDef(M), tPend(M)].filter(Boolean);
+  if (small.length % 2) small[small.length - 1] = small[small.length - 1].replace('class="tile half"', 'class="tile half odd"');
+  const rank = tRank(M, first && you ? "t-m r2" : first || you ? "t-m" : "t-l");
+  const side = small.length + (you && !M.hasScore ? 1 : 0);
+  const flav = tFlav(M, side ? "t-m r" + Math.min(4, side) : "t-l");
+  return `<div class="tiles">${first}${rank}${you && M.hasScore ? you : ""}${flav}${you && !M.hasScore ? you : ""}${small.join("")}</div>`;
+}
+
+/* ============ coffee cards ============ */
+function miniProfile(s) {
+  const P = (v) => 44 - ((v - 1) / 8) * 36, xs = (i) => 12 + i * 22;
+  const line = (a, col) => `<polyline points="${a.map((v, i) => xs(i) + "," + r1(P(v))).join(" ")}" fill="none" style="stroke:${col}" stroke-width="2"/>`;
+  const ab = ["F", "A", "S", "R", "Ac", "D", "SB", "G"];
+  return `<svg class="fv" viewBox="0 0 180 64" role="img" aria-label="Calidad por atributo, de 1 a 9: grupo y tú"><line x1="6" x2="174" y1="26" y2="26" style="stroke:var(--surface-highest)"/>${s.g ? line(s.ga, "var(--secondary)") : ""}${line(s.mineA, "var(--primary-container)")}${ab.map((t, i) => `<text x="${xs(i)}" y="60" text-anchor="middle">${t}</text>`).join("")}</svg>`;
+}
+function card(s, M) {
+  const n = M.nD;
+  const tag = s.isRef ? `<span class="badge">${!M.hasScore ? "Referencia" : s.pinned ? "Referencia fija" : "Referencia libre"} · fuera del ranking</span>` : "";
+  let score = "";
+  if (M.hasScore && s.score != null) {
+    score = `<div class="kv"><span class="num score">${f2(s.score)}</span><span class="t-cap tn">${s.g ? ctx(s) : s.pinned ? "fijada" : M.solo ? "tu puntaje" : "tu puntaje, enviado"}</span></div>`;
+    const bits = [];
+    if (s.g && s.my != null && !s.pinned) bits.push(mineTxt(s));
+    if (s.delta != null) bits.push(`Δ ${sg(s.delta)} vs. referencia`);
+    if (bits.length) score += `<p class="t-cap tn">${bits.join(" · ")}</p>`;
+    if (s.ind || s.gap) score += `<div>${s.ind ? '<span class="badge">indicativo</span> ' : ""}${s.gap ? `<span class="badge">sin diferencia clara con ${s.gapWith.label}</span>` : ""}</div>`;
+  }
+  let flav = "";
+  if (M.hasFlav) {
+    const top = s.desc.slice(0, 3);
+    flav = `<ul class="top">${top.map((d) => frow(d.l, famOf(d.f).c, d.c, n, d.me && M.canGroup)).join("")}</ul><p class="t-cap">${M.canGroup ? `Lo más elegido, de ${n} catadores.` : "Lo que marcaste."}</p>`;
+  } else flav = `${miniProfile(s)}<p class="t-cap">Calidad por atributo, de 1 a 9${s.g ? ": grupo (terracota) y tú (verde)" : ""}.</p>`;
+  const mini = M.hasFlav && S.vis !== "bars" ? `<div class="mini">${flavMini(S.vis, s, n)}</div>` : "";
+  return `<li class="card"><div class="card-top"><div style="min-width:0;display:flex;flex-direction:column;gap:2px"><div class="kv">${s.isRef || s.rank ? `<span class="num card-n">${s.isRef ? "R" : s.rank}</span>` : ""}<h3 class="t-card">${s.label}</h3></div>${s.name ? `<p class="t-cap">${s.name}</p>` : ""}${tag}</div>${mini}</div>${score}${flav}<button class="ta" type="button" data-open="${s.id}">Ver ficha de ${s.label}</button></li>`;
+}
+function coffees(M) {
+  const ss = M.order;
+  const title = M.rankIt ? "Cada café, con lo que se encontró en él." : "Cada café, en el orden de la cata.";
+  return `<section class="sec">${sh("Café por café", title, M.rankIt ? "En el orden del ranking. La ficha completa de cada uno está a un toque." : "")}
+    <ul class="cards" id="cards" tabindex="0" aria-label="Cafés de la cata">${ss.map((s) => card(s, M)).join("")}</ul>
+    <div class="steps" id="steps" aria-hidden="true">${ss.map((s, i) => `<span class="rail-step${i ? "" : " on"}">${s.isRef ? "R" : s.rank ?? i + 1}</span>`).join("")}</div></section>`;
+}
+
+/* ============ learnings: sentences computed by fixed rules ============ */
+function learnings(M) {
+  if (!M.teach) return "";
+  const G = [], P = [], L = (t, c) => `<li>${t}${c ? `<span class="t-cap">${c}</span>` : ""}</li>`;
+  const rk = M.ranked, grp = M.canGroup && !M.two;
+  if (grp && M.hasScore) {
+    const ok = rk.filter((r) => r.g && r.g.n >= 3 && r.g.sd != null);
+    if (ok.length >= 2) {
+      const lo = ok.reduce((a, b) => (b.g.sd < a.g.sd ? b : a)), hi = ok.reduce((a, b) => (b.g.sd > a.g.sd ? b : a));
+      if (hi.g.sd - lo.g.sd >= 0.5) {
+        G.push(L(`El panel coincidió más en <b>${lo.label}</b>: dispersión ± ${f1(lo.g.sd)}.`, `${lo.g.n} de ${lo.g.N} incluidos`));
+        G.push(L(`Donde más se separaron los puntajes fue en <b>${hi.label}</b>: ± ${f1(hi.g.sd)}.`, `${hi.g.n} de ${hi.g.N} incluidos`));
+      }
+    }
+    if (M.first && M.first.gap && rk[1]) G.push(L(`La primera y la segunda del ranking, <b>${rk[0].label}</b> y <b>${rk[1].label}</b>, quedaron a ${f2(rk[0].score - rk[1].score)} puntos: sin diferencia clara.`));
+    if (M.ref && M.ref.score != null) {
+      const up = rk.filter((r) => r.delta > 0).length, far = rk.reduce((a, b) => (Math.abs(b.delta) > Math.abs(a.delta) ? b : a));
+      G.push(L(`Frente a la referencia (${M.ref.label}, ${f2(M.ref.score)}), ${up} de ${rk.length} muestras quedaron por encima. La más lejana: <b>${far.label}</b>, Δ ${sg(far.delta)}.`));
+    }
+    G.push(L(`En <b>Muestra D</b>, 2 de 7 catadores marcaron una taza con defecto (fenólico: 2 tazas).`));
+  }
+  if (grp && M.hasFlav) {
+    let best = null;
+    M.list.forEach((s) => s.desc.forEach((d) => { if (d.c >= 3 && d.c / M.nD >= 0.5 && (!best || d.c > best.d.c)) best = { s, d }; }));
+    if (best) G.unshift(L(`Lo más compartido de la cata: <b>${best.d.l}</b> en ${best.s.label}, ${best.d.c} de ${M.nD} catadores.`));
+  }
+  if (grp && M.hasScore) {
+    const rs = rk.filter((r) => r.g && r.my != null && r.g.n >= 3);
+    if (rs.length) {
+      const far = rs.reduce((a, b) => (Math.abs(b.my - b.g.score) > Math.abs(a.my - a.g.score) ? b : a)), near = rs.reduce((a, b) => (Math.abs(b.my - b.g.score) < Math.abs(a.my - a.g.score) ? b : a));
+      if (Math.abs(far.my - far.g.score) >= 1) P.push(L(`Tu puntaje más lejano del grupo fue en <b>${far.label}</b>: tú ${f2(far.my)}, grupo ${f2(far.g.score)} (diferencia ${sg(far.my - far.g.score)}).`));
+      if (near !== far) P.push(L(`El más cercano fue en <b>${near.label}</b>: tú ${f2(near.my)}, grupo ${f2(near.g.score)} (diferencia ${sg(near.my - near.g.score)}).`));
+      const y = youStats(M);
+      P.push(L(`Puntuaste por encima del grupo en ${y.above} de ${y.n} muestras; la diferencia media fue de ${sg(y.mean)} puntos.`));
+      const diffs = ATTR.map((_, j) => mean(rs.map((r) => r.mineA[j] - r.ga[j])));
+      let bj = 0; diffs.forEach((d, j) => { if (Math.abs(d) > Math.abs(diffs[bj])) bj = j; });
+      if (Math.abs(diffs[bj]) >= 0.5) P.push(L(`En <b>${ATTR[bj]}</b> puntuaste en promedio ${f1(Math.abs(diffs[bj]))} ${diffs[bj] > 0 ? "por encima" : "por debajo"} del grupo.`, `en ${rs.length} muestras, escala de 1 a 9`));
+    }
+  }
+  if (grp && M.hasFlav) P.push(L(`Elegiste 21 de los 34 descriptores que eligió la mayoría del panel (62 %).`));
+  if (M.solo && M.hasScore) {
+    const hi = rk[0], lo = rk[rk.length - 1];
+    P.push(L(`Tu puntaje más alto fue <b>${hi.label}</b> (${f2(hi.score)}) y el más bajo <b>${lo.label}</b> (${f2(lo.score)}): ${f2(hi.score - lo.score)} puntos entre ambos.`));
+    if (M.ref) P.push(L(`Frente a tu referencia (${M.ref.label}, ${f2(M.ref.score)}), ${rk.filter((r) => r.delta > 0).length} de ${rk.length} muestras quedaron por encima.`));
+  }
+  const b = M.list.find((s) => s.id === "B"), f = M.list.find((s) => s.id === "F");
+  if (M.hasScore && b && f) { const d = Math.abs(b.my - f.my); P.push(L(`Muestra B y Muestra F eran el mismo café: tus puntajes fueron ${f2(b.my)} y ${f2(f.my)} (diferencia ${f2(d)}, ${d <= 2 ? "dentro de la tolerancia de 2 puntos" : "fuera de la tolerancia de 2 puntos"}).`)); }
+  const none = `<li class="t-cap">Con menos de 3 catadores incluidos no se calculan frases sobre el panel.</li>`;
+  return `<section class="sec">${sh("Aprendizajes", "Lo que deja esta cata.", "Frases calculadas con reglas fijas sobre los datos. No opinan sobre el café ni sobre ti.")}
+    <div class="learn">${M.isGroup ? `<div class="learn-col"><span class="t-lbl">Del panel</span><ul>${G.slice(0, 4).join("") || none}</ul></div>` : ""}<div class="learn-col"><span class="t-lbl">${M.isGroup ? "Tuyos, solo los ves tú" : "De tu cata"}</span><ul>${P.slice(0, 5).join("") || none}</ul></div></div>
+    ${M.isGroup ? '<p class="t-cap" style="padding-top:8px">Estar lejos del grupo no es un error: es un dato para conversar.</p>' : ""}</section>`;
+}
+
+/* ============ reflection ============ */
+function reflection(M) {
+  if (!M.teach) return "";
+  const pre = "La acidez me pareció más alta que al grupo. Quiero volver a catarla con el agua un poco menos caliente.";
+  const items = M.order.slice(0, 4).map((s, i) => i !== 1 ? `<div class="refl-item" style="flex-direction:row;align-items:center;justify-content:space-between;padding-block:4px"><span class="b">${s.label}${s.name ? ` <span class="t-cap">${s.name}</span>` : ""}</span><button class="ta" type="button">Añadir nota</button></div>` : `<div class="refl-item"><label class="b" for="note-${s.id}">${s.label}${s.name ? ` <span class="t-cap">${s.name}</span>` : ""}</label>
+    <textarea id="note-${s.id}" maxlength="500" placeholder="¿Qué te llevas de este café?" data-note>${i === 1 ? pre : ""}</textarea>
+    <div class="refl-foot"><span class="t-cap tn" data-count>${i === 1 ? pre.length : 0} / 500</span><button class="btn btn-secondary btn-sm" type="button">Guardar</button></div></div>`).join("");
+  return `<section class="sec">${sh("Reflexión", "¿Qué te llevas?", `Una nota por café, después del cierre.${M.isGroup ? " La leen tú y quien organizó la cata." : ""}`)}
+    <div class="refl">${items}<button class="ta" type="button" style="align-self:flex-start">Ver las otras ${M.order.length - 4} muestras</button>
+    <div class="refl-item" style="border-style:dashed;background:none"><span class="t-lbl">Opción B, necesita una migración</span><span class="b">Una reflexión de toda la cata, solo para ti</span><p class="t-cap">Hoy la nota después del cierre vive en cada evaluación (una por café). Una nota de la sesión entera sería un dato nuevo: una tabla, una fase de SQL y una acción. Decide Ricardo.</p></div></div></section>`;
+}
+
+/* ============ the page ============ */
+function notices(M) {
+  let o = "";
+  if (!M.closed && !M.owner) o += `<p class="notice">${IC.info}<span>La sesión sigue abierta. Aquí ves lo que enviaste; los resultados del grupo aparecen cuando se cierre.</span></p>`;
+  if (!M.closed && M.owner) o += `<p class="notice">${IC.info}<span>La sesión sigue abierta: solo tú, como organizador, ves los resultados del grupo. Los aprendizajes y la reflexión aparecen al cierre.</span></p>`;
+  if (M.excl) o += `<p class="notice">${IC.info}<span>Tu evaluación no entra en los resultados del grupo de esta cata. Motivo: error de muestra. Tus puntajes siguen aquí, solo para ti.</span></p>`;
+  if (M.st === "desc") o += ann("Sesión descriptiva: no hay puntajes ni ranking, y el visual de sabores es el centro. Qué número del grupo se muestra para las intensidades (¿un promedio significa algo?) espera la respuesta de Kim; aquí se dejan solo las tuyas.");
+  if (M.st === "aff") o += ann("Sesión afectiva: no hay descriptores, así que no hay visual de sabores. La tarjeta lleva la calidad por atributo.");
+  if (M.two) o += ann("Dos catadores: sin dispersión, sin primera del ranking, sin aprendizajes del panel. Los valores del grupo por atributo siguen visibles (decisión 6); la comparación de descriptores e intensidades mantiene su mínimo de 3.");
+  return o ? `<div style="display:flex;flex-direction:column;gap:8px">${o}</div>` : "";
+}
+function results(M) { return notices(M) + tiles(M) + coffees(M) + learnings(M) + reflection(M); }
+function page(M) {
+  const cov = S.cover === "on" && M.closed;
+  const tabs = M.owner && M.isGroup ? `<div class="tabs" role="tablist"><button class="tab" role="tab" type="button" data-tab="res" aria-selected="${S.tab !== "panel"}">Resultados</button><button class="tab" role="tab" type="button" data-tab="panel" aria-selected="${S.tab === "panel"}">Panel${M.closed && !M.two ? ' <span class="ct">2</span>' : ""}</button></div>` : "";
+  const body = S.tab === "panel" && M.owner && M.isGroup ? panel(M) : results(M);
+  return (cov ? cover(M) : "") + `<div class="page${cov ? " under-cover" : ""}">${cov ? "" : header(M)}${exportList(M)}${tabs}${body}</div>`;
+}
+
+/* ============ the coffee's sheet ============ */
+function dotplot(rows, min, max, ticks, showG) {
+  const P = (v) => ((v - min) / (max - min)) * 100;
+  return `<div class="dp"><div class="dp-ax" aria-hidden="true"><span></span><div>${ticks.map((t) => `<span>${t}</span>`).join("")}</div><span style="text-align:right">tú${showG ? " · grupo" : ""}</span></div>${rows.map((r) => `<div class="dp-row"><span>${r.l}</span><span class="dp-tr" aria-hidden="true">${ticks.map((t) => `<i class="tk" style="left:${P(t)}%"></i>`).join("")}${showG && r.g != null ? `<i class="g" style="left:${P(r.g)}%"></i>` : ""}${r.m != null ? `<i class="m" style="left:${P(r.m)}%"></i>` : ""}</span><span class="dp-val">${r.m != null ? `<b>${r.m}</b>` : "–"}${showG && r.g != null ? ` · ${f1(r.g)}` : ""}</span></div>`).join("")}</div>`;
+}
+function sheet(M) {
+  const ss = M.order, i = Math.max(0, ss.findIndex((s) => s.id === S.sample)), s = ss[i], n = M.nD, k = RAW.findIndex((r) => r.id === s.id);
+  const leg = `<div class="leg">${M.canGroup ? '<span><i class="mk-g"></i>grupo</span>' : ""}<span><i class="mk-m"></i>tú</span></div>`;
+  let score = "";
+  if (M.hasScore) {
+    const ded = s.raw.myDed, base = s.my + (ded || 0);
+    score = `<div class="blk"><span class="t-lbl">Puntaje Café Sensible (base CVA)</span>
+      <div class="kv"><span class="num" style="font-size:42px;line-height:1">${f2(s.score)}</span><span class="t-cap tn">${s.g ? ctx(s) : s.pinned ? "referencia fija" : "tu puntaje"}</span></div>
+      ${s.g && s.my != null && !s.pinned ? `<p class="tn">${mineTxt(s)}</p>` : ""}${s.delta != null ? `<p class="t-cap tn">Δ ${sg(s.delta)} vs. referencia (${M.ref.label}, ${f2(M.ref.score)})</p>` : ""}${s.ind || s.gap ? `<div>${flags(s)}${s.gap && s.gapWith ? ` <span class="t-cap">con ${s.gapWith.label}</span>` : ""}</div>` : ""}
+      ${s.pinned ? `<p class="t-cap">Calidad fijada en 5 en los ocho atributos: es la referencia de la sala, no una opinión.</p>` : `<p class="t-cap tn">Tu cuenta: Base ${f2(base)} · ${ded ? `Descuento ${ded} (1 taza defectuosa)` : "Sin descuentos"} · Puntaje ${f2(s.my)}</p>`}
+      ${s.raw.def && M.canGroup ? `<p class="t-cap tn">La del grupo: Base 82.50 · Descuento 4.25 (2 tazas con defecto de 14) · Puntaje 78.25</p>` : ""}
+      <details class="disc"><summary>¿Cómo se calculó?</summary><p class="t-cap">0.65625 × la suma de los ocho atributos + 52.75, menos 4 puntos por taza defectuosa y 2 por taza no uniforme; redondeado al cuarto de punto. Una sola vez por ficha.</p></details></div>`;
+  }
+  let quality = "";
+  if (M.hasScore && !s.pinned) quality = `<div class="blk"><span class="t-lbl">${M.canGroup ? "Tú y el grupo, atributo por atributo" : "Tu calidad, atributo por atributo"}</span>${leg}${dotplot(ATTR.map((l, j) => ({ l, m: s.mineA[j], g: s.ga[j] })), 1, 9, [1, 3, 5, 7, 9], M.canGroup)}<p class="t-cap">Una sola escala, de 1 a 9, para todos los cafés.</p></div>`;
+  let flav = "";
+  if (M.hasFlav) {
+    const tops = s.desc.filter((d) => d.c >= 2).slice(0, 3), mineIn = tops.filter((d) => d.me).length;
+    flav = `<div class="blk"><span class="t-lbl">${M.canGroup ? "Lo que encontró el panel" : "Lo que encontraste"}</span>${flavFull(S.vis, s, n)}
+      ${M.canGroup && S.vis !== "bars" ? `<p class="t-cap">Cada anillo es una persona; el borde exterior son los ${n} catadores.</p>` : ""}
+      <span class="b" style="padding-top:6px">Descriptores</span><ul style="display:flex;flex-direction:column;gap:6px">${s.desc.map((d) => frow(`${d.l} <span class="t-cap">· ${d.b.toLowerCase()}</span>`, famOf(d.f).c, d.c, n, d.me && M.canGroup)).join("")}</ul>
+      ${M.cmp ? `<p class="t-cap">Elegiste ${mineIn} de los ${tops.length} descriptores más elegidos por el panel.</p>` : M.canGroup && M.closed ? `<p class="t-cap">Con menos de 3 catadores no se compara lo que elegiste con lo que eligió el grupo.</p>` : ""}</div>`;
+  }
+  let ints = "";
+  if (M.st !== "aff") {
+    const showG = M.cmp && M.st !== "desc";
+    const rows = INTS.map((l, j) => { const g = 6 + ((k * 7 + j * 3) % 9) * 0.8; return { l, g, m: Math.round((g + (((k + j) % 3) - 1) * 1.5) * 2) / 2 }; });
+    ints = `<div class="blk"><span class="t-lbl">Intensidades</span>${showG ? leg : ""}${dotplot(rows, 0, 15, [0, 5, 10, 15], showG)}<p class="t-cap">Escala fija de 0 a 15.${M.st === "desc" ? " El número del grupo espera la respuesta de Kim." : !showG && M.canGroup && M.closed ? " El promedio del grupo aparece desde 3 catadores." : ""}</p></div>`;
+  }
+  const def = s.raw.def && M.hasScore ? `<div class="blk"><span class="t-lbl">Tazas con defecto</span><div style="display:flex;flex-wrap:wrap;gap:6px"><span class="cup">× taza 2 · fenólico (tú)</span>${M.canGroup ? '<span class="cup">× 1 taza más · fenólico</span>' : ""}</div><p class="t-cap">${M.canGroup ? "2 tazas de 14, marcadas por 2 de 7 catadores." : "1 de tus 2 tazas."}</p></div>` : "";
+  let twin = "";
+  if (s.raw.twin && M.closed && M.hasScore) { const o = M.list.find((x) => x.id === s.raw.twin); if (o) { const d = s.my - o.my; twin = `<div class="blk"><span class="t-lbl">El mismo café, dos veces</span><p>${s.label} y ${o.label} eran el mismo café. Tus dos puntajes: <b class="tn">${f2(s.my)}</b> y <b class="tn">${f2(o.my)}</b>.</p><p class="t-cap tn">Diferencia ${f2(Math.abs(d))}: ${Math.abs(d) <= 2 ? "dentro de la tolerancia de 2 puntos" : "fuera de la tolerancia de 2 puntos"}. Solo lo ves tú.</p></div>`; } }
+  const notes = `<div class="blk"><span class="t-lbl">Tus notas y el café</span><dl class="dl"><dt>Tu nota</dt><dd>${s.id === "D" ? "Verde, algo de papel al enfriarse." : "Limpia, dulce; mejora al enfriarse."}</dd>${s.name ? `<dt>Café</dt><dd>${s.name}</dd><dt>Altitud</dt><dd>1 750 m</dd><dt>Tueste</dt><dd>Medio, 6 nov 2026</dd>` : `<dt>Café</dt><dd>Se muestra al revelar la muestra.</dd>`}</dl>
+    ${M.closed ? `<label class="b" for="pc-note">Nota después del cierre</label><textarea id="pc-note" maxlength="500" data-note placeholder="¿Qué te llevas de este café?" style="width:100%;min-height:70px;border:1px solid var(--outline-variant);border-radius:16px;padding:10px 12px"></textarea><span class="t-cap tn" data-count>0 / 500</span>` : ""}</div>`;
+  return `<div class="page" style="gap:16px"><div class="sheet-bar"><button class="ta" type="button" data-back>${IC.back}Resultados</button><span style="display:flex;align-items:center;gap:4px"><button class="btn btn-sm" type="button" data-go="${ss[(i - 1 + ss.length) % ss.length].id}" aria-label="Muestra anterior">${IC.back}</button><span class="t-cap tn">${i + 1} / ${ss.length}</span><button class="btn btn-sm" type="button" data-go="${ss[(i + 1) % ss.length].id}" aria-label="Muestra siguiente">${IC.fwd}</button></span></div>
+    <div><span class="t-lbl">${s.isRef ? "Referencia · fuera del ranking" : s.rank ? `Puesto ${s.rank} del ranking` : "Ficha de la muestra"}</span><h1 class="t-page">${s.label}</h1>${s.name ? `<p class="t-cap">${s.name}</p>` : ""}</div>
+    <div class="sheet-grid"><div class="sheet-col">${score}${quality}${def}${twin}</div><div class="sheet-col">${flav}${ints}${notes}</div></div>
+    ${ann("En la app esta ficha es una hoja inferior en un teléfono y un diálogo desde 640 px, con la muestra en la dirección de la página.")}</div>`;
+}
+
+/* ============ the organizer's panel ============ */
+function panel(M) {
+  const rows = M.order.map((s, k) => {
+    if (!s.g) return "";
+    const sd = s.g.sd || 3;
+    const cells = Array.from({ length: 8 }, (_, c) => {
+      if (c === 0) return { v: s.my };
+      const z = ((((c * 5 + k * 3) % 7) - 3) / 3.2) * (c === 3 && k === 2 ? 2.4 : c === 7 && k % 3 === 1 ? 1.5 : 1);
+      return { v: s.pinned ? 79 : q(s.g.score + sd * z), ex: c === 5 };
+    });
+    return `<tr><th scope="row">${s.label}${s.isRef ? " (ref.)" : ""}</th>${cells.map((c) => { const d = Math.abs(c.v - s.g.score) / sd; const b = c.ex || s.pinned ? "" : d >= 2 ? "b2" : d > 1 ? "b1" : ""; return `<td class="${c.ex ? "ex" : b}">${b === "b2" ? "◆ " : b === "b1" ? "▲ " : ""}${f2(c.v)}</td>`; }).join("")}<td class="grp">${f2(s.g.score)}</td><td>${s.g.sd != null ? f1(s.g.sd) : "–"}</td></tr>`;
+  }).join("");
+  const al = [[1, 21, 34], [2, 27, 34], [3, 24, 34], [4, 19, 34], [5, 25, 34], [7, 16, 34], [8, 22, 34]];
+  return `${ann("El panel reúne en una sola vista lo que hoy está repartido: la matriz, las exclusiones, la alineación, las evaluaciones tardías y las notas. Solo lo ve quien organiza; es la única parte de la página con nombres.")}
+  <section class="sec">${sh("Panel", "Dónde coincidió el panel y dónde no.", "Cada celda es el puntaje de un catador. La columna Grupo es el promedio de los incluidos.")}
+    <div class="blk"><div class="scrollx"><table class="pm"><caption class="sr">Puntaje por catador y muestra</caption><thead><tr><th scope="col">Muestra</th>${Array.from({ length: 8 }, (_, c) => `<th scope="col">${c === 0 ? "Tú" : "Catador " + (c + 1)}</th>`).join("")}<th scope="col" class="grp">Grupo</th><th scope="col">DE</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <p class="t-cap">▲ a más de 1 DE del grupo · ◆ a 2 DE o más · tachado: excluido. Lejos del grupo no es un error.</p></div></section>
+  <section class="sec">${sh("Por decidir", "Lo que espera tu respuesta.")}
+    <div class="blk"><div class="rows"><div><span><b>Evaluación tardía</b> · Catador 9 · Muestra D<br><span class="t-cap tn">Guardada antes del cierre · total 80.25 · diferencia +2.00 con el grupo</span></span><button class="btn btn-secondary btn-sm" type="button">Revisar</button></div>
+      <div><span><b>Nota después del cierre</b> · Catador 3 · Muestra G<br><span class="t-cap">"Volvería a catarla más fría."</span></span></div>
+      <div><span><b>Exclusión</b> · Catador 6<br><span class="t-cap">Motivo: error de muestra · excluido el 14 nov 2026</span></span><button class="btn btn-secondary btn-sm" type="button">Incluir</button></div></div></div></section>
+  <section class="sec">${sh("Alineación", "Cuánto coincide cada catador con la mayoría.", "Descriptores de la mayoría que cada persona también eligió. Una sola barra, sin colores de semáforo.")}
+    <div class="blk">${al.map((a) => `<div class="al"><span>${a[0] === 1 ? "Tú" : "Catador " + a[0]}</span><div class="bar1"><i style="width:${(a[1] / a[2]) * 100}%"></i></div><span class="tn" style="text-align:right"><b>${a[1]} de ${a[2]}</b> · ${Math.round((a[1] / a[2]) * 100)} %</span></div>`).join("")}</div></section>`;
+}
+
+/* ============ the three flavour candidates, same data ============ */
+function cands() {
+  const keep = S.state; S.state = "closed"; const M = model(); S.state = keep;
+  const g = M.list.find((s) => s.id === "G"), c = M.list.find((s) => s.id === "C"), n = 7;
+  const one = { wheel: wheel(g.fam, n, "Muestra G"), terrain: terrain(g.fam, n, "Muestra G"), bars: famBars(g.fam, n) };
+  const two = { wheel: wheel(g.fam, n, "Muestra G y Muestra C", { b: c.fam }), terrain: terrain(g.fam, n, "Muestra G y Muestra C", { b: c.fam }), bars: pairBars(g.fam, c.fam, n) };
+  const all = (kind) => (kind === "bars" ? matrix(M.order, n) : `<div class="multi">${M.order.map((s) => `<button type="button">${flavMini(kind, s, n)}<span><b>${s.id}</b><br>${famName(topFam(s.fam).f).split(" /")[0]} ${topFam(s.fam).c}</span></button>`).join("")}</div>`);
+  const C = [
+    ["wheel", "A · Rueda contada", "Recomendada", ["<b>Cuenta</b> personas: el largo del pétalo es cuántas encontraron esa familia; el número va impreso.", "<b>Teléfono:</b> el dibujo cabe en 311 px con texto de 12 px y las nueve familias con su nombre.", "<b>Dos cafés:</b> cada familia se parte en dos pétalos, lleno y claro; o miniaturas lado a lado, porque cada familia está siempre en el mismo ángulo.", "<b>Costo:</b> SVG a mano, geometría pura con pruebas (unas 150 líneas). Sirve igual en el PDF.", "<b>En 5 segundos:</b> sí. El pétalo más largo es lo que más personas encontraron."]],
+    ["terrain", "B · Terreno", "Inspirada en el mapa", ["<b>Cuenta</b> personas en los vértices; la curva entre dos familias no significa nada, es dibujo.", "<b>Teléfono:</b> se lee la forma; el número exacto hay que buscarlo en la etiqueta.", "<b>Dos cafés:</b> su punto fuerte. Dos territorios que se pisan muestran lo que comparten.", "<b>Costo:</b> SVG a mano, la misma geometría de la rueda más el suavizado (unas 40 líneas más).", "<b>En 5 segundos:</b> a medias. Con tres territorios o más se vuelve una mancha."]],
+    ["bars", "C · Barras contadas", "La más simple", ["<b>Cuenta</b> personas: largo de la barra sobre el total de catadores, con \"7 de 7\" al lado.", "<b>Teléfono:</b> perfecta. Es una lista.", "<b>Dos cafés:</b> barras en pareja; para toda la cata, una tabla de familias por muestras.", "<b>Costo:</b> el más bajo. Es el primitivo CountBar del plan.", "<b>En 5 segundos:</b> sí, y es la más exacta. Es la menos vistosa."]],
+  ];
+  return `<div class="page">
+    <header class="hd"><span class="t-lbl">Decisión 12 · el visual que reemplaza la nube</span><h1 class="t-page">Tres candidatos, los mismos datos.</h1><p class="t-cap" style="max-width:70ch">Muestra G (Ámbar) sola, luego comparada con Muestra C (Granate), luego las ocho muestras de la cata. Siempre personas, de 7 catadores. Los colores son los de las familias de la rueda y nunca van en el texto.</p></header>
+    <div class="legend3"><div><b>¿Hacia dónde se estira?</b>Lo que más personas encontraron en ese café.</div><div><b>¿Dónde se quedan cortos todos?</b>Lo que casi nadie encontró.</div><div><b>¿Dónde coinciden dos cafés?</b>Lo que comparten; donde solo crece uno, lo que lo distingue.</div></div>
+    <div class="cands">${C.map(([k, t, tag, facts]) => `<article class="cand${k === "wheel" ? " rec" : ""}"><div><span class="t-lbl">${tag}</span><h2 class="t-section">${t}</h2></div>
+      <div><h4>Un café: Muestra G</h4>${one[k]}</div>
+      <div><h4>Dos cafés: G y C</h4>${two[k]}<p class="t-cap">${k === "terrain" ? '<span class="sw" style="background:var(--primary-container)"></span>Muestra G <span class="sw" style="background:var(--secondary);margin-left:8px"></span>Muestra C · ' : k === "wheel" ? "Pétalo lleno: Muestra G. Pétalo claro: Muestra C. " : "Barra llena: Muestra G. Barra clara: Muestra C. "}Los dos números: G·C.</p></div>
+      <div><h4>Toda la cata</h4>${all(k)}</div>
+      <ul class="facts-l">${facts.map((f) => `<li>${f}</li>`).join("")}</ul></article>`).join("")}</div>
+    <p class="t-cap" style="max-width:80ch">Sea cual sea el dibujo, la lista de descriptores con su conteo va debajo en la ficha: es su equivalente en texto y la lectura exacta. Nadie ha probado estos dibujos con un catador todavía.</p></div>`;
+}
+
+/* ============ wiring ============ */
+function syncControls() {
+  const map = { "c-role": "role", "c-state": "state", "c-ref": "ref", "c-cover": "cover", "c-vis": "vis", "c-w": "w" };
+  for (const id in map) $("#" + id).value = S[map[id]];
+  $("#c-role").disabled = S.state === "solo" || S.state === "excl";
+  $("#mk-grid").hidden = S.view === "cands";
+  document.querySelectorAll("[data-view]").forEach((b) => b.setAttribute("aria-pressed", String((S.view === "cands") === (b.dataset.view === "cands"))));
+  document.body.dataset.w = S.w;
+}
+function render() {
+  const M = model();
+  if (!(M.owner && M.isGroup)) S.tab = "res";
+  $("#frame").innerHTML = S.view === "cands" ? cands() : S.view === "sheet" ? sheet(M) : page(M);
+  syncControls();
+  const cards = $("#cards");
+  if (cards) cards.addEventListener("scroll", () => {
+    const kids = [...cards.children], x = cards.scrollLeft + cards.clientWidth / 2;
+    let on = 0; kids.forEach((k, i) => { if (k.offsetLeft - cards.offsetLeft <= x) on = i; });
+    document.querySelectorAll("#steps .rail-step").forEach((s, i) => s.classList.toggle("on", i === on));
+  }, { passive: true });
+}
+document.addEventListener("click", (e) => {
+  const t = e.target.closest("[data-open],[data-back],[data-go],[data-tab],[data-exp],[data-view]");
+  if (!t) return;
+  if (t.dataset.view) { S.view = t.dataset.view === "cands" ? "cands" : "page"; render(); window.scrollTo(0, 0); return; }
+  if (t.dataset.open) { S.y = window.scrollY; S.view = "sheet"; S.sample = t.dataset.open; render(); $("#frame").scrollIntoView(); return; }
+  if (t.dataset.go) { S.sample = t.dataset.go; render(); return; }
+  if ("back" in t.dataset) { S.view = "page"; render(); window.scrollTo(0, S.y); return; }
+  if (t.dataset.tab) { S.tab = t.dataset.tab; render(); return; }
+  if ("exp" in t.dataset) { S.exp = !S.exp; render(); }
+});
+document.addEventListener("input", (e) => {
+  if (!e.target.matches("[data-note]")) return;
+  const c = e.target.parentElement.querySelector("[data-count]"); if (c) c.textContent = e.target.value.length + " / 500";
+});
+[["c-role", "role"], ["c-state", "state"], ["c-ref", "ref"], ["c-cover", "cover"], ["c-vis", "vis"], ["c-w", "w"]].forEach(([id, key]) => {
+  $("#" + id).addEventListener("change", (e) => { S[key] = e.target.value; if (S.view === "sheet") S.view = "page"; render(); });
+});
+if (window.matchMedia("(min-width: 700px)").matches) $("#mk").open = true;
+render();
+</script>
