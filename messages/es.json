@@ -1497,7 +1497,7 @@
     "bannerNewVersion": "Hay una versión nueva de la app. Tus notas están guardadas en este dispositivo; recarga para seguir sincronizando.",
     "reloadNow": "Recargar",
     "pendingDrafts": "Notas sin sincronizar: {count}",
-    "staleDrafts": "Tienes notas sin sincronizar de hace más de 3 días. El navegador puede borrarlos si no abres la app: conéctate pronto o instálala en tu pantalla de inicio.",
+    "staleDrafts": "Tienes notas sin sincronizar de hace más de 3 días. El navegador puede borrarlas si no abres la app: conéctate pronto o instálala en tu pantalla de inicio.",
     "closedUnsentDrafts": "Notas sin enviar: {count}. La cata ya estaba cerrada",
     "unsyncedNotes": "Notas sin sincronizar: {count}",
     "conflictDrafts": "{count} cambios esperan tu decisión",
