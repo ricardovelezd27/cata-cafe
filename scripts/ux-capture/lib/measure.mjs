@@ -382,3 +382,21 @@ export function hiddenScrollHeight() {
   });
   return best;
 }
+
+/**
+ * True once React's client code has run on this page: React puts an internal `__reactFiber$...` key
+ * on each DOM node it hydrates or creates (and `__reactContainer$...` on the root). Server HTML alone
+ * has neither, so this is a signal that client code ran, not a timing guess.
+ * The Next dev-tools overlay (`<nextjs-portal>`) is its own React root and mounts even when the app does
+ * not hydrate (a closed hot-reload socket), so it never counts: the mark must be on the app's own root
+ * (`document`, `<html>`, `<body>`) or on a node outside the overlay.
+ */
+export function isHydrated() {
+  const mark = (node) => Object.keys(node).some((k) => k.startsWith("__reactFiber$") || k.startsWith("__reactContainer$"));
+  if (mark(document) || mark(document.documentElement) || mark(document.body)) return true;
+  for (const el of document.body.querySelectorAll("*")) {
+    if (el.localName === "nextjs-portal" || el.closest("nextjs-portal")) continue;
+    if (mark(el)) return true;
+  }
+  return false;
+}

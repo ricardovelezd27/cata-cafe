@@ -19,7 +19,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { GuardError, assertLocalBase, assertTestAddress, buildTargetUrl, isReadOnlyMethod, shouldBlockWebSocket, signInUrl } from "./lib/guard.mjs";
-import { hiddenScrollHeight, measure, redactPage } from "./lib/measure.mjs";
+import { hiddenScrollHeight, isHydrated, measure, redactPage } from "./lib/measure.mjs";
 import { captureName, orderScreens, parsePlanSpecs, resolveTokens, validatePlan } from "./lib/plan.mjs";
 import { readMeasures, renderSummary, summarizeMeasure } from "./lib/summarize.mjs";
 
@@ -73,9 +73,10 @@ function gitInfo() {
 
 /**
  * Opens a context that cannot write: every non-GET/HEAD/OPTIONS request is aborted and counted, and
- * every WebSocket is closed as soon as the page opens it (counted), never connected to a server.
+ * every WebSocket except the dev server's own hot-reload socket is closed as soon as the page opens
+ * it (counted), never connected to a server.
  */
-async function newReadOnlyContext(browser, device, opt) {
+async function newReadOnlyContext(browser, device, opt, origin) {
   const ctx = await browser.newContext({
     viewport: { width: device.width, height: device.height },
     deviceScaleFactor: 1,
@@ -85,15 +86,21 @@ async function newReadOnlyContext(browser, device, opt) {
     reducedMotion: opt.motion ? "no-preference" : "reduce",
     serviceWorkers: "block",
   });
-  const counter = { blocked: 0, blockedSockets: 0 };
+  const counter = { blocked: 0, blockedSockets: 0, allowedSockets: 0, sockets: [] };
   await ctx.route("**/*", (route) => {
     if (isReadOnlyMethod(route.request().method())) return route.continue();
     counter.blocked++;
     return route.abort("blockedbyclient");
   });
   // `route` does not see WebSocket traffic: a socket can send (broadcast, presence) with the user's token.
+  // Only the dev server's own hot-reload socket may connect (a page does not hydrate without it); see shouldBlockWebSocket.
   await ctx.routeWebSocket(/.*/, (ws) => {
-    if (!shouldBlockWebSocket(ws.url())) return ws.connectToServer();
+    const block = shouldBlockWebSocket(ws.url(), origin);
+    counter.sockets.push({ url: ws.url(), blocked: block });
+    if (!block) {
+      counter.allowedSockets++;
+      return ws.connectToServer();
+    }
     counter.blockedSockets++;
     return ws.close({ code: 1008, reason: "ux-capture is read-only" });
   });
@@ -102,9 +109,11 @@ async function newReadOnlyContext(browser, device, opt) {
 
 /** --self-test: proves, against the running server, that a write cannot leave the browser. */
 async function selfTest(browser, origin, opt) {
-  const { ctx, counter } = await newReadOnlyContext(browser, DEVICES.desktop, opt);
+  const { ctx, counter } = await newReadOnlyContext(browser, DEVICES.desktop, opt, origin);
   const page = await ctx.newPage();
   await page.goto(`${origin}/es/auth/login`, { waitUntil: "domcontentloaded" }); // a public page; /api/health answers 204, which a browser cannot show
+
+  // 1. writes are aborted in the browser
   const methods = ["POST", "PUT", "PATCH", "DELETE"];
   const outcomes = await page.evaluate(async (list) => {
     const res = [];
@@ -118,32 +127,56 @@ async function selfTest(browser, origin, opt) {
     }
     return res;
   }, methods);
-  // WebSockets: a cross-origin one (what Supabase Realtime is) and a same-origin one (the dev server's hot reload).
-  const sockets = [`wss://ux-capture-selftest.invalid/socket`, `${origin.replace(/^http/, "ws")}/_next/webpack-hmr`];
-  const socketOutcomes = await page.evaluate(
+  const reached = outcomes.filter((o) => o.reached);
+
+  // 2. sockets: the dev server's own hot-reload socket is allowed; another host, another path and another port are closed
+  const wsOrigin = origin.replace(/^http/, "ws");
+  const otherPort = new URL(origin);
+  otherPort.port = new URL(origin).port === "9" ? "7" : "9";
+  const allowedUrl = `${wsOrigin}/_next/webpack-hmr`;
+  const closedUrls = [`wss://ux-capture-selftest.invalid/realtime/v1/websocket`, `${wsOrigin}/api/health`, `${otherPort.origin.replace(/^http/, "ws")}/_next/webpack-hmr`];
+  const opened = await page.evaluate(
     (urls) =>
       Promise.all(
         urls.map(
           (url) =>
             new Promise((resolve) => {
-              let opened = false;
+              let wasOpen = false;
               const ws = new WebSocket(url);
-              ws.onopen = () => (opened = true);
-              ws.onclose = () => resolve({ url, opened });
+              ws.onopen = () => (wasOpen = true);
+              ws.onclose = () => resolve({ url, wasOpen });
               ws.onerror = () => {};
-              setTimeout(() => resolve({ url, opened, timedOut: true }), 5000);
+              setTimeout(() => resolve({ url, wasOpen, timedOut: true }), 5000);
             }),
         ),
       ),
-    sockets,
+    closedUrls,
   );
+  await page.evaluate((url) => {
+    const ws = new WebSocket(url);
+    ws.onerror = () => {};
+  }, allowedUrl);
+  await page.waitForTimeout(500);
+  const decision = (url) => counter.sockets.find((s) => s.url === url);
+  const closedOk = closedUrls.every((u) => {
+    const o = opened.find((x) => x.url === u);
+    return decision(u)?.blocked === true && o && !o.wasOpen && !o.timedOut;
+  });
+  const allowedOk = decision(allowedUrl)?.blocked === false;
+
+  // 3. the page hydrates: React's client code ran (a fiber key on a DOM node), not a timing guess
+  const hydrated = await page.waitForFunction(isHydrated, null, { timeout: 20000 }).then(
+    () => true,
+    () => false,
+  );
+
   await ctx.close();
-  const reached = outcomes.filter((o) => o.reached);
-  const socketsOpen = socketOutcomes.filter((o) => o.opened || o.timedOut);
-  const ok = reached.length === 0 && counter.blocked === methods.length && socketsOpen.length === 0 && counter.blockedSockets === sockets.length;
+  const ok = reached.length === 0 && counter.blocked === methods.length && closedOk && allowedOk && hydrated;
   console.log(
-    `self-test: ${ok ? "PASS" : "FAIL"}: ${methods.length} writes tried, ${counter.blocked} blocked in the browser, ${reached.length} reached the server; ` +
-      `${sockets.length} WebSockets tried, ${counter.blockedSockets} closed by the browser, ${socketsOpen.length} stayed open`,
+    `self-test: ${ok ? "PASS" : "FAIL"}: ` +
+      `writes ${methods.length} tried, ${counter.blocked} blocked, ${reached.length} reached the server; ` +
+      `sockets: dev hot-reload ${allowedOk ? "allowed" : "NOT allowed"}, ${closedUrls.length} others (other host, other path, other port) ${closedOk ? "closed" : "NOT all closed"}; ` +
+      `page ${hydrated ? "hydrated" : "did NOT hydrate"}; context total: ${counter.allowedSockets} sockets allowed, ${counter.blockedSockets} blocked`,
   );
   return ok;
 }
@@ -194,7 +227,7 @@ async function main() {
       console.log(`\n== plan ${plan.name}${email ? ` as ${email}` : " (not signed in)"} -> ${planOut}`);
       for (const dev of devices) {
         const d = DEVICES[dev];
-        const { ctx, counter } = await newReadOnlyContext(browser, d, opt);
+        const { ctx, counter } = await newReadOnlyContext(browser, d, opt, origin);
         const page = await ctx.newPage();
         const errors = [];
         page.on("console", (m) => {
@@ -226,8 +259,13 @@ async function main() {
             errors.length = 0;
             const blockedBefore = counter.blocked;
             const socketsBefore = counter.blockedSockets;
+            const allowedBefore = counter.allowedSockets;
             try {
               const resp = await page.goto(buildTargetUrl(origin, lang, path), { waitUntil: "load", timeout: 60000 });
+              const hydrated = await page.waitForFunction(isHydrated, null, { timeout: 15000 }).then(
+                () => true,
+                () => false,
+              );
               await page.waitForTimeout(screen.settle || 1800);
               for (const st of screen.steps ?? []) {
                 if (st.click) await page.locator(st.click).first().click({ timeout: 8000 });
@@ -240,7 +278,7 @@ async function main() {
               await page.addStyleTag({ content: "nextjs-portal{display:none!important}" }).catch(() => {});
               if (redact.length) await page.evaluate(redactPage, redact);
               const m = await page.evaluate(measure);
-              Object.assign(m, { status: resp ? resp.status() : null, finalUrl: page.url().replace(origin, ""), consoleErrors: errors.slice(0, 8), blockedWrites: counter.blocked - blockedBefore, blockedSockets: counter.blockedSockets - socketsBefore, id: screen.id, device: dev, lang2: lang, state: screen.state || "", plan: plan.name });
+              Object.assign(m, { status: resp ? resp.status() : null, finalUrl: page.url().replace(origin, ""), consoleErrors: errors.slice(0, 8), blockedWrites: counter.blocked - blockedBefore, blockedSockets: counter.blockedSockets - socketsBefore, allowedSockets: counter.allowedSockets - allowedBefore, hydrated, id: screen.id, device: dev, lang2: lang, state: screen.state || "", plan: plan.name });
               const evalSource = screen.evalFile ? readFileSync(join(TOOL, "evals", `${screen.evalFile}.js`), "utf8") : screen.eval;
               if (evalSource) {
                 try {
@@ -275,7 +313,7 @@ async function main() {
                 writeFileSync(mfile, JSON.stringify(m, null, 1));
               }
               results.push({ f: fname, status: m.status, final: m.finalUrl, h: m.docHeight, over: m.hOverflow, prim: m.primariesInFold, u44: m.targetsUnder44Count, lc: m.lowContrastCount, err: m.consoleErrors.length, blocked: m.blockedWrites });
-              console.log(`${fname}  ${m.status} -> ${m.finalUrl}  h=${m.docHeight} overflow=${m.hOverflow} primInFold=${m.primariesInFold} <44=${m.targetsUnder44Count} lowC=${m.lowContrastCount} err=${m.consoleErrors.length} blockedWrites=${m.blockedWrites} blockedSockets=${m.blockedSockets}`);
+              console.log(`${fname}  ${m.status} -> ${m.finalUrl}  h=${m.docHeight} overflow=${m.hOverflow} primInFold=${m.primariesInFold} <44=${m.targetsUnder44Count} lowC=${m.lowContrastCount} err=${m.consoleErrors.length} hydrated=${m.hydrated} blockedWrites=${m.blockedWrites} sockets(allowed/blocked)=${m.allowedSockets}/${m.blockedSockets}`);
             } catch (e) {
               failed++;
               console.log(`${fname}  FAILED ${String(e).slice(0, 160)}`);

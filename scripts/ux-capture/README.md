@@ -15,17 +15,34 @@ The local environment uses the **production database**. The tool is built so tha
 |---|---|---|
 | Runs only against `localhost`, `127.0.0.1` or `[::1]`; any other host exits with a message | `lib/guard.mjs` `assertLocalBase`, before a browser starts | `tests/uxCaptureGuard.test.ts` |
 | Every request that is not GET / HEAD / OPTIONS is aborted inside the browser (a server action, a form post and a Supabase write are all POST / PATCH / PUT / DELETE); service workers are blocked so none can bypass it | `capture.mjs` `newReadOnlyContext`, `isReadOnlyMethod` | the test, and `--self-test` below |
-| Every WebSocket is closed by the browser the moment the page opens it, and none connects to any server (`routeWebSocket`); they are counted as `blockedSockets` | `capture.mjs` `newReadOnlyContext`, `shouldBlockWebSocket` | the test, and `--self-test` |
+| Every WebSocket is closed by the browser the moment the page opens it and never connects to a server (`routeWebSocket`), **except one**: the dev server's own hot-reload socket, same host and port as `--base`, path under `/_next/`. Both outcomes are counted per capture (`sockets(allowed/blocked)`) | `capture.mjs` `newReadOnlyContext`, `shouldBlockWebSocket` | the test, and `--self-test` |
 | Signs in only through the dev-only GET route `/api/dev/sign-in?email=`, only for `master@cata.test`, `par1@cata.test`, `par2@cata.test`; it never types into the sign-in form | `signInUrl`, `assertTestAddress` | the test |
 | A plan can only name a path on the host it runs against | `buildTargetUrl` | the test |
 
 **WebSockets.** Playwright's request interception (`route`) does not see socket traffic, and the app's Supabase Realtime sockets
 (cup, waiting and results pages) can send broadcast and presence messages with the signed-in user's token. So the tool does not
-rely on the app never writing that way: it closes **every** WebSocket, the dev server's hot-reload socket included, as the page opens it.
-The effect on what a page renders: the pages that listen to Realtime (the cup page of a group session, the waiting room, the results
-page of an open session) see a channel that never reaches SUBSCRIBED and show their own "live updates are down" state
-(`liveCountDown`, `liveUpdatesDown`). It is the same on both sides of a before / after, so a comparison stays valid; it differs from the
-audit's own run, where the sockets were open. This effect was not measured on those pages (they need a real session).
+rely on the app never writing that way: it closes **every** WebSocket as the page opens it, without connecting it to any server,
+and counts it, with **one exception**.
+
+*The allowed socket.* A page of the Next dev server does not hydrate while the dev server's own WebSocket is closed (Next 16 dev),
+and a capture of server HTML alone cannot see or measure anything that is client-side: an `inert` shell, a hydrated control, a
+client-rendered state. So a socket is let through only if it is to the tool's **own base**: the same host and port as `--base`,
+`ws:` for `http:` (`wss:` for `https:`), no userinfo, and a path under `/_next/` (in practice `/_next/webpack-hmr`). That socket
+carries hot-reload messages between the dev server and the page and **reaches no database**. Everything else is closed and counted:
+Supabase Realtime, any other host (including look-alikes such as `localhost.evil.test` and userinfo tricks that put another host after an `@`), the same host on another
+port, any other path, and a path that only reaches `/_next/` through `..` or an encoded slash. The rule is the pure function
+`shouldBlockWebSocket(url, origin)` in `lib/guard.mjs`, with a test for each of those cases; anything that does not parse is closed.
+
+*Hydration is checked, not assumed.* Before it settles, every capture waits for React's client code to run (an internal fiber key on a
+DOM node: a signal, not a timing guess) and records `hydrated` in the measures and in `compare.mjs`. A capture that reports
+`hydrated=false` measured server HTML only.
+
+*What the closed Realtime socket does to a page.* The pages that listen to Realtime (the cup page of a group session, the waiting room, the
+results page of an open session) see a channel that never reaches SUBSCRIBED and show their own "live updates are down" state
+(`liveCountDown`, `liveUpdatesDown`). It is the same on both sides of a before / after, so a comparison stays valid; it differs from a
+run where the sockets were open. Seen on the cup page of a `[DEV]` group session (owner view): the toast "Conteo en vivo no
+disponible — recarga la página…" appears, 2 or 3 Realtime sockets are counted as blocked and the hot-reload socket as allowed. The waiting
+room and the results page were not measured.
 
 **What is trusted.** Every GET is let through, so the tool trusts the app's GET routes (pages, `/api/*` GET handlers, the RSC payloads)
 to be read-only. The one GET that is not is the dev sign-in route, which **creates a session** for a test account; that is why it is
@@ -159,9 +176,13 @@ This is still production data: ask the owner before you use it for a new package
 node scripts/ux-capture/capture.mjs --self-test
 ```
 
-Opens the public login page of the running server, tries a POST, PUT, PATCH and DELETE to `/api/health` from the page and opens two
-WebSockets (one cross-origin, one on the dev server), and exits 0 only if the browser aborted all four requests before they left it and
-closed both sockets without connecting. No account is used.
+Opens the public login page of the running server and proves three things; it exits 0 only if all three hold:
+1. **Writes are aborted:** a POST, PUT, PATCH and DELETE to `/api/health` from the page never leave the browser.
+2. **Sockets:** the dev server's hot-reload socket is let through, and three others are closed without opening: another host
+   (`wss://...invalid`, as Realtime would be), the same host with another path, and the same host on another port.
+3. **The page hydrates:** React's client code ran (a fiber key on a DOM node). The self-test fails if it did not.
+
+No account is used.
 
 Other checks: `npx.cmd vitest run tests/uxCaptureGuard.test.ts` (the host guard, the methods, the addresses, the paths, and a scan of the committed
 files for ids and addresses that must not be there).

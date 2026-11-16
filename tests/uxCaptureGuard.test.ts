@@ -72,26 +72,75 @@ describe("isReadOnlyMethod: every write is aborted in the browser", () => {
   it.each(["POST", "PUT", "PATCH", "DELETE", "post", "TRACE", "CONNECT", "", undefined, null])("aborts %s", (m) => expect(isReadOnlyMethod(m)).toBe(false));
 });
 
-describe("shouldBlockWebSocket: no socket connects (Playwright's route does not see them)", () => {
+describe("shouldBlockWebSocket: only the dev server's own hot-reload socket may connect", () => {
+  const origin = "http://localhost:3000";
+
   it.each([
-    "wss://abcdefgh.supabase.co/realtime/v1/websocket?apikey=x&vsn=1.0.0",
     "ws://localhost:3000/_next/webpack-hmr",
-    "wss://localhost:3000/anything",
-    "ws://127.0.0.1:1234/",
-    "wss://example.com/",
-    "not even a url",
-    "",
-    undefined,
-  ])("closes %s", (url) => {
-    expect(shouldBlockWebSocket(url)).toBe(true);
+    "ws://localhost:3000/_next/webpack-hmr?id=abc&x=1",
+    "ws://LOCALHOST:3000/_next/webpack-hmr",
+    "ws://localhost:3000/_next/static/hmr-1.x/socket",
+  ])("lets %s through (same host and port, ws for http, under /_next/)", (url) => {
+    expect(shouldBlockWebSocket(url, origin)).toBe(false);
   });
 
-  it("the capture opens its context through routeWebSocket with this rule, and counts what it closes", () => {
+  it("follows the base: https is wss, another loopback host and port are their own", () => {
+    expect(shouldBlockWebSocket("wss://localhost:8443/_next/webpack-hmr", "https://localhost:8443")).toBe(false);
+    expect(shouldBlockWebSocket("ws://localhost:8443/_next/webpack-hmr", "https://localhost:8443")).toBe(true);
+    expect(shouldBlockWebSocket("wss://localhost:8443/_next/webpack-hmr", "http://localhost:8443")).toBe(true);
+    expect(shouldBlockWebSocket("ws://127.0.0.1:3100/_next/webpack-hmr", "http://127.0.0.1:3100")).toBe(false);
+    expect(shouldBlockWebSocket("ws://[::1]:3000/_next/webpack-hmr", "http://[::1]:3000")).toBe(false);
+    expect(shouldBlockWebSocket("ws://localhost/_next/webpack-hmr", "http://localhost")).toBe(false);
+  });
+
+  it.each([
+    ["Supabase Realtime", "wss://abcdefgh.supabase.co/realtime/v1/websocket?apikey=x&vsn=1.0.0"],
+    ["another host", "wss://example.com/_next/webpack-hmr"],
+    ["another loopback name for the same machine", "ws://127.0.0.1:3000/_next/webpack-hmr"],
+    ["the same host on another port", "ws://localhost:3001/_next/webpack-hmr"],
+    ["the same host, port omitted", "ws://localhost/_next/webpack-hmr"],
+    ["the wrong scheme for an http base", "wss://localhost:3000/_next/webpack-hmr"],
+    ["an http URL", "http://localhost:3000/_next/webpack-hmr"],
+    ["any other path", "ws://localhost:3000/api/health"],
+    ["the root path", "ws://localhost:3000/"],
+    ["a path that only starts like /_next", "ws://localhost:3000/_nextx/webpack-hmr"],
+    ["the prefix itself, no file", "ws://localhost:3000/_next"],
+    ["a dot-dot segment", "ws://localhost:3000/_next/../api/health"],
+    ["a percent-encoded dot-dot segment", "ws://localhost:3000/_next/%2e%2e/api/health"],
+    ["a double-encoded dot-dot segment", "ws://localhost:3000/_next/%252e%252e/api/health"],
+    ["an encoded slash", "ws://localhost:3000/_next/..%2fapi/health"],
+    ["a backslash", "ws://localhost:3000/_next/..\\api/health"],
+    ["a look-alike host", "ws://localhost.evil.test:3000/_next/webpack-hmr"],
+    ["a look-alike host with a prefix", "ws://evil-localhost:3000/_next/webpack-hmr"],
+    ["a userinfo trick (host is evil.test)", "ws://localhost:3000@evil.test/_next/webpack-hmr"],
+    ["userinfo on the real host", "ws://user:pass@localhost:3000/_next/webpack-hmr"],
+    ["a trailing-dot host", "ws://localhost.:3000/_next/webpack-hmr"],
+  ])("closes %s", (_what, url) => {
+    expect(shouldBlockWebSocket(url, origin)).toBe(true);
+  });
+
+  it.each(["not even a url", "", undefined, null, 42])("fails closed on %s", (url) => {
+    expect(shouldBlockWebSocket(url, origin)).toBe(true);
+  });
+
+  it("fails closed when the base itself is not a URL", () => {
+    expect(shouldBlockWebSocket("ws://localhost:3000/_next/webpack-hmr", "")).toBe(true);
+    expect(shouldBlockWebSocket("ws://localhost:3000/_next/webpack-hmr", "ftp://localhost:3000")).toBe(true);
+  });
+
+  it("the capture opens its context through routeWebSocket with this rule, counts both outcomes, and connects only behind it", () => {
     const src = readFileSync(join(TOOL, "capture.mjs"), "utf8");
     expect(src).toContain("ctx.routeWebSocket(");
-    expect(src).toContain("shouldBlockWebSocket(ws.url())");
+    expect(src).toContain("shouldBlockWebSocket(ws.url(), origin)");
     expect(src).toContain("blockedSockets");
+    expect(src).toContain("allowedSockets");
     expect(src.match(/connectToServer\(/g)).toHaveLength(1); // only behind the rule, never on its own
+  });
+
+  it("a capture waits for the page to hydrate and records it", () => {
+    const src = readFileSync(join(TOOL, "capture.mjs"), "utf8");
+    expect(src).toContain("waitForFunction(isHydrated");
+    expect(src).toContain("hydrated,");
   });
 });
 
