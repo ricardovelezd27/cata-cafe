@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ChevronDown, EyeOff } from "lucide-react";
 import { createBrowserClient } from "@supabase/ssr";
-import { checkSessionStarted, getWaitingState } from "@/app/actions/sessions";
+import { getWaitingState } from "@/app/actions/sessions";
 import { isMissed, parseDbTimestamp, resyncPositionMs, runLengthMs, seekFor, skewMs, warmupSyncReducer, type SyncState } from "@/lib/warmup/syncedRun";
 import { nextReferenceOrder } from "@/lib/referenceRules";
 import { WARMUP_EXERCISES, WARMUP_SHARED, lw, warmupById, type WarmupExercise } from "@/lib/warmup/exercises";
@@ -81,15 +81,11 @@ export function WaitingRoomClient({
     asyncDetail: string;
     waiting: string;
     buttonLabel: string;
-    checkingLabel: string;
-    notStartedMsg: string;
     backToSessions: string;
     connectionLost: string;
   };
 }) {
   const router = useRouter();
-  const [checking, setChecking] = useState(false);
-  const [notStarted, setNotStarted] = useState(false);
   // True whenever the realtime channel is not actively SUBSCRIBED — drives the
   // 15s polling fallback and the "connection lost" notice below.
   const [connectionLost, setConnectionLost] = useState(false);
@@ -341,28 +337,6 @@ export function WaitingRoomClient({
     };
   }, [sessionId, router, isAsync, resumeKey]);
 
-  const handleStart = async () => {
-    if (isAsync) {
-      goToCup();
-      return;
-    }
-    setChecking(true);
-    let started = false;
-    try {
-      started = await checkSessionStarted(sessionId);
-    } catch {
-      // Network failure: treat as "not started yet"; the button must re-enable.
-    } finally {
-      setChecking(false);
-    }
-    if (started) {
-      onStarted();
-    } else {
-      setNotStarted(true);
-      setTimeout(() => setNotStarted(false), 2000);
-    }
-  };
-
   const others = chosen ? WARMUP_EXERCISES.filter((ex) => ex.id !== chosen.id) : WARMUP_EXERCISES;
 
   return (
@@ -416,27 +390,28 @@ export function WaitingRoomClient({
           </p>
         )}
 
-        <div className="space-y-2">
-          <button
-            onClick={handleStart}
-            disabled={checking}
-            className="w-full rounded-xl py-3 px-6 text-sm font-semibold text-white"
-            style={{
-              background: checking
-                ? "#C4B49A"
-                : "linear-gradient(135deg, #3D5A3E 0%, #2A4430 100%)",
-              border: "none",
-              cursor: checking ? "default" : "pointer",
-              fontFamily: "inherit",
-              transition: "background 0.2s",
-            }}
-          >
-            {checking ? translations.checkingLabel : translations.buttonLabel}
-          </button>
-          {notStarted && (
-            <p className="text-sm text-brown-mid">{translations.notStartedMsg}</p>
-          )}
-        </div>
+        {/* Only an async session has something to start here: it opens the cup page at
+            once. A live session starts when the owner says so, and this page already
+            follows that by itself (realtime + the polling fallback above), so a
+            "start" button that only asked the server whether it had started was a
+            button that did not do what it said (audit C-03). */}
+        {isAsync && (
+          <div className="space-y-2">
+            <button
+              onClick={goToCup}
+              className="w-full rounded-xl py-3 px-6 text-sm font-semibold text-white"
+              style={{
+                background: "linear-gradient(135deg, #3D5A3E 0%, #2A4430 100%)",
+                border: "none",
+                cursor: "pointer",
+                fontFamily: "inherit",
+                transition: "background 0.2s",
+              }}
+            >
+              {translations.buttonLabel}
+            </button>
+          </div>
+        )}
 
         <Link
           href={`/${locale}/app/sessions`}

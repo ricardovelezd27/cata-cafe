@@ -589,7 +589,7 @@ export default async function ResultsPage({
   const pendingParticipants = Math.max(0, totalParticipants - submittedCupperCount);
   const partialSyncNotice =
     session.isGroup && canViewGroup && pendingParticipants > 0
-      ? tOffline("partialSyncNotice", {
+      ? tOffline(sessionOver ? "partialSyncNoticeClosed" : "partialSyncNotice", {
           included: submittedCupperCount,
           total: totalParticipants,
           pending: pendingParticipants,

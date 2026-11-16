@@ -132,8 +132,6 @@ export default async function WaitingPage({
         asyncDetail: t("asyncDetail"),
         waiting: t("waiting"),
         buttonLabel: t("buttonLabel"),
-        checkingLabel: t("checkingLabel"),
-        notStartedMsg: t("notStartedMsg"),
         backToSessions: t("backToSessions"),
         connectionLost: t("connectionLost"),
       }}

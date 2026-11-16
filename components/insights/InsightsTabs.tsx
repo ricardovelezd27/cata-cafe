@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { isActive } from "@/components/layout/navItems";
 
 interface InsightsTabsProps {
   locale: string;
@@ -19,23 +20,26 @@ interface InsightsTabsProps {
 
 export function InsightsTabs({ locale, isSuperAdmin, isAiAdmin, labels }: InsightsTabsProps) {
   const pathname = usePathname();
-  const base = `/${locale}/app/insights`;
+  // `path` is the locale-less route `isActive` compares (the default locale is
+  // served unprefixed, so the full `href` never matched the pathname in Spanish: D-03).
+  const path = "/app/insights";
+  const base = `/${locale}${path}`;
 
   const tabs = [
-    { href: base, label: labels.dashboard, exact: true },
-    { href: `${base}/explorer`, label: labels.explorer, exact: false },
-    { href: `${base}/benchmark`, label: labels.benchmark, exact: false },
-    ...(isAiAdmin ? [{ href: `${base}/chat`, label: labels.chat, exact: false }] : []),
-    ...(isSuperAdmin ? [{ href: `${base}/access`, label: labels.access, exact: false }] : []),
+    { href: base, path, label: labels.dashboard, exact: true },
+    { href: `${base}/explorer`, path: `${path}/explorer`, label: labels.explorer, exact: false },
+    { href: `${base}/benchmark`, path: `${path}/benchmark`, label: labels.benchmark, exact: false },
+    ...(isAiAdmin ? [{ href: `${base}/chat`, path: `${path}/chat`, label: labels.chat, exact: false }] : []),
+    ...(isSuperAdmin ? [{ href: `${base}/access`, path: `${path}/access`, label: labels.access, exact: false }] : []),
     ...(isSuperAdmin || isAiAdmin
-      ? [{ href: `${base}/users`, label: labels.users, exact: false }]
+      ? [{ href: `${base}/users`, path: `${path}/users`, label: labels.users, exact: false }]
       : []),
   ];
 
   return (
     <nav className="flex gap-1 border-b border-[#E8E0D0] mb-5 overflow-x-auto">
-      {tabs.map(({ href, label, exact }) => {
-        const active = exact ? pathname === href : pathname.startsWith(href);
+      {tabs.map(({ href, path: tabPath, label, exact }) => {
+        const active = isActive(pathname, locale, tabPath, exact);
         return (
           <Link
             key={href}

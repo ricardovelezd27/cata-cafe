@@ -22,6 +22,15 @@ export function isSessionExpired(row: ExpiryRow, now: Date | number = Date.now()
   return toMs(row.closesAt) < toMs(now);
 }
 
+/** The database twin of `isSessionExpired`: a Prisma `where` that matches the
+ *  sessions that are over (closed, or `closesAt` already passed, strict `<`).
+ *  The dashboard stat "sesiones realizadas" counts these and never an open one
+ *  (audit A-09). Keep it identical to `isSessionExpired`; the test checks both
+ *  against the same rows. */
+export function finishedSessionWhere(now: Date = new Date()) {
+  return { OR: [{ status: "closed" }, { closesAt: { lt: now } }] };
+}
+
 /** Throws `session_closed` for a closed or expired session. Call it right after the
  *  requireSessionOwner / requireSessionMember / requireSampleOwner /
  *  requireSampleMember check in EVERY mutation that writes evaluations,
