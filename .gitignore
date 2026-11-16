@@ -60,3 +60,10 @@ graphify-out/
 # and scratch renders stay on the machine that renders them.
 scripts/warmup-voice/.models/
 scripts/warmup-voice/.out/
+
+# UX capture tool (scripts/ux-capture): its own deps, its output (screenshots and
+# measures of a running app: may show real data) and the local file that holds
+# real ids and the name-replacement list. Only local.example.json is committed.
+/scripts/ux-capture/node_modules
+/scripts/ux-capture/out/
+/scripts/ux-capture/local.json

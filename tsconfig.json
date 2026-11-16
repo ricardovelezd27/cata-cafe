@@ -30,5 +30,5 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "tests/db"]
+  "exclude": ["node_modules", "tests/db", "scripts/ux-capture/node_modules"]
 }

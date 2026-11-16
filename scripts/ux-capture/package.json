@@ -1,0 +1,10 @@
+{
+  "name": "cata-cafe-ux-capture",
+  "private": true,
+  "description": "Dependencies used ONLY by the read-only UI capture tool (scripts/ux-capture). Kept out of the root package.json so the app's install and lockfile do not carry a headless-browser driver.",
+  "type": "module",
+  "dependencies": {
+    "playwright-core": "1.49.1",
+    "pngjs": "7.0.0"
+  }
+}

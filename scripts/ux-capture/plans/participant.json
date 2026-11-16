@@ -1,0 +1,20 @@
+{
+  "name": "participant",
+  "description": "A member of someone else's sessions and group: pass par1@cata.test. Shows what a participant sees: the waiting room, an open group session, a closed one, the group page as a member, and no access to Insights.",
+  "signIn": true,
+  "screens": [
+    {"id":"app","path":"/app","state":"participant"},
+    {"id":"app-sessions","path":"/app/sessions"},
+    {"id":"app-sessions-id-waiting","path":"/app/sessions/{{groupNotStarted}}/waiting","state":"participant"},
+    {"id":"app-sessions-id-results","path":"/app/sessions/{{groupCombinedCup}}/results","state":"open-group-participant","settle":3500},
+    {"id":"app-sessions-id-results","path":"/app/sessions/{{closedGroupOneCupper}}/results","state":"closed-group-combined-owner-1cupper","settle":3500},
+    {"id":"app-coffees","path":"/app/coffees"},
+    {"id":"app-coffees-id","path":"/app/coffees/{{coffeeOneSession}}","state":"owner-one-session"},
+    {"id":"app-groups","path":"/app/groups","state":"member"},
+    {"id":"app-groups-id","path":"/app/groups/{{group}}","state":"member"},
+    {"id":"app-profile","path":"/app/profile","state":"participant"},
+    {"id":"app-profile-history","path":"/app/profile/history","state":"participant"},
+    {"id":"app-insights","path":"/app/insights","state":"no-access"},
+    {"id":"app-sessions-id-cup","path":"/app/sessions/{{groupCombinedCup}}/cup","state":"combined-group-participant","settle":3500,"phase":1,"evalFile":"cup-page"}
+  ]
+}
