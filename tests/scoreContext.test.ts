@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { RANKING_POLICY, type RankValue } from "@/lib/reports/ranking";
-import { QUALITY_BY_ATTRIBUTE_MIN_N, panelGates, scoreContext } from "@/lib/scoreContext";
+import {
+  FLAVOR_WHEEL_MIN_N,
+  QUALITY_BY_ATTRIBUTE_MIN_N,
+  panelGates,
+  scoreContext,
+} from "@/lib/scoreContext";
 
 // Package R1a: what is shown beside a score at each number of cuppers
 // (docs/audits/app-ui-ux-2026-11-15/RESULTS-DESIGN.md, section 0 choice 6 and section 4).
@@ -25,6 +30,7 @@ describe("what a panel of n included cuppers shows", () => {
     difference: false,
     spread: false,
     first: false,
+    flavorWheel: false,
     firm: false,
   };
 
@@ -48,9 +54,26 @@ describe("what a panel of n included cuppers shows", () => {
         difference: true,
         spread: true,
         first: true,
+        flavorWheel: true,
         firm: false,
       });
     }
+  });
+
+  it("the flavour wheel, for a participant: from three included cuppers, on its own constant", () => {
+    // R1c: with two cuppers a count of 1 tells a participant what the other person picked.
+    // Awaits Ricardo's word; the threshold is one constant so it is a one-line change.
+    expect(FLAVOR_WHEEL_MIN_N).toBe(RANKING_POLICY.minN);
+    expect([0, 1, 2, 3, 4, 7].map((n) => panelGates(n).flavorWheel)).toEqual([
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+    ]);
+    expect(panelGates(FLAVOR_WHEEL_MIN_N - 1).flavorWheel).toBe(false);
+    expect(panelGates(FLAVOR_WHEEL_MIN_N).flavorWheel).toBe(true);
   });
 
   it("six or more: firm", () => {
