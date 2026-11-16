@@ -15,6 +15,7 @@ import {
   buildTargetUrl,
   isLocalHostname,
   isReadOnlyMethod,
+  shouldBlockWebSocket,
   signInUrl,
 } from "../scripts/ux-capture/lib/guard.mjs";
 import { captureName, orderScreens, parsePlanSpecs, resolveTokens, validatePlan } from "../scripts/ux-capture/lib/plan.mjs";
@@ -69,6 +70,29 @@ describe("assertLocalBase: only localhost, 127.0.0.1 and [::1]", () => {
 describe("isReadOnlyMethod: every write is aborted in the browser", () => {
   it.each(["GET", "get", "HEAD", "OPTIONS"])("lets %s through", (m) => expect(isReadOnlyMethod(m)).toBe(true));
   it.each(["POST", "PUT", "PATCH", "DELETE", "post", "TRACE", "CONNECT", "", undefined, null])("aborts %s", (m) => expect(isReadOnlyMethod(m)).toBe(false));
+});
+
+describe("shouldBlockWebSocket: no socket connects (Playwright's route does not see them)", () => {
+  it.each([
+    "wss://abcdefgh.supabase.co/realtime/v1/websocket?apikey=x&vsn=1.0.0",
+    "ws://localhost:3000/_next/webpack-hmr",
+    "wss://localhost:3000/anything",
+    "ws://127.0.0.1:1234/",
+    "wss://example.com/",
+    "not even a url",
+    "",
+    undefined,
+  ])("closes %s", (url) => {
+    expect(shouldBlockWebSocket(url)).toBe(true);
+  });
+
+  it("the capture opens its context through routeWebSocket with this rule, and counts what it closes", () => {
+    const src = readFileSync(join(TOOL, "capture.mjs"), "utf8");
+    expect(src).toContain("ctx.routeWebSocket(");
+    expect(src).toContain("shouldBlockWebSocket(ws.url())");
+    expect(src).toContain("blockedSockets");
+    expect(src.match(/connectToServer\(/g)).toHaveLength(1); // only behind the rule, never on its own
+  });
 });
 
 describe("sign-in: only the three seeded test addresses, only through the dev GET route", () => {

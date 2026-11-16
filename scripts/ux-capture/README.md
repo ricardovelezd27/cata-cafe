@@ -15,8 +15,22 @@ The local environment uses the **production database**. The tool is built so tha
 |---|---|---|
 | Runs only against `localhost`, `127.0.0.1` or `[::1]`; any other host exits with a message | `lib/guard.mjs` `assertLocalBase`, before a browser starts | `tests/uxCaptureGuard.test.ts` |
 | Every request that is not GET / HEAD / OPTIONS is aborted inside the browser (a server action, a form post and a Supabase write are all POST / PATCH / PUT / DELETE); service workers are blocked so none can bypass it | `capture.mjs` `newReadOnlyContext`, `isReadOnlyMethod` | the test, and `--self-test` below |
+| Every WebSocket is closed by the browser the moment the page opens it, and none connects to any server (`routeWebSocket`); they are counted as `blockedSockets` | `capture.mjs` `newReadOnlyContext`, `shouldBlockWebSocket` | the test, and `--self-test` |
 | Signs in only through the dev-only GET route `/api/dev/sign-in?email=`, only for `master@cata.test`, `par1@cata.test`, `par2@cata.test`; it never types into the sign-in form | `signInUrl`, `assertTestAddress` | the test |
 | A plan can only name a path on the host it runs against | `buildTargetUrl` | the test |
+
+**WebSockets.** Playwright's request interception (`route`) does not see socket traffic, and the app's Supabase Realtime sockets
+(cup, waiting and results pages) can send broadcast and presence messages with the signed-in user's token. So the tool does not
+rely on the app never writing that way: it closes **every** WebSocket, the dev server's hot-reload socket included, as the page opens it.
+The effect on what a page renders: the pages that listen to Realtime (the cup page of a group session, the waiting room, the results
+page of an open session) see a channel that never reaches SUBSCRIBED and show their own "live updates are down" state
+(`liveCountDown`, `liveUpdatesDown`). It is the same on both sides of a before / after, so a comparison stays valid; it differs from the
+audit's own run, where the sockets were open. This effect was not measured on those pages (they need a real session).
+
+**What is trusted.** Every GET is let through, so the tool trusts the app's GET routes (pages, `/api/*` GET handlers, the RSC payloads)
+to be read-only. The one GET that is not is the dev sign-in route, which **creates a session** for a test account; that is why it is
+limited to the three seeded addresses and why the tool never signs in on its own: a plan with `"signIn": true` needs the address on the
+command line. A GET route that writes would be an app bug that this tool cannot see.
 
 Still: **ask the owner before you sign in as any account or open any real session**, test accounts included.
 A screenshot of a real session shows real names: see "Names" below.
@@ -145,8 +159,9 @@ This is still production data: ask the owner before you use it for a new package
 node scripts/ux-capture/capture.mjs --self-test
 ```
 
-Opens the public login page of the running server, tries a POST, PUT, PATCH and DELETE to `/api/health` from the page, and exits 0 only if the browser aborted all
-four before they left it. No account is used.
+Opens the public login page of the running server, tries a POST, PUT, PATCH and DELETE to `/api/health` from the page and opens two
+WebSockets (one cross-origin, one on the dev server), and exits 0 only if the browser aborted all four requests before they left it and
+closed both sockets without connecting. No account is used.
 
 Other checks: `npx.cmd vitest run tests/uxCaptureGuard.test.ts` (the host guard, the methods, the addresses, the paths, and a scan of the committed
 files for ids and addresses that must not be there).

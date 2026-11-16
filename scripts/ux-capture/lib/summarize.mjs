@@ -42,6 +42,7 @@ export function summarizeMeasure(m) {
     legacyClasses: Object.values(m.legacyClasses ?? {}).reduce((a, b) => a + b, 0),
     consoleErrors: (m.consoleErrors ?? []).length,
     blockedWrites: m.blockedWrites ?? 0,
+    blockedSockets: m.blockedSockets ?? 0,
   };
 }
 

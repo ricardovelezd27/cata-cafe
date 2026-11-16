@@ -4,7 +4,9 @@
  *
  *   1. it refuses to run against anything but a loopback host;
  *   2. it aborts every request that is not GET / HEAD / OPTIONS (a server action, a form post
- *      and a Supabase write are all POST / PATCH / PUT / DELETE);
+ *      and a Supabase write are all POST / PATCH / PUT / DELETE), and it allows NO WebSocket at all
+ *      (Playwright's `route` does not see socket traffic, and a Supabase Realtime socket can send
+ *      broadcast and presence messages with the signed-in user's token);
  *   3. it signs in only through the dev-only GET route, only for the three seeded test addresses;
  *   4. a plan can only name a path on that host: it can never move the browser to another one.
  *
@@ -30,6 +32,19 @@ const READ_ONLY_METHODS = ["GET", "HEAD", "OPTIONS"];
 /** @param {unknown} method */
 export function isReadOnlyMethod(method) {
   return READ_ONLY_METHODS.includes(String(method).toUpperCase());
+}
+
+/**
+ * No WebSocket is allowed to connect: not the Supabase Realtime sockets of the cup, waiting and
+ * results pages, and not the dev server's own hot-reload socket (a capture needs neither). The
+ * browser context closes each one the moment the page opens it, without connecting to any server.
+ * Pages that listen to Realtime then show their "live updates down" state: the same on both sides
+ * of a before / after, so a comparison stays valid.
+ * @param {unknown} url the socket's URL (every one is refused; kept so the rule can be narrowed with a test)
+ */
+export function shouldBlockWebSocket(url) {
+  void url;
+  return true;
 }
 
 /** @param {unknown} hostname */

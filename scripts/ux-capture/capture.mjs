@@ -18,7 +18,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { GuardError, assertLocalBase, assertTestAddress, buildTargetUrl, isReadOnlyMethod, signInUrl } from "./lib/guard.mjs";
+import { GuardError, assertLocalBase, assertTestAddress, buildTargetUrl, isReadOnlyMethod, shouldBlockWebSocket, signInUrl } from "./lib/guard.mjs";
 import { hiddenScrollHeight, measure, redactPage } from "./lib/measure.mjs";
 import { captureName, orderScreens, parsePlanSpecs, resolveTokens, validatePlan } from "./lib/plan.mjs";
 import { readMeasures, renderSummary, summarizeMeasure } from "./lib/summarize.mjs";
@@ -71,7 +71,10 @@ function gitInfo() {
   return { commit: run(["rev-parse", "--short", "HEAD"]), branch: run(["rev-parse", "--abbrev-ref", "HEAD"]), dirty: Boolean(run(["status", "--porcelain", "--", "."])) };
 }
 
-/** Opens a context that cannot write: every non-GET/HEAD/OPTIONS request is aborted and counted. */
+/**
+ * Opens a context that cannot write: every non-GET/HEAD/OPTIONS request is aborted and counted, and
+ * every WebSocket is closed as soon as the page opens it (counted), never connected to a server.
+ */
 async function newReadOnlyContext(browser, device, opt) {
   const ctx = await browser.newContext({
     viewport: { width: device.width, height: device.height },
@@ -82,11 +85,17 @@ async function newReadOnlyContext(browser, device, opt) {
     reducedMotion: opt.motion ? "no-preference" : "reduce",
     serviceWorkers: "block",
   });
-  const counter = { blocked: 0 };
+  const counter = { blocked: 0, blockedSockets: 0 };
   await ctx.route("**/*", (route) => {
     if (isReadOnlyMethod(route.request().method())) return route.continue();
     counter.blocked++;
     return route.abort("blockedbyclient");
+  });
+  // `route` does not see WebSocket traffic: a socket can send (broadcast, presence) with the user's token.
+  await ctx.routeWebSocket(/.*/, (ws) => {
+    if (!shouldBlockWebSocket(ws.url())) return ws.connectToServer();
+    counter.blockedSockets++;
+    return ws.close({ code: 1008, reason: "ux-capture is read-only" });
   });
   return { ctx, counter };
 }
@@ -109,10 +118,33 @@ async function selfTest(browser, origin, opt) {
     }
     return res;
   }, methods);
+  // WebSockets: a cross-origin one (what Supabase Realtime is) and a same-origin one (the dev server's hot reload).
+  const sockets = [`wss://ux-capture-selftest.invalid/socket`, `${origin.replace(/^http/, "ws")}/_next/webpack-hmr`];
+  const socketOutcomes = await page.evaluate(
+    (urls) =>
+      Promise.all(
+        urls.map(
+          (url) =>
+            new Promise((resolve) => {
+              let opened = false;
+              const ws = new WebSocket(url);
+              ws.onopen = () => (opened = true);
+              ws.onclose = () => resolve({ url, opened });
+              ws.onerror = () => {};
+              setTimeout(() => resolve({ url, opened, timedOut: true }), 5000);
+            }),
+        ),
+      ),
+    sockets,
+  );
   await ctx.close();
   const reached = outcomes.filter((o) => o.reached);
-  const ok = reached.length === 0 && counter.blocked === methods.length;
-  console.log(`self-test: ${ok ? "PASS" : "FAIL"}: ${methods.length} writes tried, ${counter.blocked} blocked in the browser, ${reached.length} reached the server`);
+  const socketsOpen = socketOutcomes.filter((o) => o.opened || o.timedOut);
+  const ok = reached.length === 0 && counter.blocked === methods.length && socketsOpen.length === 0 && counter.blockedSockets === sockets.length;
+  console.log(
+    `self-test: ${ok ? "PASS" : "FAIL"}: ${methods.length} writes tried, ${counter.blocked} blocked in the browser, ${reached.length} reached the server; ` +
+      `${sockets.length} WebSockets tried, ${counter.blockedSockets} closed by the browser, ${socketsOpen.length} stayed open`,
+  );
   return ok;
 }
 
@@ -193,6 +225,7 @@ async function main() {
             }
             errors.length = 0;
             const blockedBefore = counter.blocked;
+            const socketsBefore = counter.blockedSockets;
             try {
               const resp = await page.goto(buildTargetUrl(origin, lang, path), { waitUntil: "load", timeout: 60000 });
               await page.waitForTimeout(screen.settle || 1800);
@@ -207,7 +240,7 @@ async function main() {
               await page.addStyleTag({ content: "nextjs-portal{display:none!important}" }).catch(() => {});
               if (redact.length) await page.evaluate(redactPage, redact);
               const m = await page.evaluate(measure);
-              Object.assign(m, { status: resp ? resp.status() : null, finalUrl: page.url().replace(origin, ""), consoleErrors: errors.slice(0, 8), blockedWrites: counter.blocked - blockedBefore, id: screen.id, device: dev, lang2: lang, state: screen.state || "", plan: plan.name });
+              Object.assign(m, { status: resp ? resp.status() : null, finalUrl: page.url().replace(origin, ""), consoleErrors: errors.slice(0, 8), blockedWrites: counter.blocked - blockedBefore, blockedSockets: counter.blockedSockets - socketsBefore, id: screen.id, device: dev, lang2: lang, state: screen.state || "", plan: plan.name });
               const evalSource = screen.evalFile ? readFileSync(join(TOOL, "evals", `${screen.evalFile}.js`), "utf8") : screen.eval;
               if (evalSource) {
                 try {
@@ -242,7 +275,7 @@ async function main() {
                 writeFileSync(mfile, JSON.stringify(m, null, 1));
               }
               results.push({ f: fname, status: m.status, final: m.finalUrl, h: m.docHeight, over: m.hOverflow, prim: m.primariesInFold, u44: m.targetsUnder44Count, lc: m.lowContrastCount, err: m.consoleErrors.length, blocked: m.blockedWrites });
-              console.log(`${fname}  ${m.status} -> ${m.finalUrl}  h=${m.docHeight} overflow=${m.hOverflow} primInFold=${m.primariesInFold} <44=${m.targetsUnder44Count} lowC=${m.lowContrastCount} err=${m.consoleErrors.length} blockedWrites=${m.blockedWrites}`);
+              console.log(`${fname}  ${m.status} -> ${m.finalUrl}  h=${m.docHeight} overflow=${m.hOverflow} primInFold=${m.primariesInFold} <44=${m.targetsUnder44Count} lowC=${m.lowContrastCount} err=${m.consoleErrors.length} blockedWrites=${m.blockedWrites} blockedSockets=${m.blockedSockets}`);
             } catch (e) {
               failed++;
               console.log(`${fname}  FAILED ${String(e).slice(0, 160)}`);
