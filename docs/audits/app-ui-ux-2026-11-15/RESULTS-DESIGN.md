@@ -9,9 +9,29 @@
 > published as a private page for a phone: https://claude.ai/artifact/MMSXUKTdk281nAio4pnoBg
 > Finding ids (`D-09`, ...) are those of `REPORT.md`.
 
-## 0. What you decide
+## 0. Decided by Ricardo on 2026-11-16
 
-Ten choices. Each has options and a recommendation; answer by number ("1 A, 2 b, ...").
+| # | Choice | His answer | What it means here |
+|---|---|---|---|
+| 1 | The drawing that replaces the word cloud | "A with C counted list", and: "I am having trouble with the petals option when there are more than 2 coffees, then in the comparisson, the terrain metafor becomes better [...] So get a better way to represent B, as the comparisson layer. Maybe we keep the terrain one for comparison, or we layer them on top of the petals." | The wheel (A) for one coffee, C's counted list under it, and the terrain (B), redrawn, as the comparison layer. Section 6b. **One question is left open there.** |
+| 2 | The colours of the flavour families | "b is fine, retune once, but align with the color wheel" | One palette, the flavour wheel's, for the wheel and the picker. Proposed values in section 6c. |
+| 3 | A dark cover | "recommendation ok" | No cover now. |
+| 4 | Coffee cards on a phone | "a" | A sideways row with numbered steps. |
+| 5 | The space for reflection | "a" | The note after close that exists, one per coffee. No migration. |
+| 6 | Two cuppers | "Reco is ok" | Quality values per attribute from two cuppers; intensities, shared descriptors, "Tú y el panel", learnings and "diferencia" from three. |
+| 7 | "Sin diferencia clara" | "a" | One bar joining the neighbours. |
+| 8 | The scale of the ranking | "a" | Fixed, 58 to 100. |
+| 9 | The learnings | "ok" | The fourteen rules of section 7; their thresholds go on Kim's list as simulated. |
+| 10 | The wording of the alignment | "ok" | As written. |
+
+**Still open (one question):** the comparison layer is drawn in two places, and I recommend keeping
+both: territories alone in the overview ("Comparar", up to three coffees, no coffee is the base), and
+territories over the petals on a coffee's sheet ("Comparar con", up to two other coffees). Say if you
+want only one of them.
+
+## 0b. The ten choices as they were put
+
+Each had options and a recommendation.
 
 | # | Choice | Options | Recommendation |
 |---|---|---|---|
@@ -153,6 +173,57 @@ Nothing of its artwork was copied and the images are not in the repository.
 
 Not tested with a cupper. "Five seconds" is my judgement from the mock.
 
+### 6b. The comparison layer (after the answer to choice 1)
+
+The trouble with petals is real: two coffees fit in one family's sector, three do not. And the first
+terrain had its own fault: the line between two families was an invented curve, and each count sat on
+a single point. So the terrain is redrawn and used only where coffees are compared.
+
+**The territory, redrawn.** Same rings, same nine angles. Inside each family's sector the edge runs
+*on* the ring of its count, as a plateau as wide as the middle of a petal; only the short joins
+between two families are curves. Nothing between two counts is interpolated, and a territory's edge
+lies exactly where that coffee's petal would end. The centre is wider in this drawing so that zero
+and one are told apart.
+
+| Where | What is drawn | Limits |
+|---|---|---|
+| **Overview, "El sabor de cada café"** | A switch, "Cada café \| Comparar". "Comparar" shows chips for the coffees and, for those chosen, translucent territories over the rings: two in the series colours, the third as a dashed outline. Each carries its letter on its own edge. Under it, the counts as a small table of families by chosen coffees | Up to three coffees; the first three of the ranking to start |
+| **A coffee's sheet** | "Comparar con" chips. The open coffee keeps its coloured petals; up to two other coffees are laid on top as outlines in ink (a full line, a dashed line). Where an outline runs outside a petal, that other coffee had more people in that family. The same small table under it | Up to two others, so three coffees in all |
+
+- **Why outlines in ink over the petals:** colour stays the family's; the other coffees are told apart
+  by line style and by their letter, so nothing depends on colour.
+- **Why a table under every comparison:** with three coffees the labels cannot carry three numbers
+  each; the table is the exact reading and the text equivalent.
+- **Cost:** one more pure function beside the wheel's (the plateau outline, about 20 lines) and one
+  component that takes a base coffee or none. It belongs in package R1.
+- **Measured on the mock at 375 px:** chart text 12 px, no label clipped, every chip 44 px.
+- **Not yet known:** how it reads with real data, where many families have one or two people. That is
+  the first thing to look at when R1 has it on a dev page.
+
+### 6c. The family colours (choice 2: retune once, aligned with the flavour wheel)
+
+`lib/constants.ts` (`L1_GROUP_COLOR`) already follows the flavour wheel's hues, and it is what the
+picker paints today; the nine `--color-flavor-*` tokens are the ones that drifted. So the retune is:
+the tokens take the wheel-aligned values, and the picker, the wheel, the bars and the charts read the
+tokens. Measured against white (a drawn shape needs 3 : 1):
+
+| Family | Wheel-aligned value today | Contrast on white | Proposed |
+|---|---|---|---|
+| Floral | `#C2368F` | 4.98 | keep |
+| Frutal | `#E0472E` | 4.11 | keep |
+| Verde / Vegetal | `#4A8F5B` | 3.91 | keep |
+| Nueces / Cacao | `#9C6B43` | 4.57 | keep |
+| Especia | `#7A2638` | 9.71 | keep |
+| Tostado | `#5C4632` | 8.83 | keep |
+| Otro | `#6E8B94` | 3.63 | keep |
+| Dulce | `#D4922E` | 2.64 | `#CC7F2B` (3.16), a step toward orange |
+| Ácido / Fermentado | `#C9A227` | 2.42 | `#98941F` (3.19), a step toward olive |
+
+The two yellows fail 3 : 1 and are the closest pair of the set; the two proposed values pass and sit
+further apart. No family is the error red any more. The mock now uses these nine. The final values,
+the change to `app/globals.css`, `lib/constants.ts`, `chartColors.ts`, the landing canvas' snapshot
+and `DESIGN.md` are one small package of their own (RP below), and the coffee words go past Kim.
+
 ## 7. Learnings: sentences computed by fixed rules
 
 No language model, no opinion about the coffee or the person. Each sentence comes from one rule,
@@ -251,15 +322,17 @@ report.
 
 | Package | Scope | Files | Closes | Size | Needs | Verified by |
 |---|---|---|---|---|---|---|
-| **R1. The parts** | `ScoreWithContext`, `CountBar`, `DotPlot`, the ranking strip, `FlavorWheel` (pure geometry in `lib/`, drawn at three sizes). A dev page that shows them. No change to the results page | `components/ui/ScoreWithContext.tsx`, `CountBar.tsx`, `DotPlot.tsx`; `components/results/RankStrip.tsx`, `FlavorWheel.tsx`; `lib/flavorWheel.ts`; tests | `A-07`, `F-08` (their parts) | M | The type scale (T4) if it has landed; else the sizes of this proposal | Unit tests on the geometry and on the tie bar; the capture run on the dev page: chart text 12 px or more, 4.5 : 1 |
+| **RP. The family palette** (decided, choice 2) | The nine tokens take the wheel-aligned values of section 6c; `lib/constants.ts`, `chartColors.ts` and the landing canvas' snapshot read or mirror them; `DESIGN.md`'s table and its "where they may be used" line corrected | `app/globals.css`, `lib/constants.ts`, `components/results/chartColors.ts`, `components/landing/journey/ConstellationCanvas.tsx`, `DESIGN.md` | `H-01` (its palette part) | S | Nothing; before R1's wheel is judged by eye | A test that the tokens and the constants agree and that each passes 3 : 1 on `surface-container-lowest`; the picker and the landing by eye |
+| **R1. The parts** | `ScoreWithContext`, `CountBar`, `DotPlot`, the ranking strip, `FlavorWheel` (pure geometry in `lib/`, drawn at three sizes) and `FlavorCompare` (territories alone or over a coffee's petals, section 6b). A dev page that shows them with real data. No change to the results page | `components/ui/ScoreWithContext.tsx`, `CountBar.tsx`, `DotPlot.tsx`; `components/results/RankStrip.tsx`, `FlavorWheel.tsx`; `lib/flavorWheel.ts`; tests | `A-07`, `F-08` (their parts) | M | The type scale (T4) if it has landed; else the sizes of this proposal | Unit tests on the geometry and on the tie bar; the capture run on the dev page: chart text 12 px or more, 4.5 : 1 |
 | **R2. The overview and the cards** | The tiles, the cards, the page without tabs for a participant; `ResumenTab`, `ScoreTable`, `SampleRadarChart` and the Tabla/Gráfico switch removed. Two pull requests: tiles, then cards | `results/page.tsx`, `ResultsClient.tsx`, new `SessionOverview.tsx`, `CoffeeCard.tsx`; `lib/reports/overview.ts` (pure: what each tile shows for a viewer); `messages/*.json` | `D-09`, `D-10`, `A-04`, `A-05` (differences), `A-07`, `A-12`, `H-10` | L | S1; `Card`, `Notice`, `SectionHeading` (P2) or local equivalents | Tests on `overview.ts` for every state of section 4, including "a participant's payload carries no other cupper"; the capture run at 375, 768, 1440 in both languages; a score in the first fold at 375 x 667 |
 | **R3. The sheet and the wheel** | The coffee's sheet in the order of section 3, the sample in the address; the cloud, `FlavorCloud`, `DescriptoresTab` and the roll-up removed | `SampleDetail.tsx`, `SampleDetailDialog.tsx`, `SampleComparisons.tsx`, `DescriptorFrequency.tsx`; delete `WordCloud.tsx`, `lib/wordCloud.ts` | `H-01` (results), `H-02`, `A-03`, `A-11`, `A-13`, `C-11`, `F-08` | M | R1; URL state (P5) or its own | Reload and "back" keep the sample; the capture run on four sheets; a test that only wheel descriptors are listed |
 | **R4. Learnings and reflection** | `lib/reports/learnings.ts` (the rules of section 7, pure, each with its threshold named) and the two sections; the note per coffee brought onto the page | `lib/reports/learnings.ts`, `components/results/Learnings.tsx`, `Reflection.tsx`, `PostCloseNote.tsx`, `messages/*.json` | (new) | M | R2 | A test per rule and per threshold; a test that no sentence carries a name or an id; both languages |
 | **R5. The organizer's Panel** | The second tab: the matrix with the Grupo column and a mark in the cell, what waits for a decision, alignment on one bar | `OwnerParticipantSection.tsx`, `CupperAlignment.tsx`, `LateEvaluationsPanel.tsx`, new `PanelView.tsx` | `H-09`, `A-05` (alignment) | M | R2 | The capture run as the organizer; the existing owner-lens tests |
 | **R6. The descriptive session** | Its first view and its cards | `overview.ts`, `CoffeeCard.tsx` | `J-05` | S to M | R3, **and Kim's answer** | A descriptive session at three widths |
-| **R7. Optional** | Each only if chosen: the cover (after `DESIGN.md` is changed); the family palette (choice 2); the private session note (choice 5 b, with a migration and a SQL phase); B's two-coffee overlay as "comparar dos cafés" | | `K-04` | S to M each | | |
+| **R7. Not now** | Set aside by the answers of 2026-11-16, each for a later yes: the dark cover (choice 3; it needs `DESIGN.md` changed first); a private note for the whole cupping (choice 5 b; a migration and a SQL phase) | | `K-04` | S to M each | | |
 
-Order: `S1 -> R1 -> R2 -> R3 -> R4`, with R5 beside R3 (other files) and R6 when Kim answers.
+Order: `S1 -> RP -> R1 -> R2 -> R3 -> R4`, with R5 beside R3 (other files) and R6 when Kim answers.
+The "Comparar" switch of the overview ships with R2 and "Comparar con" with R3.
 `A-02` is closed by your decision 6 as accepted; it should be written into `CLAUDE.md` when R2 lands.
 
 ## 12. What waits on Kim
@@ -280,8 +353,9 @@ Noted here, resolved nowhere.
 
 - **Two palettes for the flavour families.** `app/globals.css` and `DESIGN.md` have nine earthy
   tokens; `lib/constants.ts` (`L1_GROUP_COLOR`) has nine brighter colours, and those are the ones the
-  picker and today's results paint. The mock uses the tokens, as the brief said.
-- **`--color-flavor-sour` is `#ba1a1a`, the same value as `--color-error`.**
+  picker and today's results paint. Decided on 2026-11-16 (choice 2): one palette, the wheel's;
+  package RP. The mock's first version used the tokens; it now uses the values of section 6c.
+- **`--color-flavor-sour` is `#ba1a1a`, the same value as `--color-error`** (until RP).
 - **The note after close is per evaluation.** There is no place for a note about a whole session.
 - **A solo cupper's own scores can be flagged "sin diferencia clara".** `assignRanks`
   (`lib/reports/ranking.ts`) applies the one-point floor to "mine" scores too. Read in the code; not

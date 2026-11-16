@@ -18,8 +18,10 @@
   --error:#ba1a1a; --error-container:#ffdad6; --on-error-container:#93000a;
   --warning-container:#f6e388; --on-warning-container:#574600;
   --stage:#153526; --stage-deep:#0e2a1c; --stage-raised:#1d4532;
-  --fl-floral:#b07d2f; --fl-fruity:#c0552a; --fl-sweet:#a07040; --fl-sour:#ba1a1a; --fl-green:#456553;
-  --fl-nutty:#6b5240; --fl-spice:#8b5e3c; --fl-roasted:#332f2a; --fl-other:#5e5a55;
+  /* decision 2 (b), 2026-11-16: aligned with the flavour wheel. Seven are lib/constants.ts L1_GROUP_COLOR as they are;
+     Dulce and Acido/Fermentado are shifted so each passes 3:1 on white and they stay apart. Proposed values. */
+  --fl-floral:#c2368f; --fl-fruity:#e0472e; --fl-sweet:#cc7f2b; --fl-sour:#98941f; --fl-green:#4a8f5b;
+  --fl-nutty:#9c6b43; --fl-spice:#7a2638; --fl-roasted:#5c4632; --fl-other:#6e8b94;
   --font-display:'Newsreader',Georgia,'Times New Roman',serif;
   --font-ui:'Hanken Grotesk',system-ui,-apple-system,sans-serif;
   --radius-card:16px; --radius-pill:9999px;
@@ -218,6 +220,18 @@ b,.b{font-weight:600}
 .mx td i{display:block;height:5px;border-radius:3px;margin:1px auto 0;min-width:2px}
 .mx td.z{color:var(--outline)}
 .scrollx{overflow-x:auto}
+.chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.chip{min-width:44px;min-height:44px;border-radius:999px;border:1px solid var(--outline-variant);background:none;cursor:pointer;font-weight:600;color:var(--on-surface-variant);padding:0 12px}
+.chip[aria-pressed="true"]{background:var(--primary-fixed);border-color:var(--primary-container);color:var(--on-primary-fixed)}
+.seg{display:inline-flex;background:var(--surface-high);border-radius:999px;padding:4px;align-self:flex-start}
+.seg button{min-height:44px;padding:0 16px;border-radius:999px;border:0;background:none;cursor:pointer;color:var(--on-surface-variant);font-weight:500}
+.seg button[aria-selected="true"]{background:var(--surface-lowest);color:var(--on-surface);box-shadow:var(--shadow-card);font-weight:600}
+.lkeys{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12.25px;color:var(--on-surface-variant)}
+.lkeys span{display:inline-flex;align-items:center;gap:6px}
+.cmp3{display:grid;gap:16px}
+@container app (min-width:900px){.cmp3{grid-template-columns:repeat(3,1fr)}}
+.cmp3 figure{margin:0;display:flex;flex-direction:column;gap:8px;background:var(--surface-lowest);border:1px solid var(--outline-variant);border-radius:var(--radius-card);padding:16px;min-width:0}
+.cmp3 figure.pick{border:2px solid var(--primary-container)}
 
 /* ---------- sheet ---------- */
 .sheet-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid var(--outline-variant);padding-bottom:4px}
@@ -317,8 +331,8 @@ details.disc summary{cursor:pointer;min-height:44px;display:flex;align-items:cen
 "use strict";
 /* ============ state ============ */
 const $ = (s) => document.querySelector(s);
-const S = { view: "page", role: "part", state: "closed", ref: "anchor", cover: "off", vis: "wheel", w: "full", tab: "res", sample: null, y: 0 };
-new URLSearchParams(location.search).forEach((v, k) => { if (k in S) S[k] = v; });
+const S = { view: "page", role: "part", state: "closed", ref: "anchor", cover: "off", vis: "wheel", w: "full", tab: "res", sample: null, y: 0, cmp: [], fmode: "each", tcmp: null };
+new URLSearchParams(location.search).forEach((v, k) => { if (k in S) S[k] = k === "cmp" || k === "tcmp" ? v.split(",") : v; });
 
 /* ============ invented data ============ */
 const ATTR = ["Fragancia", "Aroma", "Sabor", "Regusto", "Acidez", "Dulzor", "Sensación en boca", "Global"];
@@ -497,6 +511,43 @@ function terrain(counts, n, label, o = {}) {
   if (!mini) s += labels(cx, cy, R, counts.map((c, i) => ({ t: o.b ? `${c}·${o.b[i]}` : c, zero: !c && !(o.b && o.b[i]) })), !!o.b);
   return `<svg class="fv${mini ? "" : " full"}" viewBox="0 0 ${W} ${H}" ${mini ? 'aria-hidden="true"' : `role="img" aria-label="${aria(label, counts, n)}"`}>${s}</svg>`;
 }
+/* A territory: inside each family's sector the edge runs ON the ring of its count (a plateau, as wide as the
+   middle of the petal); only the short joins between two families are drawn curves. Nothing is interpolated. */
+function plateau(cx, cy, r0, R, counts, n) {
+  const rr = counts.map((c) => r1(r0 + ((R - r0) * c) / n)), L = counts.length, HW = 12, K = 5.3;
+  const [sx, sy] = pol(cx, cy, rr[0], ANG(0) - HW);
+  let d = `M${sx} ${sy}`;
+  for (let i = 0; i < L; i++) {
+    const j = (i + 1) % L, [ex, ey] = pol(cx, cy, rr[i], ANG(i) + HW);
+    const [ax, ay] = pol(cx, cy, rr[i], ANG(i) + HW + K), [bx, by] = pol(cx, cy, rr[j], ANG(j) - HW - K), [nx, ny] = pol(cx, cy, rr[j], ANG(j) - HW);
+    d += `A${rr[i]} ${rr[i]} 0 0 1 ${ex} ${ey}C${ax} ${ay} ${bx} ${by} ${nx} ${ny}`;
+  }
+  return d + "Z";
+}
+const CMP_STYLE = (overPetals) => overPetals
+  ? [{ c: "var(--on-surface)", dash: "", fill: 0.07 }, { c: "var(--on-surface)", dash: "7 4", fill: 0 }, { c: "var(--on-surface)", dash: "2 4", fill: 0 }]
+  : [{ c: "var(--primary-container)", dash: "", fill: 0.22 }, { c: "var(--secondary)", dash: "", fill: 0.22 }, { c: "var(--on-surface)", dash: "7 4", fill: 0.05 }];
+function compare(base, others, n) {
+  const W = 320, H = 246, cx = W / 2, cy = H / 2, R = 76, r0 = 24, ST = CMP_STYLE(!!base); /* a wider centre: zero and one are told apart */
+  let s = rings(cx, cy, r0, R, n), tags = "";
+  if (base) FAM.forEach((f, i) => { if (base.fam[i]) s += `<path d="${sector(cx, cy, r0, r0 + ((R - r0) * base.fam[i]) / n, ANG(i) - 17, ANG(i) + 17)}" style="fill:${f.c}"/>`; });
+  const used = new Set();
+  others.forEach((x, k) => {
+    const st = ST[k % ST.length], d = plateau(cx, cy, r0, R, x.fam, n);
+    s += `<path d="${d}" fill="none" style="stroke:var(--surface-lowest)" stroke-width="5" stroke-linejoin="round"/><path d="${d}" style="fill:${st.c};fill-opacity:${st.fill};stroke:${st.c}" stroke-width="2"${st.dash ? ` stroke-dasharray="${st.dash}"` : ""} stroke-linejoin="round"/>`;
+    let bi = -1; x.fam.forEach((c, i) => { if (!used.has(i) && (bi < 0 || c > x.fam[bi])) bi = i; }); used.add(bi);
+    const [tx, ty] = pol(cx, cy, r0 + ((R - r0) * x.fam[bi]) / n, ANG(bi));
+    tags += `<circle cx="${tx}" cy="${ty}" r="10" style="fill:var(--surface-lowest);stroke:${st.c}" stroke-width="1.5"/><text x="${tx}" y="${ty + 4.5}" text-anchor="middle" style="font-weight:700;fill:var(--on-surface)">${x.id}</text>`;
+  });
+  const all = base ? [base, ...others] : others;
+  s += tags + labels(cx, cy, R, FAM.map((_, i) => ({ t: all.length <= 2 ? all.map((x) => x.fam[i]).join("·") : "", zero: all.every((x) => !x.fam[i]) })), true);
+  const lab = (base ? `Pétalos: ${base.label}. ` : "") + "Territorios: " + others.map((x) => x.label).join(", ") + ". " + all.map((x) => aria(x.label, x.fam, n)).join(". ");
+  return `<svg class="fv full" viewBox="0 0 ${W} ${H}" role="img" aria-label="${lab}">${s}</svg>`;
+}
+function cmpKeys(base, others) {
+  const ST = CMP_STYLE(!!base);
+  return `<div class="lkeys">${base ? `<span><svg width="14" height="14" aria-hidden="true"><path d="M7 13L2 2h10z" style="fill:var(--on-surface-variant)"/></svg>pétalos: ${base.label}</span>` : ""}${others.map((x, k) => { const st = ST[k % ST.length]; return `<span><svg width="30" height="10" aria-hidden="true"><line x1="1" x2="29" y1="5" y2="5" style="stroke:${st.c}" stroke-width="2.5"${st.dash ? ` stroke-dasharray="${st.dash}"` : ""}/></svg>${x.label}</span>`; }).join("")}</div>`;
+}
 function frow(name, col, c, n, me) {
   return `<li class="frow"><span class="nm"><i class="dot" style="background:${col}"></i><span>${name}${me ? '<span class="me">tú</span>' : ""}</span></span><span class="tr"><i style="width:${(c / n) * 100}%;background:${col}"></i></span><span class="ct"><b>${c}</b> de ${n}</span></li>`;
 }
@@ -599,10 +650,13 @@ function tFlav(M, cls) {
   if (!M.hasFlav) return "";
   const n = M.nD, ss = M.order;
   let body;
+  const canCmp = S.vis !== "bars" && ss.length >= 2;
+  const picked = (S.tcmp || M.ranked.slice(0, 3).map((x) => x.id)).map((id) => ss.find((x) => x.id === id)).filter(Boolean);
   if (S.vis === "bars") body = matrix(ss, n);
+  else if (S.fmode === "cmp") body = `<div class="chips" role="group" aria-label="Cafés que se comparan, hasta tres">${ss.map((x) => `<button type="button" class="chip" aria-pressed="${picked.includes(x)}" data-tcmp="${x.id}">${x.id}</button>`).join("")}<span class="t-cap">hasta tres</span></div>${picked.length ? compare(null, picked, n) + cmpKeys(null, picked) + matrix(picked, n) : '<p class="t-cap">Elige al menos un café.</p>'}`;
   else body = `<div class="multi">${ss.map((s) => { const t = topFam(s.fam); return `<button type="button" data-open="${s.id}">${flavMini(S.vis, s, n)}<span><b>${s.id}</b>${s.isRef ? " ref." : ""}<br>${t.c ? `${famName(t.f).split(" /")[0]} ${t.c}` : "sin datos"}</span></button>`; }).join("")}</div>`;
   const cap = M.canGroup ? `Personas que encontraron cada familia de sabor, de ${n} catadores. La misma familia está siempre en el mismo lugar.` : "Las familias de sabor que marcaste tú en cada muestra.";
-  return `<section class="tile ${cls}"><span class="t-lbl">${M.canGroup ? "Lo que encontró el panel" : "Lo que encontraste"}</span><h3 class="t-card">El sabor de cada café</h3><p class="t-cap">${cap}</p>${body}</section>`;
+  return `<section class="tile ${cls}"><span class="t-lbl">${M.canGroup ? "Lo que encontró el panel" : "Lo que encontraste"}</span><h3 class="t-card">El sabor de cada café</h3>${canCmp ? `<div class="seg" role="tablist" aria-label="Cómo ver los sabores"><button type="button" role="tab" aria-selected="${S.fmode !== "cmp"}" data-fmode="each">Cada café</button><button type="button" role="tab" aria-selected="${S.fmode === "cmp"}" data-fmode="cmp">Comparar</button></div>` : ""}<p class="t-cap">${S.fmode === "cmp" && canCmp ? `Cada territorio llega, en cada familia, hasta el anillo de las personas que la encontraron (de ${n}). Donde dos se pisan, lo comparten.` : cap}</p>${body}</section>`;
 }
 function youStats(M) { const rs = M.ranked.filter((r) => r.g && r.my != null && !r.sup); const d = rs.map((r) => r.my - r.g.score); return { n: rs.length, above: d.filter((x) => x > 0).length, mean: mean(d) }; }
 function tYou(M) {
@@ -791,7 +845,9 @@ function sheet(M) {
   let flav = "";
   if (M.hasFlav) {
     const tops = s.desc.filter((d) => d.c >= 2).slice(0, 3), mineIn = tops.filter((d) => d.me).length;
-    flav = `<div class="blk"><span class="t-lbl">${M.canGroup ? "Lo que encontró el panel" : "Lo que encontraste"}</span>${flavFull(S.vis, s, n)}
+    const others = S.vis === "wheel" ? S.cmp.map((id) => M.list.find((x) => x.id === id)).filter((x) => x && x.id !== s.id) : [];
+    const chips = S.vis === "wheel" && ss.length > 1 ? `<div class="chips" role="group" aria-label="Comparar con otros cafés, hasta dos"><span class="b">Comparar con</span>${ss.filter((x) => x.id !== s.id).map((x) => `<button type="button" class="chip" aria-pressed="${others.includes(x)}" data-cmp="${x.id}">${x.id}</button>`).join("")}</div>` : "";
+    flav = `<div class="blk"><span class="t-lbl">${M.canGroup ? "Lo que encontró el panel" : "Lo que encontraste"}</span>${others.length ? compare(s, others, n) + cmpKeys(s, others) : flavFull(S.vis, s, n)}${chips}${others.length ? matrix([s, ...others], n) : ""}
       ${M.canGroup && S.vis !== "bars" ? `<p class="t-cap">Cada anillo es una persona; el borde exterior son los ${n} catadores.</p>` : ""}
       <span class="b" style="padding-top:6px">Descriptores</span><ul style="display:flex;flex-direction:column;gap:6px">${s.desc.map((d) => frow(`${d.l} <span class="t-cap">· ${d.b.toLowerCase()}</span>`, famOf(d.f).c, d.c, n, d.me && M.canGroup)).join("")}</ul>
       ${M.cmp ? `<p class="t-cap">Elegiste ${mineIn} de los ${tops.length} descriptores más elegidos por el panel.</p>` : M.canGroup && M.closed ? `<p class="t-cap">Con menos de 3 catadores no se compara lo que elegiste con lo que eligió el grupo.</p>` : ""}</div>`;
@@ -841,18 +897,22 @@ function panel(M) {
 /* ============ the three flavour candidates, same data ============ */
 function cands() {
   const keep = S.state; S.state = "closed"; const M = model(); S.state = keep;
-  const g = M.list.find((s) => s.id === "G"), c = M.list.find((s) => s.id === "C"), n = 7;
+  const g = M.list.find((s) => s.id === "G"), c = M.list.find((s) => s.id === "C"), dS = M.list.find((s) => s.id === "D"), n = 7;
   const one = { wheel: wheel(g.fam, n, "Muestra G"), terrain: terrain(g.fam, n, "Muestra G"), bars: famBars(g.fam, n) };
   const two = { wheel: wheel(g.fam, n, "Muestra G y Muestra C", { b: c.fam }), terrain: terrain(g.fam, n, "Muestra G y Muestra C", { b: c.fam }), bars: pairBars(g.fam, c.fam, n) };
   const all = (kind) => (kind === "bars" ? matrix(M.order, n) : `<div class="multi">${M.order.map((s) => `<button type="button">${flavMini(kind, s, n)}<span><b>${s.id}</b><br>${famName(topFam(s.fam).f).split(" /")[0]} ${topFam(s.fam).c}</span></button>`).join("")}</div>`);
   const C = [
-    ["wheel", "A · Rueda contada", "Recomendada", ["<b>Cuenta</b> personas: el largo del pétalo es cuántas encontraron esa familia; el número va impreso.", "<b>Teléfono:</b> el dibujo cabe en 311 px con texto de 12 px y las nueve familias con su nombre.", "<b>Dos cafés:</b> cada familia se parte en dos pétalos, lleno y claro; o miniaturas lado a lado, porque cada familia está siempre en el mismo ángulo.", "<b>Costo:</b> SVG a mano, geometría pura con pruebas (unas 150 líneas). Sirve igual en el PDF.", "<b>En 5 segundos:</b> sí. El pétalo más largo es lo que más personas encontraron."]],
-    ["terrain", "B · Terreno", "Inspirada en el mapa", ["<b>Cuenta</b> personas en los vértices; la curva entre dos familias no significa nada, es dibujo.", "<b>Teléfono:</b> se lee la forma; el número exacto hay que buscarlo en la etiqueta.", "<b>Dos cafés:</b> su punto fuerte. Dos territorios que se pisan muestran lo que comparten.", "<b>Costo:</b> SVG a mano, la misma geometría de la rueda más el suavizado (unas 40 líneas más).", "<b>En 5 segundos:</b> a medias. Con tres territorios o más se vuelve una mancha."]],
-    ["bars", "C · Barras contadas", "La más simple", ["<b>Cuenta</b> personas: largo de la barra sobre el total de catadores, con \"7 de 7\" al lado.", "<b>Teléfono:</b> perfecta. Es una lista.", "<b>Dos cafés:</b> barras en pareja; para toda la cata, una tabla de familias por muestras.", "<b>Costo:</b> el más bajo. Es el primitivo CountBar del plan.", "<b>En 5 segundos:</b> sí, y es la más exacta. Es la menos vistosa."]],
+    ["wheel", "A · Rueda contada", "Elegida para cada café", ["<b>Cuenta</b> personas: el largo del pétalo es cuántas encontraron esa familia; el número va impreso.", "<b>Teléfono:</b> el dibujo cabe en 311 px con texto de 12 px y las nueve familias con su nombre.", "<b>Dos cafés:</b> cada familia se parte en dos pétalos, lleno y claro; o miniaturas lado a lado, porque cada familia está siempre en el mismo ángulo.", "<b>Costo:</b> SVG a mano, geometría pura con pruebas (unas 150 líneas). Sirve igual en el PDF.", "<b>En 5 segundos:</b> sí. El pétalo más largo es lo que más personas encontraron."]],
+    ["terrain", "B · Terreno", "Elegida para comparar, redibujada arriba", ["<b>Cuenta</b> personas en los vértices; la curva entre dos familias no significa nada, es dibujo.", "<b>Teléfono:</b> se lee la forma; el número exacto hay que buscarlo en la etiqueta.", "<b>Dos cafés:</b> su punto fuerte. Dos territorios que se pisan muestran lo que comparten.", "<b>Costo:</b> SVG a mano, la misma geometría de la rueda más el suavizado (unas 40 líneas más).", "<b>En 5 segundos:</b> a medias. Con tres territorios o más se vuelve una mancha."]],
+    ["bars", "C · Barras contadas", "Elegida como lista exacta bajo la rueda", ["<b>Cuenta</b> personas: largo de la barra sobre el total de catadores, con \"7 de 7\" al lado.", "<b>Teléfono:</b> perfecta. Es una lista.", "<b>Dos cafés:</b> barras en pareja; para toda la cata, una tabla de familias por muestras.", "<b>Costo:</b> el más bajo. Es el primitivo CountBar del plan.", "<b>En 5 segundos:</b> sí, y es la más exacta. Es la menos vistosa."]],
   ];
   return `<div class="page">
     <header class="hd"><span class="t-lbl">Decisión 12 · el visual que reemplaza la nube</span><h1 class="t-page">Tres candidatos, los mismos datos.</h1><p class="t-cap" style="max-width:70ch">Muestra G (Ámbar) sola, luego comparada con Muestra C (Granate), luego las ocho muestras de la cata. Siempre personas, de 7 catadores. Los colores son los de las familias de la rueda y nunca van en el texto.</p></header>
     <div class="legend3"><div><b>¿Hacia dónde se estira?</b>Lo que más personas encontraron en ese café.</div><div><b>¿Dónde se quedan cortos todos?</b>Lo que casi nadie encontró.</div><div><b>¿Dónde coinciden dos cafés?</b>Lo que comparten; donde solo crece uno, lo que lo distingue.</div></div>
+    <section class="sec">${sh("Tu respuesta del 16 nov", "La capa de comparación: territorios sobre los mismos anillos.", "Rueda para cada café; terreno cuando se comparan. El terreno se redibujó para que no invente nada.")}
+    <div class="cmp3"><figure><figcaption class="t-lbl">Antes: B con curva suave</figcaption>${terrain(g.fam, n, "Muestra G y Muestra C", { b: c.fam })}<p class="t-cap">La línea entre dos familias era una curva inventada, y cada pico caía en un punto.</p></figure>
+    <figure class="pick"><figcaption class="t-lbl">Ahora: territorios con mesetas, tres cafés</figcaption>${compare(null, [g, c, dS], n)}${cmpKeys(null, [g, c, dS])}${matrix([g, c, dS], n)}<p class="t-cap">En cada familia el borde corre sobre el anillo de su conteo. Es la vista "Comparar" de la tarjeta de sabores: hasta tres cafés.</p></figure>
+    <figure class="pick"><figcaption class="t-lbl">Ahora: pétalos y territorios encima</figcaption>${compare(g, [c, dS], n)}${cmpKeys(g, [c, dS])}<p class="t-cap">En la ficha de un café: sus pétalos en color y hasta dos cafés más como contorno (línea llena y línea cortada). Donde el contorno pasa por fuera del pétalo, ese otro café tuvo más personas en esa familia.</p></figure></div></section>
     <div class="cands">${C.map(([k, t, tag, facts]) => `<article class="cand${k === "wheel" ? " rec" : ""}"><div><span class="t-lbl">${tag}</span><h2 class="t-section">${t}</h2></div>
       <div><h4>Un café: Muestra G</h4>${one[k]}</div>
       <div><h4>Dos cafés: G y C</h4>${two[k]}<p class="t-cap">${k === "terrain" ? '<span class="sw" style="background:var(--primary-container)"></span>Muestra G <span class="sw" style="background:var(--secondary);margin-left:8px"></span>Muestra C · ' : k === "wheel" ? "Pétalo lleno: Muestra G. Pétalo claro: Muestra C. " : "Barra llena: Muestra G. Barra clara: Muestra C. "}Los dos números: G·C.</p></div>
@@ -883,13 +943,16 @@ function render() {
   }, { passive: true });
 }
 document.addEventListener("click", (e) => {
-  const t = e.target.closest("[data-open],[data-back],[data-go],[data-tab],[data-exp],[data-view]");
+  const t = e.target.closest("[data-open],[data-back],[data-go],[data-tab],[data-exp],[data-view],[data-cmp],[data-tcmp],[data-fmode]");
   if (!t) return;
   if (t.dataset.view) { S.view = t.dataset.view === "cands" ? "cands" : "page"; render(); window.scrollTo(0, 0); return; }
   if (t.dataset.open) { S.y = window.scrollY; S.view = "sheet"; S.sample = t.dataset.open; render(); $("#frame").scrollIntoView(); return; }
-  if (t.dataset.go) { S.sample = t.dataset.go; render(); return; }
+  if (t.dataset.go) { S.sample = t.dataset.go; S.cmp = S.cmp.filter((x) => x !== S.sample); render(); return; }
   if ("back" in t.dataset) { S.view = "page"; render(); window.scrollTo(0, S.y); return; }
   if (t.dataset.tab) { S.tab = t.dataset.tab; render(); return; }
+  if (t.dataset.fmode) { S.fmode = t.dataset.fmode; render(); return; }
+  if (t.dataset.cmp) { const id = t.dataset.cmp; S.cmp = S.cmp.includes(id) ? S.cmp.filter((x) => x !== id) : [...S.cmp, id].slice(-2); render(); return; }
+  if (t.dataset.tcmp) { const id = t.dataset.tcmp, cur = S.tcmp || model().ranked.slice(0, 3).map((x) => x.id); S.tcmp = cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id].slice(-3); render(); return; }
   if ("exp" in t.dataset) { S.exp = !S.exp; render(); }
 });
 document.addEventListener("input", (e) => {
