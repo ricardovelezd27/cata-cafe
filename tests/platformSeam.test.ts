@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
+import { SCAN_TIMEOUT_MS } from "./helpers/sourceTree";
 
 // Native-readiness guard (S8-15): print, window.open, blob/anchor downloads and
 // shell sniffing live ONLY in lib/platform/. Anything else breaks in a
@@ -43,5 +44,5 @@ describe("platform seam", () => {
       }
     }
     expect(offenders).toEqual([]);
-  });
+  }, SCAN_TIMEOUT_MS); // reads every source file: a full run slows that about tenfold
 });

@@ -7,22 +7,14 @@
  * pass an "everyone has submitted" flag again.
  */
 import { describe, expect, it } from "vitest";
-import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
 import { viewerMayReadGroupResults } from "@/lib/sessionState";
+import { SCAN_TIMEOUT_MS, readSource as read, walkSource } from "./helpers/sourceTree";
 
-const root = join(__dirname, "..");
-const read = (p: string) => readFileSync(join(root, p), "utf8");
-
-function walk(dir: string, out: string[] = []): string[] {
-  for (const name of readdirSync(join(root, dir))) {
-    if (name === "node_modules" || name === "generated" || name.startsWith(".")) continue;
-    const rel = `${dir}/${name}`;
-    if (statSync(join(root, rel)).isDirectory()) walk(rel, out);
-    else if (/\.(ts|tsx)$/.test(name)) out.push(rel);
-  }
-  return out;
-}
+const walk = (dir: string) =>
+  walkSource(dir, "groupResultsCallSite", {
+    skip: (name) => name === "node_modules" || name === "generated" || name.startsWith("."),
+    include: /\.(ts|tsx)$/,
+  });
 
 const stripComments = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
 
@@ -42,7 +34,7 @@ describe("the group-visibility call site", () => {
       return /\bcanViewGroupResults\s*\(/.test(stripComments(read(f)));
     });
     expect(offenders).toEqual([]);
-  });
+  }, SCAN_TIMEOUT_MS); // reads every source file: a full run slows that about tenfold
 
   it("the results page does not derive an all-submitted flag for the group gate", () => {
     const page = stripComments(read(PAGE));

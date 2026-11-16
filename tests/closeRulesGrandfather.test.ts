@@ -1,8 +1,6 @@
 // S10 WP4a, third round: the owner's grandfather rule for the idle auto-close, and the pin on the
 // wiring of the repair pass. TODO(kim-validar:C3)
 import { describe, expect, it } from "vitest";
-import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
 import {
   IDLE_RULE_EFFECTIVE_AT,
   IDLE_SILENT_CLOSE_MS,
@@ -16,12 +14,12 @@ import {
   repairEmailMode,
   shouldSendLiveIdleReminder,
 } from "@/lib/closeRules";
+import { SCAN_TIMEOUT_MS, readSource, walkSource } from "./helpers/sourceTree";
 
 const DAY = 24 * 3_600_000;
 const EFF = IDLE_RULE_EFFECTIVE_AT;
 const BEFORE = new Date(EFF.getTime() - 1); // one millisecond before the rule
-const root = join(__dirname, "..");
-const read = (p: string) => readFileSync(join(root, p), "utf8").replace(/\r\n/g, "\n");
+const read = (p: string) => readSource(p).replace(/\r\n/g, "\n");
 
 describe("IDLE_RULE_EFFECTIVE_AT", () => {
   it("is 2026-11-18 00:00 UTC", () => {
@@ -155,15 +153,11 @@ describe("idleCandidateBands mirrors the rule (the query never fetches a grandfa
 // L1: the repair pass is wired to the one place that decides its email mode.
 describe("the repair wiring (review L1)", () => {
   const stripComments = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
-  function walk(dir: string, out: string[] = []): string[] {
-    for (const name of readdirSync(join(root, dir))) {
-      if (name === "node_modules" || name === "generated" || name.startsWith(".")) continue;
-      const rel = `${dir}/${name}`;
-      if (statSync(join(root, rel)).isDirectory()) walk(rel, out);
-      else if (/\.(ts|tsx)$/.test(name)) out.push(rel);
-    }
-    return out;
-  }
+  const walk = (dir: string) =>
+    walkSource(dir, "closeRulesGrandfather", {
+      skip: (name) => name === "node_modules" || name === "generated" || name.startsWith("."),
+      include: /\.(ts|tsx)$/,
+    });
   it("the cron route's repair loop calls repairClosedSession( and never closeSessionInternal with reason repair", () => {
     const route = stripComments(read("app/api/cron/close-expired-sessions/route.ts"));
     const loop = route.slice(route.indexOf("for (const s of owed)"));
@@ -178,7 +172,7 @@ describe("the repair wiring (review L1)", () => {
       (f) => f !== "lib/repairClose.ts" && f !== SOLO_ON_VIEW && /reason:\s*["']repair["']/.test(stripComments(read(f))),
     );
     expect(offenders).toEqual([]);
-  });
+  }, SCAN_TIMEOUT_MS); // reads every source file: a full run slows that about tenfold
   it("the solo on-view repair always skips email", () => {
     const calls = [...stripComments(read(SOLO_ON_VIEW)).matchAll(/closeSessionInternal\([^)]*reason:\s*["']repair["'][^)]*\)/g)];
     expect(calls.length).toBeGreaterThan(0);
