@@ -11,6 +11,7 @@
 // time; they are read from the session row (see upsertEvaluation).
 
 import { SENSORY_DEFECTS, type SensoryDefect } from "@/lib/constants";
+import { isPlainIsoDate } from "@/lib/safeDate";
 
 export class ValidationError extends Error {
   constructor(public readonly field: string) {
@@ -59,7 +60,9 @@ export function oneOf<T extends string>(value: unknown, field: string, allowed: 
 export function isoDate(value: unknown, field: string, opts: { future?: boolean } = {}): Date {
   if (typeof value !== "string" && typeof value !== "number") return fail(field);
   const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return fail(field);
+  // A valid Date is not enough: `new Date("20228-08-25")` parses to the year
+  // 20228, which Postgres stores but no page can serialise (audit J-01).
+  if (!isPlainIsoDate(d)) return fail(field);
   if (opts.future && d.getTime() < Date.now() + 60_000) return fail(field);
   return d;
 }
@@ -79,7 +82,8 @@ export function dateOnlyEndOfDay(
 ): Date {
   if (typeof value !== "string" || !DATE_ONLY_RE.test(value)) return fail(field);
   const d = new Date(`${value}T23:59:59.999Z`);
-  if (Number.isNaN(d.getTime())) return fail(field);
+  // Same day back, so "2026-02-31" is refused instead of rolling into March.
+  if (!isPlainIsoDate(d) || d.toISOString().slice(0, 10) !== value) return fail(field);
   if (opts.future && d.getTime() < Date.now() + 60_000) return fail(field);
   return d;
 }

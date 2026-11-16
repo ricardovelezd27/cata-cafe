@@ -4,6 +4,7 @@ import { dateInZone } from "@/lib/closeRules";
 import { isSessionExpired } from "@/lib/sessionState";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { prisma } from "@/lib/prisma";
+import { toIsoOrNull } from "@/lib/safeDate";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { getUsableCoffees } from "@/lib/coffees/queries";
 import type { UsableCoffee } from "@/components/coffees/CoffeePicker";
@@ -191,7 +192,13 @@ export default async function EditSessionPage({
           referenceMode: normalizeReferenceMode(session.referenceMode),
           // Stored as the END of the day the owner picked IN THEIR ZONE, so the
           // read-back uses that zone (null = UTC for legacy rows).
-          closesAt: session.closesAt ? dateInZone(session.closesAt, session.closesAtZone) : "",
+          // A stored date that cannot be read back (audit J-01) shows as empty, so
+          // the owner can pick a valid one; it is logged with the session id.
+          closesAt:
+            session.closesAt &&
+            toIsoOrNull(session.closesAt, { where: "sessions.edit", field: "closesAt", sessionId: session.id })
+              ? dateInZone(session.closesAt, session.closesAtZone)
+              : "",
           warmupExerciseId: session.warmupExerciseId,
           started: session.startedAt !== null,
           // Same pure rule as updateSession: setting a closing date NOW would

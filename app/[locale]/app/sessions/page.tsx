@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { sessionHref } from "@/lib/sessionRouting";
+import { toIsoOrNull } from "@/lib/safeDate";
 import { profileDisplayName } from "@/lib/accountDeletion/deletedProfile";
 import { SessionsTable, type SessionRow, type SessionsTableTranslations } from "./SessionsTable";
 import type { DeleteSessionTranslations } from "./DeleteSessionButton";
@@ -51,13 +52,13 @@ export default async function SessionsList({
       return {
         id: s.id,
         name: s.name,
-        date: s.date.toISOString(),
+        date: toIsoOrNull(s.date, { where: "sessions.list", field: "date", sessionId: s.id }),
         status: s.status,
         format: s.format,
         isGroup: s.isGroup,
         samplesCount: s.samples.length,
         participantsCount: s.participants.length,
-        closesAt: s.closesAt?.toISOString() ?? null,
+        closesAt: toIsoOrNull(s.closesAt, { where: "sessions.list", field: "closesAt", sessionId: s.id }),
         closesAtZone: s.closesAtZone,
         groupName: s.group?.name ?? null,
         isOwner,
@@ -97,13 +98,13 @@ export default async function SessionsList({
       ...ownSessions.map((s) => ({
         id: s.id,
         name: s.name,
-        date: s.date.toISOString(),
+        date: toIsoOrNull(s.date, { where: "sessions.list", field: "date", sessionId: s.id }),
         status: s.status,
         format: s.format,
         isGroup: s.isGroup,
         samplesCount: s.samples.length,
         participantsCount: s.participants.length,
-        closesAt: s.closesAt?.toISOString() ?? null,
+        closesAt: toIsoOrNull(s.closesAt, { where: "sessions.list", field: "closesAt", sessionId: s.id }),
         closesAtZone: s.closesAtZone,
         groupName: s.group?.name ?? null,
         isOwner: true,
@@ -114,13 +115,13 @@ export default async function SessionsList({
       ...joinedSessions.map((s) => ({
         id: s.id,
         name: s.name,
-        date: s.date.toISOString(),
+        date: toIsoOrNull(s.date, { where: "sessions.list", field: "date", sessionId: s.id }),
         status: s.status,
         format: s.format,
         isGroup: s.isGroup,
         samplesCount: s.samples.length,
         participantsCount: s.participants.length,
-        closesAt: s.closesAt?.toISOString() ?? null,
+        closesAt: toIsoOrNull(s.closesAt, { where: "sessions.list", field: "closesAt", sessionId: s.id }),
         closesAtZone: s.closesAtZone,
         groupName: null,
         isOwner: false,

@@ -35,7 +35,8 @@ import { Select } from "@/components/ui/Select";
 import { sampleCountWarning, type SampleCountWarning } from "@/lib/sampleCount";
 import { DEFAULT_NOTIFY_WHEN, type NotifyWhen } from "@/lib/groupNotify";
 import { DEFAULT_REFERENCE_MODE, referenceExplanation, type ReferenceMode } from "@/lib/referenceRules";
-import { browserZone, dateInZone } from "@/lib/closeRules";
+import { browserZone, dateInZone, LAST_CLOSING_DAY } from "@/lib/closeRules";
+import { MAX_DATE_INPUT } from "@/lib/safeDate";
 import { WARMUP_EXERCISES, lw, type WarmupId } from "@/lib/warmup/exercises";
 import { fieldErrorId, fieldForErrorCode, fieldInputId, type SessionFormField } from "@/lib/sessionFormErrors";
 
@@ -975,6 +976,7 @@ export function NewSessionForm({
             <input
               type="date" suppressHydrationWarning
               {...fieldProps("date")}
+              max={MAX_DATE_INPUT}
               className={inputCls}
               value={date}
               onChange={(e) => setDate(e.target.value)}
@@ -1617,6 +1619,7 @@ export function NewSessionForm({
                 // so the attribute may differ at hydration.
                 suppressHydrationWarning
                 min={todayMin}
+                max={LAST_CLOSING_DAY}
                 onChange={(e) => setClosesAt(e.target.value)}
               />
               {fieldError("closesAt")}
