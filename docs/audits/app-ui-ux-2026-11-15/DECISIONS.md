@@ -176,10 +176,10 @@ Avatars (a hard-coded palette), process types in the coffees table, the format b
 - **Recommendation:** neutral format badges; avatars and process colours either derived from the
   flavour tones and written into `DESIGN.md`, or neutral.
 
-**20. Where the audit's results live**
-The app's score per dimension belongs in the Flowmap's `_meta` document, which already exists. This
-audit was told to add documents only, so that one value was not written. Say the word and it is one
-small update.
+**20. Where the audit's results live** (settled 2026-11-16)
+The app's score per dimension belongs in the Flowmap's `_meta` document, which already existed, and
+this audit was told to add documents only. Ricardo said "Yes, write it" on 2026-11-16: the score per
+dimension and the report's name were merged into that record. Nothing else in it changed.
 
 ## Waits on Kim
 
