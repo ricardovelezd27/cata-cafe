@@ -19,6 +19,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { GuardError, assertLocalBase, assertTestAddress, buildTargetUrl, isReadOnlyMethod, shouldBlockWebSocket, signInUrl } from "./lib/guard.mjs";
+import { FIXTURE_FINE, FIXTURE_HTML, FIXTURE_UNNAMED, readControlNames } from "./lib/axnames.mjs";
 import { hiddenScrollHeight, isHydrated, measure, redactPage } from "./lib/measure.mjs";
 import { captureName, orderScreens, parsePlanSpecs, resolveTokens, validatePlan } from "./lib/plan.mjs";
 import { readMeasures, renderSummary, summarizeMeasure } from "./lib/summarize.mjs";
@@ -170,13 +171,22 @@ async function selfTest(browser, origin, opt) {
     () => false,
   );
 
+  // 4. accessible names: a fixture page with every labelling case; exactly the expected controls are reported
+  await page.setContent(FIXTURE_HTML);
+  const named = await readControlNames(page);
+  const got = Object.fromEntries(named.unnamed.map((u) => [u.id, u.why]));
+  const namesOk =
+    JSON.stringify(Object.keys(got).sort()) === JSON.stringify(Object.keys(FIXTURE_UNNAMED).sort()) &&
+    Object.entries(FIXTURE_UNNAMED).every(([id, why]) => got[id] === why) &&
+    FIXTURE_FINE.every((id) => !(id in got));
+
   await ctx.close();
-  const ok = reached.length === 0 && counter.blocked === methods.length && closedOk && allowedOk && hydrated;
+  const ok = namesOk && reached.length === 0 && counter.blocked === methods.length && closedOk && allowedOk && hydrated;
   console.log(
     `self-test: ${ok ? "PASS" : "FAIL"}: ` +
       `writes ${methods.length} tried, ${counter.blocked} blocked, ${reached.length} reached the server; ` +
       `sockets: dev hot-reload ${allowedOk ? "allowed" : "NOT allowed"}, ${closedUrls.length} others (other host, other path, other port) ${closedOk ? "closed" : "NOT all closed"}; ` +
-      `page ${hydrated ? "hydrated" : "did NOT hydrate"}; context total: ${counter.allowedSockets} sockets allowed, ${counter.blockedSockets} blocked`,
+      `page ${hydrated ? "hydrated" : "did NOT hydrate"}; accessible names ${namesOk ? `read from Chrome (${named.unnamedCount} of ${named.counts.checked} fixture controls unnamed, as expected)` : `WRONG on the fixture: ${JSON.stringify(got)}`}; context total: ${counter.allowedSockets} sockets allowed, ${counter.blockedSockets} blocked`,
   );
   return ok;
 }
@@ -278,6 +288,10 @@ async function main() {
               await page.addStyleTag({ content: "nextjs-portal{display:none!important}" }).catch(() => {});
               if (redact.length) await page.evaluate(redactPage, redact);
               const m = await page.evaluate(measure);
+              // accessible names as Chrome computes them (lib/axnames.mjs); `unnamedControls` is what has none
+              const names = await readControlNames(page);
+              m.unnamedControls = names.unnamed;
+              m.accessibleNames = { ...names.counts, unnamedCount: names.unnamedCount };
               Object.assign(m, { status: resp ? resp.status() : null, finalUrl: page.url().replace(origin, ""), consoleErrors: errors.slice(0, 8), blockedWrites: counter.blocked - blockedBefore, blockedSockets: counter.blockedSockets - socketsBefore, allowedSockets: counter.allowedSockets - allowedBefore, hydrated, id: screen.id, device: dev, lang2: lang, state: screen.state || "", plan: plan.name });
               const evalSource = screen.evalFile ? readFileSync(join(TOOL, "evals", `${screen.evalFile}.js`), "utf8") : screen.eval;
               if (evalSource) {

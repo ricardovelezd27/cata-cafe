@@ -110,6 +110,25 @@ node scripts/ux-capture/capture.mjs --plan owner=master@cata.test --only app,app
 `out/` is gitignored. **Do not commit screenshots** unless they hold no real name; the package's pull request quotes numbers, and
 the audit's images live in `docs/audits/.../shots/`.
 
+### What `unnamedControls` counts
+
+A control is **unnamed** when Chrome computes no accessible name for it. The tool does not copy the name algorithm: it reads
+Chrome's own accessibility tree (DevTools Protocol, `Accessibility.getFullAXTree`; `lib/axnames.mjs`), so a field named by `<label for>`, a
+wrapping `<label>`, `aria-labelledby`, `aria-label`, `alt`, `title`, an svg `<title>`, its text or a button's `value` is named, in the
+browser's own order. Two rules are the project's:
+
+- **A placeholder alone is not a name.** Chrome falls back to it, but it is gone once the field is filled. Chrome says where a name came from;
+  a name whose only source is the placeholder is reported with `why: "placeholder only"` (and counted in `unnamedControls`).
+- **What is a control**: the visible links, buttons, inputs, selects, textareas, `[role=button|tab|switch|checkbox|radio]` and focusable
+  (`tabindex`) elements whose accessibility role is not structural (a focusable scroller or region does not need a name).
+  Skipped: inert, `aria-hidden`, `hidden`, disabled, not painted, and the content of a closed `<details>` (the browser reports a box for it, but it is not rendered or exposed).
+
+Each capture's measure holds `unnamedControls` (the list: tag, selector, role, `why`) and `accessibleNames` (`checked`, `named`, `unnamed`,
+`placeholderOnly`, `ignored`, `notAControl`, `noAxNode`). "unnamedControls is 0" is what a package checks. `--self-test` runs 18 fixture
+controls through the same code and fails if the set it reports is not exactly the expected one; `tests/uxCaptureNames.test.ts` pins the rules
+(and runs the fixtures through Chrome when it is installed). Older captures counted names from text, `aria-label`, `title` and
+`placeholder` only, and so over-reported: do not compare their `unnamedControls` with these.
+
 ## The plans
 
 `plans/<name>.json`, one per role. Pass one with the test address it needs (`--plan owner=master@cata.test`); `visitor` signs in as nobody.
