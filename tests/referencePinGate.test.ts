@@ -1,6 +1,7 @@
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { walkSource } from "./helpers/sourceTree";
 
 // S10 WP2 / B1: the reference pin is gated by the session's referenceMode.
 //
@@ -23,16 +24,11 @@ import { describe, expect, it } from "vitest";
 const root = process.cwd();
 const SKIP = new Set(["node_modules", ".next", "generated", "tests", ".git", "scripts"]);
 
-function walk(dir: string, out: string[] = []): string[] {
-  for (const name of readdirSync(dir)) {
-    if (SKIP.has(name)) continue;
-    const p = join(dir, name);
-    const st = statSync(p);
-    if (st.isDirectory()) walk(p, out);
-    else if (/\.(ts|tsx)$/.test(name)) out.push(p);
-  }
-  return out;
-}
+// Absolute paths, as before (the labels below strip `root` from them).
+const walk = (dir: string): string[] =>
+  walkSource(dir, "referencePinGate", { skip: (name) => SKIP.has(name), include: /\.(ts|tsx)$/ }).map((f) =>
+    join(root, f),
+  );
 
 // Read every source file ONCE at collection time (not inside a test, whose
 // 5 s budget a loaded machine can exceed).
@@ -74,7 +70,7 @@ export function stripComments(src: string): string {
 
 const rulesPath = join(root, "lib", "referenceRules.ts");
 const rulesSrc = stripComments(readFileSync(rulesPath, "utf8"));
-const sources = [...walk(join(root, "app")), ...walk(join(root, "lib")), ...walk(join(root, "components"))]
+const sources = [...walk("app"), ...walk("lib"), ...walk("components")]
   .filter((f) => f !== rulesPath) // the definitions (scanned separately below)
   .map((f) => ({ file: f.replace(root, ""), src: stripComments(readFileSync(f, "utf8")) }));
 

@@ -1,28 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync, readdirSync, statSync } from "node:fs";
-import { resolve } from "node:path";
 import { createShellLayerStore } from "@/lib/shellLayer";
 import { scrollBehaviorFor } from "@/lib/motion";
+import { SCAN_TIMEOUT_MS, readSource as read, walkSource } from "./helpers/sourceTree";
 
 // Package T6 of the UI/UX audit of 2026-11-15 (H-03, H-04, H-06, H-07, G-01):
 // the accessibility base of the paper app.
 
-const root = (p: string) => resolve(__dirname, "..", p);
-const read = (p: string) => readFileSync(root(p), "utf8");
 const css = read("app/globals.css");
 
 /** Every .tsx / .ts / .css under a folder, as repo-relative paths. */
-function walk(dir: string): string[] {
-  const out: string[] = [];
-  for (const name of readdirSync(root(dir))) {
-    const rel = `${dir}/${name}`;
-    if (statSync(root(rel)).isDirectory()) {
-      if (name === "generated" || name === "node_modules") continue;
-      out.push(...walk(rel));
-    } else if (/\.(tsx|ts|css)$/.test(name)) out.push(rel);
-  }
-  return out;
-}
+const walk = (dir: string) =>
+  walkSource(dir, "a11yBase", {
+    skip: (name, isDirectory) => isDirectory && (name === "generated" || name === "node_modules"),
+    include: /\.(tsx|ts|css)$/,
+  });
 /** The paper app: everything but the landing and the warm-up player, which keep their own tested rules. */
 const PAPER = [...walk("app"), ...walk("components")].filter(
   (f) => !f.startsWith("components/landing/") && !f.startsWith("components/warmup/") && f !== "app/[locale]/page.tsx",
@@ -117,7 +108,7 @@ describe("H-04: one focus indicator", () => {
       }
     }
     expect(offenders).toEqual([]);
-  });
+  }, SCAN_TIMEOUT_MS); // reads every file of the paper app: a full run slows that about tenfold
 
   it("the intensity slider draws the indicator on what is seen, the thumb", () => {
     expect(read("components/ui/IntensitySlider.module.css")).toMatch(
@@ -166,7 +157,7 @@ describe("G-01: reduced motion", () => {
       /behavior:\s*["']smooth["']/.test(read(f)),
     );
     expect(offenders).toEqual([]);
-  });
+  }, SCAN_TIMEOUT_MS); // same files as above (from memory when that test ran first)
 
   it("one reset covers the paper app and leaves the landing and the warm-up player out", () => {
     const at = css.indexOf("/* G-01");

@@ -5,12 +5,10 @@
 // key path to the user. Best effort and source-level: only literal keys, only
 // bindings of the shape `const x = (await )?(getTranslations|useTranslations)("ns")`
 // or `getTranslations({ ..., namespace: "ns" })`. Dynamic keys are skipped.
-import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 import es from "@/messages/es.json";
+import { SCAN_TIMEOUT_MS, readSource, walkSource } from "./helpers/sourceTree";
 
-const ROOT = process.cwd();
 const SCAN_DIRS = ["app", "components"];
 const SKIP_DIRS = new Set(["node_modules", "generated", ".next"]);
 
@@ -18,16 +16,8 @@ const SKIP_DIRS = new Set(["node_modules", "generated", ".next"]);
 // Empty today: add an entry with a reason rather than loosening the scan.
 const ALLOWLIST = new Set<string>([]);
 
-function walk(dir: string, out: string[] = []): string[] {
-  for (const name of readdirSync(dir)) {
-    if (SKIP_DIRS.has(name)) continue;
-    const p = join(dir, name);
-    const st = statSync(p);
-    if (st.isDirectory()) walk(p, out);
-    else if (/\.(ts|tsx)$/.test(name)) out.push(p);
-  }
-  return out;
-}
+const walk = (dir: string) =>
+  walkSource(dir, "i18nKeyUsage", { skip: (name) => SKIP_DIRS.has(name), include: /\.(ts|tsx)$/ });
 
 function resolves(ns: string, key: string): boolean {
   let node: unknown = es;
@@ -78,14 +68,14 @@ describe("i18n key usage (S8-23, D-02)", () => {
     const misses: string[] = [];
     let checked = 0;
     for (const dir of SCAN_DIRS) {
-      for (const file of walk(join(ROOT, dir))) {
-        const src = readFileSync(file, "utf8");
+      for (const file of walk(dir)) {
+        const src = readSource(file);
         if (!/getTranslations|useTranslations/.test(src)) continue;
         checked += 1;
-        misses.push(...findMisses(src, relative(ROOT, file).replace(/\\/g, "/")));
+        misses.push(...findMisses(src, file));
       }
     }
     expect(checked).toBeGreaterThan(20);
     expect(misses).toEqual([]);
-  });
+  }, SCAN_TIMEOUT_MS); // reads every file under app and components: a full run slows that about tenfold
 });

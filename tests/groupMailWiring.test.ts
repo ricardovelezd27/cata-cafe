@@ -1,6 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join, relative } from "node:path";
 import { confirmPage } from "@/lib/groupUnsubscribePage";
 import {
   decorateGroupMail,
@@ -8,6 +6,7 @@ import {
   mintUnsubscribeToken,
   unsubscribeUrl,
 } from "@/lib/groupUnsubscribe";
+import { SCAN_TIMEOUT_MS, readSource, walkSource } from "./helpers/sourceTree";
 
 describe("confirm page escaping", () => {
   it("escapes quotes and angle brackets in the group name", () => {
@@ -64,21 +63,15 @@ describe("only sanctioned modules call sendEmail(", () => {
     "lib/insightsDigestEmail.ts",
     "lib/magicLink.ts",
   ]);
-  function walk(dir: string, acc: string[] = []): string[] {
-    for (const name of readdirSync(dir)) {
-      const p = join(dir, name);
-      if (statSync(p).isDirectory()) {
-        if (name !== "generated" && name !== "node_modules") walk(p, acc);
-      } else if (/\.(ts|tsx)$/.test(name)) acc.push(p);
-    }
-    return acc;
-  }
+  const walk = (dir: string) =>
+    walkSource(dir, "groupMailWiring", {
+      skip: (name, isDirectory) => isDirectory && (name === "generated" || name === "node_modules"),
+      include: /\.(ts|tsx)$/,
+    });
   it("group mail cannot bypass lib/groupEmail.ts", () => {
-    const root = process.cwd();
-    const offenders = [...walk(join(root, "app")), ...walk(join(root, "lib"))]
-      .map((f) => relative(root, f).replace(/\\/g, "/"))
+    const offenders = [...walk("app"), ...walk("lib")]
       .filter((f) => !ALLOWED.has(f))
-      .filter((f) => /\bsendEmail\(/.test(readFileSync(join(root, f), "utf8")));
+      .filter((f) => /\bsendEmail\(/.test(readSource(f)));
     expect(offenders).toEqual([]);
-  });
+  }, SCAN_TIMEOUT_MS); // reads every file under app and lib: a full run slows that about tenfold
 });

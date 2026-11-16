@@ -1,13 +1,12 @@
 // S10 WP7: private reflections (Kim F2) and the discreet entry after the
 // interstitial (Kim F1). Pure rules and static scans only (no Prisma import).
-import { readFileSync, readdirSync, statSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { REFLECTION_MAX, parseReflectionInput } from "@/lib/warmup/reflections";
 import { shouldOfferWarmupEntry, shouldShowWarmupOverlay } from "@/lib/warmup/overlayGate";
 import { WARMUP_IDS } from "@/lib/warmup/exercises";
+import { SCAN_TIMEOUT_MS, readSource, walkSource } from "./helpers/sourceTree";
 
-const read = (p: string) => readFileSync(join(process.cwd(), p), "utf8").replace(/\r\n/g, "\n");
+const read = (p: string) => readSource(p).replace(/\r\n/g, "\n");
 
 describe("parseReflectionInput", () => {
   it("accepts a known exercise with one or both answers, trimmed", () => {
@@ -85,30 +84,23 @@ describe("nobody else reads warmup_reflections", () => {
     "lib/unusedAccountRules.ts", // names the table only: a row there means "the account was used" (an existence test, never content)
   ]);
 
-  function walk(dir: string, out: string[] = []): string[] {
-    for (const f of readdirSync(join(process.cwd(), dir))) {
-      if (["node_modules", ".next", "generated", ".git", "tests", "docs", ".claude", "scripts"].includes(f)) continue;
-      const rel = `${dir}/${f}`.replace(/^\.\//, "");
-      const st = statSync(join(process.cwd(), rel));
-      if (st.isDirectory()) walk(rel, out);
-      else if (/\.(ts|tsx)$/.test(f)) out.push(rel);
-    }
-    return out;
-  }
+  const SKIP = ["node_modules", ".next", "generated", ".git", "tests", "docs", ".claude", "scripts"];
+  const walk = (dir: string) =>
+    walkSource(dir, "warmup-reflections-entry", { skip: (name) => SKIP.includes(name), include: /\.(ts|tsx)$/ });
 
   it("only the owner-scoped code and the account lifecycle touch the table", () => {
     const hits = [...walk("app"), ...walk("lib"), ...walk("components"), ...walk("hooks")].filter((f) =>
       /\.warmupReflection(?![\w])|(?<![\w])warmup_reflections(?![\w])/.test(read(f)),
     );
     expect(hits.filter((f) => !ALLOWED.has(f))).toEqual([]);
-  });
+  }, SCAN_TIMEOUT_MS); // reads every source file: a full run slows that about tenfold
 
   it("the read helper always filters by the user id and the analytics/AI code never imports it", () => {
     expect(read("lib/warmup/reflectionsData.ts")).toMatch(/where:\s*\{\s*userId,\s*exerciseId\s*\}/);
     for (const f of [...walk("lib/analytics"), ...walk("lib/ai"), ...walk("lib/reports")]) {
       expect(read(f), f).not.toContain("reflectionsData");
     }
-  });
+  }, SCAN_TIMEOUT_MS); // walks three source folders
 });
 
 describe("shouldOfferWarmupEntry (the discreet entry after the interstitial)", () => {

@@ -1,5 +1,4 @@
-import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { readFileSync, statSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   SIGNIN_PENDING_COOKIE,
@@ -7,6 +6,7 @@ import {
   decodePending,
   encodePending,
 } from "@/lib/signInPending";
+import { SCAN_TIMEOUT_MS, readSource, walkSource } from "./helpers/sourceTree";
 
 const tokens = { accessToken: "eyJhbGciOi.payload.sig", refreshToken: "refresh-abc" };
 const b64 = (o: unknown) => Buffer.from(JSON.stringify(o), "utf8").toString("base64url");
@@ -61,15 +61,9 @@ describe("pending sign-in cookie value (A-08)", () => {
 
 describe("wiring: who touches the pending cookie and the ephemeral client", () => {
   const SKIP = new Set(["node_modules", ".next", "generated", ".git", "docs", "tests"]);
-  function walk(dir: string, out: string[] = []): string[] {
-    for (const name of readdirSync(dir)) {
-      if (SKIP.has(name)) continue;
-      const p = join(dir, name);
-      if (statSync(p).isDirectory()) walk(p, out);
-      else if (/\.(ts|tsx)$/.test(name)) out.push(p.replace(/\\/g, "/"));
-    }
-    return out;
-  }
+  const walk = (dir: string) =>
+    walkSource(dir, "signInPending", { skip: (name) => SKIP.has(name), include: /\.(ts|tsx)$/ });
+  // Both tests below read every file: through readSource the second one reads them from memory.
   const files = ["app", "lib", "components", "hooks", "proxy.ts"].flatMap((f) =>
     statSync(f).isDirectory() ? walk(f) : [f],
   );
@@ -80,19 +74,19 @@ describe("wiring: who touches the pending cookie and the ephemeral client", () =
     // still counts.
     const TEXT_ONLY = new Set(["lib/legal/es/privacy.ts", "lib/legal/en/privacy.ts"]);
     const users = files.filter((f) => {
-      const src = readFileSync(f, "utf8");
+      const src = readSource(f);
       if (src.includes("SIGNIN_PENDING_COOKIE")) return true;
       return !TEXT_ONLY.has(f) && src.includes(SIGNIN_PENDING_COOKIE);
     });
     expect(users.sort()).toEqual(["lib/signInPending.ts", "lib/signInPendingCookie.ts"]);
-  });
+  }, SCAN_TIMEOUT_MS); // reads every source file: a full run slows that about tenfold
 
   it("only app/actions/auth.ts imports the pending cookie helpers", () => {
     // Single or double quotes, from-imports and dynamic imports alike.
     const importsCookie = /(?:from\s*|import\s*\(\s*)["'][^"']*\/signInPendingCookie["']/;
-    const users = files.filter((f) => importsCookie.test(readFileSync(f, "utf8")));
+    const users = files.filter((f) => importsCookie.test(readSource(f)));
     expect(users).toEqual(["app/actions/auth.ts"]);
-  });
+  }, SCAN_TIMEOUT_MS); // same files as the test above (from memory when it ran first)
 
   const auth = readFileSync("app/actions/auth.ts", "utf8");
   const section = (name: string) => {
