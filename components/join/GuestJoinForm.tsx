@@ -172,7 +172,7 @@ export function GuestJoinForm({ token, locale, translations }: GuestJoinFormProp
         aria-label={translations.namePlaceholder}
         required
         autoComplete="name"
-        className="w-full px-3 py-2.5 border border-brown-light rounded-input text-sm bg-white text-brown-dark focus:outline-none focus:border-green-dark"
+        className="w-full px-3 py-2.5 border border-brown-light rounded-input text-sm bg-white text-brown-dark focus:border-green-dark"
       />
       <button
         type="submit"

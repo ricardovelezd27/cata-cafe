@@ -68,7 +68,7 @@ export function AccessManager({ users: initialUsers, t }: AccessManagerProps) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t.search}
-            className="w-full rounded-input border border-[#E8E0D0] bg-white pl-9 pr-3 py-2 text-sm text-brown-dark focus:outline-none focus:border-[#3D5A3E]"
+            className="w-full rounded-input border border-[#E8E0D0] bg-white pl-9 pr-3 py-2 text-sm text-brown-dark focus:border-[#3D5A3E]"
           />
         </label>
       </div>
@@ -103,7 +103,9 @@ export function AccessManager({ users: initialUsers, t }: AccessManagerProps) {
               </div>
 
               <label className="flex items-center gap-2 cursor-pointer select-none">
-                <span className="text-xs text-brown-mid hidden sm:block">
+                {/* H-07: on phones the text is visually hidden, not removed, so
+                    the switch inside this label keeps its name. */}
+                <span className="text-xs text-brown-mid max-sm:sr-only">
                   {t.accessLabel}
                 </span>
                 <button

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useActionFeedback } from "@/components/ui/Toast";
 import { useConnectivity } from "@/hooks/useConnectivity";
@@ -39,6 +39,7 @@ import { browserZone, dateInZone, LAST_CLOSING_DAY } from "@/lib/closeRules";
 import { MAX_DATE_INPUT } from "@/lib/safeDate";
 import { WARMUP_EXERCISES, lw, type WarmupId } from "@/lib/warmup/exercises";
 import { fieldErrorId, fieldForErrorCode, fieldInputId, type SessionFormField } from "@/lib/sessionFormErrors";
+import { scrollBehavior } from "@/lib/motion";
 
 // Groups v2: session wizard extends NotifyGroupTranslations with the
 // step-1 "link a group" selector copy + the step-2 auto-invite success
@@ -262,7 +263,7 @@ const autoSample = (coffeeId: string): SampleEntry => ({
 });
 
 const inputBase =
-  "w-full border border-outline-variant rounded-input px-3.5 py-2.5 text-sm text-on-surface bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary-container/25 focus:border-primary-container transition-colors";
+  "w-full border border-outline-variant rounded-input px-3.5 py-2.5 text-sm text-on-surface bg-surface-container-lowest focus:border-primary-container transition-colors";
 // 44px tap target (root font-size is 14px, so min-h-11 would paint 38.5px).
 const inputCls = inputBase + " min-h-[44px]";
 
@@ -282,14 +283,17 @@ function FieldLabel({
   required,
   requiredText,
   optionalText,
+  htmlFor,
 }: {
   children: React.ReactNode;
   required?: boolean;
   requiredText?: string;
   optionalText?: string;
+  /** H-07: the id of the control this label names. */
+  htmlFor?: string;
 }) {
   return (
-    <label className="block text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant mb-1.5">
+    <label htmlFor={htmlFor} className="block text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant mb-1.5">
       {children}
       {required && (
         <>
@@ -340,6 +344,8 @@ export function NewSessionForm({
 }) {
   const router = useRouter();
   const feedback = useActionFeedback();
+  // H-07: ties each visible label to its control (htmlFor / aria-labelledby).
+  const fid = useId();
   // Shared connectivity probe: creating a session needs the server. Offline the
   // submit is disabled and every field keeps its value (S8-09, F-04-3).
   const { online } = useConnectivity();
@@ -426,7 +432,7 @@ export function NewSessionForm({
     if (focusTick === 0 || !errorField) return;
     const el = document.getElementById(fieldInputId(errorField));
     if (!el) return;
-    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.scrollIntoView({ behavior: scrollBehavior(), block: "center" });
     el.focus({ preventScroll: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusTick]);
@@ -661,7 +667,7 @@ export function NewSessionForm({
     const fail = (id: string, code: string) => {
       setInvalidCoffeeId(id);
       setErrorCode(code);
-      cardRefs.current[id]?.scrollIntoView({ behavior: "smooth", block: "center" });
+      cardRefs.current[id]?.scrollIntoView({ behavior: scrollBehavior(), block: "center" });
       return false;
     };
     // Cards no sample uses are dropped server-side, so they cannot block the submit.
@@ -958,7 +964,7 @@ export function NewSessionForm({
       {/* 1. Session basics */}
       <div className="space-y-5">
         <div>
-          <FieldLabel>{t.name}</FieldLabel>
+          <FieldLabel htmlFor={fieldInputId("name")}>{t.name}</FieldLabel>
           <input
             {...fieldProps("name")}
             className={inputCls}
@@ -972,7 +978,7 @@ export function NewSessionForm({
 
         <div className={format === "descriptive" ? "grid grid-cols-1 gap-3" : "grid grid-cols-2 gap-3"}>
           <div>
-            <FieldLabel>{t.date}</FieldLabel>
+            <FieldLabel htmlFor={fieldInputId("date")}>{t.date}</FieldLabel>
             <input
               type="date" suppressHydrationWarning
               {...fieldProps("date")}
@@ -985,7 +991,7 @@ export function NewSessionForm({
           </div>
           {format !== "descriptive" && (
           <div>
-            <FieldLabel>{t.cups}</FieldLabel>
+            <FieldLabel htmlFor={fieldInputId("cups")}>{t.cups}</FieldLabel>
             <input
               type="number"
               inputMode="numeric"
@@ -1019,8 +1025,9 @@ export function NewSessionForm({
         )}
 
         <div>
-          <FieldLabel>{t.objective}</FieldLabel>
+          <FieldLabel htmlFor={`${fid}-objective`}>{t.objective}</FieldLabel>
           <textarea
+            id={`${fid}-objective`}
             className={inputBase + " min-h-[72px]"}
             value={objective}
             onChange={(e) => setObjective(e.target.value)}
@@ -1064,6 +1071,7 @@ export function NewSessionForm({
               type="button"
               role="switch"
               aria-checked={warmupOn}
+              aria-labelledby={`${fid}-warmup`}
               onClick={() => setWarmupOn((v) => !v)}
               className={
                 "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors " +
@@ -1077,12 +1085,13 @@ export function NewSessionForm({
                 }
               />
             </button>
-            <span className="text-sm text-on-surface font-medium">{t.warmup.toggle}</span>
+            <span id={`${fid}-warmup`} className="text-sm text-on-surface font-medium">{t.warmup.toggle}</span>
           </div>
           {warmupOn && (
             <div className="bg-surface-container-low rounded-card p-4 space-y-2">
-              <FieldLabel>{t.warmup.label}</FieldLabel>
+              <FieldLabel htmlFor={`${fid}-warmup-exercise`}>{t.warmup.label}</FieldLabel>
               <Select
+                id={`${fid}-warmup-exercise`}
                 value={warmupId}
                 onChange={(v) => setWarmupId(v as WarmupId)}
                 ariaLabel={t.warmup.label}
@@ -1193,10 +1202,11 @@ export function NewSessionForm({
                         they're still the fields people fill in most often. */}
                     <div className="grid grid-cols-2 gap-3">
                       <div className="col-span-2">
-                        <FieldLabel required requiredText={t.newForm.required}>
+                        <FieldLabel htmlFor={`${fid}-${coffee.id}-name`} required requiredText={t.newForm.required}>
                           {t.coffeeName}
                         </FieldLabel>
                         <input
+                          id={`${fid}-${coffee.id}-name`}
                           className={inputCls}
                           value={coffee.name}
                           onChange={(e) => updateCoffee(coffee.id, "name", e.target.value)}
@@ -1206,10 +1216,11 @@ export function NewSessionForm({
                       </div>
 
                       <div>
-                        <FieldLabel optionalText={t.newForm.optionalSuffix}>
+                        <FieldLabel htmlFor={`${fid}-${coffee.id}-country`} optionalText={t.newForm.optionalSuffix}>
                           {t.coffeeCountry}
                         </FieldLabel>
                         <input
+                          id={`${fid}-${coffee.id}-country`}
                           list="cata-coffee-countries"
                           className={inputCls}
                           value={coffee.country}
@@ -1218,10 +1229,11 @@ export function NewSessionForm({
                         />
                       </div>
                       <div>
-                        <FieldLabel optionalText={t.newForm.optionalSuffix}>
+                        <FieldLabel htmlFor={`${fid}-${coffee.id}-variety`} optionalText={t.newForm.optionalSuffix}>
                           {t.coffeeVariety}
                         </FieldLabel>
                         <input
+                          id={`${fid}-${coffee.id}-variety`}
                           className={inputCls}
                           value={coffee.variety}
                           onChange={(e) => updateCoffee(coffee.id, "variety", e.target.value)}
@@ -1230,11 +1242,12 @@ export function NewSessionForm({
                       </div>
 
                       <div>
-                        <FieldLabel optionalText={t.newForm.optionalSuffix}>
+                        <FieldLabel htmlFor={`${fid}-${coffee.id}-altitude`} optionalText={t.newForm.optionalSuffix}>
                           {t.coffeeAltitude}
                         </FieldLabel>
                         <div className="relative">
                           <input
+                            id={`${fid}-${coffee.id}-altitude`}
                             type="number"
                             inputMode="numeric"
                             min={1}
@@ -1250,10 +1263,11 @@ export function NewSessionForm({
                         </div>
                       </div>
                       <div>
-                        <FieldLabel optionalText={t.newForm.optionalSuffix}>
+                        <FieldLabel htmlFor={`${fid}-${coffee.id}-roastLevel`} optionalText={t.newForm.optionalSuffix}>
                           {t.coffeeRoastLevel}
                         </FieldLabel>
                         <select
+                          id={`${fid}-${coffee.id}-roastLevel`}
                           className={inputCls + " cursor-pointer"}
                           value={coffee.roastLevel}
                           onChange={(e) => updateCoffee(coffee.id, "roastLevel", e.target.value)}
@@ -1279,10 +1293,11 @@ export function NewSessionForm({
                       </summary>
                       <div className="grid grid-cols-2 gap-3 px-3.5 pb-3.5">
                         <div>
-                          <FieldLabel optionalText={t.newForm.optionalSuffix}>
+                          <FieldLabel htmlFor={`${fid}-${coffee.id}-region`} optionalText={t.newForm.optionalSuffix}>
                             {t.coffeeRegion}
                           </FieldLabel>
                           <input
+                            id={`${fid}-${coffee.id}-region`}
                             className={inputCls}
                             value={coffee.region}
                             onChange={(e) => updateCoffee(coffee.id, "region", e.target.value)}
@@ -1290,10 +1305,11 @@ export function NewSessionForm({
                           />
                         </div>
                         <div>
-                          <FieldLabel optionalText={t.newForm.optionalSuffix}>
+                          <FieldLabel htmlFor={`${fid}-${coffee.id}-farm`} optionalText={t.newForm.optionalSuffix}>
                             {t.coffeeFarm}
                           </FieldLabel>
                           <input
+                            id={`${fid}-${coffee.id}-farm`}
                             className={inputCls}
                             value={coffee.farm}
                             onChange={(e) => updateCoffee(coffee.id, "farm", e.target.value)}
@@ -1301,10 +1317,11 @@ export function NewSessionForm({
                           />
                         </div>
                         <div>
-                          <FieldLabel optionalText={t.newForm.optionalSuffix}>
+                          <FieldLabel htmlFor={`${fid}-${coffee.id}-producer`} optionalText={t.newForm.optionalSuffix}>
                             {t.producerRoaster}
                           </FieldLabel>
                           <input
+                            id={`${fid}-${coffee.id}-producer`}
                             className={inputCls}
                             value={coffee.producer}
                             onChange={(e) => updateCoffee(coffee.id, "producer", e.target.value)}
@@ -1312,10 +1329,11 @@ export function NewSessionForm({
                           />
                         </div>
                         <div>
-                          <FieldLabel optionalText={t.newForm.optionalSuffix}>
+                          <FieldLabel htmlFor={`${fid}-${coffee.id}-species`} optionalText={t.newForm.optionalSuffix}>
                             {t.coffeeSpecies}
                           </FieldLabel>
                           <input
+                            id={`${fid}-${coffee.id}-species`}
                             className={inputCls}
                             value={coffee.species}
                             onChange={(e) => updateCoffee(coffee.id, "species", e.target.value)}
@@ -1323,10 +1341,11 @@ export function NewSessionForm({
                           />
                         </div>
                         <div>
-                          <FieldLabel optionalText={t.newForm.optionalSuffix}>
+                          <FieldLabel htmlFor={`${fid}-${coffee.id}-harvestYear`} optionalText={t.newForm.optionalSuffix}>
                             {t.coffeeHarvest}
                           </FieldLabel>
                           <input
+                            id={`${fid}-${coffee.id}-harvestYear`}
                             className={inputCls}
                             value={coffee.harvestYear}
                             onChange={(e) => updateCoffee(coffee.id, "harvestYear", e.target.value)}
@@ -1334,10 +1353,11 @@ export function NewSessionForm({
                           />
                         </div>
                         <div>
-                          <FieldLabel optionalText={t.newForm.optionalSuffix}>
+                          <FieldLabel htmlFor={`${fid}-${coffee.id}-processType`} optionalText={t.newForm.optionalSuffix}>
                             {t.coffeeProcess}
                           </FieldLabel>
                           <select
+                            id={`${fid}-${coffee.id}-processType`}
                             className={inputCls + " cursor-pointer"}
                             value={coffee.processType}
                             onChange={(e) => updateCoffee(coffee.id, "processType", e.target.value)}
@@ -1375,10 +1395,11 @@ export function NewSessionForm({
                           </div>
                         </div>
                         <div className="col-span-2">
-                          <FieldLabel optionalText={t.newForm.optionalSuffix}>
+                          <FieldLabel htmlFor={`${fid}-${coffee.id}-notes`} optionalText={t.newForm.optionalSuffix}>
                             {t.coffeeNotes}
                           </FieldLabel>
                           <textarea
+                            id={`${fid}-${coffee.id}-notes`}
                             className={inputBase + " min-h-[64px]"}
                             value={coffee.notes}
                             onChange={(e) => updateCoffee(coffee.id, "notes", e.target.value)}
@@ -1590,6 +1611,7 @@ export function NewSessionForm({
             type="button"
             role="switch"
             aria-checked={isGroup}
+            aria-labelledby={`${fid}-group`}
             onClick={() => setIsGroup((v) => !v)}
             className={
               "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors " +
@@ -1603,13 +1625,13 @@ export function NewSessionForm({
               }
             />
           </button>
-          <span className="text-sm text-on-surface font-medium">{t.groupToggle}</span>
+          <span id={`${fid}-group`} className="text-sm text-on-surface font-medium">{t.groupToggle}</span>
         </div>
 
         {isGroup && (
           <div className="bg-surface-container-low rounded-card p-4 space-y-4">
             <div>
-              <FieldLabel>{t.groupClosesAt}</FieldLabel>
+              <FieldLabel htmlFor={fieldInputId("closesAt")}>{t.groupClosesAt}</FieldLabel>
               <input
                 type="date"
                 {...fieldProps("closesAt")}
@@ -1630,8 +1652,9 @@ export function NewSessionForm({
             </div>
 
             <div>
-              <FieldLabel>{groupsT.linkGroupLabel}</FieldLabel>
+              <FieldLabel htmlFor={`${fid}-linked-group`}>{groupsT.linkGroupLabel}</FieldLabel>
               <select
+                id={`${fid}-linked-group`}
                 value={linkedGroupId}
                 onChange={(e) => setLinkedGroupId(e.target.value)}
                 className={inputCls + " cursor-pointer"}

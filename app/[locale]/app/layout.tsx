@@ -9,6 +9,8 @@ import OnboardingWrapper from "@/components/onboarding/OnboardingWrapper";
 import type { WelcomeModalTranslations } from "@/components/onboarding/WelcomeModal";
 import { LegacyStorageCleanup } from "@/components/layout/LegacyStorageCleanup";
 import { IdentityWatcher } from "@/components/layout/IdentityWatcher";
+import { SkipLink, MAIN_CONTENT_ID } from "@/components/layout/SkipLink";
+import { ShellCoverable } from "@/components/layout/ShellCoverable";
 import { PendingDraftsBadge } from "@/components/offline/PendingDraftsBadge";
 import { StaleBundleNotice } from "@/components/offline/StaleBundleNotice";
 import type { UnsyncedNotesTranslations } from "@/components/offline/UnsyncedNotesPanel";
@@ -133,6 +135,8 @@ export default async function AppLayout({
       warmup: tNav("warmup"),
       switchAccount: tNav("switchAccount"),
       logout: tNav("logout"),
+      skipToContent: tNav("skipToContent"),
+      mainNavLabel: tNav("mainNavLabel"),
     },
     brand: {
       name: tBrand("name"),
@@ -144,31 +148,37 @@ export default async function AppLayout({
     <UnsyncedGuardProvider userId={user.id} isGuest={isGuest} translations={guardCopy}>
     <GuestGateProvider isGuest={isGuest} locale={locale} translations={guestGate}>
     <div className="flex h-screen overflow-hidden">
+      <SkipLink label={translations.nav.skipToContent} />
       <Sidebar locale={locale} showInsights={showInsights} translations={translations} />
       <div className="flex flex-col flex-1 overflow-hidden">
         <TopBar locale={locale} translations={translations} />
         <LegacyStorageCleanup />
-        <StaleBundleNotice
-          message={tOffline("bannerNewVersion")}
-          reloadLabel={tOffline("reloadNow")}
-        />
-        <PendingDraftsBadge
-          userId={user.id}
-          locale={locale}
-          label={pendingDraftsLabel}
-          notesLabel={unsyncedNotesLabel}
-          conflictLabel={conflictDraftsLabel}
-          panelTranslations={notesPanel}
-          staleLabel={tOffline("staleDrafts")}
-        />
-        <IdentityWatcher
-          userId={user.id}
-          translations={{
-            notice: tErrors("codes.identity_changed"),
-            reload: tOffline("reloadNow"),
-          }}
-        />
-        <main className="relative flex-1 overflow-y-auto bg-surface p-4 lg:p-6 pb-20 lg:pb-6">
+        <ShellCoverable>
+          <StaleBundleNotice
+            message={tOffline("bannerNewVersion")}
+            reloadLabel={tOffline("reloadNow")}
+          />
+          <PendingDraftsBadge
+            userId={user.id}
+            locale={locale}
+            label={pendingDraftsLabel}
+            notesLabel={unsyncedNotesLabel}
+            conflictLabel={conflictDraftsLabel}
+            panelTranslations={notesPanel}
+            staleLabel={tOffline("staleDrafts")}
+          />
+          <IdentityWatcher
+            userId={user.id}
+            translations={{
+              notice: tErrors("codes.identity_changed"),
+              reload: tOffline("reloadNow"),
+            }}
+          />
+        </ShellCoverable>
+        <main
+          id={MAIN_CONTENT_ID}
+          className="relative flex-1 overflow-y-auto bg-surface p-4 lg:p-6 pb-20 lg:pb-6"
+        >
           {children}
         </main>
         <BottomNav

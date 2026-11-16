@@ -46,7 +46,7 @@ export interface WelcomeModalTranslations {
 }
 
 const inputClass =
-  "w-full border border-outline-variant rounded-input px-3 py-2 text-sm text-on-surface placeholder:text-on-surface-variant/60 bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary-container/25 focus:border-primary-container transition-colors";
+  "w-full border border-outline-variant rounded-input px-3 py-2 text-sm text-on-surface placeholder:text-on-surface-variant/60 bg-surface-container-lowest focus:border-primary-container transition-colors";
 
 interface WelcomeModalProps {
   locale: string;

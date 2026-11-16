@@ -68,7 +68,7 @@ export function GroupNameControls({
           <label className="sr-only">{t.groupName}</label>
           <input
             autoFocus
-            className="w-full px-3 py-2 border border-outline-variant rounded-input text-lg font-display bg-surface-container-lowest text-on-surface focus:outline-none focus:border-primary-container"
+            className="w-full px-3 py-2 border border-outline-variant rounded-input text-lg font-display bg-surface-container-lowest text-on-surface focus:border-primary-container"
             value={value}
             onChange={(e) => setValue(e.target.value)}
             maxLength={80}
@@ -79,7 +79,7 @@ export function GroupNameControls({
             {t.descriptionLabel}
           </label>
           <textarea
-            className="w-full px-3 py-2 border border-outline-variant rounded-input text-sm bg-surface-container-lowest text-on-surface focus:outline-none focus:border-primary-container min-h-[72px]"
+            className="w-full px-3 py-2 border border-outline-variant rounded-input text-sm bg-surface-container-lowest text-on-surface focus:border-primary-container min-h-[72px]"
             value={descValue}
             onChange={(e) => setDescValue(e.target.value)}
             placeholder={t.descriptionPlaceholder}

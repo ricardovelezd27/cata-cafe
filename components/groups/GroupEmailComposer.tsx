@@ -68,7 +68,7 @@ export function GroupEmailComposer({
   };
 
   const inputCls =
-    "w-full px-3 py-2 border border-outline-variant rounded-input text-sm bg-surface-container-lowest text-on-surface focus:outline-none focus:border-primary-container";
+    "w-full px-3 py-2 border border-outline-variant rounded-input text-sm bg-surface-container-lowest text-on-surface focus:border-primary-container";
 
   const submit = () => {
     if (!subject.trim() || !message.trim()) return;

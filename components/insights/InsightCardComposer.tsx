@@ -70,7 +70,7 @@ const PIVOT_TABLE_MAX_ROWS = 10;
 const PIVOT_TABLE_MAX_COLS = 7;
 
 const inputClass =
-  "w-full rounded-input border border-[#E8E0D0] bg-white px-3 py-2 text-sm text-brown-dark focus:outline-none focus:border-[#3D5A3E]";
+  "w-full rounded-input border border-[#E8E0D0] bg-white px-3 py-2 text-sm text-brown-dark focus:border-[#3D5A3E]";
 
 function emptyPivotResult(measure: MeasureId): PivotResult {
   return {

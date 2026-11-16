@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { ChevronDown, Menu } from "lucide-react";
+import { useCoverShell } from "@/hooks/useShellLayer";
 import styles from "./SessionShell.module.css";
 
 interface SessionShellProps {
@@ -63,6 +64,10 @@ export function SessionShell({
 }: SessionShellProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  // H-03: this layer is fixed over the whole app layout; while it is mounted
+  // the layout's sidebar, bars and notices are inert (they read the same
+  // store). Focusability only: no saving, guard or realtime code is involved.
+  useCoverShell();
 
   return (
     <div className={`${styles.root} ${collapsed ? styles.collapsed : ""}`}>

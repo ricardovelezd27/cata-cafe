@@ -58,7 +58,7 @@ export type ExpressFormTranslations = {
 const EXPRESS_WARMUP_ID = "arm-raise";
 
 const inputClass =
-  "w-full min-h-[48px] border border-outline-variant rounded-input px-3.5 py-2.5 text-sm text-on-surface bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary-container/25 focus:border-primary-container transition-colors";
+  "w-full min-h-[48px] border border-outline-variant rounded-input px-3.5 py-2.5 text-sm text-on-surface bg-surface-container-lowest focus:border-primary-container transition-colors";
 
 const stepperButtonClass =
   "h-12 w-12 shrink-0 inline-flex items-center justify-center rounded-full border border-outline-variant text-on-surface bg-surface-container-lowest transition-colors hover:bg-primary-fixed disabled:opacity-40 disabled:cursor-default disabled:hover:bg-surface-container-lowest";

@@ -126,7 +126,7 @@ export function MemberList({
               <div className="flex flex-1 items-center gap-2 min-w-0">
                 <input
                   autoFocus
-                  className="min-w-0 flex-1 rounded-input border border-outline-variant bg-surface-container-lowest px-2.5 py-1.5 text-sm text-on-surface transition-colors focus:border-primary-container focus:outline-none focus:ring-2 focus:ring-primary-container/25"
+                  className="min-w-0 flex-1 rounded-input border border-outline-variant bg-surface-container-lowest px-2.5 py-1.5 text-sm text-on-surface transition-colors focus:border-primary-container"
                   value={editValue}
                   onChange={(e) => setEditValue(e.target.value)}
                   placeholder={t.namePlaceholder}

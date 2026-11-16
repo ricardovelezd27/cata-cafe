@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { scrollBehavior } from "@/lib/motion";
 import styles from "./SampleTabs.module.css";
 
 export type SampleTabItem = {
@@ -43,7 +44,7 @@ export function SampleTabs({
       '[aria-current="page"]'
     );
     activeEl?.scrollIntoView({
-      behavior: "smooth",
+      behavior: scrollBehavior(),
       block: "nearest",
       inline: "center",
     });

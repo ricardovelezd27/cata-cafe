@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition, type FormEvent } from "react";
+import { useId, useRef, useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, X } from "lucide-react";
 import {
@@ -106,7 +106,7 @@ export type EditSampleRow = {
 export type EditGroupOption = { id: string; name: string };
 
 const inputCls =
-  "w-full border border-outline-variant rounded-input px-3.5 py-2.5 text-sm text-on-surface bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary-container/25 focus:border-primary-container transition-colors disabled:opacity-60 disabled:cursor-not-allowed";
+  "w-full border border-outline-variant rounded-input px-3.5 py-2.5 text-sm text-on-surface bg-surface-container-lowest focus:border-primary-container transition-colors disabled:opacity-60 disabled:cursor-not-allowed";
 
 const cardCls = "bg-surface-container-lowest border border-outline-variant rounded-card p-5 space-y-4";
 
@@ -157,6 +157,8 @@ export function EditSessionForm({
 }) {
   const router = useRouter();
   const feedback = useActionFeedback();
+  // H-07: ties each visible label to its control (htmlFor / aria-labelledby).
+  const fid = useId();
   // Format/cups freeze at "Iniciar cata" as well as at the first evaluation
   // (C6 default; the server enforces the same rule via isFormatLocked).
   const locked = evalCount > 0 || initial.started;
@@ -429,8 +431,9 @@ export function EditSessionForm({
       {/* a. Metadata */}
       <div className={cardCls}>
         <div>
-          <label className={labelCls}>{t.name}</label>
+          <label htmlFor={`${fid}-name`} className={labelCls}>{t.name}</label>
           <input
+            id={`${fid}-name`}
             className={inputCls}
             value={name}
             onChange={(e) => {
@@ -442,8 +445,9 @@ export function EditSessionForm({
           />
         </div>
         <div>
-          <label className={labelCls}>{t.date}</label>
+          <label htmlFor={`${fid}-date`} className={labelCls}>{t.date}</label>
           <input
+            id={`${fid}-date`}
             type="date"
             className={inputCls}
             value={date}
@@ -455,8 +459,9 @@ export function EditSessionForm({
           />
         </div>
         <div>
-          <label className={labelCls}>{t.objective}</label>
+          <label htmlFor={`${fid}-objective`} className={labelCls}>{t.objective}</label>
           <textarea
+            id={`${fid}-objective`}
             className={inputCls + " min-h-[72px]"}
             value={objective}
             onChange={(e) => {
@@ -494,8 +499,9 @@ export function EditSessionForm({
           </div>
         </div>
         <div className="max-w-[10rem]">
-          <label className={labelCls}>{t.cups}</label>
+          <label htmlFor={`${fid}-cups`} className={labelCls}>{t.cups}</label>
           <input
+            id={`${fid}-cups`}
             type="number"
             min={1}
             max={5}
@@ -521,6 +527,7 @@ export function EditSessionForm({
               type="button"
               role="switch"
               aria-checked={warmupOn}
+              aria-labelledby={`${fid}-warmup`}
               disabled={warmupLocked}
               onClick={() => {
                 setWarmupOn((v) => !v);
@@ -538,7 +545,7 @@ export function EditSessionForm({
                 }
               />
             </button>
-            <span className="text-sm text-on-surface font-medium">{t.warmup.toggle}</span>
+            <span id={`${fid}-warmup`} className="text-sm text-on-surface font-medium">{t.warmup.toggle}</span>
           </div>
           {warmupOn && (
             <div className="space-y-2">
@@ -566,8 +573,9 @@ export function EditSessionForm({
       {initial.isGroup && (
         <div className={cardCls}>
           <div>
-            <label className={labelCls}>{t.closesAt}</label>
+            <label htmlFor={`${fid}-closes`} className={labelCls}>{t.closesAt}</label>
             <input
+              id={`${fid}-closes`}
               type="date"
               className={inputCls}
               value={closesAt}
@@ -593,8 +601,9 @@ export function EditSessionForm({
               )}
           </div>
           <div>
-            <label className={labelCls}>{t.linkedGroup}</label>
+            <label htmlFor={`${fid}-group`} className={labelCls}>{t.linkedGroup}</label>
             <Select
+              id={`${fid}-group`}
               value={groupId}
               onChange={(v) => {
                 setGroupId(v);

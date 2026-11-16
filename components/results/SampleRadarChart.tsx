@@ -363,7 +363,8 @@ export function SampleRadarChart({
                   fill={isPartial ? "none" : colors.mine}
                   fillOpacity={isPartial ? 0 : 0.2}
                   dot={isPartial ? (p: RadarDotProps) => renderRadarDot("mine", colors.mine, p) : false}
-                  isAnimationActive
+                  // "auto": animates unless the OS asks for reduced motion (G-01).
+                  isAnimationActive="auto"
                   animationDuration={600}
                   animationEasing="ease-out"
                 />
@@ -377,7 +378,8 @@ export function SampleRadarChart({
                   fillOpacity={communityHasGaps ? 0 : 0.1}
                   strokeDasharray="5 3"
                   dot={communityHasGaps ? (p: RadarDotProps) => renderRadarDot("community", colors.community, p) : false}
-                  isAnimationActive
+                  // "auto": animates unless the OS asks for reduced motion (G-01).
+                  isAnimationActive="auto"
                   animationDuration={600}
                   animationEasing="ease-out"
                 />

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { scrollBehavior } from "@/lib/motion";
 
 interface PhaseStepperProps<T extends string> {
   phases: readonly T[];
@@ -30,7 +31,7 @@ export function PhaseStepper<T extends string>({
 
   useEffect(() => {
     if (activeRef.current && scrollRef.current) {
-      activeRef.current.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+      activeRef.current.scrollIntoView({ behavior: scrollBehavior(), block: "nearest", inline: "center" });
     }
   }, [currentPhase]);
 

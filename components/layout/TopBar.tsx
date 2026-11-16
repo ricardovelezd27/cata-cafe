@@ -2,6 +2,7 @@
 
 import { LocaleSwitchLink } from "@/components/layout/LocaleSwitchLink";
 import type { NavTranslations } from "@/components/layout/navItems";
+import { useShellCovered } from "@/hooks/useShellLayer";
 
 export default function TopBar({
   locale,
@@ -11,9 +12,14 @@ export default function TopBar({
   translations: NavTranslations;
 }) {
   const otherLocale = locale === "es" ? "en" : "es";
+  // Inert while the full-screen cupping layer covers the shell (H-03).
+  const covered = useShellCovered();
 
   return (
-    <header className="h-14 flex items-center justify-between px-4 bg-surface border-b border-outline-variant shrink-0 lg:hidden">
+    <header
+      inert={covered}
+      className="h-14 flex items-center justify-between px-4 bg-surface border-b border-outline-variant shrink-0 lg:hidden"
+    >
       <span className="font-display text-base text-primary-container leading-tight">
         {translations.brand.name}
       </span>

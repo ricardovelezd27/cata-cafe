@@ -14,7 +14,9 @@
     "groups": "Grupos",
     "insights": "Análisis",
     "switchAccount": "Cambiar de cuenta",
-    "warmup": "Movimiento sensorial"
+    "warmup": "Movimiento sensorial",
+    "skipToContent": "Saltar al contenido",
+    "mainNavLabel": "Navegación principal"
   },
   "common": {
     "scoreLegend": "79 es el punto neutro (ni alto ni bajo) · 100 es el máximo.",

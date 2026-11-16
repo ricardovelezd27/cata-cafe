@@ -8,8 +8,9 @@
    alone. -webkit-tap-highlight-color kills the mobile tap overlay that read as a 3rd state. */
 .pill { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: var(--radius-pill); border: 1.5px solid var(--pill-color); background: var(--pill-bg-soft); color: var(--pill-color); font-family: var(--font-ui); font-size: 13px; font-weight: 500; line-height: 1; white-space: nowrap; transition: transform var(--transition-fast); -webkit-tap-highlight-color: transparent; touch-action: manipulation; -webkit-user-select: none; user-select: none; }
 .pill:not(:disabled):active { transform: scale(0.94); }
-.pill:focus { outline: none; }
-.pill:focus-visible { outline: 2px solid var(--pill-color); outline-offset: 2px; }
+/* H-04: the app's one indicator, not the pill's own colour (a pale pill colour
+   was under 3 : 1 against the paper). */
+.pill:focus-visible { outline: 2px solid var(--color-primary-container); outline-offset: 2px; }
 .pill:disabled { cursor: not-allowed; opacity: 0.45; }
 .pill .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
 .selected { background: var(--pill-color) !important; border-color: transparent !important; color: var(--pill-text, var(--color-bg)) !important; }

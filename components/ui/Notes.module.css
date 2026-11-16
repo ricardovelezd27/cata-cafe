@@ -20,8 +20,8 @@
   opacity: 0.7;
 }
 
+/* H-04: the focus indicator is the app's one outline (app/globals.css);
+   the field only darkens its border, no faint ring of its own. */
 .field:focus {
-  outline: none;
   border-color: var(--color-green-dark);
-  box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-green-light) 30%, transparent);
 }
