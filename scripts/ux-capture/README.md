@@ -108,6 +108,22 @@ name out of the list because its words also appear in the app's copy** ("Ana", a
 occurrences and let the boundary rule handle the rest, then check the image. Anything that shows a real person, session, coffee,
 farm or producer name must not leave your machine.
 
+## Viewing a real session (the read-only super-admin lens)
+
+Some packages need real data: a closed session with several cuppers, a coffee with many sessions. The owner has approved this
+way of working for packages that need it, **with every name replaced before an image is kept**:
+
+1. Fill `scripts/ux-capture/local.json` (gitignored): `ids` with the real session / coffee / group ids and `redact` with every
+   person, session, coffee, farm and producer name that can appear on those screens. Capture a first time with `--no-shots` and read
+   `<out>/<plan>/measure/*.json` for names you missed before taking images.
+2. The lens: in the **worktree's own** `.env.local` (never the main checkout's, never committed) set
+   `ANALYTICS_SUPER_ADMIN_EMAIL=master@cata.test`, and restart the dev server so it reads it. The test owner then sees every session
+   read-only (the "admin" states of the `owner` plan). **Restore the previous value afterwards** and restart again.
+3. Capture with `--plan owner=master@cata.test` as usual. The tool still aborts every write, so the lens cannot change anything.
+4. Keep `out/` on your machine. Quote numbers in the pull request, not images, unless you have looked at the image and it shows no real name.
+
+This is still production data: ask the owner before you use it for a new package, and open only the sessions the package needs.
+
 ## Known effects of the method
 
 - **The app shell scrolls inside a container**, so a "whole screen" image is made by growing the viewport by the hidden scroll height
