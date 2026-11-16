@@ -3,6 +3,7 @@ import { requireAppUser } from "@/lib/auth";
 import { referencesOf } from "@/lib/referenceRules";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { prisma } from "@/lib/prisma";
+import { toIsoOrNull } from "@/lib/safeDate";
 import { isSessionExpired } from "@/lib/sessionState";
 import { WaitingRoomClient } from "./WaitingRoomClient";
 import { DeadlineBanner } from "@/components/session/DeadlineBanner";
@@ -67,13 +68,14 @@ export default async function WaitingPage({
   const t = await getTranslations("waiting");
   const tw = await getTranslations("warmup");
   const tg = await getTranslations("group");
+  const closesAtIso = toIsoOrNull(session.closesAt, { where: "sessions.waiting", field: "closesAt", sessionId: session.id });
 
   return (
     <>
-    {session.closesAt && (
+    {closesAtIso && (
       <div className="mx-auto w-full max-w-2xl px-4 pt-4">
         <DeadlineBanner
-          closesAt={session.closesAt.toISOString()}
+          closesAt={closesAtIso}
           zone={session.closesAtZone}
           locale={locale}
           translations={{

@@ -2,6 +2,7 @@
 // unit-tested and reused from lib/sessionAuth.ts.
 
 import { dateInZone, endOfDayInZone, normalizeZone } from "@/lib/closeRules";
+import { isPlainIsoDate } from "@/lib/safeDate";
 
 type ExpiryRow = { status: string; closesAt?: Date | string | null };
 
@@ -200,7 +201,15 @@ export function planClosesAtChange(
   }
   // Unchanged value -> no-op, so saving an unrelated field never trips over a
   // stored date that has since slipped into the past.
-  if (session.closesAt && input === dateInZone(session.closesAt, session.closesAtZone)) return null;
+  // A stored date that cannot be read back (audit J-01: a year-20228 typo from
+  // before the shape check) is never "unchanged": any valid day replaces it.
+  if (
+    session.closesAt &&
+    isPlainIsoDate(session.closesAt) &&
+    input === dateInZone(session.closesAt, session.closesAtZone)
+  ) {
+    return null;
+  }
   const useZone = normalizeZone(zone);
   let d: Date;
   try {

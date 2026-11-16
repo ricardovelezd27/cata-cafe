@@ -1,10 +1,12 @@
-import { computeSubmitProgress, seedSubmitMap } from "@/lib/submitProgress";
+import { computeSubmitProgress, seedSubmitMap } from "@/lib/submitProgress";
+
 import { referenceExplanation } from "@/lib/referenceRules";
 import { notFound, redirect } from "next/navigation";
 import { requireAppUser } from "@/lib/auth";
 import { warmupPlayerStrings } from "@/components/warmup/playerStrings";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { prisma } from "@/lib/prisma";
+import { toIsoOrNull } from "@/lib/safeDate";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { EmptyState, ButtonLink } from "@/components/ui";
 import { isSessionExpired } from "@/lib/sessionState";
@@ -220,7 +222,7 @@ export default async function CupPage({
         date: session.date.toISOString(),
         referenceSampleId: session.referenceSampleId,
         referenceMode: session.referenceMode,
-        closesAt: session.closesAt?.toISOString() ?? null,
+        closesAt: toIsoOrNull(session.closesAt, { where: "sessions.cup", field: "closesAt", sessionId: session.id }),
         closesAtZone: session.closesAtZone,
         samples: session.samples.map((s) => {
           const ev = s.evaluations[0];

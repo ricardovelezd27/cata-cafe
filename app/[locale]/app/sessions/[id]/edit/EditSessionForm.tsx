@@ -15,7 +15,8 @@ import { CoffeePicker, type UsableCoffee } from "@/components/coffees/CoffeePick
 import { WARMUP_EXERCISES, lw, type WarmupId } from "@/lib/warmup/exercises";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useActionFeedback } from "@/components/ui/Toast";
-import { browserZone, dateInZone } from "@/lib/closeRules";
+import { browserZone, dateInZone, LAST_CLOSING_DAY } from "@/lib/closeRules";
+import { MAX_DATE_INPUT } from "@/lib/safeDate";
 import { planRemoveActive, referenceExplanation, shouldPinReference, type ReferenceMode } from "@/lib/referenceRules";
 
 export type EditSessionFormTranslations = {
@@ -446,6 +447,7 @@ export function EditSessionForm({
             type="date"
             className={inputCls}
             value={date}
+            max={MAX_DATE_INPUT}
             onChange={(e) => {
               setDate(e.target.value);
               clearSaved();
@@ -571,6 +573,7 @@ export function EditSessionForm({
               value={closesAt}
               suppressHydrationWarning
               min={todayMin}
+              max={LAST_CLOSING_DAY}
               disabled={closed}
               onChange={(e) => {
                 setClosesAt(e.target.value);

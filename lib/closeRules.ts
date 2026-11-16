@@ -5,6 +5,7 @@
 
 import { isEvaluationComplete as isScoreComplete } from "@/lib/evaluationState";
 import type { SessionFormat } from "@/lib/constants";
+import { isPlainIsoDate } from "@/lib/safeDate";
 
 // ─── Draft policy at close (Kim C1) ──────────────────────────────────────────
 
@@ -103,6 +104,23 @@ export function normalizeZone(zone: unknown): string | null {
 
 const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+/** True for a `YYYY-MM-DD` string that names a day that exists: four-digit
+ *  year, month 01..12, a day the month has. `new Date("2026-02-31T…Z")` rolls
+ *  over to March 3 instead of failing, so the parsed day is compared back
+ *  with the string. A five-digit year ("20228-08-25", audit J-01) fails the
+ *  shape check. */
+export function isCalendarDay(value: unknown): value is string {
+  if (typeof value !== "string" || !DATE_ONLY_RE.test(value)) return false;
+  const d = new Date(`${value}T00:00:00.000Z`);
+  return isPlainIsoDate(d) && d.toISOString().slice(0, 10) === value;
+}
+
+/** The last day a closing date may name (the `max` of the date inputs). The
+ *  end-of-day search below reads the NEXT day, and the day after 9999-12-31
+ *  is in the year 10000, which has no plain ISO form; the end of 9999-12-31
+ *  west of UTC would also fall in the year 10000. */
+export const LAST_CLOSING_DAY = "9999-12-30";
+
 const DTF_CACHE = new Map<string, Intl.DateTimeFormat>();
 
 function partsInZone(ms: number, zone: string): { y: number; m: number; d: number; asUtc: number } {
@@ -135,12 +153,19 @@ function offsetMs(ms: number, zone: string): number {
 
 /** The instant that is 23:59:59.999 on calendar day `value` (YYYY-MM-DD) in
  *  `zone`. A null zone is UTC (legacy rows). Throws Error("invalid_input") on
- *  a malformed date or an unknown zone. Handles daylight-saving changes by
- *  re-reading the offset at the candidate instant. */
+ *  a malformed date, a day that does not exist, a year that is not four
+ *  digits, a day after LAST_CLOSING_DAY or an unknown zone. Handles
+ *  daylight-saving changes by re-reading the offset at the candidate instant. */
 export function endOfDayInZone(value: unknown, zone: string | null | undefined): Date {
-  if (typeof value !== "string" || !DATE_ONLY_RE.test(value)) throw new Error("invalid_input");
+  if (!isCalendarDay(value) || value > LAST_CLOSING_DAY) throw new Error("invalid_input");
+  const end = endOfDayInZoneUnchecked(value, zone);
+  // Belt and braces: what is stored must read back as a plain ISO date.
+  if (!isPlainIsoDate(end)) throw new Error("invalid_input");
+  return end;
+}
+
+function endOfDayInZoneUnchecked(value: string, zone: string | null | undefined): Date {
   const utcGuess = new Date(`${value}T23:59:59.999Z`).getTime();
-  if (Number.isNaN(utcGuess)) throw new Error("invalid_input");
   if (zone === null || zone === undefined || zone === "") return new Date(utcGuess);
   if (!isValidTimeZone(zone)) throw new Error("invalid_input");
   if (zone === "UTC") return new Date(utcGuess);

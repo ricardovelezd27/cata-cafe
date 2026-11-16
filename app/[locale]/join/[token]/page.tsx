@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { toIsoOrNull } from "@/lib/safeDate";
 import { GuestJoinForm } from "@/components/join/GuestJoinForm";
 import { evaluateJoin, joinScreenFor } from "@/lib/joinRules";
 import { GuestIdentityChoice } from "@/components/join/GuestIdentityChoice";
@@ -85,7 +86,7 @@ export default async function JoinPage({
   // F-grupal-asincrona-3 (S8-05): the closing date is visible before committing to join.
   const deadline = invite ? (
     <DeadlineBanner
-      closesAt={invite.session.closesAt?.toISOString() ?? null}
+      closesAt={toIsoOrNull(invite.session.closesAt, { where: "join.page", field: "closesAt", sessionId: invite.session.id })}
       zone={invite.session.closesAtZone}
       locale={locale}
       translations={{
