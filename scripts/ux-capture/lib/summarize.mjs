@@ -42,6 +42,8 @@ export function summarizeMeasure(m) {
     legacyClasses: Object.values(m.legacyClasses ?? {}).reduce((a, b) => a + b, 0),
     consoleErrors: (m.consoleErrors ?? []).length,
     blockedWrites: m.blockedWrites ?? 0,
+    hydrated: m.hydrated ?? null,
+    allowedSockets: m.allowedSockets ?? 0,
     blockedSockets: m.blockedSockets ?? 0,
   };
 }
@@ -49,6 +51,7 @@ export function summarizeMeasure(m) {
 /** The numbers a comparison puts side by side (the rest of the summary is text). */
 export const COMPARED_COUNTS = [
   "docHeight",
+  "hydrated",
   "h1Count",
   "bodyTextPx",
   "smallestTextPx",

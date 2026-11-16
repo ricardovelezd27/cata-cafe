@@ -4,9 +4,10 @@
  *
  *   1. it refuses to run against anything but a loopback host;
  *   2. it aborts every request that is not GET / HEAD / OPTIONS (a server action, a form post
- *      and a Supabase write are all POST / PATCH / PUT / DELETE), and it allows NO WebSocket at all
- *      (Playwright's `route` does not see socket traffic, and a Supabase Realtime socket can send
- *      broadcast and presence messages with the signed-in user's token);
+ *      and a Supabase write are all POST / PATCH / PUT / DELETE), and it closes every WebSocket
+ *      except the dev server's own hot-reload socket (Playwright's `route` does not see socket
+ *      traffic, and a Supabase Realtime socket can send broadcast and presence messages with the
+ *      signed-in user's token);
  *   3. it signs in only through the dev-only GET route, only for the three seeded test addresses;
  *   4. a plan can only name a path on that host: it can never move the browser to another one.
  *
@@ -34,17 +35,46 @@ export function isReadOnlyMethod(method) {
   return READ_ONLY_METHODS.includes(String(method).toUpperCase());
 }
 
+/** The path prefix of the dev server's own sockets (hot reload): `/_next/webpack-hmr`. */
+export const ALLOWED_SOCKET_PATH_PREFIX = "/_next/";
+
 /**
- * No WebSocket is allowed to connect: not the Supabase Realtime sockets of the cup, waiting and
- * results pages, and not the dev server's own hot-reload socket (a capture needs neither). The
- * browser context closes each one the moment the page opens it, without connecting to any server.
- * Pages that listen to Realtime then show their "live updates down" state: the same on both sides
- * of a before / after, so a comparison stays valid.
- * @param {unknown} url the socket's URL (every one is refused; kept so the rule can be narrowed with a test)
+ * Which WebSockets the browser context closes. The answer is "all, except one kind":
+ *
+ *   allowed = a socket to the tool's OWN base (same host AND port as `--base`, `ws:` for `http:`,
+ *             `wss:` for `https:`, no userinfo) whose path is under `/_next/`.
+ *
+ * That is the Next dev server's hot-reload socket. A page does not hydrate while it is closed (Next 16
+ * dev), and a capture of server HTML alone cannot see anything client-side (an inert shell, a hydrated
+ * control, a client-rendered state). It carries hot-reload messages only and reaches no database.
+ * Every other socket is closed without connecting to any server and counted: Supabase Realtime (it can
+ * send broadcast and presence messages with the user's token), any other host, the same host on
+ * another port, any other path. Playwright's `route` does not see socket traffic, so this is the only gate.
+ *
+ * Fails closed: anything that does not parse is blocked. The path must be exactly what the URL parser
+ * keeps (a `..` segment, even percent-encoded, is resolved by the parser and so leaves `/_next/`) and
+ * may hold only letters, digits and `. _ - /`, so no encoded slash or backslash can be read differently
+ * by the server.
+ * @param {unknown} url the socket's URL
+ * @param {string} origin the tool's base origin, already checked by assertLocalBase
+ * @returns {boolean} true = close it
  */
-export function shouldBlockWebSocket(url) {
-  void url;
-  return true;
+export function shouldBlockWebSocket(url, origin) {
+  try {
+    const socket = new URL(String(url));
+    const base = new URL(String(origin));
+    const expected = base.protocol === "https:" ? "wss:" : base.protocol === "http:" ? "ws:" : null;
+    if (!expected || socket.protocol !== expected) return true;
+    if (socket.username || socket.password) return true;
+    if (socket.host !== base.host) return true; // host AND port
+    const path = socket.pathname;
+    if (!path.startsWith(ALLOWED_SOCKET_PATH_PREFIX)) return true;
+    if (!/^\/_next\/[A-Za-z0-9._\-/]*$/.test(path)) return true;
+    if (path.split("/").some((segment) => segment === ".." || segment === ".")) return true;
+    return false;
+  } catch {
+    return true;
+  }
 }
 
 /** @param {unknown} hostname */
