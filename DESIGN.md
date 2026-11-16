@@ -46,7 +46,7 @@ In this order. When two pull against each other, the earlier one wins.
 | The person who sets up and runs a session | organizador | organizer | maestro, dueño; master, owner, host |
 | A person who cups | catador | cupper | |
 | A person in a tasting group | integrante | member | |
-| The event | sesión | session | catación |
+| The event | sesión | session | |
 | The act of cupping | cata | cupping | |
 | What is cupped | muestra | sample | |
 | The number | puntaje | score | puntuación, calificación |
