@@ -452,7 +452,7 @@ export function FlavorPicker({
             placeholder={t.search}
             aria-label={t.search}
             autoComplete="off"
-            className="w-full rounded-pill border-[1.5px] border-brown-light/60 bg-bg py-1.5 pl-9 pr-3 text-[13px] text-brown-dark placeholder:text-brown-mid focus:border-green-mid focus:outline-none"
+            className="w-full rounded-pill border-[1.5px] border-brown-light/60 bg-bg py-1.5 pl-9 pr-3 text-[13px] text-brown-dark placeholder:text-brown-mid focus:border-green-mid"
           />
         </div>
 

@@ -38,7 +38,7 @@ const TONES = {
     text: "text-on-surface",
     muted: "text-on-surface-variant",
     input:
-      "w-full rounded-input border border-outline-variant bg-surface-container-lowest px-3 py-2 text-center text-lg tracking-[0.4em] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container",
+     "w-full rounded-input border border-outline-variant bg-surface-container-lowest px-3 py-2 text-center text-lg tracking-[0.4em] text-on-surface",
     primary:
       "rounded-pill bg-primary-container px-5 min-h-[44px] text-sm font-medium text-on-primary hover:bg-primary disabled:opacity-60",
     link: "text-xs font-semibold text-primary underline disabled:no-underline disabled:opacity-60",
@@ -48,7 +48,7 @@ const TONES = {
     text: "text-surface",
     muted: "text-surface/70",
     input:
-      "w-full rounded-input border border-outline-variant bg-surface px-3 py-2 text-center text-lg tracking-[0.4em] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container",
+     "w-full rounded-input border border-outline-variant bg-surface px-3 py-2 text-center text-lg tracking-[0.4em] text-on-surface",
     primary:
       "rounded-pill bg-surface px-5 min-h-[44px] text-sm font-semibold text-primary hover:bg-primary-fixed disabled:opacity-60",
     link: "text-xs font-semibold text-surface underline disabled:no-underline disabled:opacity-60",

@@ -6,7 +6,7 @@ import { Select } from "@/components/ui/Select";
 import { useActionFeedback } from "@/components/ui/Toast";
 
 const inputCls =
-  "w-full border border-outline-variant rounded-input px-3 py-2 text-sm text-on-surface bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary-container/25 focus:border-primary-container transition-colors";
+  "w-full border border-outline-variant rounded-input px-3 py-2 text-sm text-on-surface bg-surface-container-lowest focus:border-primary-container transition-colors";
 const labelCls = "block text-xs text-on-surface-variant font-semibold uppercase tracking-wide mb-1";
 
 export function ProfileForm({

@@ -1091,3 +1091,80 @@ button { font-family: inherit; cursor: pointer; }
   .contour-path:nth-of-type(6) { animation-delay: 0.95s; }
 
 }
+
+/* ============================================================
+   Accessibility base (audit 2026-11-15, package T6)
+   ------------------------------------------------------------
+   The paper app only. Two grounds keep their own, tested rules
+   and are left out of both blocks below:
+   - the landing (the only page that paints `.stage-ground`: a dark
+     stage where a dark-green ring could not be seen, with its own
+     focus and reduced-motion handling);
+   - the warm-up player (`section[data-mode][data-phase]`, its own
+     focus rings in `--wu-fill` and a reduced-motion fade it keeps
+     on purpose; its figure is a rAF loop writing SVG attributes,
+     never CSS animation). `[data-dusk]` is that player's dark ground.
+   A browser without `:has()` drops the selector and keeps its own
+   default focus and motion: what it had before.
+   ============================================================ */
+
+/* H-04 — ONE focus indicator: a 2 px `primary-container` outline, 2 px
+   away from the control, on every control reached by keyboard (fields
+   match :focus-visible on a click too). In the base layer, so a control
+   can only lose it by an override; the per-component `outline-none` /
+   faint-ring overrides were removed. A CSS module that draws the same
+   2 px outline with an INSET offset (tabs and rows inside a scroller,
+   where an outer ring would be clipped) keeps its offset.
+   Programmatic focus targets (`tabindex="-1"`: the skip link's `<main>`,
+   dialog panels) are containers, not controls: no ring. */
+@layer base {
+  :where(:root:not(:has(.stage-ground))) :focus-visible:where(:not([tabindex="-1"], [data-dusk] *)) {
+    outline: 2px solid var(--color-primary-container);
+    outline-offset: 2px;
+  }
+}
+
+/* H-06 — "Saltar al contenido": the app shell's first Tab stop, off screen
+   until it has focus (components/layout/SkipLink.tsx). Its own class, not
+   `sr-only` + `focus:not-sr-only`: the unlayered `.sr-only` above would beat
+   the layered utility and the link would never show. Above the dialogs (200). */
+.skip-link {
+  position: fixed;
+  left: 12px;
+  top: 12px;
+  z-index: 300;
+  padding: 10px 16px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-container-lowest);
+  color: var(--color-primary-container);
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: var(--shadow-card-lg);
+  transform: translateY(calc(-100% - 24px));
+}
+.skip-link:focus {
+  transform: none;
+}
+
+/* G-01 — ONE reduced-motion reset: with `prefers-reduced-motion: reduce`
+   nothing in the paper app slides, pulses, bounces or scrolls smoothly.
+   Durations go to ~0 instead of `animation: none`, so an element that
+   reaches its final state through an animation (fill-mode both/forwards)
+   still ends there, and an `animationend` still fires (Radix exit
+   animations wait for it). JS smooth scrolling honours it through
+   `scrollBehavior()` (lib/motion.ts); charts through `useReducedMotion`. */
+@media (prefers-reduced-motion: reduce) {
+  :root:not(:has(.stage-ground)) {
+    scroll-behavior: auto !important;
+  }
+  :where(:root:not(:has(.stage-ground))) :where(:not(section[data-mode][data-phase], section[data-mode][data-phase] *)),
+  :where(:root:not(:has(.stage-ground))) :where(:not(section[data-mode][data-phase], section[data-mode][data-phase] *))::before,
+  :where(:root:not(:has(.stage-ground))) :where(:not(section[data-mode][data-phase], section[data-mode][data-phase] *))::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+  }
+}

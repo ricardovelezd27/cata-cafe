@@ -18,7 +18,7 @@ export type SamplePrepTranslations = {
 };
 
 const fieldCls =
-  "w-full min-h-[44px] border border-outline-variant rounded-input px-3.5 py-2.5 text-sm text-on-surface bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary-container/25 focus:border-primary-container transition-colors";
+  "w-full min-h-[44px] border border-outline-variant rounded-input px-3.5 py-2.5 text-sm text-on-surface bg-surface-container-lowest focus:border-primary-container transition-colors";
 const labelCls =
   "block text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant mb-1.5";
 

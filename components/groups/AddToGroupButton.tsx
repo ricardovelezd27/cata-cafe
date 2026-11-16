@@ -93,7 +93,7 @@ export function AddToGroupButton({
       <form onSubmit={handleCreateAndAdd} className="flex gap-2">
         <input
           autoFocus
-          className="flex-1 min-w-0 px-2.5 py-1.5 border border-outline-variant rounded-input text-xs bg-surface-container-lowest text-on-surface focus:outline-none focus:border-primary-container"
+          className="flex-1 min-w-0 px-2.5 py-1.5 border border-outline-variant rounded-input text-xs bg-surface-container-lowest text-on-surface focus:border-primary-container"
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           placeholder={t.namePlaceholder}
@@ -116,7 +116,7 @@ export function AddToGroupButton({
         value={selected}
         onChange={(e) => handleSelect(e.target.value)}
         disabled={pending}
-        className="w-full px-3 py-2 border border-outline-variant rounded-input text-sm bg-surface-container-lowest text-on-surface focus:outline-none focus:border-primary-container disabled:opacity-50"
+        className="w-full px-3 py-2 border border-outline-variant rounded-input text-sm bg-surface-container-lowest text-on-surface focus:border-primary-container disabled:opacity-50"
       >
         <option value="" disabled>
           {t.addToGroup}

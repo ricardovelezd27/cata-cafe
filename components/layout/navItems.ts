@@ -35,6 +35,10 @@ export interface NavTranslations {
     warmup: string;
     switchAccount: string;
     logout: string;
+    /** First Tab stop of the app shell (H-06). */
+    skipToContent: string;
+    /** aria-label of the sidebar and bottom `<nav>` (only one shows at a width). */
+    mainNavLabel: string;
   };
   brand: {
     name: string;

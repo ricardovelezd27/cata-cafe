@@ -14,7 +14,9 @@
     "groups": "Groups",
     "insights": "Insights",
     "switchAccount": "Switch account",
-    "warmup": "Sensory movement"
+    "warmup": "Sensory movement",
+    "skipToContent": "Skip to content",
+    "mainNavLabel": "Main navigation"
   },
   "common": {
     "scoreLegend": "79 is the neutral point (neither high nor low) · 100 is the maximum.",

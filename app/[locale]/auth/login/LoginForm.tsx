@@ -168,7 +168,7 @@ export function LoginForm({
             autoFocus={autoFocusEmail}
             aria-describedby={error ? "login-error" : undefined}
             aria-invalid={error ? true : undefined}
-            className="mt-1 w-full px-3 py-2 border border-[#D4C5A9] rounded-input text-sm bg-white text-brown-dark focus:outline-none focus:border-green-dark"
+            className="mt-1 w-full px-3 py-2 border border-[#D4C5A9] rounded-input text-sm bg-white text-brown-dark focus:border-green-dark"
           />
         </label>
         <button

@@ -128,7 +128,7 @@ export function PhysicalEvalForm({
             step={0.1}
             min={0}
             max={100}
-            className="w-24 px-3 py-2 border border-brown-light rounded-sm text-sm bg-cream text-brown-dark text-center font-mono tabular-nums focus:outline-none focus:border-green-dark focus:ring-2 focus:ring-green-light/40"
+            className="w-24 px-3 py-2 border border-brown-light rounded-sm text-sm bg-cream text-brown-dark text-center font-mono tabular-nums focus:border-green-dark"
           />
           <span className="text-sm text-brown-mid">%</span>
         </div>
@@ -167,7 +167,7 @@ export function PhysicalEvalForm({
                         placeholder="0"
                         step={0.1}
                         min={0}
-                        className="w-16 py-1 px-2 border border-brown-light rounded-sm text-xs text-center bg-cream text-brown-dark font-mono tabular-nums focus:outline-none focus:border-green-dark"
+                        className="w-16 py-1 px-2 border border-brown-light rounded-sm text-xs text-center bg-cream text-brown-dark font-mono tabular-nums focus:border-green-dark"
                       />
                     </td>
                     <td className="py-1.5 px-2 text-right text-brown-mid font-mono tabular-nums">

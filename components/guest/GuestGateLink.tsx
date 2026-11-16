@@ -23,6 +23,7 @@ export function GuestGateLink({
   prefetch,
   title,
   "aria-label": ariaLabel,
+  "aria-current": ariaCurrent,
 }: {
   href: string;
   className?: string;
@@ -30,6 +31,7 @@ export function GuestGateLink({
   prefetch?: boolean;
   title?: string;
   "aria-label"?: string;
+  "aria-current"?: "page";
 }) {
   const { isGuest, openGate } = useGuestGate();
   const inner = stripLocale(href.split(/[?#]/)[0]);
@@ -42,6 +44,7 @@ export function GuestGateLink({
         className={className}
         title={title}
         aria-label={ariaLabel}
+        aria-current={ariaCurrent}
         onClick={() => openGate(href)}
       >
         {children}
@@ -50,7 +53,14 @@ export function GuestGateLink({
   }
 
   return (
-    <Link href={href} className={className} prefetch={prefetch} title={title} aria-label={ariaLabel}>
+    <Link
+      href={href}
+      className={className}
+      prefetch={prefetch}
+      title={title}
+      aria-label={ariaLabel}
+      aria-current={ariaCurrent}
+    >
       {children}
     </Link>
   );

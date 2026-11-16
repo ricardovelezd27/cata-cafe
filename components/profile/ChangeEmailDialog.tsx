@@ -88,7 +88,7 @@ export function ChangeEmailDialog({
                 maxLength={254}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-input border border-outline-variant bg-surface-container-lowest px-3 py-2 text-sm text-on-surface transition-colors focus:border-primary-container focus:outline-none focus:ring-2 focus:ring-primary-container/25"
+                className="w-full rounded-input border border-outline-variant bg-surface-container-lowest px-3 py-2 text-sm text-on-surface transition-colors focus:border-primary-container"
               />
             </div>
             <Button type="submit" disabled={pending || !email.trim()} aria-busy={pending}>

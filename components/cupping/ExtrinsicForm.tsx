@@ -47,7 +47,7 @@ function TextField({ id, value, placeholder, onChange }: TextFieldProps) {
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="w-full mb-2 px-3 py-1.5 border border-brown-light rounded-sm text-sm bg-cream text-brown-dark focus:outline-none focus:border-green-dark focus:ring-2 focus:ring-green-light/40"
+      className="w-full mb-2 px-3 py-1.5 border border-brown-light rounded-sm text-sm bg-cream text-brown-dark focus:border-green-dark"
     />
   );
 }

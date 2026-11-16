@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { LogOut, Languages, UserCog } from "lucide-react";
 import { SignOutButton } from "@/components/layout/SignOutButton";
 import { NAV_ITEMS, INSIGHTS_ITEM, isActive, type NavTranslations } from "@/components/layout/navItems";
+import { useShellCovered } from "@/hooks/useShellLayer";
 
 export default function Sidebar({
   locale,
@@ -19,16 +20,21 @@ export default function Sidebar({
   const pathname = usePathname();
   const navItems = showInsights ? [...NAV_ITEMS, INSIGHTS_ITEM] : NAV_ITEMS;
   const otherLocale = locale === "es" ? "en" : "es";
+  // Inert while the full-screen cupping layer covers the shell (H-03).
+  const covered = useShellCovered();
 
   return (
-    <aside className="hidden lg:flex flex-col w-60 shrink-0 bg-surface-container border-r border-outline-variant h-full">
+    <aside
+      inert={covered}
+      className="hidden lg:flex flex-col w-60 shrink-0 bg-surface-container border-r border-outline-variant h-full"
+    >
       <div className="h-14 flex items-center px-5 border-b border-outline-variant">
         <span className="font-display text-base text-primary-container leading-tight">
           {translations.brand.name}
         </span>
       </div>
 
-      <nav className="flex-1 py-3 overflow-y-auto">
+      <nav aria-label={translations.nav.mainNavLabel} className="flex-1 py-3 overflow-y-auto">
         {navItems.map(({ href, icon: Icon, i18nKey, exact, startsGroup }) => {
           const active = isActive(pathname, locale, href, exact);
           return (
@@ -38,6 +44,7 @@ export default function Sidebar({
               )}
               <GuestGateLink
                 href={`/${locale}${href}`}
+                aria-current={active ? "page" : undefined}
                 className={`flex items-center gap-3 px-5 py-2.5 text-sm transition-colors ${
                   active
                     ? "border-l-[3px] border-primary-container bg-primary-fixed text-primary-container font-semibold pl-[17px]"

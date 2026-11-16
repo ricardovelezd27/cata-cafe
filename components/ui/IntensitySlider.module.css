@@ -15,6 +15,10 @@
 /* Kept for keyboard focus & accessibility only. Pointer/touch are handled on
    .track so the native range can't snap-to-touch on first contact. */
 .input { position: absolute; inset: -10px 0; width: 100%; height: calc(100% + 20px); opacity: 0; margin: 0; padding: 0; pointer-events: none; touch-action: none; }
+/* H-04: the range input that holds keyboard focus is invisible (opacity 0),
+   so the focus indicator is drawn on what is seen, the thumb: the app's one
+   indicator, a 2 px primary-container outline 2 px away. */
+.track:has(.input:focus-visible) .thumb { outline: 2px solid var(--color-primary-container); outline-offset: 2px; }
 .empty .thumb { background: var(--color-cream); border-color: var(--color-brown-light); box-shadow: none; }
 .empty .thumb::after { background: var(--color-brown-light); }
 .locked .thumb { background: var(--color-green-dark); }

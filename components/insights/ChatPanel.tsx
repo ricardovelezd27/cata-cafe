@@ -7,6 +7,7 @@ import { ChatMessage } from "@/components/insights/ChatMessage";
 import { useInsightsChatStore } from "@/stores/insightsChatStore";
 import { serializeBlocksForHistory } from "@/lib/ai/chatTypes";
 import type { DimensionId, MeasureId } from "@/lib/analytics/types";
+import { scrollBehavior } from "@/lib/motion";
 
 // Orchestrator for the "ask the data" chat: header (title/subtitle + usage
 // counter + clear), scrollable message list with an empty state and example
@@ -90,7 +91,7 @@ export function ChatPanel({ locale, t }: ChatPanelProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    bottomRef.current?.scrollIntoView({ behavior: scrollBehavior(), block: "end" });
   }, [messages.length, pending]);
 
   async function handleSend(raw: string) {
@@ -274,7 +275,7 @@ export function ChatPanel({ locale, t }: ChatPanelProps) {
               placeholder={t.placeholder}
               disabled={pending || limitReached}
               rows={1}
-              className="flex-1 resize-none rounded-input border border-[#D4C5A9] bg-white px-3 py-2 text-sm text-brown-dark focus:outline-none focus:border-green-dark disabled:opacity-60 disabled:bg-cream"
+              className="flex-1 resize-none rounded-input border border-[#D4C5A9] bg-white px-3 py-2 text-sm text-brown-dark focus:border-green-dark disabled:opacity-60 disabled:bg-cream"
               style={{ maxHeight: MAX_TEXTAREA_HEIGHT }}
             />
             <button

@@ -3,6 +3,7 @@
 import { GuestGateLink } from "@/components/guest/GuestGateLink";
 import { usePathname } from "next/navigation";
 import { NAV_ITEMS, INSIGHTS_ITEM, isActive, type NavTranslations } from "@/components/layout/navItems";
+import { useShellCovered } from "@/hooks/useShellLayer";
 
 export default function BottomNav({
   locale,
@@ -17,9 +18,13 @@ export default function BottomNav({
 }) {
   const pathname = usePathname();
   const tabs = (showInsights ? [...NAV_ITEMS, INSIGHTS_ITEM] : NAV_ITEMS).filter((i) => !i.hideOnMobile);
+  // Inert while the full-screen cupping layer covers the shell (H-03).
+  const covered = useShellCovered();
 
   return (
     <nav
+      aria-label={translations.nav.mainNavLabel}
+      inert={covered}
       className={`fixed bottom-0 left-0 right-0 bg-surface-container-lowest pb-safe ${className}`}
     >
       {/* border-t lives on the fixed-height row (border-box) so the nav's
@@ -31,6 +36,7 @@ export default function BottomNav({
             <GuestGateLink
               key={href}
               href={`/${locale}${href}`}
+              aria-current={active ? "page" : undefined}
               className={`flex-1 flex flex-col items-center justify-center gap-1 text-xs transition-colors ${
                 active ? "text-primary-container" : "text-on-surface-variant"
               }`}

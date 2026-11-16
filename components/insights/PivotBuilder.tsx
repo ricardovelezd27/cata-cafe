@@ -72,9 +72,9 @@ type View = "table" | "grouped" | "stacked" | "line";
 const MAX_FILTER_ENTRIES = 5;
 
 const selectClass =
-  "w-full rounded-input border border-[#E8E0D0] bg-white px-3 py-2 text-sm text-brown-dark focus:outline-none focus:border-[#3D5A3E]";
+  "w-full rounded-input border border-[#E8E0D0] bg-white px-3 py-2 text-sm text-brown-dark focus:border-[#3D5A3E]";
 const pickerSelectClass =
-  "rounded-input border border-[#E8E0D0] bg-white px-2 py-1 text-xs text-brown-dark focus:outline-none focus:border-[#3D5A3E]";
+  "rounded-input border border-[#E8E0D0] bg-white px-2 py-1 text-xs text-brown-dark focus:border-[#3D5A3E]";
 const addFieldButtonClass =
   "inline-flex items-center gap-1 rounded-pill border border-dashed border-[#E8E0D0] px-3 py-1 text-xs font-semibold text-[#3D5A3E] hover:border-[#3D5A3E] hover:bg-cream transition-colors";
 const shelfLabelClass = "text-xs font-semibold text-brown-mid uppercase tracking-wide";

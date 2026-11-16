@@ -184,7 +184,7 @@ export function DeleteAccountDialog({
                 value={typed}
                 onChange={(e) => setTyped(e.target.value)}
                 disabled={pending}
-                className="w-full rounded-input border border-outline-variant bg-surface-container-lowest px-3 py-2 text-sm text-on-surface transition-colors focus:border-error focus:outline-none focus:ring-2 focus:ring-error/25"
+                className="w-full rounded-input border border-outline-variant bg-surface-container-lowest px-3 py-2 text-sm text-on-surface transition-colors focus:border-error"
               />
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">

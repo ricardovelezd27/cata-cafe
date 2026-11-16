@@ -84,7 +84,7 @@ export function CoffeePicker({ open, onOpenChange, coffees, onSelect, translatio
         placeholder={t.searchPlaceholder}
         aria-label={t.searchPlaceholder}
         autoComplete="off"
-        className="w-full rounded-pill border-[1.5px] border-outline-variant/60 bg-surface px-4 py-2 text-sm text-on-surface placeholder:text-on-surface-variant focus:border-green-mid focus:outline-none"
+        className="w-full rounded-pill border-[1.5px] border-outline-variant/60 bg-surface px-4 py-2 text-sm text-on-surface placeholder:text-on-surface-variant focus:border-green-mid"
       />
 
       <div className="mt-3 max-h-[50vh] overflow-y-auto">
