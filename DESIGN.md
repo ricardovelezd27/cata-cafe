@@ -1,8 +1,8 @@
 # Café Sensible — Design System
 
 > **Sensory Studio** — Warm Minimalist · Editorial Precision
-> Version 2026-11-14. This is the design system that governs the product: the public landing page and the app.
-> The landing page was rebuilt against it in November 2026. The app has not been checked against it yet; that is the job of the UI/UX audit (`docs/design-system/AUDIT-RUBRIC.md`).
+> Version 2026-11-16. This is the design system that governs the product: the public landing page and the app.
+> The landing page was rebuilt against it in November 2026. The app was audited against it on 2026-11-15 (`docs/audits/app-ui-ux-2026-11-15/`); the work packages that bring it into line are in that folder's `PLAN.md`, and the owner's decisions in its `DECISIONS.md`.
 
 ---
 
@@ -12,7 +12,8 @@
 2. **Tokens live in one place.** Colours, type, radii and shadows are CSS custom properties in `app/globals.css` (`:root`, mirrored in `@theme inline` so Tailwind has utilities for them). This document describes them; the CSS is what runs. No hex, pixel radius or shadow literal in a component.
 3. **Where the document and the code disagree, say so; do not guess.** Parts of the app predate parts of this document. The known gaps are listed in "Known drift" in the audit rubric. A rule marked **(rule)** binds new work today; a description of an existing component is a record of how it is built, and may itself be a finding.
 4. **Order of authority.** `PRODUCT.md` (what the product is and its standing rules) comes first, then this file, then a component's own comment. A product rule beats a visual preference: "a score is a number only" is a product rule, so no palette decision can colour a score.
-5. **One section, one owner of a pattern.** Every pattern here names the component that implements it. Use the component; do not re-create the pattern by hand.
+5. **One section, one owner of a pattern.** Every pattern here names the component that implements it. Use the component; do not re-create the pattern by hand. Where the component is still to be built, this document states its contract and says so; the contract is the rule until it exists.
+6. **Base element styles live in `@layer base`.** A rule on a bare element (`h1`, `button`, `a`) or on a shared class written outside Tailwind's layers outranks every utility: one such rule on the headings once cancelled the colour and weight classes of every title in the app. Base styles are written inside `@layer base` in `app/globals.css`, so a class on the element always wins. (The test that enforces it comes with the package that moves the heading rule, T2 in the audit's plan.)
 
 ---
 
@@ -34,7 +35,33 @@ In this order. When two pull against each other, the earlier one wins.
 
 7. **Craft without decoration.** The earthy palette and the serif reference the tactile heritage of SCA paper forms. Richness comes from type, colour and real material (real sessions, the real protocol), not from ornament. Illustration is allowed where it explains (rule 6); texture is allowed only as the grain on a photo.
 
-8. **Spanish first, always.** Language, labels and units are rooted in Latin American specialty coffee culture. English mirrors the Spanish structure exactly.
+8. **Spanish first, always.** Language, labels and units are rooted in Latin American specialty coffee culture. English mirrors the Spanish structure exactly. One word for one thing, in the voice below.
+
+### Spanish first: the words and the voice (rule)
+
+**The glossary.** One word for each thing, in both languages. A synonym in the right-hand column is a finding. (The test that checks the message files against this table comes with package P4 of the audit's plan. The coffee words wait for Kim's confirmation.)
+
+| Thing | Español | English | Not |
+|---|---|---|---|
+| The person who sets up and runs a session | organizador | organizer | maestro, dueño; master, owner, host |
+| A person who cups | catador | cupper | |
+| A person in a tasting group | integrante | member | |
+| The event | sesión | session | catación |
+| The act of cupping | cata | cupping | |
+| What is cupped | muestra | sample | |
+| The number | puntaje | score | puntuación, calificación |
+| Leaving the account | Salir | Sign out | "Cerrar sesión" (it would also mean closing a session) |
+
+**The copy rules.**
+
+- Sentence case for titles, buttons and labels ("Siguiente muestra", not "Siguiente Muestra").
+- No em dash in prose. An empty value is an en dash or the words "sin dato".
+- The app speaks with tú; the legal pages keep usted.
+- A neutral greeting ("Hola, {nombre}"), never a gendered one ("Bienvenido").
+- No emoji, in copy or as a picture.
+- A Spanish word where one exists ("lista", not "roster"). "Insights" and "benchmark" are product names and stay.
+
+**Two ways to start a cupping.** Both stay, and each says what it is for. "Catar ahora" is the fast way, mainly for one person, and it comes first with that name. "Nueva sesión" sets up a cupping session and is meant for groups. Neither is offered under the other's name, and a screen offers each at most once (see "An ask appears once").
 
 ---
 
@@ -92,11 +119,11 @@ All tokens are CSS custom properties in `app/globals.css`, exposed as Tailwind u
 | `--color-warning-container` | `#f6e388` | `bg-warning-container` | Deviation/consensus warning signal — NOT for quality scoring or accents |
 | `--color-on-warning-container` | `#574600` | `text-on-warning-container` | Text on warning-container |
 
-> **Terracotta rule:** `secondary` (#9d4326) replaces amber as the accent. It signals energy and emphasis, not quality scoring. For quality signals, use green (`primary-container`). The owner CVA deviation matrix (`OwnerParticipantSection`) is a consensus signal, not a quality score — it uses `primary-fixed` (within 1 SD), `warning-container` (> 1 SD), and `error-container` (≥ 2 SD).
+> **Terracotta rule:** `secondary` (#9d4326) replaces amber as the accent. It signals energy and emphasis, never quality, and it is not a notice colour (a notice is `Notice`, under "Component Patterns"). No colour signals quality: see "No quality bands". The owner CVA deviation matrix (`OwnerParticipantSection`) is a consensus signal, not a quality score: it uses `primary-fixed` (within 1 SD), `warning-container` (> 1 SD), and `error-container` (≥ 2 SD).
 
 ### Backward-Compat Aliases (legacy code)
 
-These keep existing Tailwind utility classes working. Prefer MD3 names in new code.
+These keep existing Tailwind utility classes working. Never use them in new code; they are renamed to the role names and the block is deleted (package T3 of the audit's plan). `green-mid` is the one alias with no role of its own: it keeps its value under a role name, so the rename changes nothing on screen.
 
 | Old class | Maps to |
 |---|---|
@@ -116,19 +143,25 @@ These keep existing Tailwind utility classes working. Prefer MD3 names in new co
 
 A score is never coloured or named by how good it is. The band table that stood here (green from 85, terracotta from 75, red below) was retired with the S10 product rules; `ScorePill` is neutral and the band helpers were deleted. The only legend is the two anchors: 79 is the neutral point and 100 is the maximum.
 
+- **A score's value is always `on-surface`.** The number itself is ink, wherever it stands: a stat card, a ranking, a table cell, a pill. Never terracotta to single it out, never green.
+- **A difference is never coloured by its direction.** A Δ (from the group, from the reference, between two of one's own evaluations) is ink with its sign: "+1.25", "−0.50". Above is not green, below is not terracotta or red.
+- **A selected rating has one colour whatever its value.** On the 1 to 9 scale the selected bubble is the same at 1, 5 and 9. This rests on a guess about Kim's answer and waits for her confirmation (`TODO(kim-validar:...)` where it is built).
+- **The first of the ranking is named, not crowned.** It is "Primera del ranking", in ink, with no colour, badge or word of quality ("mejor", "ganadora").
+- **An alignment is one neutral bar.** How close a cupper is to the group is a length on one neutral track, never a traffic light.
+
 Colour may still say three other things about a number, none of them quality:
 
 | Meaning | Tokens | Example |
 |---|---|---|
 | **Which series it is** | `primary` for one's own, `secondary` / `secondary-container` for the group | The two scores on the landing's score card; group markers on a bar |
-| **How far from the group** | `primary-fixed` (within 1 SD), `warning-container` (over 1 SD), `error-container` (2 SD or more) | The owner's deviation matrix |
+| **How far from the group** | `primary-fixed` (within 1 SD), `warning-container` (over 1 SD), `error-container` (2 SD or more) | The owner's deviation matrix (the cell also carries a marker: colour is never alone) |
 | **A defect or an error** | `error`, `error-container` | A defective cup, a failed save |
 
-Anything else that tints a rating by its value is a finding for the audit (see `AffectiveBubbles` under "Component Patterns").
+Anything else that tints a number or a rating by its value is a finding.
 
 ### Flavor Family Colors
 
-Used only in `CATAPills` and flavor-family labels. Do not use elsewhere.
+**(rule)** A family colour marks a family with a shape: a dot, a bar, an arc of the wheel, a ring. It is never the colour of text and never the background of text. Used as text these tones measure from about 2 : 1 to 4.1 : 1, all under the 4.5 : 1 that body text needs, so a family's name is ink beside its coloured dot, and a selected flavour pill is a neutral pill with a coloured dot.
 
 | Family | Hex |
 |---|---|
@@ -141,6 +174,16 @@ Used only in `CATAPills` and flavor-family labels. Do not use elsewhere.
 | Especia | `#8b5e3c` |
 | Tostado | `#332f2a` |
 | Otro | `#5e5a55` |
+
+### Colours for people, processes and formats (rule)
+
+No palette outside the tokens. Three things that once had their own colours take them from the system:
+
+- **A session's format** (descriptiva, afectiva, combinada) is a neutral `Badge`: no colour per format.
+- **A person's avatar** is a neutral circle (`surface-container-high`) with the initials in ink, and a ring in one of the nine family tones. The tone is picked by a stable hash of the person's id, so a person keeps their tone everywhere.
+- **A process type** (in the coffees table and on a coffee's page) is its name in ink with a dot in one family tone, from one fixed map of process to tone kept in one place.
+
+Both follow the family-colour rule above: the tone is the ring or the dot, never the text or its background.
 
 ### Chart Color Exception (`components/results/chartColors.ts`)
 
@@ -168,22 +211,32 @@ Loaded via `next/font/google` in `app/layout.tsx` with variables `--font-display
 
 ### Type Scale
 
-| Role | Font | Size | Weight | Color | Notes |
+**The root font size is 14 px, not 16 px.** Every rem-based Tailwind size is therefore 87.5 % of its usual value: `text-3xl` is 26.25 px, `text-base` 14 px, `text-sm` 12.25 px, `h-11` 38.5 px, `max-w-6xl` 1008 px. Media-query breakpoints are not affected (`lg` is still 1024 px). **(rule)** A size that must be exact (a 44 px touch target, a hairline, a device frame) is written in pixels: `min-h-[44px]`, never `h-11`.
+
+**(rule) Paper has six named text roles, and the sizes below are what the screen paints at that root.** The list this table replaced (page 32, section 24, card 20 px) was never what the classes painted: they painted 26.25, 21 and 17.5 px, and those are the sizes the app keeps. Each role becomes one named size in `app/globals.css` (package T4 of the audit's plan); until a role has its name, the class in the table is the one that paints its value.
+
+| Role | Font | Painted size | Class at the 14 px root | Weight | Colour | Notes |
+|---|---|---|---|---|---|---|
+| Page title | Display | 26.25 px | `text-3xl` | 500 | `primary-container` | `leading-tight`; set by `PageHeader` |
+| Section heading | Display | 21 px | `text-2xl` | 500 | `primary-container` | set by the paper `SectionHeading` |
+| Card heading | Display | 17.5 px | `text-xl` | 500 | `on-surface` | |
+| Body text | UI | 14 px | `text-base` | 400 | `on-surface` | `leading-relaxed`; a label in body text is the same size at 600 |
+| Caption / meta | UI | 12.25 px | `text-sm` | 500 | `on-surface-variant` | `tabular-nums` |
+| Uppercase label | UI | 11 px | `text-[11px]` | 600 | `on-surface-variant` | `uppercase tracking-widest`; the floor |
+
+- **(rule) Nothing is under 11 px**, and the uppercase label is the only role at 11 px. A smaller size is a finding, however little the text.
+- **(rule) Data is never under 12 px.** A number, a count, a chart label, a table cell or an axis tick is at least the caption size.
+- **(rule) Page and section titles are green (`primary-container`); everything else is ink.** The colour is set in one place for each: `PageHeader` for the page title and the paper `SectionHeading` for a section's. A title never sets its own colour. (Ink titles are an idea for a future dark mode, not a rule.)
+
+Display sizes for a single number, outside the six roles:
+
+| Role | Font | Size | Weight | Colour | Notes |
 |---|---|---|---|---|---|
-| Page title | Display | 32px / `text-3xl` | 500 | `text-primary-container` | `font-display leading-tight` |
-| Section heading | Display | 24px / `text-2xl` | 500 | `text-primary-container` | |
-| Card heading | Display | 20px / `text-xl` | 500 | `text-on-surface` | |
-| Section label (uppercase) | UI | 11px | 600 | `text-on-surface-variant` | `uppercase tracking-widest` |
-| Body text | UI | 14px | 400 | `text-on-surface` | `leading-relaxed` |
-| Label | UI | 14px | 600 | `text-on-surface` | |
-| Caption / meta | UI | 12px | 500 | `text-on-surface-variant` | `tabular-nums` |
-| Score numeral | Display | 88px | 500 | `text-on-surface` | `tabular-nums leading-none` |
-| Score decimal | Display | 56px | 400 italic | `text-on-surface-variant` | `display-italic` |
-| Bubble numeral | Display | 19px | 600 | `text-on-surface` | `tabular-nums` |
+| Score numeral | Display | 88 px | 500 | `on-surface` | `tabular-nums leading-none` |
+| Score decimal | Display | 56 px | 400 italic | `on-surface-variant` | `display-italic` |
+| Bubble numeral | Display | 19 px | 600 | `on-surface` | `tabular-nums` |
 
-**The root font size is 14 px, not 16 px.** Every rem-based Tailwind size is therefore 87.5 % of its usual value: `text-3xl` is 26.25 px, `text-4xl` 31.5 px, `text-5xl` 42 px, `h-11` 38.5 px, `max-w-6xl` 1008 px. Media-query breakpoints are not affected (`lg` is still 1024 px). The pixel sizes in the table above are the design intent; the classes beside them paint smaller. Reconciling the two is an open item for the audit. **(rule)** A size that must be exact (a 44 px touch target, a hairline, a device frame) is written in pixels: `min-h-[44px]`, never `h-11`.
-
-**Hierarchy is a step, not a size (rule).** A title is one clear step (1.25 to 1.33 times) above anything inside the thing it titles, and never smaller than its own children. The stage's scale on a wide screen is 52.5 px (page), 42 px (section), 31.5 px (inside a section); see "How a section opens". Check the same relation on every paper screen: page title, section heading, card heading.
+**Hierarchy is a step, not a size (rule).** A title is one clear step (1.2 to 1.33 times) above anything inside the thing it titles, and never smaller than its own children. The stage's scale on a wide screen is 52.5 px (page), 42 px (section), 31.5 px (inside a section); see "How a section opens". Paper's is 26.25, 21 and 17.5 px, steps of 1.25 and 1.2. Check the same relation on every paper screen: page title, section heading, card heading.
 
 ### Rules
 - All numeric readouts use `font-variant-numeric: tabular-nums` (`.mono` class or `font-mono`)
@@ -193,9 +246,21 @@ Loaded via `next/font/google` in `app/layout.tsx` with variables `--font-display
 
 ---
 
+## Data display
+
+How a count, a chart or a group of numbers is shown, on paper, in a report and on the stage. Every rule here is **(rule)**.
+
+- **One counting unit per view, and it is named.** A view counts one thing: people ("personas", "catadores"), not mentions in one place and people in the next. The unit is written beside the number. A view that mixes a count of mentions with a count of people is a finding.
+- **Every count carries its n.** "7 de 8 personas", never "7" alone or a bar with no number. A share is printed with the count it comes from.
+- **A measure has one fixed scale.** A quality rating is drawn on 1 to 9, an intensity on 0 to 15, a score on its own fixed range: the same in every row and every card of a view, never fitted to the data, and a bar starts at the scale's lowest value. Two charts that look comparable are drawn on the same scale.
+- **Chart text is text.** Labels, ticks and legends are at least 12 px and 4.5 : 1, like any data ("Data is never under 12 px"). A chart that is scaled down to fit a phone until its words are smaller is the wrong chart for a phone.
+- Family colours mark the bars and dots of a chart, never its words ("Flavor Family Colors").
+
+---
+
 ## Spacing
 
-4px unit, 8px base grid. Generous outer margins create a "letterhead" feel.
+4px unit, 8px base grid.
 
 | Token | Value | Approx Tailwind |
 |---|---|---|
@@ -208,25 +273,43 @@ Loaded via `next/font/google` in `app/layout.tsx` with variables `--font-display
 | `--space-7` | 48px | `p-12` / `gap-12` |
 | `--space-8` | 64px | `p-16` / `gap-16` |
 
-Desktop outer margin: 48px. Mobile: 16px. Container max: 1280px.
+The `p-*` and `gap-*` classes beside the tokens are rem-based and paint 87.5 % of the token at the 14 px root (`p-4` is 14 px). A gap of the rhythm below is written in pixels.
 
-**Vertical rhythm has a ceiling.** The gaps between sections, and between a section's heading and its content, are fixed per device class and never set per section: see "Density: four rules learned on the landing" ("White space has a ceiling").
+**Vertical rhythm has a ceiling.** The gaps between sections, and between a section's heading and its content, are fixed per device class and never set per section (see "White space has a ceiling" under the stage's density rules).
+
+### The paper rhythm (rule)
+
+Paper is tighter than the stage (whose section padding is 40 / 48 / 56 px), which suits a screen where someone works. One scale for every paper screen, written in pixels as classes (`.paper-page`, `.paper-section`, `.paper-section-head`) and inside `Card`. No section sets its own padding. (The classes come with package P1 of the audit's plan.)
+
+| Gap | Paper: phone | Paper: from 768 px | Stage, for comparison (phone / from 768 px) |
+|---|---|---|---|
+| Page header to the first section | 24 px | 32 px | |
+| End of a section to the next section's heading | 32 px | 40 px | 80 px / 112 px |
+| A section's heading to its content | 12 px | 16 px | 24 px / 36 px |
+| Card padding | 16 px | 20 px | |
+| Row padding in a list | 12 x 16 px | 12 x 16 px | |
+| Gap between the cards of a set | 12 px | 16 px | |
+| Outer margin | 16 px | 24 px (32 px from 1280 px) | |
 
 ---
 
 ## Border Radius
 
-Contemporary, pill-influenced geometry. 16px cards soften the analytical rigor.
+Contemporary, pill-influenced geometry. Softly rounded cards soften the analytical rigor.
 
-| Token | Value | Tailwind | Use |
-|---|---|---|---|
-| `--radius-sm` | 8px | `rounded-sm` | Small interactive elements, icon containers |
-| `--radius-pill` | 9999px | `rounded-pill` | Buttons, tags, badges |
-| `--radius-card` | 16px | `rounded-card` | Cards, section containers, modal |
-| `--radius-input` | 16px | `rounded-input` | Inputs, selects |
-| `--radius-md` | 24px | `rounded-md` | Side panels (leading corner) |
-| `--radius-lg` | 32px | `rounded-lg` | Large containers |
-| `--radius-xl` | 48px | `rounded-xl` | Hero elements |
+The tokens are written in rem, so they paint 87.5 % of their nominal value at the 14 px root.
+
+| Token | Written | Paints | Tailwind | Use |
+|---|---|---|---|---|
+| `--radius-sm` | 0.5rem | 7 px | `rounded-sm` | Small interactive elements, icon containers |
+| `--radius-pill` | 9999px | full | `rounded-pill` | Buttons, tags, badges |
+| `--radius-card` | 1rem | 14 px | `rounded-card` | Cards, section containers, modal |
+| `--radius-input` | 1rem | 14 px | `rounded-input` | Inputs, selects |
+| `--radius-md` | 1.5rem | 21 px | `rounded-md` | Legacy: not for paper |
+| `--radius-lg` | 2rem | 28 px | `rounded-lg` | Legacy: not for paper |
+| `--radius-xl` | 3rem | 42 px | `rounded-xl` | Legacy: not for paper |
+
+**(rule)** Paper uses `rounded-card`, `rounded-input` and `rounded-pill` (through `Button`, `Card` and the kit). The legacy `rounded-md`, `rounded-lg` and `rounded-xl` paint 21, 28 and 42 px, not the 24, 32 and 48 px once listed here, and are not used on paper: a button, a banner or a dropdown that carries one is a finding.
 
 ---
 
@@ -242,7 +325,7 @@ No heavy drop shadows. Depth through tonal surface layering ("stacked paper" eff
 
 **Tonal layering:** interactive cards (`surface-container-lowest`) sit atop the page background (`surface`). Use 1px `border-outline-variant` to define card boundaries instead of shadow.
 
-**Glassmorphism:** reserved for side panels and overlays (Flavor Wheel selector, etc.). Use `backdrop-blur-xl` with `bg-surface-container-lowest/80` — not decorative. This is the rule for the **paper** mode (the app). The **stage** mode has its own glass surface, with its own rule: see the next chapter.
+**Glassmorphism:** reserved for side panels and overlays (Flavor Wheel selector, etc.), never over a form being filled in (see "Glass and grain on paper"). Use `backdrop-blur-xl` with `bg-surface-container-lowest/80`, never as decoration. This is the rule for the **paper** mode (the app). The **stage** mode has its own glass surface, with its own rule: see the next chapter.
 
 ---
 
@@ -330,7 +413,7 @@ White space is rhythm, not filler. Each kind of gap has a largest value; a gap a
 - **(rule) A pinned or sticky layout may not buy its effect with empty screens.** In "Cómo funciona" each step's text block was 78 % of the screen tall so the pile had room to animate: three short texts took 1,870 px of scroll. A block is now as tall as the effect needs and no taller (56 % of the screen: a screen travels 42 %, `stepsProgress.ts`), the first text starts level with the pinned object instead of floating in the middle of its block, and the last block is long enough for the effect to finish before the pin lets go. Measure at an 800 px tall window: a column held by a pin should not be more than about half empty.
 - **(rule) Stacked on a tablet means half the width is empty.** From 768 px a "picture plus text" block is two columns, even in the plain fallback.
 - **(rule) A card is as wide as its content needs.** A card that spans the whole width of a tablet to hold one number and one button is capped (the hero's offer card: 480 px until the two-column layout).
-- On paper the same idea applies with paper's own numbers: the audit measures the real gaps between a page header, its sections and its cards, and proposes one scale.
+- On paper the same idea applies with paper's own numbers: see "The paper rhythm" under "Spacing".
 
 #### Progress follows the direction of travel
 
@@ -357,6 +440,7 @@ White space is rhythm, not filler. Each kind of gap has a largest value; a gap a
 - **(rule) A second, different ask is visibly quieter.** The newsletter sign-up at the end of the page has no card, an outlined button and smaller type; the page still has one primary action.
 - **(rule) An ask that collects an address says, right under the field, who is responsible, what the address is for and how to stop**, and links the privacy policy. The policy must already say it (changing what is collected changes the policy in the same pull request).
 - In the app: a screen with two primary buttons, or the same action offered in two places of one screen, is a finding.
+- **(rule) A list's header carries its action; its empty state points to it.** A list page has its one action (create, add) in the `PageHeader`'s action slot. When the list is empty, `EmptyState` says what the list will hold and points to that action in words ("Crea tu primera sesión con el botón de arriba"); it does not repeat the button. A list that has no action of its own says why it is empty and where things come from.
 
 #### Two more from the second review (2026-11-15)
 
@@ -403,11 +487,11 @@ The landing was the place to find the rules; the app is where most of them apply
 | Lesson from the landing | On a paper screen it means |
 |---|---|
 | **One action per fold** | Each screen has one primary button (`Button variant="primary"`). Everything else is `secondary` or `ghost`. Two primaries in one view, or a primary that is not the screen's main job, is a finding. |
-| **One header for every section** | A screen's sections open the same way, with the same component, the same alignment and the same step in size. Per-screen heading styles are a finding. (Paper has `PageHeader` for the page; it has no shared section-heading component yet. That gap is the first thing the audit should size.) |
+| **One header for every section** | A screen's sections open the same way, with the same component, the same alignment and the same step in size. Per-screen heading styles are a finding. Paper has `PageHeader` for the page and the paper `SectionHeading` for a section (under "Component Patterns"). |
 | **Idea, then assertion** | A title says in plain words what the thing is; the line under it says what is true about it. A clever title that hides what the section is, is a finding. |
 | **One anatomy per kind of card** | All cards of one kind have the same parts in the same order (for a feature: name, explanation, drawing). A list where one card has an extra part, or lacks one, is a finding. |
 | **One gesture per kind of content** | On a given device, content of one kind is moved through one way: a sequence that must be read in order rides the vertical scroll, a set of optional equal cards is a sideways row with numbered steps. Two sets of the same kind moved through differently, a pinned set of optional cards, or a required step hidden in a sideways row is a finding. |
-| **Keep the reader's place** | Switching language, tab, filter or view must not send the person back to the top or lose what they were looking at (`components/landing/scrollAnchor.ts` is the model: "this section, this far through it"). |
+| **Keep the reader's place** | Switching language, tab, filter or view must not send the person back to the top or lose what they were looking at (`components/landing/scrollAnchor.ts` is the model: "this section, this far through it"). **(rule) View state lives in the URL**: the tab, the sample, the step, a list's filter, search, sort and page, and an open dialog (`?tab=`, `?sample=`, `?step=`, `?q=`; opening a dialog adds a history entry), so a reload, "back" and a language switch keep them. Preferences (sound, the table or chart view, the comparison basis) are not view state: they stay in the device's storage. |
 | **Hierarchy is a step** | A heading is never smaller than a heading inside its own section. |
 | **Numbers are printed** | No count-up, no animated score, no number that is briefly wrong. |
 | **Solid for what must be read or acted on** | The thing the person must read or act on sits on the most opaque, highest-contrast surface of the screen. |
@@ -446,6 +530,7 @@ The warm-up player (`components/warmup/WarmupPlayer.tsx`) is the first screen of
 ### Glass and grain on paper
 
 - Glass on paper stays what it was: overlays and side panels only (`bg-surface-container-lowest/80` with `backdrop-blur-xl`), never a card in the page flow. The stage's `.surface-glass` is not used on a cream ground: there is nothing behind it to show.
+- **(rule) A docked bar over a form does not blur.** The cupping footer, a form's sticky action bar and any bar fixed over content the person is filling in are opaque (`surface-container-lowest`), with a hairline (`outline-variant`) on the edge that meets the content. A blurred form behind a bar is still the form, half legible, moving under the controls.
 - Grain exists only on a photo of a real session (`.surface-photo`, through `PhotoSlot`). No textured cards, no noise backgrounds.
 
 ### Drawings in the app
@@ -525,27 +610,74 @@ things — never style one as another:
 - **`SegmentedControl`** — **switches how** the same data is rendered (a
   fixed, small set of views — e.g. exactly 2). Never wire it to a mutation.
 
+**(rule) A selection never looks like an action.** The selected state of a
+tab, a chip or a segment never uses the action fill (`primary-container`
+with `on-primary`): that fill means "press me to do something", and a
+screen whose selected tab is filled green has two primaries before anyone
+counts the buttons. A selected item is marked with a tone
+(`primary-fixed` or `surface-container-lowest` on its track), a weight, an
+underline or a check, and with `aria-selected` / `aria-pressed`.
+
+**(rule) One green primary per fold.** One `Button variant="primary"` in
+view at a time. A "next" button keeps one colour whatever comes next (the
+next sample or the next stage of the form): its label says where it goes
+("Siguiente: Aroma"), not its colour.
+
+- **`TextAction`**: a small action that reads as a link ("Ver todas",
+  "Editar muestra", "Omitir introducción", the language switch): the text
+  stays small, the box around it is 44 px painted. It replaces bare text
+  links and icon buttons under 44 px. (Built by package T7 of the audit's
+  plan; until then the rule is the 44 px box.)
+
 ### Input / Select
 
 ```html
 <input class="w-full border border-outline-variant rounded-input px-3 py-2 text-sm text-on-surface bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary-container/25 focus:border-primary-container transition-colors" />
 ```
 
-### Card
+As built, the field's focus is a 25 % ring (about 1.5 : 1), which is not a focus indicator: a field takes the one indicator under "Accessibility".
 
-```html
-<div class="bg-surface-container-lowest border border-outline-variant rounded-card shadow-card p-4">
+### `Card` and `Notice`
+
+A card is one component, `Card` (`components/ui/Card.tsx`, built by package P2 of the audit's plan). Until it exists a new card is not hand-written in a new recipe: it follows this contract, and the existing hand-written cards move to it.
+
 ```
++--------------------------------------------------+   rounded-card, 1 px outline-variant, no shadow
+| EYEBROW (optional)                [action slot]  |
+| Title                                            |
+| children                                         |
+| ------------------------------------------------ |   optional footer on a hairline
+| footer                                           |
++--------------------------------------------------+
+```
+
+- **Props:** `tone` (default `surface-container-lowest`; quiet `surface-container-low`; selected `primary-fixed`), `padding` (16 or 20 px, in pixels: the paper rhythm), `title`, `eyebrow`, `action`, `footer`, `interactive` (hover `surface-container-high`, a focus ring), `as`.
+- All cards of one kind have the same parts in the same order, and a card is as wide as its content needs: a stat card is capped at 240 px, in an auto-fill grid.
+
+**(rule) A notice is not a card.** A sentence that tells the person something about the screen (an admin lens, a pending save, a session that closed, a stale version) is a `Notice` (`components/ui/Notice.tsx`, same package), never a card and never a terracotta banner:
+
+```
+[icon]  One sentence that says what happened.            [one optional action]
+```
+
+- **Props:** `tone` (info `surface-container`, warning `warning-container`, error `error-container`), `icon`, `action`. Never terracotta: the accent is not a notice colour.
 
 ### Section Container
 
-```html
-<div class="bg-surface-container border border-outline-variant rounded-card p-4 mb-3">
-  <h3 class="font-display text-sm font-semibold text-primary-container uppercase tracking-widest">
-    Fragancia
-  </h3>
-</div>
+A tinted block that groups the controls of one part of a form (an attribute of the cup form: "Fragancia"). It is a `Card` with the quiet tone; its name is the uppercase label role (11 px, `on-surface-variant`), not a green title of its own. As built, the cup form's containers set their name in green at 12.25 px by hand.
+
+### `SectionHeading` (paper)
+
+The paper counterpart of the stage's `components/landing/SectionHeading.tsx` (built by package P2 of the audit's plan). Every section of a paper screen opens with it; a hand-written `h2` or `h3`, or an uppercase label used as a heading, is a finding.
+
 ```
+SECTION NAME (uppercase label, on-surface-variant)          [action, InfoHint or count]
+Section title (section heading size, primary-container)
+Assertion line, optional (caption size, on-surface-variant)
+```
+
+- **Left-aligned at every width.** Paper is read down a left edge; the stage's heading is centred. One alignment per mode, never per screen.
+- **Props:** `title`, `assertion`, `name`, `level` (2, or 3 for a title inside a card, which then takes the card heading's size and ink), `action`, `info`, `id`.
 
 ### Shared list/CRUD kit (2026-08 cohesion overhaul — `components/ui/`)
 
@@ -569,7 +701,9 @@ a status pill, page header, list table, or delete confirmation again.
 - **`PageHeader`** — canonical page top: optional back link, `font-display
   text-3xl text-primary-container` title, `on-surface-variant` description,
   right-aligned action slot (primary pill button).
-- **`EmptyState`** — centered icon-in-circle + display title + body + CTA.
+- **`EmptyState`** — centered icon-in-circle + display title + body. It
+  points to the list's one action in words (see "An ask appears once"); it
+  carries a button only on a screen that has no header action.
 - **`ConfirmDialog`** — destructive confirmation on `ResponsiveDialog` with
   `useTransition` pending state and inline error. Body copy must state the
   full cascade blast radius honestly (see the deleteSession/deleteCoffee keys).
@@ -579,15 +713,22 @@ a status pill, page header, list table, or delete confirmation again.
 
 ### Breakpoint rule
 
+A tablet is a small desktop, in the app as on the landing. **(rule)**
+
 | Layer | Switch point |
 |---|---|
-| Content layouts (DataTable table↔cards, profile columns) | `md:` (768px) |
-| App shell (Sidebar ↔ BottomNav/TopBar) | `lg:` (1024px) |
+| Content layouts (DataTable table↔cards, profile columns, grids) | **The width of their column, not the window**: container queries on the content area, so the same layout follows whether a sidebar or a rail is open. Where a media query is unavoidable, `md:` (768 px) |
+| App shell | Under 768 px: the phone's top bar and bottom bar. From 768 px: an icon rail (about 72 px, every item of the navigation plus the language and the account). From 1280 px: the full sidebar |
+| The cupping shell (`SessionShell`) | The same edges as the app shell: no band of its own (it had four, at 640, 768 and 1024 px) |
 | Dialogs (centered modal ↔ bottom sheet) | 640px (`ResponsiveDialog` internal) |
+
+- **(rule) `sm:` changes a padding or a type size, never an arrangement.** No third, in-between layout.
+- **(rule) The phone's bottom bar has five tabs at most.** Insights lives inside Perfil for those who have it; the account and sign-out are reachable from the shell.
+- As built, the app shell switches at `lg:` (1024 px) and content arrangements switch at `lg:` by window width; moving both to this rule is package P6 of the audit's plan.
 
 ### `PillTabs` / `SegmentedControl` / `InfoHint` (2026-08 results redesign — `components/ui/`)
 
-- **`PillTabs`** — a horizontally-scrollable `role="tablist"` row of individually-outlined pills (44px min hit target). Active: `bg-primary-container text-on-primary`; inactive: `border-outline-variant` outline, `on-surface-variant` text hovering to `on-surface`; disabled items sit at `opacity-45`. Takes an optional numeric `badge` chip per item (`bg-secondary`/`text-on-secondary`, or `bg-on-primary/20` when the item is active). Two densities via `size`: `"md"` (default) and `"sm"` for secondary filter rows. Used for the results page's three main tabs, the Descriptores sample/block filter rows, and the `SampleDetailDialog` catador switcher.
+- **`PillTabs`** — a horizontally-scrollable `role="tablist"` row of individually-outlined pills (44px min hit target). Active, as built: `bg-primary-container text-on-primary`, the action fill, which "A selection never looks like an action" forbids; inactive: `border-outline-variant` outline, `on-surface-variant` text hovering to `on-surface`; disabled items sit at `opacity-45`. Takes an optional numeric `badge` chip per item (`bg-secondary`/`text-on-secondary`, or `bg-on-primary/20` when the item is active). Two densities via `size`: `"md"` (default) and `"sm"` for secondary filter rows. Used for the results page's three main tabs, the Descriptores sample/block filter rows, and the `SampleDetailDialog` catador switcher.
 - **`SegmentedControl`** — a single inline-flex pill "track" (`bg-surface-container-high`, `role="tablist"`, 4px padding) holding equal-width (`flex-1`) segments. The active segment gets its own raised pill (`bg-surface-container-lowest` + `shadow-card` + `on-surface` text); inactive segments are transparent with `on-surface-variant` text. Reserve this for a small, fixed set of mutually-exclusive views (e.g. exactly 2) — use `PillTabs` for anything open-ended. Used for the Resultados tab's Tabla/Gráfico switch, persisted per-browser via `localStorage` (`cata_results_view`).
 - **`InfoHint`** — a small inline info-icon button (`lucide-react` `Info`, `on-surface-variant`) placed next to a label or heading. Opens a `ResponsiveDialog` explainer (title + body) on tap/click — no bespoke chrome, it reuses the same modal/bottom-sheet the rest of the app uses. Content arrives as translated props (`results.help.*` keys resolved server-side) — like every client component here, it never calls `useTranslations()` itself. Use it to explain one non-obvious concept (e.g. what "alineación" measures, what the CVA matrix shows) without permanently spending layout space on the explanation.
 
@@ -607,15 +748,16 @@ a status pill, page header, list table, or delete confirmation again.
 **File:** `AffectiveBubbles.tsx` + `AffectiveBubbles.module.css`
 
 - 9 circles, 44×44px, Newsreader 19px/600
-- As built: the selected bubble is tinted by its value (`n ≥ 7` terracotta, `n ≤ 3` the error red, otherwise green), through the legacy colour aliases in its CSS module.
+- **(rule)** The selected bubble has one colour whatever its value ("No quality bands"; the rule waits for Kim's confirmation). As built, it is tinted by its value (`n ≥ 7` terracotta, `n ≤ 3` the error red, otherwise green), through the legacy colour aliases in its CSS module.
 - FINAL readout: `primary-container` when set, `secondary` "FINAL" label
-- **Open question for the audit:** tinting a 1 to 9 rating by how high it is reads as a quality colour, which "No quality bands" forbids for scores, and it uses the error red for something that is not an error. Decide with the product owner whether a rating is covered by that rule; if it is, the selected bubble becomes one colour.
+- The nine bubbles are one radio group: one Tab stop, arrow keys between values (see "Accessibility").
 
 ### `CATAPills`
 
 - Unselected: `outline-variant` border, transparent fill, pill shape
-- Selected: solid `primary-container` fill, `on-primary` text
+- Selected, as built: solid `primary-container` fill, `on-primary` text (the action fill: see "A selection never looks like an action")
 - At-limit: unselected at `opacity: 0.45`
+- A flavour's family is shown as a coloured dot in the pill, never as the pill's fill or its text colour ("Flavor Family Colors")
 
 ### `FlavorPicker`
 
@@ -648,7 +790,7 @@ The live "Puntaje calculado" card was deleted in S10: the total is not shown whi
 
 ### Offline & Onboarding surfaces
 
-- `OfflineBanner` (`components/offline/`): persistent, low-emphasis status strip shown while the device is offline; `secondary-container` bg, `on-secondary-container` text. Non-blocking — cupping continues underneath.
+- `OfflineBanner` (`components/offline/`): persistent, low-emphasis status strip shown while the device is offline; as built, `secondary-container` bg and `on-secondary-container` text (under the rule it is a `Notice`, warning tone). Non-blocking — cupping continues underneath.
 - `SyncConflictModal` (`components/offline/`): Radix dialog surfaced on reconnect when a draft was already submitted elsewhere; offers keep-local vs. keep-remote.
 - `OfflineFirstLoadError` (`components/offline/`): fallback when a session can't be hydrated offline on first load.
 - `WelcomeModal` (`components/onboarding/`): first-run modal capturing role + country, then routing to a first action (new session / add coffee). Calm, editorial, single-column.
@@ -657,11 +799,27 @@ The live "Puntaje calculado" card was deleted in S10: the total is not shown whi
 
 ## Layout Patterns
 
-```html
-<!-- Page shell -->
-<main class="min-h-screen bg-surface">
-  <div class="max-w-[1280px] mx-auto px-12 py-8">
+### The page frame: `PageContainer` (rule)
+
+Every paper page sits in `PageContainer` (`components/ui/PageContainer.tsx`, built by package P1 of the audit's plan), which has three widths and one alignment:
+
+| Width | Up to | For |
+|---|---|---|
+| `wide` | 1200 px | Lists, results, profiles, Insights |
+| `form` | 640 px | Creating and editing (a session, a coffee, a group) |
+| `narrow` | 400 px | Arrival cards (sign-in, confirm, join) |
+
 ```
+|<- margin ->|<--------------- wide: up to 1200 px --------------->|
+|            | PageHeader (title, back link, one action)            |
+|            | sections ...                                         |
+|            |<----- form: up to 640 px ----->|                     |
+```
+
+- **One alignment.** The content's left edge is the page header's, at every width; a form is not centred under a left-aligned header.
+- **Outer margin** 16 px on a phone, 24 px from 768 px, 32 px from 1280 px (the paper rhythm).
+- Every page opens with `PageHeader`, with a back link on every detail and create page. A screen whose title is not visible (the cupping screen, the print sheet) still has one `h1`, visually hidden.
+- The "container max 1280 px, outer margin 48 px" once written here was never built; it is replaced by this frame.
 
 ```html
 <!-- Section dividers -->
@@ -676,19 +834,36 @@ The baseline is WCAG 2.2 AA. These are the measurable parts; each is a line of t
 
 | Requirement | Measure |
 |---|---|
-| Touch targets | At least 44 × 44 px for anything tappable (written in pixels: the root is 14 px). 24 × 24 px is the floor that is never crossed. |
+| Touch targets | At least 44 × 44 px for anything tappable, **measured as painted**, not as written: the root is 14 px, so `h-11` paints 38.5 px and `min-h-11` is not 44. Write the size in pixels (`min-h-[44px]`), or give a smaller visible control a 44 px hit area (a transparent `::before`, as the slider does). 24 × 24 px is the floor that is never crossed. |
 | Text contrast | 4.5 : 1 for body text, 3 : 1 for text from 24 px (or 19 px bold) and for the outline of a control. Check `on-surface-variant` on every container tone, and any text set at reduced opacity. |
 | Text over something that moves | Never: dots do not cross body text. On the stage a shade (`stage-light-shade`) or a darker glass sits behind it. |
 | Colour alone | Never the only carrier of meaning: a status has a word or an icon as well. |
-| Focus | Every interactive element shows a visible focus ring; the order follows the reading order; a dialog traps focus and returns it. |
+| Focus indicator | One indicator for every control, fields included: a 2 px `primary-container` outline with a 2 px offset, on `:focus-visible`. A 25 % ring, a border change alone or `outline: none` is not a focus indicator. A control whose real input is hidden (the slider's range input) shows the indicator on what is seen. |
+| Focus order | The order follows the reading order; a dialog traps focus and returns it. |
+| A layer that covers the screen | A full-screen layer (the cupping screen, a drawer, a dialog) makes what is under it `inert`: nothing under it takes focus or a tap. |
+| Composite controls | A group of options is one Tab stop, and the arrow keys move inside it: a rating scale is a radio group, a row of tabs is a real tablist with `aria-controls` and a panel. `aria-pressed` on a lone toggle button. |
 | Names | Every control has an accessible name; an icon-only button has `aria-label`; a decorative drawing is `aria-hidden`; a meaningful one has a label. |
-| Toggles and tabs | `aria-pressed` on toggle buttons (bubbles, pills); `role="tablist"` semantics on `PillTabs` and `SegmentedControl`. |
-| Reduced motion | With `prefers-reduced-motion`, nothing pins, slides or counts; the plain layout is shown and stays fully usable. |
+| Docked chrome | Everything docked over a screen (top bar, header, tabs, footer, the timer, a status line) has a budget measured on a 375 × 667 phone: together it leaves the content a fixed minimum of the height, and what the screen is for is visible in that first fold without scrolling. A docked part that does not fit the budget scrolls away with the content. |
+| Reduced motion | With `prefers-reduced-motion`, nothing pins, slides, pulses or counts; the plain layout is shown and stays fully usable. One reset in `app/globals.css` covers every transition and animation, `scrollIntoView` uses `behavior: "auto"`, and charts draw without animating. A component does not need its own guard. |
 | Reduced transparency | With `prefers-reduced-transparency`, glass becomes a near-opaque tone and loses its blur. |
 | Zoom and reflow | Usable at 200 % zoom and at 320 px wide with no horizontal scroll of the page. |
 | Numbers | `tabular-nums` on every score and count. |
 | Hidden text | `.sr-only` for text that is for assistive technology only. |
 | Language | `<html lang>` matches the language shown, also after a change of language without a reload. |
+
+---
+
+## Brand mark
+
+**(rule)** The product has one name, **"Café Sensible"**, in Spanish and in English, in the app, the emails, the reports and the arrival screens. "Cata Café", "Cata Café Sensible" and "cafesensible.ai" are not used as the product's name in copy (the repository and the domain keep their names).
+
+The name is shown through one component, `Wordmark` (the landing header's wordmark, made shared; built by package P4 of the audit's plan). It links home and appears in:
+
+- the landing's header and footer;
+- the app shell: the sidebar, the icon rail and the phone's top bar;
+- every arrival screen: sign-in, the emailed-link confirmation, the guest claim card, the two join pages, the not-found and first-load error pages.
+
+A screen that writes the name by hand, or shows no mark where this list says one belongs, is a finding.
 
 ---
 
@@ -709,7 +884,7 @@ The baseline is WCAG 2.2 AA. These are the measurable parts; each is a line of t
 | Use `error` / `red-defect` decoratively | Reserve strictly for cup defects and errors |
 | Colour or name a score by how good it is | A score is a number; colour may mark the series, the distance from the group, or a defect ("No quality bands") |
 | Put two primary buttons in one view | One primary action per screen or fold; the rest are `secondary` or `ghost` |
-| Style a section heading by hand, or align it differently from its neighbours | One heading component, one alignment (centred, at every width, on the stage) |
+| Style a section heading by hand, or align it differently from its neighbours | One heading component per mode, one alignment (centred on the stage, left on paper, at every width) |
 | Make a heading smaller than a heading inside its own section | A title is one clear step above its content |
 | Give one card of a set an extra part, or leave one without | One anatomy per kind of card |
 | Move two sets of the same kind differently on one device, pin optional cards, or put a required step in a sideways row | One gesture per kind of content |
@@ -724,7 +899,14 @@ The baseline is WCAG 2.2 AA. These are the measurable parts; each is a line of t
 | Give a stage section an opaque background | Keep sections transparent; depth comes from `.stage-ground` and `.stage-light` |
 | Stack a photo and an app screen one under the other | Layer them, or keep them in different sections |
 | Animate a count-up on an offer or a fact | Print the number |
-| Use `secondary` (terracotta) as a quality signal | Quality = green (`primary-container`) |
+| Use `secondary` (terracotta) as a quality signal, or to single out a score | A score is ink; no colour signals quality ("No quality bands") |
+| Colour a difference green above and terracotta below | Ink with its sign |
+| Set a family colour as text or behind text | A coloured dot or bar beside ink text |
+| Paint a terracotta banner to say something | `Notice` (info, warning, error) |
+| Fill a selected tab, chip or segment with the action green | A tone, a weight, an underline or a check |
+| Set text under 11 px, or data under 12 px | The six text roles ("Type Scale") |
+| Keep the open tab, sample or filter only in component state | The URL |
+| Blur a form under a docked bar | An opaque bar with a hairline |
 | Generate Tailwind classes via string concat | Full static class names only (Tailwind v4) |
 | Add inline styles to new components | CSS Modules in `components/ui/` |
 | Import `PrismaClient` directly | `lib/prisma.ts` singleton |
@@ -738,4 +920,14 @@ The baseline is WCAG 2.2 AA. These are the measurable parts; each is a line of t
 
 ## Auditing against this system
 
-The app is audited against this document with `docs/design-system/AUDIT-RUBRIC.md`: the checklist derived from the rules above, the list of screens, the scale for rating a finding, the form a finding is reported in, and the gaps between this document and the code that are already known. The prompt that starts the audit session is `docs/prompts/S11-app-ui-ux-audit.md`.
+The app is audited against this document with `docs/design-system/AUDIT-RUBRIC.md`: the checklist derived from the rules above, the list of screens, the scale for rating a finding, the form a finding is reported in, and the gaps between this document and the code that are already known. The prompt that started the first audit is `docs/prompts/S11-app-ui-ux-audit.md`; its report, plan and decisions are in `docs/audits/app-ui-ux-2026-11-15/`.
+
+**Source scans.** The landing is held to this document by scans of its source (`tests/landingDensity.test.ts` and its neighbours). The app gets the same kind of scans, each added by the token package that clears its drift, so a new departure fails a test instead of waiting for the next audit (the packages are in that folder's `PLAN.md`):
+
+| Scan | Fails on | Added by |
+|---|---|---|
+| Hex literals | A hex colour in a component outside the sanctioned files (the chart colours, the stage canvases, the emails, the print twin, the Google mark) | T5 |
+| Legacy aliases | A legacy colour alias class or variable (`text-brown-mid`, `bg-cream`, `--color-green-dark`, ...) | T3 |
+| Legacy radius | `rounded-md`, `rounded-lg` or `rounded-xl` on paper | T3 |
+| Text under the floor | A text size that paints under 11 px | T4 |
+| Base styles | A rule on a bare element outside `@layer base` | T2 |
