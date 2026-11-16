@@ -8,7 +8,8 @@
 // "diferencia" or the group's dot is there. Built on RANKING_POLICY
 // (lib/reports/ranking.ts); it adds no threshold of its own except the one
 // Ricardo decided on 2026-11-16 (two cuppers is a valid panel for the group's
-// QUALITY values per attribute).
+// QUALITY values per attribute) and the flavour wheel's own constant (R1c:
+// three, equal to the ranking's minimum, kept apart so it can change alone).
 //
 // A score is a number only: nothing here names or colours a score by quality.
 // Display-only: scoring, the trigger and AggregateScore never read this file.
@@ -21,6 +22,15 @@ import { round2 } from "@/lib/resultsScales";
  *  shown (Ricardo, decision 6: "two cuppers is valid"). Everything that
  *  compares a person with the panel needs RANKING_POLICY.minN (three). */
 export const QUALITY_BY_ATTRIBUTE_MIN_N = 2;
+
+/** Included cuppers from which a PARTICIPANT is shown the flavour wheel and the
+ *  counted descriptors of the group (lib/reports/wheelData.ts). Three, because
+ *  with two cuppers a count of 1 tells a participant exactly what the other
+ *  person picked, and Ricardo's "two cuppers is valid" was said of the group's
+ *  quality values. AWAITS RICARDO'S WORD (the governing session's reading of his
+ *  answer, 2026-11-16): to show the wheel from two, change this one line. The
+ *  owner's lens is not restricted by it, as with today's descriptor frequencies. */
+export const FLAVOR_WHEEL_MIN_N: number = RANKING_POLICY.minN;
 
 export type PanelGates = {
   /** The group's dot per quality attribute (1 to 9): from two included cuppers. */
@@ -39,6 +49,10 @@ export type PanelGates = {
   spread: boolean;
   /** A coffee can be "Primera del ranking": from three. */
   first: boolean;
+  /** The flavour wheel and the counted descriptors, for a PARTICIPANT: from
+   *  `FLAVOR_WHEEL_MIN_N` (three; awaits Ricardo's word). The owner's lens does
+   *  not read this gate. */
+  flavorWheel: boolean;
   /** No "indicativo" flag by number of cuppers: from six. (Too few pooled cups
    *  can still flag one score: `scoreContext` reads that from the score itself.) */
   firm: boolean;
@@ -66,6 +80,7 @@ export function panelGates(
     difference: compares,
     spread: compares,
     first: compares,
+    flavorWheel: n >= FLAVOR_WHEEL_MIN_N,
     firm: n >= policy.indicativeBelow,
   };
 }
