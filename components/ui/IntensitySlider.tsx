@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useId, useRef } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef } from 'react'
 import styles from './IntensitySlider.module.css'
 
 export interface IntensitySliderProps {
@@ -32,10 +32,16 @@ export function IntensitySlider({
   const inputRef = useRef<HTMLInputElement>(null)
   const trackRef = useRef<HTMLDivElement>(null)
   // Latest onChange/disabled without re-subscribing the native listeners.
+  // Written in a layout effect, not during render (React: never write a ref
+  // while rendering). A layout effect runs synchronously in the same commit,
+  // before the browser can dispatch the next pointer, touch or key event, so
+  // every handler still reads the props of the last committed render.
   const onChangeRef = useRef(onChange)
   const disabledRef = useRef(disabled)
-  onChangeRef.current = onChange
-  disabledRef.current = disabled
+  useLayoutEffect(() => {
+    onChangeRef.current = onChange
+    disabledRef.current = disabled
+  })
 
   const v = value ?? 0
   const pct = ((v - min) / (max - min)) * 100
