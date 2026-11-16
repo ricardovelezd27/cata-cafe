@@ -5,6 +5,7 @@ import { ClipboardList, Coffee, Star, ChevronRight, Clock } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { sessionHref } from "@/lib/sessionRouting";
+import { finishedSessionWhere } from "@/lib/sessionState";
 import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { FormatBadge } from "@/components/dashboard/FormatBadge";
@@ -67,11 +68,17 @@ export default async function Dashboard({
       select: { displayName: true },
     }),
 
+    // "Sesiones realizadas": only sessions that are over, never an open one (A-09).
     prisma.cuppingSession.count({
       where: {
-        OR: [
-          { createdBy: user.id },
-          { participants: { some: { userId: user.id } } },
+        AND: [
+          {
+            OR: [
+              { createdBy: user.id },
+              { participants: { some: { userId: user.id } } },
+            ],
+          },
+          finishedSessionWhere(),
         ],
       },
     }),
@@ -305,7 +312,7 @@ export default async function Dashboard({
                 <li key={s.id}>
                   <Link
                     href={sessionHref(s, { locale, isOwner: s.createdBy === user.id })}
-                    className="flex items-center gap-3 bg-surface-container-lowest border border-outline-variant rounded-card px-4 py-3 hover:border-l-4 hover:border-l-primary-container hover:bg-primary transition-all group"
+                    className="flex items-center gap-3 bg-surface-container-lowest border border-outline-variant rounded-card px-4 py-3 hover:bg-surface-container-low transition-colors group"
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -332,7 +339,7 @@ export default async function Dashboard({
                         </span>
                         <span>·</span>
                         <span>
-                          {s._count.samples} {tSession("table.colSamples").toLowerCase()}
+                          {t("samplesCount", { count: s._count.samples })}
                         </span>
                       </div>
                     </div>

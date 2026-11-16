@@ -863,22 +863,27 @@ export function ResultsClient({
               {translations.backToCupping}
             </Button>
           )}
-          <Button
-            size="sm"
-            variant={(newSubmissions > 0 || hasGenericUpdates) && !refreshing ? "accent" : "accentOutline"}
-            icon={<RefreshCw size={14} aria-hidden className={refreshing ? "animate-spin" : ""} />}
-            onClick={handleRefreshScores}
-            disabled={refreshing}
-            className="ml-auto"
-          >
-            {refreshing
-              ? translations.refreshing
-              : newSubmissions > 0
-                ? translations.refreshNew.replace("{count}", String(newSubmissions))
-                : hasGenericUpdates
-                  ? translations.refreshNewGeneric
-                  : translations.refresh}
-          </Button>
+          {/* A closed or expired session never changes its scores (refreshAggregateScores
+              is a no-op there), so the button is only offered while cupping is open.
+              `cuppingOpen` is the server's `!isSessionExpired(session)`. */}
+          {cuppingOpen && (
+            <Button
+              size="sm"
+              variant={(newSubmissions > 0 || hasGenericUpdates) && !refreshing ? "accent" : "accentOutline"}
+              icon={<RefreshCw size={14} aria-hidden className={refreshing ? "animate-spin" : ""} />}
+              onClick={handleRefreshScores}
+              disabled={refreshing}
+              className="ml-auto"
+            >
+              {refreshing
+                ? translations.refreshing
+                : newSubmissions > 0
+                  ? translations.refreshNew.replace("{count}", String(newSubmissions))
+                  : hasGenericUpdates
+                    ? translations.refreshNewGeneric
+                    : translations.refresh}
+            </Button>
+          )}
         </div>
 
         {liveUpdatesDown && (
