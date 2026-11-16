@@ -158,9 +158,19 @@ export function buildFlavorCloud(
  *
  * Keys carry the descriptor's vocabulary, so a word shared by two cuppers in
  * acidity does not let a one-person mouthfeel word of the same label through.
- * The "general" pseudo-block has no block of its own: each descriptor takes
- * the vocabulary of the real block it was counted in (the id spaces of the
- * blocks are disjoint, so one id never belongs to two vocabularies).
+ *
+ * The "general" pseudo-block has no block of its own and counts each id once
+ * per cupper across ALL blocks, so it cannot tell two vocabularies apart. The
+ * id spaces of the blocks are disjoint except for one id: the main taste
+ * `sweet` (Gusto) and the flavour-wheel node `sweet` (Nariz/Boca). An id that
+ * belongs to ONE vocabulary uses the general count, as before. An id that
+ * belongs to TWO is decided per vocabulary, from the counts of that
+ * vocabulary's own real blocks (and its own label: the two words can read
+ * differently, "Dulce" / "Sweet"). Limit of that rule, for those colliding ids
+ * only: a vocabulary spanning two blocks (flavour = Nariz + Boca) takes the
+ * larger of its blocks' counts, because the per-cupper dedupe is per block. A
+ * flavour "sweet" named by one person in Nariz and by another in Boca reads as
+ * single-person.
  */
 export function sharedLabelKeys(
   freq: SampleBlockFreq[],
@@ -171,17 +181,39 @@ export function sharedLabelKeys(
     scope.kind === "session" ? freq : freq.filter((s) => s.sampleId === scope.sampleId);
   const keys = new Set<string>();
   for (const sample of samples) {
-    const familyOfId = new Map<string, string>();
-    if (blockId === "general") {
-      for (const [realBlockId, list] of Object.entries(sample.blocks)) {
-        if (realBlockId === "general") continue;
-        for (const d of list) familyOfId.set(d.id, descriptorFamily(realBlockId));
+    if (blockId !== "general") {
+      const family = descriptorFamily(blockId);
+      for (const d of sample.blocks[blockId] ?? []) {
+        if (d.count > 1) keys.add(wordKey(family, d.label));
+      }
+      continue;
+    }
+
+    // id -> vocabulary -> its own word (label) and its people count (the
+    // larger of that vocabulary's real blocks).
+    type Own = { label: string; count: number };
+    const byId = new Map<string, Map<string, Own>>();
+    for (const [realBlockId, list] of Object.entries(sample.blocks)) {
+      if (realBlockId === "general") continue;
+      const family = descriptorFamily(realBlockId);
+      for (const d of list) {
+        const families = byId.get(d.id) ?? new Map<string, Own>();
+        const cur = families.get(family);
+        families.set(family, { label: cur?.label ?? d.label, count: Math.max(cur?.count ?? 0, d.count) });
+        byId.set(d.id, families);
       }
     }
-    for (const d of sample.blocks[blockId] ?? []) {
-      if (d.count > 1) {
-        const family = blockId === "general" ? (familyOfId.get(d.id) ?? "general") : descriptorFamily(blockId);
-        keys.add(wordKey(family, d.label));
+    for (const d of sample.blocks.general ?? []) {
+      const families = byId.get(d.id);
+      if (!families || families.size === 0) {
+        if (d.count > 1) keys.add(wordKey("general", d.label));
+      } else if (families.size === 1) {
+        const [[family, own]] = [...families];
+        if (d.count > 1) keys.add(wordKey(family, own.label));
+      } else {
+        for (const [family, own] of families) {
+          if (own.count > 1) keys.add(wordKey(family, own.label));
+        }
       }
     }
   }

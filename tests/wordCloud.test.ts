@@ -174,6 +174,49 @@ describe("descriptors that share a label across blocks (A-03)", () => {
     expect(new Set(words.map((w) => w.key)).size).toBe(words.length);
   });
 
+  describe("hide-singles with the id both vocabularies share ('sweet')", () => {
+    const scope = { kind: "session" } as const;
+    const kept = (evals: ReturnType<typeof ev>[]) => {
+      const g = freq(evals);
+      const words = buildFlavorCloud(g, scope, ALL_BLOCK_IDS);
+      const shared = sharedLabelKeys(g, scope, "general");
+      return words.filter((w) => w.id === "sweet" && shared.has(w.key)).map((w) => w.key.split("|")[0]);
+    };
+
+    it("one person on the main taste and another on the flavour: neither word is shared", () => {
+      expect(kept([ev("u1", { gustos: ["sweet"] }), ev("u2", { aroma_desc: ["sweet"] })])).toEqual([]);
+    });
+
+    it("two people on the main taste, one on the flavour: only the main-taste word is kept", () => {
+      expect(
+        kept([
+          ev("u1", { gustos: ["sweet"] }),
+          ev("u2", { gustos: ["sweet"] }),
+          ev("u3", { aroma_desc: ["sweet"] }),
+        ]),
+      ).toEqual(["gusto"]);
+    });
+
+    it("two people on the flavour, one on the main taste: only the flavour word is kept", () => {
+      expect(
+        kept([
+          ev("u1", { aroma_desc: ["sweet"] }),
+          ev("u2", { aroma_desc: ["sweet"] }),
+          ev("u3", { gustos: ["sweet"] }),
+        ]),
+      ).toEqual(["flavor"]);
+    });
+
+    it("both shared: both words are kept", () => {
+      expect(
+        kept([
+          ev("u1", { gustos: ["sweet"], aroma_desc: ["sweet"] }),
+          ev("u2", { gustos: ["sweet"], aroma_desc: ["sweet"] }),
+        ]).sort(),
+      ).toEqual(["flavor", "gusto"]);
+    });
+  });
+
   it("no id repeats inside the acidity, sweetness and mouthfeel lists", () => {
     const ids = [...ACIDITY_CATA, ...SWEETNESS_CATA, ...MOUTHFEEL_CATA].flatMap((fam) => [
       fam.id,
