@@ -22,8 +22,10 @@ export default async function InsightsAccessPage({
   const access = await getAnalyticsAccess();
   if (!access?.isSuperAdmin) notFound();
 
-  const [t, users, lastDigest] = await Promise.all([
+  const [t, tc, tu, users, lastDigest] = await Promise.all([
     getTranslations("insights.access"),
+    getTranslations("common"),
+    getTranslations("insights.users"),
     listAnalyticsUsers(),
     getLastDigestRun(),
   ]);
@@ -47,6 +49,7 @@ export default async function InsightsAccessPage({
       </div>
       <AccessManager
         users={users}
+        locale={locale}
         t={{
           search: t("search"),
           accessLabel: t("accessLabel"),
@@ -54,6 +57,18 @@ export default async function InsightsAccessPage({
           emailUnavailable: t("emailUnavailable"),
           toggleError: t("toggleError"),
           empty: t("empty"),
+          // S10 (D-13): the kit table's controls and the headers, from the
+          // keys the Usuarios directory already uses (no new copy).
+          table: {
+            showing: tc.raw("showing"),
+            prev: tc("prev"),
+            next: tc("next"),
+            clearFilters: tc("clearFilters"),
+            all: tc("all"),
+          },
+          colName: tu("colName"),
+          colEmail: tu("colEmail"),
+          colCountry: tu("colCountry"),
         }}
       />
     </div>

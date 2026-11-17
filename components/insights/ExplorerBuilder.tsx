@@ -47,7 +47,7 @@ interface ExplorerBuilderProps {
 }
 
 const selectClass =
-  "w-full rounded-input border border-[#E8E0D0] bg-surface-container-lowest px-3 py-2 text-sm text-on-surface focus:border-[#3D5A3E]";
+  "w-full rounded-input border border-outline-variant bg-surface-container-lowest px-3 py-2 text-sm text-on-surface focus:border-primary-container";
 
 export function ExplorerBuilder({ locale, t, loadedConfig, loadKey, onConfigChange }: ExplorerBuilderProps) {
   const [dataset, setDataset] = useState<Dataset>("evaluations");
@@ -153,7 +153,7 @@ export function ExplorerBuilder({ locale, t, loadedConfig, loadKey, onConfigChan
   return (
     <div className="flex flex-col gap-5">
       {/* Builder controls */}
-      <div className="bg-surface-container-lowest rounded-card border border-[#E8E0D0] shadow-card p-5">
+      <div className="bg-surface-container-lowest rounded-card border border-outline-variant shadow-card p-5">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <label className="flex flex-col gap-1">
             <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
@@ -251,7 +251,7 @@ export function ExplorerBuilder({ locale, t, loadedConfig, loadKey, onConfigChan
       </div>
 
       {/* Preview */}
-      <div className="bg-surface-container-lowest rounded-card border border-[#E8E0D0] shadow-card p-5">
+      <div className="bg-surface-container-lowest rounded-card border border-outline-variant shadow-card p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-sans text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
             {t.dimensions[dimension]} · {t.measures[measure]}

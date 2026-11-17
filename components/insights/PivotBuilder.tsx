@@ -72,11 +72,11 @@ type View = "table" | "grouped" | "stacked" | "line";
 const MAX_FILTER_ENTRIES = 5;
 
 const selectClass =
-  "w-full rounded-input border border-[#E8E0D0] bg-surface-container-lowest px-3 py-2 text-sm text-on-surface focus:border-[#3D5A3E]";
+  "w-full rounded-input border border-outline-variant bg-surface-container-lowest px-3 py-2 text-sm text-on-surface focus:border-primary-container";
 const pickerSelectClass =
-  "rounded-input border border-[#E8E0D0] bg-surface-container-lowest px-2 py-1 text-xs text-on-surface focus:border-[#3D5A3E]";
+  "rounded-input border border-outline-variant bg-surface-container-lowest px-2 py-1 text-xs text-on-surface focus:border-primary-container";
 const addFieldButtonClass =
-  "inline-flex items-center gap-1 rounded-pill border border-dashed border-[#E8E0D0] px-3 py-1 text-xs font-semibold text-[#3D5A3E] hover:border-[#3D5A3E] hover:bg-surface-container transition-colors";
+  "inline-flex items-center gap-1 rounded-pill border border-dashed border-outline-variant px-3 py-1 text-xs font-semibold text-primary-container hover:border-primary-container hover:bg-surface-container transition-colors";
 const shelfLabelClass = "text-xs font-semibold text-on-surface-variant uppercase tracking-wide";
 
 function FieldChip({
@@ -98,8 +98,8 @@ function FieldChip({
   // interactive there.
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-pill border border-[#E8E0D0] bg-surface-container px-3 py-1 text-xs font-medium text-on-surface ${
-        onClick ? "hover:border-[#3D5A3E]" : ""
+      className={`inline-flex items-center gap-1.5 rounded-pill border border-outline-variant bg-surface-container px-3 py-1 text-xs font-medium text-on-surface ${
+        onClick ? "hover:border-primary-container" : ""
       }`}
     >
       {onClick ? (
@@ -332,7 +332,7 @@ export function PivotBuilder({ locale, t, loadedConfig, loadKey, onConfigChange 
   return (
     <div className="flex flex-col gap-5">
       {/* Builder controls */}
-      <div className="bg-surface-container-lowest rounded-card border border-[#E8E0D0] shadow-card p-5 flex flex-col gap-4">
+      <div className="bg-surface-container-lowest rounded-card border border-outline-variant shadow-card p-5 flex flex-col gap-4">
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 max-w-2xl">
           <label className="flex flex-col gap-1">
             <span className={shelfLabelClass}>{t.dataset}</span>
@@ -545,17 +545,17 @@ export function PivotBuilder({ locale, t, loadedConfig, loadKey, onConfigChange 
       </div>
 
       {/* Preview */}
-      <div className="bg-surface-container-lowest rounded-card border border-[#E8E0D0] shadow-card p-5">
+      <div className="bg-surface-container-lowest rounded-card border border-outline-variant shadow-card p-5">
         <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <div className="inline-flex rounded-pill border border-[#E8E0D0] bg-surface-container p-1">
+            <div className="inline-flex rounded-pill border border-outline-variant bg-surface-container p-1">
               {viewOptions.map((opt) => (
                 <button
                   key={opt.id}
                   type="button"
                   onClick={() => setView(opt.id)}
                   className={`px-3 py-1 rounded-pill text-xs font-semibold transition-colors ${
-                    view === opt.id ? "bg-[#3D5A3E] text-white" : "text-on-surface-variant hover:text-on-surface"
+                    view === opt.id ? "bg-primary-container text-on-primary" : "text-on-surface-variant hover:text-on-surface"
                   }`}
                 >
                   {opt.label}
@@ -569,8 +569,8 @@ export function PivotBuilder({ locale, t, loadedConfig, loadKey, onConfigChange 
                 aria-pressed={heatmap}
                 className={`px-3 py-1 rounded-pill text-xs font-semibold border transition-colors ${
                   heatmap
-                    ? "bg-[#3D5A3E] text-white border-[#3D5A3E]"
-                    : "border-[#E8E0D0] text-on-surface-variant hover:text-on-surface"
+                    ? "bg-primary-container text-on-primary border-primary-container"
+                    : "border-outline-variant text-on-surface-variant hover:text-on-surface"
                 }`}
               >
                 {t.heatmap}
@@ -651,7 +651,7 @@ export function PivotBuilder({ locale, t, loadedConfig, loadKey, onConfigChange 
               )}
             </div>
           )}
-          <div className="flex items-center justify-between pt-2 border-t border-[#E8E0D0]">
+          <div className="flex items-center justify-between pt-2 border-t border-outline-variant">
             <button
               type="button"
               onClick={() => setFilterDialogSelected(new Set())}
@@ -662,7 +662,7 @@ export function PivotBuilder({ locale, t, loadedConfig, loadKey, onConfigChange 
             <button
               type="button"
               onClick={applyFilterDialog}
-              className="rounded-pill bg-[#3D5A3E] text-white text-sm font-semibold px-4 py-2"
+              className="rounded-pill bg-primary-container text-on-primary text-sm font-semibold px-4 py-2"
             >
               {t.apply}
             </button>

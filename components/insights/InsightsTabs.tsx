@@ -37,7 +37,7 @@ export function InsightsTabs({ locale, isSuperAdmin, isAiAdmin, labels }: Insigh
   ];
 
   return (
-    <nav className="flex gap-1 border-b border-[#E8E0D0] mb-5 overflow-x-auto">
+    <nav className="flex gap-1 border-b border-outline-variant mb-5 overflow-x-auto">
       {tabs.map(({ href, path: tabPath, label, exact }) => {
         const active = isActive(pathname, locale, tabPath, exact);
         return (
@@ -46,7 +46,7 @@ export function InsightsTabs({ locale, isSuperAdmin, isAiAdmin, labels }: Insigh
             href={href}
             className={`px-4 py-2.5 text-sm whitespace-nowrap border-b-2 -mb-px transition-colors ${
               active
-                ? "border-[#3D5A3E] text-[#3D5A3E] font-semibold"
+                ? "border-primary-container text-primary-container font-semibold"
                 : "border-transparent text-on-surface-variant hover:text-on-surface"
             }`}
           >

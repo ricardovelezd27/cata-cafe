@@ -21,7 +21,28 @@ export type ChartColors = {
   community: string;
   grid: string;
   axisText: string;
+  /** A chart with more than two series (a pie, a pivot by a dimension): one
+   *  colour per series, in this order, cycling. The first two are `mine` and
+   *  `community`; the rest are tokens that keep 3 : 1 against the chart's
+   *  ground (`surface-container-lowest` and `surface`). The error red is
+   *  never a series colour. */
+  series: string[];
 };
+
+/** The series tokens, in order (S10, E-01): the Insights charts' old private
+ *  palette, slot by slot, moved to the system. Slot 3 was already
+ *  `primary-muted`'s value; the old red in slot 4 and the 2.25 : 1 gold in
+ *  slot 6 are gone. */
+export const SERIES_TOKENS = [
+  "--color-primary-container",
+  "--color-secondary",
+  "--color-primary-muted",
+  "--color-flavor-floral",
+  "--color-flavor-nutty",
+  "--color-flavor-sweet",
+  "--color-flavor-other",
+  "--color-flavor-spice",
+] as const;
 
 // Snapshot of app/globals.css token values (see DESIGN.md "MD3 Color Roles").
 const FALLBACK: ChartColors = {
@@ -29,6 +50,16 @@ const FALLBACK: ChartColors = {
   community: "#9d4326", // --color-secondary
   grid: "#c1c8c2", // --color-outline-variant
   axisText: "#424843", // --color-on-surface-variant
+  series: [
+    "#2c4c3b", // --color-primary-container
+    "#9d4326", // --color-secondary
+    "#6b8f71", // --color-primary-muted
+    "#c2368f", // --color-flavor-floral
+    "#9c6b43", // --color-flavor-nutty
+    "#cc7f2b", // --color-flavor-sweet
+    "#6e8b94", // --color-flavor-other
+    "#7a2638", // --color-flavor-spice
+  ],
 };
 
 function readToken(name: string, fallback: string): string {
@@ -53,5 +84,11 @@ export function getChartColors(): ChartColors {
     community: readToken("--color-secondary", FALLBACK.community),
     grid: readToken("--color-outline-variant", FALLBACK.grid),
     axisText: readToken("--color-on-surface-variant", FALLBACK.axisText),
+    series: SERIES_TOKENS.map((name, i) => readToken(name, FALLBACK.series[i])),
   };
+}
+
+/** The colour of series `i` (cycling through the palette). */
+export function seriesColor(colors: ChartColors, i: number): string {
+  return colors.series[i % colors.series.length];
 }

@@ -21,9 +21,12 @@ interface PivotTableProps {
   t: PivotTableTranslations;
 }
 
-const BORDER = "#E8E0D0";
-const BG_LOW = "#FDFBF7";
-const BG_HIGH = "#3D5A3E";
+const BORDER = "var(--color-outline-variant)";
+/** The heatmap blends from surface-container-lowest to this share of
+ *  primary-container, and the numbers stay ink: at the darkest cell ink keeps
+ *  4.70 : 1 (S10, E-01). A full blend with white numbers above the middle
+ *  measured 2.5 : 1 on the middle tones (tests/insightsTokens.test.ts). */
+const HEAT_MAX = 0.65;
 const TOTAL_COL = "__total__";
 
 function formatTemplate(template: string, vars: Record<string, string | number>): string {
@@ -37,25 +40,18 @@ function formatValue(v: number | null): string {
   return String(Math.round(v * 100) / 100);
 }
 
-function hexToRgb(hex: string): [number, number, number] {
-  const n = parseInt(hex.slice(1), 16);
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-}
-
-const LOW_RGB = hexToRgb(BG_LOW);
-const HIGH_RGB = hexToRgb(BG_HIGH);
-
-/** Heatmap ramp: BG_LOW -> BG_HIGH over [min, max] of the finalized (kept,
- *  post-trim) cell values. Never applied to totals. */
+/** Heatmap ramp: surface-container-lowest -> HEAT_MAX of primary-container
+ *  over [min, max] of the finalized (kept, post-trim) cell values. Never
+ *  applied to totals. */
 function heatStyle(value: number | null, min: number, max: number): CSSProperties {
   if (value === null || !Number.isFinite(min) || !Number.isFinite(max) || max === min) {
     return {};
   }
   const t = Math.max(0, Math.min(1, (value - min) / (max - min)));
-  const r = Math.round(LOW_RGB[0] + (HIGH_RGB[0] - LOW_RGB[0]) * t);
-  const g = Math.round(LOW_RGB[1] + (HIGH_RGB[1] - LOW_RGB[1]) * t);
-  const b = Math.round(LOW_RGB[2] + (HIGH_RGB[2] - LOW_RGB[2]) * t);
-  return { backgroundColor: `rgb(${r}, ${g}, ${b})`, color: t > 0.5 ? "#FFFFFF" : undefined };
+  const share = Math.round(t * HEAT_MAX * 1000) / 10;
+  return {
+    backgroundColor: `color-mix(in srgb, var(--color-primary-container) ${share}%, var(--color-surface-container-lowest))`,
+  };
 }
 
 /**

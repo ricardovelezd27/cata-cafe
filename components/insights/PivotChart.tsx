@@ -3,14 +3,10 @@
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, Tooltip, XAxis, YAxis } from "recharts";
 import { useContainerWidth } from "@/hooks/useContainerWidth";
 import type { PivotResult } from "@/lib/analytics/types";
+import { getChartColors, seriesColor } from "@/components/results/chartColors";
 
 // Same palette/margins/tooltip conventions as InsightChart.tsx.
 const CHART_HEIGHT = 320;
-const GREEN = "#3D5A3E";
-const AMBER = "#C17817";
-const GRID = "#E8E0D0";
-const AXIS_TEXT = "#8B7355";
-const PALETTE = [GREEN, AMBER, "#6B8F71", "#A83232", "#8B7355", "#D9A441", "#4E6E58", "#B5651D"];
 const TOTAL_COL = "__total__";
 
 export interface PivotChartTranslations {
@@ -33,6 +29,8 @@ interface PivotChartProps {
  */
 export function PivotChart({ result, view, measureLabel, t }: PivotChartProps) {
   const { ref, width } = useContainerWidth();
+  // S10: the shared chart colours (tokens), never a private palette.
+  const colors = getChartColors();
   const { rowKeys, colKeys, cells } = result;
 
   if (rowKeys.length === 0) {
@@ -67,24 +65,24 @@ export function PivotChart({ result, view, measureLabel, t }: PivotChartProps) {
           data={data}
           margin={{ top: 8, right: 8, bottom: 8, left: 0 }}
         >
-          <CartesianGrid stroke={GRID} vertical={false} />
+          <CartesianGrid stroke={colors.grid} vertical={false} />
           <XAxis
             dataKey="name"
-            tick={{ fontSize: 10, fill: AXIS_TEXT }}
+            tick={{ fontSize: 10, fill: colors.axisText }}
             interval={0}
             angle={rotateLabels ? -35 : 0}
             textAnchor={rotateLabels ? "end" : "middle"}
             height={rotateLabels ? 70 : 30}
           />
-          <YAxis tick={{ fontSize: 10, fill: AXIS_TEXT }} width={40} />
-          <Tooltip contentStyle={{ fontSize: 12, borderColor: GRID }} />
-          {showLegend && <Legend wrapperStyle={{ fontSize: 11, color: AXIS_TEXT }} />}
+          <YAxis tick={{ fontSize: 10, fill: colors.axisText }} width={40} />
+          <Tooltip contentStyle={{ fontSize: 12, borderColor: colors.grid }} />
+          {showLegend && <Legend wrapperStyle={{ fontSize: 11, color: colors.axisText }} />}
           {series.map((s, i) => (
             <Bar
               key={s.key}
               dataKey={s.key}
               name={s.label}
-              fill={PALETTE[i % PALETTE.length]}
+              fill={seriesColor(colors, i)}
               radius={[3, 3, 0, 0]}
               stackId={view === "stacked" ? "a" : undefined}
             />
@@ -99,20 +97,20 @@ export function PivotChart({ result, view, measureLabel, t }: PivotChartProps) {
           data={data}
           margin={{ top: 8, right: 8, bottom: 8, left: 0 }}
         >
-          <CartesianGrid stroke={GRID} vertical={false} />
-          <XAxis dataKey="name" tick={{ fontSize: 10, fill: AXIS_TEXT }} />
-          <YAxis tick={{ fontSize: 10, fill: AXIS_TEXT }} width={40} />
-          <Tooltip contentStyle={{ fontSize: 12, borderColor: GRID }} />
-          {showLegend && <Legend wrapperStyle={{ fontSize: 11, color: AXIS_TEXT }} />}
+          <CartesianGrid stroke={colors.grid} vertical={false} />
+          <XAxis dataKey="name" tick={{ fontSize: 10, fill: colors.axisText }} />
+          <YAxis tick={{ fontSize: 10, fill: colors.axisText }} width={40} />
+          <Tooltip contentStyle={{ fontSize: 12, borderColor: colors.grid }} />
+          {showLegend && <Legend wrapperStyle={{ fontSize: 11, color: colors.axisText }} />}
           {series.map((s, i) => (
             <Line
               key={s.key}
               type="monotone"
               dataKey={s.key}
               name={s.label}
-              stroke={PALETTE[i % PALETTE.length]}
+              stroke={seriesColor(colors, i)}
               strokeWidth={2}
-              dot={{ r: 3, fill: PALETTE[i % PALETTE.length] }}
+              dot={{ r: 3, fill: seriesColor(colors, i) }}
               connectNulls
             />
           ))}

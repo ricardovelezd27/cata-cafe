@@ -212,7 +212,7 @@ export function ChatPanel({ locale, t }: ChatPanelProps) {
         </div>
       )}
 
-      <div className="bg-surface-container-lowest rounded-card border border-[#E8E0D0] shadow-card flex flex-col h-[60vh] min-h-[420px]">
+      <div className="bg-surface-container-lowest rounded-card border border-outline-variant shadow-card flex flex-col h-[60vh] min-h-[420px]">
         <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3">
           {messages.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center gap-3 px-6">
@@ -225,7 +225,7 @@ export function ChatPanel({ locale, t }: ChatPanelProps) {
                     key={i}
                     type="button"
                     onClick={() => void handleSend(example)}
-                    className="rounded-pill border border-[#E8E0D0] bg-surface-container px-3 py-2 text-xs text-on-surface hover:border-[#3D5A3E] hover:text-[#3D5A3E] transition-colors text-left"
+                    className="rounded-pill border border-outline-variant bg-surface-container px-3 py-2 text-xs text-on-surface hover:border-primary-container hover:text-primary-container transition-colors text-left"
                   >
                     {example}
                   </button>
@@ -255,7 +255,7 @@ export function ChatPanel({ locale, t }: ChatPanelProps) {
 
           {pending && (
             <div className="flex justify-start">
-              <div className="bg-surface-container-lowest rounded-card border border-[#E8E0D0] px-4 py-3 flex items-center gap-2 text-sm text-on-surface-variant">
+              <div className="bg-surface-container-lowest rounded-card border border-outline-variant px-4 py-3 flex items-center gap-2 text-sm text-on-surface-variant">
                 <Loader2 size={14} className="animate-spin" />
                 {t.thinking}
               </div>
@@ -265,7 +265,7 @@ export function ChatPanel({ locale, t }: ChatPanelProps) {
           <div ref={bottomRef} />
         </div>
 
-        <div className="border-t border-[#E8E0D0] p-3 flex flex-col gap-1.5">
+        <div className="border-t border-outline-variant p-3 flex flex-col gap-1.5">
           <div className="flex items-end gap-2">
             <textarea
               ref={textareaRef}
@@ -275,7 +275,7 @@ export function ChatPanel({ locale, t }: ChatPanelProps) {
               placeholder={t.placeholder}
               disabled={pending || limitReached}
               rows={1}
-              className="flex-1 resize-none rounded-input border border-[#D4C5A9] bg-surface-container-lowest px-3 py-2 text-sm text-on-surface focus:border-primary-container disabled:opacity-60 disabled:bg-surface-container"
+              className="flex-1 resize-none rounded-input border border-outline-variant bg-surface-container-lowest px-3 py-2 text-sm text-on-surface focus:border-primary-container disabled:opacity-60 disabled:bg-surface-container"
               style={{ maxHeight: MAX_TEXTAREA_HEIGHT }}
             />
             <button
@@ -283,7 +283,7 @@ export function ChatPanel({ locale, t }: ChatPanelProps) {
               onClick={() => void handleSend(input)}
               disabled={!canSend}
               aria-label={t.send}
-              className="shrink-0 rounded-pill bg-[#3D5A3E] text-white p-2.5 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="shrink-0 rounded-pill bg-primary-container text-on-primary p-2.5 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Send size={16} />
             </button>
