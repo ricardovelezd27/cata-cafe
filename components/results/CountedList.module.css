@@ -1,0 +1,31 @@
+/* The counted list under a wheel: a real list, one CountBar per row. */
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.empty,
+.legend {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: 12.25px;
+  line-height: 1.35;
+  color: var(--color-on-surface-variant);
+}
+.legend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+/* The same ring a marked row carries, with its words beside it. */
+.ring {
+  width: 10px;
+  height: 10px;
+  margin: 0 2px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--color-surface-container-high);
+  outline: 1.5px solid var(--color-on-surface);
+  outline-offset: 2px;
+}

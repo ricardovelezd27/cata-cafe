@@ -1,6 +1,9 @@
-// Invented cupping panels for the flavour wheel drawings: shared by
-// tests/pdfFlavorWheel.test.ts and scripts/render-wheel-preview.tsx, so the
-// preview a person looks at and the test that must not throw use the same data.
+// Invented cupping panels for the flavour wheel drawings: shared by the tests
+// (tests/pdfFlavorWheel.test.ts, tests/resultsParts.test.ts), the PDF preview
+// (scripts/render-wheel-preview.tsx) and the dev page of the results parts
+// (app/[locale]/dev/results-parts), so what a person looks at and what a test
+// renders are the same data. (Moved here from tests/helpers in package R1b so a
+// page may import it; the panels are unchanged.)
 // Every coffee, cupper and count is made up. One list of wheel node ids per cupper.
 import { FLAVOR_WHEEL } from "@/lib/constants";
 import { WHEEL_FAMILY_ORDER, countWheelPeople, type WheelFamilyId, type WheelPeople } from "@/lib/flavorWheel";

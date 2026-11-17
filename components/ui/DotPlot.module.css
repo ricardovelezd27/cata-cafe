@@ -1,0 +1,100 @@
+/* "Tú y el grupo", attribute by attribute: one fixed scale for every row.
+   The layout follows the width of the plot's own column (a container query),
+   not the window: stacked under 440 px, one line from there. Pixels on purpose
+   (the root is 14 px). */
+.plot {
+  container-type: inline-size;
+  font-family: var(--font-ui);
+  font-size: 12.25px;
+  line-height: 1.25;
+  color: var(--color-on-surface);
+}
+.rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.row,
+.axis {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "label value" "track track";
+  column-gap: 8px;
+  row-gap: 2px;
+  align-items: center;
+}
+.axis { grid-template-areas: "track track"; }
+.row {
+  padding: 6px 0;
+  border-top: 1px solid var(--color-surface-container-highest);
+}
+.label {
+  grid-area: label;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.value {
+  grid-area: value;
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+/* 8 px at each end, so a mark at the lowest or the highest value is whole. */
+.trackWrap {
+  grid-area: track;
+  padding-inline: 8px;
+}
+.track,
+.ticks {
+  display: block;
+  width: 100%;
+  overflow: visible;
+}
+.track { height: 22px; }
+.ticks { height: 16px; }
+.tickText {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  fill: var(--color-on-surface-variant);
+}
+.base { stroke: var(--color-outline-variant); stroke-width: 1; }
+.tick { stroke: var(--color-outline-variant); stroke-width: 1; }
+/* The group: a filled dot. The reader: a ring. Shape first, colour second, so
+   the two are told apart without colour and both show when they coincide. */
+.group {
+  fill: var(--color-secondary);
+  stroke: var(--color-surface-container-lowest);
+  stroke-width: 1.5;
+}
+.mine {
+  fill: none;
+  stroke: var(--color-primary-container);
+  stroke-width: 2.5;
+}
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 8px 0 0;
+  color: var(--color-on-surface-variant);
+}
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.swatch {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  overflow: visible;
+}
+
+@container (min-width: 440px) {
+  .row,
+  .axis {
+    grid-template-columns: minmax(96px, 30%) minmax(0, 1fr) minmax(132px, auto);
+    grid-template-areas: "label track value";
+  }
+}

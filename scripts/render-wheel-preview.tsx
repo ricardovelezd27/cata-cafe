@@ -32,7 +32,7 @@ import {
   WHEEL_FIXTURES,
   wheelFamilyLabels as familyLabelsOf,
   wheelNodeLabels as labelsOf,
-} from "../tests/helpers/wheelFixtures";
+} from "../lib/dev/wheelFixtures";
 
 registerPdfFonts();
 

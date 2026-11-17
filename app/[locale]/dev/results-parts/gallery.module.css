@@ -1,0 +1,175 @@
+/* The dev board of the results parts. Paper rhythm in pixels (the root is 14 px):
+   16 / 24 px outer margin, 32 / 40 px between sections, 12 / 16 px between cards. */
+.page {
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 24px 16px 64px;
+  color: var(--color-on-surface);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.devNote {
+  margin: 0 0 16px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-container);
+  font-size: 12.25px;
+  color: var(--color-on-surface-variant);
+}
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 26.25px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--color-primary-container);
+}
+.lead {
+  margin: 6px 0 0;
+  max-width: 68ch;
+  color: var(--color-on-surface-variant);
+}
+.section { margin-top: 32px; }
+.sectionTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 21px;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--color-primary-container);
+}
+.sectionNote {
+  margin: 4px 0 0;
+  max-width: 76ch;
+  font-size: 12.25px;
+  color: var(--color-on-surface-variant);
+}
+.grid,
+.gridWide,
+.gridThree {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+  align-items: start;
+}
+.grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+.gridWide { grid-template-columns: minmax(0, 1fr); }
+.gridThree { grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); }
+.card {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-card);
+  background: var(--color-surface-container-lowest);
+}
+.cardTitle {
+  margin: 0 0 12px;
+  font-family: var(--font-display);
+  font-size: 17.5px;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--color-on-surface);
+}
+.cardNote {
+  margin: -10px 0 12px;
+  font-size: 12.25px;
+  color: var(--color-on-surface-variant);
+}
+.option {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-on-surface-variant);
+}
+.option + .cardNote { margin-top: 0; }
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.listTitle {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-on-surface-variant);
+}
+
+/* The row of small wheels. */
+.minis {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 16px 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.miniItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  text-align: center;
+  font-size: 12.25px;
+  line-height: 1.3;
+}
+.miniTag {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: lining-nums;
+}
+.miniLine { color: var(--color-on-surface-variant); }
+
+/* The headline of a wheel (the options for a flat panel). */
+.eyebrow {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-on-surface-variant);
+}
+.headline {
+  margin: 2px 0 10px;
+  font-family: var(--font-display);
+  font-size: 21px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--color-on-surface);
+  font-variant-numeric: lining-nums;
+  text-wrap: balance;
+}
+
+/* A column as wide as the content of a 320 px phone (320 - 2 x 16). */
+.narrowRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 12px;
+  align-items: flex-start;
+}
+.narrow {
+  width: 288px;
+  max-width: 100%;
+  flex: none;
+  padding: 0;
+  outline: 1px dashed var(--color-outline-variant);
+  outline-offset: 4px;
+}
+
+@media (min-width: 768px) {
+  .page { padding: 32px 24px 80px; }
+  .section { margin-top: 40px; }
+  .grid,
+  .gridWide,
+  .gridThree { gap: 16px; }
+  .card { padding: 20px; }
+}

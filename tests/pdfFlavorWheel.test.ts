@@ -8,7 +8,7 @@ import { WHEEL_FAMILY_ORDER, countedDescriptors, countedFamilies, type WheelPeop
 import { PdfCountedList, PdfFlavorCompare, PdfFlavorWheel, type PdfCompareCoffee } from "@/lib/pdf/charts";
 import { registerPdfFonts } from "@/lib/pdf/fonts";
 import { PDF_FLAVOR_FAMILY_COLORS, PDF_PALETTE, type PdfFlavorFamilyColors } from "@/lib/pdf/palette";
-import { WHEEL_FIXTURES, wheelFamilyLabels, wheelNodeLabels, type WheelFixtureName } from "./helpers/wheelFixtures";
+import { WHEEL_FIXTURES, wheelFamilyLabels, wheelNodeLabels, type WheelFixtureName } from "@/lib/dev/wheelFixtures";
 
 // Package R5a: the flavour wheel and its comparison drawn with react-pdf.
 // What they LOOK like is checked by a person (scripts/render-wheel-preview.tsx);
@@ -51,7 +51,7 @@ describe("the family colours come from one place", () => {
   });
 
   it("no hex literal outside lib/pdf/palette.ts: the drawings, the fixtures and the preview hold none", () => {
-    for (const file of ["lib/pdf/charts.tsx", "lib/flavorWheel.ts", "tests/helpers/wheelFixtures.ts", "scripts/render-wheel-preview.tsx"]) {
+    for (const file of ["lib/pdf/charts.tsx", "lib/flavorWheel.ts", "lib/dev/wheelFixtures.ts", "scripts/render-wheel-preview.tsx"]) {
       const src = readFileSync(path.resolve(__dirname, "..", file), "utf8");
       expect(src, file).not.toMatch(/["'`]#[0-9a-fA-F]{3,8}["'`]/);
     }
