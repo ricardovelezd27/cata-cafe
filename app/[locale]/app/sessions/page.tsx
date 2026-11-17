@@ -223,13 +223,13 @@ export default async function SessionsList({
           <div className="flex flex-wrap gap-2">
             <GuestGateLink
               href={`/${locale}/app/sessions/express`}
-              className="inline-flex items-center rounded-pill bg-primary-container px-5 py-2.5 text-sm font-medium text-on-primary transition-colors hover:bg-primary"
+              className="min-h-[44px] inline-flex items-center rounded-pill bg-primary-container px-5 py-2.5 text-sm font-medium text-on-primary transition-colors hover:bg-primary"
             >
               {t("express.cta")}
             </GuestGateLink>
             <GuestGateLink
               href={`/${locale}/app/sessions/new`}
-              className="inline-flex items-center rounded-pill border border-primary-container px-5 py-2.5 text-sm font-medium text-primary-container transition-colors hover:bg-primary-fixed"
+              className="min-h-[44px] inline-flex items-center rounded-pill border border-primary-container px-5 py-2.5 text-sm font-medium text-primary-container transition-colors hover:bg-primary-fixed"
             >
               {t("new")}
             </GuestGateLink>
@@ -240,7 +240,7 @@ export default async function SessionsList({
       {/* Phones have no sidebar: the warm-up library is reached from here. */}
       <GuestGateLink
         href={`/${locale}/app/warmup`}
-        className="lg:hidden flex items-center gap-3 rounded-card bg-surface-container-low px-4 py-3 text-sm font-medium text-on-surface hover:bg-surface-container"
+        className="min-h-[44px] lg:hidden flex items-center gap-3 rounded-card bg-surface-container-low px-4 py-3 text-sm font-medium text-on-surface hover:bg-surface-container"
       >
         <PersonStanding size={18} aria-hidden />
         {tw("library.mobileLink")}

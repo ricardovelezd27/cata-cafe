@@ -884,7 +884,7 @@ export function NewSessionForm({
             <button
               type="button"
               onClick={handleCopy}
-              className="border border-primary-container text-primary-container rounded-pill px-5 py-2.5 text-sm font-medium hover:bg-primary-fixed transition-colors whitespace-nowrap"
+              className="min-h-[44px] border border-primary-container text-primary-container rounded-pill px-5 py-2.5 text-sm font-medium hover:bg-primary-fixed transition-colors whitespace-nowrap"
             >
               {copied ? t.groupCopied : t.groupCopyLink}
             </button>
@@ -1446,7 +1446,7 @@ export function NewSessionForm({
         <button
           type="button"
           onClick={addCoffee}
-          className="border border-primary-container text-primary-container rounded-pill px-5 py-2.5 text-sm font-medium hover:bg-primary-fixed transition-colors"
+          className="min-h-[44px] border border-primary-container text-primary-container rounded-pill px-5 py-2.5 text-sm font-medium hover:bg-primary-fixed transition-colors"
         >
           + {t.addCoffee}
         </button>
@@ -1606,7 +1606,7 @@ export function NewSessionForm({
         <button
           type="button"
           onClick={addSample}
-          className="border border-primary-container text-primary-container rounded-pill px-5 py-2.5 text-sm font-medium hover:bg-primary-fixed transition-colors"
+          className="min-h-[44px] border border-primary-container text-primary-container rounded-pill px-5 py-2.5 text-sm font-medium hover:bg-primary-fixed transition-colors"
         >
           + {t.addSample}
         </button>

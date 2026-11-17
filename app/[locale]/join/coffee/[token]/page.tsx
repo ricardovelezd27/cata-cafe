@@ -44,12 +44,12 @@ export default async function JoinCoffeePage({
         <div className="w-full max-w-md bg-[#FDFBF7] border border-brown-light rounded-card p-8 text-center space-y-4">
           <p className="text-lg font-semibold text-red-defect">{t("share.invalidToken")}</p>
           <div className="flex flex-col gap-2 text-sm">
-            <Link href={`/${locale}/app`} className="text-brown-mid underline hover:text-green-dark">
+            <Link href={`/${locale}/app`} className="flex min-h-[44px] items-center justify-center text-brown-mid underline hover:text-green-dark">
               {tErrors("home")}
             </Link>
             <Link
               href={`/${locale}/auth/login`}
-              className="text-brown-mid underline hover:text-green-dark"
+              className="flex min-h-[44px] items-center justify-center text-brown-mid underline hover:text-green-dark"
             >
               {tAuth("loginTitle")}
             </Link>

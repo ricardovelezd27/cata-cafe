@@ -351,7 +351,7 @@ export default async function ProfilePage({
                     <Link
                       key={s.id}
                       href={sessionHref(s, { locale, isOwner: s.createdBy === user.id })}
-                      className="flex items-center justify-between gap-3 rounded-card border border-outline-variant bg-surface px-4 py-2.5 transition-colors hover:bg-surface-container-low"
+                      className="min-h-[44px] flex items-center justify-between gap-3 rounded-card border border-outline-variant bg-surface px-4 py-2.5 transition-colors hover:bg-surface-container-low"
                     >
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-1.5">
@@ -391,7 +391,7 @@ export default async function ProfilePage({
                     <GuestGateLink
                       key={c.id}
                       href={`/${locale}/app/coffees/${c.id}`}
-                      className="flex items-center justify-between gap-3 rounded-card border border-outline-variant bg-surface px-4 py-2.5 transition-colors hover:bg-surface-container-low"
+                      className="min-h-[44px] flex items-center justify-between gap-3 rounded-card border border-outline-variant bg-surface px-4 py-2.5 transition-colors hover:bg-surface-container-low"
                     >
                       <span className="truncate text-sm font-semibold text-on-surface">{c.name}</span>
                       <Badge
@@ -445,14 +445,14 @@ export default async function ProfilePage({
               <SignOutButton
                 mode="switchAccount"
                 locale={locale}
-                className="w-full rounded-pill border border-outline-variant px-4 py-2 text-sm font-semibold text-on-surface transition-colors hover:bg-surface-container sm:w-auto"
+                className="min-h-[44px] w-full rounded-pill border border-outline-variant px-4 py-2 text-sm font-semibold text-on-surface transition-colors hover:bg-surface-container sm:w-auto"
               >
                 {t("switchAccount")}
               </SignOutButton>
               <SignOutButton
                 mode="signOut"
                 locale={locale}
-                className="w-full rounded-pill border border-outline-variant px-4 py-2 text-sm font-semibold text-error transition-colors hover:bg-error-container sm:w-auto"
+                className="min-h-[44px] w-full rounded-pill border border-outline-variant px-4 py-2 text-sm font-semibold text-error transition-colors hover:bg-error-container sm:w-auto"
               >
                 {t("logout")}
               </SignOutButton>
@@ -477,7 +477,7 @@ export default async function ProfilePage({
               <SignOutButton
                 mode="signOutEverywhere"
                 locale={locale}
-                className="w-full rounded-pill border border-outline-variant px-4 py-2 text-sm font-semibold text-on-surface-variant transition-colors hover:bg-surface-container sm:w-auto"
+                className="min-h-[44px] w-full rounded-pill border border-outline-variant px-4 py-2 text-sm font-semibold text-on-surface-variant transition-colors hover:bg-surface-container sm:w-auto"
               >
                 {t("logoutEverywhere")}
               </SignOutButton>

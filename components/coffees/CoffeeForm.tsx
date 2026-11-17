@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState, useTransition } from "react";
+import { HIT_Y44 } from "@/components/ui/hitArea";
 import { useRouter } from "next/navigation";
 import { createCoffee, updateCoffee } from "@/app/actions/coffees";
 import { PROCESS_TYPES, CERTIFICATIONS, ROAST_LEVELS } from "@/lib/constants";
@@ -58,7 +59,7 @@ export type CoffeeFormInitialValues = {
 };
 
 const inputCls =
-  "w-full border border-outline-variant rounded-input px-3.5 py-2.5 text-sm text-on-surface bg-surface-container-lowest focus:border-primary-container transition-colors";
+  "min-h-[44px] w-full border border-outline-variant rounded-input px-3.5 py-2.5 text-sm text-on-surface bg-surface-container-lowest focus:border-primary-container transition-colors";
 
 function FieldLabel({
   children,
@@ -376,7 +377,9 @@ export function CoffeeForm({
       {/* Certifications */}
       <div className="bg-surface-container-lowest border border-outline-variant rounded-card p-5 space-y-3">
         <FieldLabel id={fid("certifications")}>{t.certifications}</FieldLabel>
-        <div role="group" aria-labelledby={fid("certifications")} className="flex flex-wrap gap-2">
+        {/* Chips paint 30 px, 15 px apart in height: each chip's 44 px hit area
+            (HIT_Y44) meets the next row's at the midpoint (T7b). */}
+        <div role="group" aria-labelledby={fid("certifications")} className="flex flex-wrap gap-x-2 gap-y-[15px]">
           {CERTIFICATIONS.map((c) => {
             const active = certifications.includes(c);
             return (
@@ -386,8 +389,8 @@ export function CoffeeForm({
                 onClick={() => toggleCertification(c)}
                 className={
                   active
-                    ? "bg-primary-container text-on-primary rounded-pill px-3.5 py-1.5 text-xs font-semibold transition-colors"
-                    : "border border-outline-variant text-on-surface rounded-pill px-3.5 py-1.5 text-xs font-medium hover:bg-surface-container transition-colors"
+                    ? `${HIT_Y44} min-h-[30px] bg-primary-container text-on-primary rounded-pill px-3.5 py-1.5 text-xs font-semibold transition-colors`
+                    : `${HIT_Y44} min-h-[30px] border border-outline-variant text-on-surface rounded-pill px-3.5 py-1.5 text-xs font-medium hover:bg-surface-container transition-colors`
                 }
               >
                 {c}

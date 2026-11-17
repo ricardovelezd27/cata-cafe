@@ -128,7 +128,7 @@ export default async function CoffeesPage({
         action={
           <Link
             href={`/${locale}/app/coffees/new`}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-pill bg-primary-container px-4 py-2 text-sm font-semibold text-on-primary transition-colors hover:bg-primary"
+            className="min-h-[44px] inline-flex shrink-0 items-center gap-1.5 rounded-pill bg-primary-container px-4 py-2 text-sm font-semibold text-on-primary transition-colors hover:bg-primary"
           >
             <Plus size={16} />
             {t("createCoffee")}
