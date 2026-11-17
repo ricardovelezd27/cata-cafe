@@ -6,20 +6,23 @@ import type { ScoreRule } from "@/lib/scoreRule";
 import { buildScoreLine, groupScopeLine, type ScoreLineLabels } from "@/lib/scoreLine";
 
 /* ============================================================
-   N5 — Score transparency panel ("¿Cómo se calculó?")
+   Score transparency: the arithmetic of a score, and "¿Cómo se calculó?"
 
-   A collapsed-by-default disclosure that explains how a CVA score was
-   calculated AND under what session setup. Two variants:
-   - "individual": one cupper's score for one sample (uses IndividualBreakdown,
-     the single source of truth shared with the displayed score).
-   - "group": the community aggregate for one sample (reads numbers verbatim
-     from AggregateScoreData — authoritative, never recomputed here).
+   ONE disclosure per coffee's sheet (RESULTS-DESIGN.md section 3: "'¿Cómo se
+   calculó?' once"). It can hold two parts, each under its own name:
+   - `individual`: one cupper's score for one sample (IndividualBreakdown, the
+     single source of truth shared with the displayed score);
+   - `group`: the group's score for one sample (numbers read verbatim from
+     AggregateScoreData: authoritative, never recomputed here).
+   The arithmetic line of the individual score and the pooled-cups line of the
+   group's are printed above the disclosure, always visible.
 
    All strings arrive via the `t` prop (results.breakdown.* in the message
-   files) — this component holds no private bilingual dictionary.
+   files): this component holds no private bilingual dictionary.
    ============================================================ */
 
-type AggregateScoreData = {
+/** The group's stored numbers for one sample, as the panel reads them. */
+export type GroupBreakdownData = {
   communityScore: number | null;
   avgRawScore: number | null;
   participantCount: number;
@@ -85,22 +88,19 @@ export type ScoreBreakdownTranslations = {
   };
 };
 
-type Props =
-  | {
-      variant: "individual";
-      breakdown: IndividualBreakdown;
-      /** The evaluation's module JSON: lets the arithmetic line name the defect types. */
-      data?: Record<string, unknown>;
-      setup: ScoreSetup;
-      t: ScoreBreakdownTranslations;
-    }
-  | {
-      variant: "group";
-      group: AggregateScoreData;
-      cupsPerSample: number;
-      setup: ScoreSetup;
-      t: ScoreBreakdownTranslations;
-    };
+type Props = {
+  /** One cupper's score. `label` names whose it is ("Tu puntaje"). */
+  individual?: {
+    breakdown: IndividualBreakdown;
+    /** The evaluation's module JSON: lets the arithmetic line name the defect types. */
+    data?: Record<string, unknown>;
+    label: string;
+  } | null;
+  /** The group's score. `label` names it ("El puntaje del grupo"). */
+  group?: { group: GroupBreakdownData; cupsPerSample: number; label: string } | null;
+  setup: ScoreSetup;
+  t: ScoreBreakdownTranslations;
+};
 
 function fmt(n: number, digits = 2): string {
   return n.toFixed(digits);
@@ -110,7 +110,7 @@ function fmt(n: number, digits = 2): string {
 function FormulaLine() {
   return (
     <div className="mb-1 overflow-x-auto rounded-input border border-primary-fixed-dim/50 bg-primary-fixed/15 px-2.5 py-2">
-      <code className="whitespace-nowrap font-mono text-[13px] font-bold tabular-nums text-primary-container">
+      <code className="whitespace-nowrap font-mono text-[13px] font-bold tabular-nums text-on-surface">
         S = 0.65625 × Σhᵢ + 52.75 − 2u − 4d
       </code>
     </div>
@@ -133,7 +133,7 @@ function SetupStamp({ setup, t }: { setup: ScoreSetup; t: ScoreBreakdownTranslat
   parts.push(setup.roundingEnforced ? t.rounding025 : t.roundingOff);
 
   return (
-    <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-outline-variant pt-2 text-[10px] text-on-surface-variant">
+    <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-outline-variant pt-2 text-[11px] text-on-surface-variant">
       <span className="font-bold uppercase tracking-wide">{t.setupStamp}</span>
       <span aria-hidden>·</span>
       <span>{parts.join(" · ")}</span>
@@ -150,10 +150,10 @@ function TallyRow({
   label: string;
   value: string;
   strong?: boolean;
-  tone?: "error" | "secondary";
+  tone?: "error";
 }) {
-  const base = strong ? "text-primary-container" : "text-on-surface-variant";
-  const valueClass = tone === "error" ? "text-error" : tone === "secondary" ? "text-secondary" : base;
+  const base = strong ? "text-on-surface" : "text-on-surface-variant";
+  const valueClass = tone === "error" ? "text-error" : base;
   return (
     <div className="flex justify-between gap-3 border-t border-outline-variant/60 py-0.5">
       <span className={`${base} ${strong ? "font-bold" : ""}`}>{label}</span>
@@ -162,43 +162,47 @@ function TallyRow({
   );
 }
 
-const sectionLabel = "mb-1 mt-2.5 text-[9px] font-bold uppercase tracking-widest text-on-surface-variant first:mt-0";
+const sectionLabel = "mb-1 mt-2.5 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant first:mt-0";
+const partLabel = "mb-1 mt-3 text-[12.25px] font-semibold text-on-surface first:mt-0";
 
-export function ScoreBreakdownPanel(props: Props) {
-  const { t } = props;
+export function ScoreBreakdownPanel({ individual, group, setup, t }: Props) {
+  if (!individual && !group) return null;
   // The arithmetic of the total, visible without expanding anything. Only a line
   // that adds up to the stored number is ever built (lib/scoreLine.ts).
-  const line =
-    props.variant === "individual" && props.data
-      ? buildScoreLine(props.breakdown, props.data, t.line)
-      : null;
-  const scope =
-    props.variant === "group"
-      ? groupScopeLine(props.group.totalCups, props.group.rule, t.line.groupScope)
-      : null;
+  const line = individual?.data ? buildScoreLine(individual.breakdown, individual.data, t.line) : null;
+  const scope = group ? groupScopeLine(group.group.totalCups, group.group.rule, t.line.groupScope) : null;
   return (
     <>
-    {line && (
-      <p className="mt-2 text-xs tabular-nums leading-relaxed text-on-surface" data-score-line>
-        {line}
-      </p>
-    )}
-    {scope && (
-      <p className="mt-2 text-xs leading-relaxed text-on-surface-variant" data-score-scope>
-        {scope}
-      </p>
-    )}
-    <details className="mt-2 overflow-hidden rounded-input border border-outline-variant bg-surface-container-lowest">
-      <summary className="flex min-h-[36px] cursor-pointer list-none items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-primary-container select-none [&::-webkit-details-marker]:hidden [&::marker]:content-none">
-        <Calculator size={13} aria-hidden />
-        {t.how}
-      </summary>
-      <div className="px-3 pb-3 pt-1 text-xs text-on-surface-variant">
-        {props.variant === "individual"
-          ? renderIndividual(props.breakdown, props.setup, t)
-          : renderGroup(props.group, props.cupsPerSample, props.setup, t)}
-      </div>
-    </details>
+      {line && (
+        <p className="m-0 text-[12.25px] tabular-nums leading-relaxed text-on-surface" data-score-line>
+          {line}
+        </p>
+      )}
+      {scope && (
+        <p className="m-0 text-[12.25px] leading-relaxed text-on-surface-variant" data-score-scope>
+          {scope}
+        </p>
+      )}
+      <details className="overflow-hidden rounded-input border border-outline-variant bg-surface-container-lowest">
+        <summary className="flex min-h-[44px] cursor-pointer list-none items-center gap-1.5 px-3 py-2 text-[12.25px] font-semibold text-on-surface select-none [&::-webkit-details-marker]:hidden [&::marker]:content-none">
+          <Calculator size={14} aria-hidden />
+          {t.how}
+        </summary>
+        <div className="px-3 pb-3 pt-1 text-[12.25px] text-on-surface-variant">
+          {individual ? (
+            <>
+              {group ? <div className={partLabel}>{individual.label}</div> : null}
+              {renderIndividual(individual.breakdown, setup, t)}
+            </>
+          ) : null}
+          {group ? (
+            <>
+              {individual ? <div className={`${partLabel} border-t border-outline-variant pt-3`}>{group.label}</div> : null}
+              {renderGroup(group.group, group.cupsPerSample, setup, t)}
+            </>
+          ) : null}
+        </div>
+      </details>
     </>
   );
 }
@@ -215,7 +219,7 @@ function renderIndividual(
     <>
       <div className={sectionLabel}>{t.formula}</div>
       <FormulaLine />
-      <div className="text-[10px] leading-relaxed text-on-surface-variant">
+      <div className="text-[11px] leading-relaxed text-on-surface-variant">
         {t.sigma}
         <br />
         {t.u} · {t.d}
@@ -248,12 +252,12 @@ function renderIndividual(
       </div>
 
       {b.rule === "v1" ? (
-        <div className="mt-2 text-[10px] italic leading-relaxed text-on-surface-variant">
+        <div className="mt-2 text-[11px] leading-relaxed text-on-surface-variant">
           {t.previousRule}
         </div>
       ) : (
         !b.uniformityTracked && (
-          <div className="mt-2 text-[10px] italic leading-relaxed text-on-surface-variant">
+          <div className="mt-2 text-[11px] leading-relaxed text-on-surface-variant">
             {t.notTrackedNote}
           </div>
         )
@@ -265,7 +269,7 @@ function renderIndividual(
 }
 
 function renderGroup(
-  g: AggregateScoreData,
+  g: GroupBreakdownData,
   cupsPerSample: number,
   setup: ScoreSetup,
   t: ScoreBreakdownTranslations,
@@ -313,10 +317,10 @@ function renderGroup(
           value={`−${fmt(g.defectPenalty)}`}
           tone={g.defectPenalty > 0 ? "error" : undefined}
         />
-        <TallyRow label={t.communityScore} value={fmt(community)} strong tone="secondary" />
+        <TallyRow label={t.communityScore} value={fmt(community)} strong />
       </div>
 
-      <div className="mt-2 text-[10px] leading-relaxed text-on-surface-variant">
+      <div className="mt-2 text-[11px] leading-relaxed text-on-surface-variant">
         {t.includedNote
           .replace("{n}", String(g.participantCount))
           .replace("{total}", String(g.totalSubmitted ?? g.submittedCount))}

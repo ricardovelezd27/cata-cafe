@@ -19,6 +19,8 @@ import { wheelFamilyLabels } from "@/lib/flavorWheelLabels";
 import { buildResultsPartsStrings } from "@/components/results/partsStrings";
 import { buildOverviewStrings } from "@/components/results/overviewStrings";
 import { buildCardsStrings } from "@/components/results/cardsStrings";
+import { buildSheetStrings } from "@/components/results/sheetStrings";
+import { buildSheetData } from "@/lib/reports/coffeeSheet";
 import { isSessionExpired, viewerMayReadGroupResults } from "@/lib/sessionState";
 import { wasClosedSilently } from "@/lib/repairClose";
 import { resultsUpdatedAfterClose } from "@/lib/exclusionReasons";
@@ -1117,7 +1119,6 @@ export default async function ResultsPage({
       currentUserId={user.id}
       lastUpdatedLabel={lastUpdatedLabel}
       participants={participantResults}
-      descriptorFrequency={descriptorFrequency}
       blockLabels={blockLabels}
       cupperAlignment={cupperAlignment}
       partialSyncNotice={partialSyncNotice}
@@ -1157,10 +1158,19 @@ export default async function ResultsPage({
             AFFECTIVE_ATTRIBUTES.map((a) => [a.id, tAttr(a.id as Parameters<typeof tAttr>[0])]),
           ),
         }),
+        // R3: per coffee, the panel's descriptors stage by stage. Given only where
+        // that coffee's wheel was given to this viewer as the group's counts (the
+        // wheel's own gate, inside `overviewData`); the typed words of the old
+        // roll-up and its sentences never leave the server any more.
+        sheets: buildSheetData({
+          sampleIds: session.samples.map((s) => s.id),
+          overview: overviewData,
+          frequencies: descriptorFrequency,
+        }),
+        sheet: buildSheetStrings(tResults),
       }}
       format={format}
       myAlignment={myAlignment}
-      isSoloDescriptors={isSoloDescriptors}
       guestSave={
         user.is_anonymous
           ? {
@@ -1397,13 +1407,7 @@ export default async function ResultsPage({
         referenceN: tResults.raw("referenceN") as string,
         compareWith: tResults("compareWith"),
         tabResultados: tResults("tabs.resultados"),
-        tabDescriptores: tResults("tabs.descriptores"),
         ownerSection: tResults("matrix.ownerSection"),
-        // S10 WP3b: `{n}` is filled in the browser.
-        partial: {
-          includesOne: tResults.raw("partial.includesOne") as string,
-          includesMany: tResults.raw("partial.includesMany") as string,
-        },
         liveUpdatesDown: tResults("liveUpdatesDown"),
         myDraftCta: tResults("myDraftCta"),
         closeEmailsResend: tResults("closeEmails.resend"),
@@ -1411,23 +1415,7 @@ export default async function ResultsPage({
         closeEmailsResent: tResults("closeEmails.resent"),
         closeEmailsResendError: tResults("closeEmails.resendError"),
         closeEmailsInProgress: tResults("closeEmails.inProgress"),
-        descViewAll: tDesc("viewAll"),
-        descByGroup: tDesc("byGroup"),
-        descOf: tDesc("of"),
-        descParticipants: tDesc("participants"),
-        descEmptyStage: tDesc("emptyStage"),
-        descEmptyBlock: tDesc("emptyBlock"),
-        descEmptyAll: tDesc("emptyAll"),
-        cloudTitle: tDesc("cloudTitle"),
-        cloudScopeSession: tDesc("cloudScopeSession"),
-        cloudScopeSample: tDesc("cloudScopeSample"),
-        cloudScopeTaster: tDesc("cloudScopeTaster"),
-        cloudEmpty: tDesc("cloudEmpty"),
-        hideSingles: tDesc("hideSingles"),
         filterSampleAll: tDesc("filterSampleAll"),
-        filterBlockLabel: tDesc("filterBlockLabel"),
-        soloCloudTitle: tDesc("soloCloudTitle"),
-        tasterScopeAll: tDesc("tasterScopeAll"),
         alignTitle: tAlign("title"),
         alignSubtitle: tAlign("subtitle"),
         alignExcluded: tAlign("excluded"),
@@ -1473,34 +1461,15 @@ export default async function ResultsPage({
           sweetness: tResults("detail.sweetness"),
           mouthfeel: tResults("detail.mouthfeel"),
           overall: tResults("detail.overall"),
-          intensity: tResults("detail.intensity"),
-          quality: tResults("detail.quality"),
           notes: tResults("detail.notes"),
           cvaScore: tResults("detail.cvaScore"),
           edit: tResults("detail.edit"),
           noData: tResults("detail.noData"),
-          nariz: tResults("detail.nariz"),
-          boca: tResults("detail.boca"),
           gusto: tResults("detail.gusto"),
-          acidezBlock: tResults("detail.acidezBlock"),
-          dulzura: tResults("detail.dulzura"),
-          sensacionBlock: tResults("detail.sensacionBlock"),
-          descriptorSingular: tResults("detail.descriptorSingular"),
-          descriptorPlural: tResults("detail.descriptorPlural"),
           inProgress: tResults("table.inProgress"),
           notEvaluated: tResults("table.notEvaluated"),
-          avgQuality: tResults("detail.avgQuality"),
-          noBlockData: tResults("detail.noBlockData"),
           compare: {
-            groupTitle: tResults("compare.groupTitle"),
-            groupLine: tResults.raw("compare.groupLine") as string,
-            mineLine: tResults.raw("compare.mineLine") as string,
-            attrLine: tResults.raw("compare.attrLine") as string,
-            tooFew: tResults("compare.tooFew"),
             notAnError: tResults("compare.notAnError"),
-            intensities: tResults("compare.intensities"),
-            matches: tResults("compare.matches"),
-            missed: tResults("compare.missed"),
             repeatTitle: tResults("compare.repeatTitle"),
             repeatVs: tResults.raw("compare.repeatVs") as string,
             total: tResults("compare.total"),
@@ -1517,15 +1486,14 @@ export default async function ResultsPage({
           market: { label: tResults("market.label"), known: tResults("market.known") },
           partial: {
             label: tResults("partial.label"),
-            notEvaluated: tResults("partial.notEvaluated"),
-            // {from}/{to} are substituted client-side.
-            cooledSummary: tResults.raw("partial.cooledSummary") as string,
+            // `{n}` is filled in the browser.
+            includesOne: tResults.raw("partial.includesOne") as string,
+            includesMany: tResults.raw("partial.includesMany") as string,
           },
           assignCoffee: tResults("detail.assignCoffee"),
           close: tResults("detail.close"),
           breakdown: breakdownT,
         },
-        breakdown: breakdownT,
         matrix: {
           title: tResults("matrix.matrixTitle"),
           manageTitle: tResults("matrix.manageTitle"),

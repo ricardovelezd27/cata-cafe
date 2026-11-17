@@ -7,10 +7,8 @@ import { subscribeWithSessionAuth } from "@/lib/supabase/realtimeAuth";
 import { revealSample, refreshAggregateScores, resendCloseEmails, finishSoloSession, closeSession } from "@/app/actions/community";
 import { planFinish, soloCloseAsIsOffer } from "@/lib/closeRules";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { ScoreBreakdownPanel, type ScoreBreakdownTranslations } from "@/components/results/ScoreBreakdownPanel";
-import type { SampleBlockFreq } from "@/components/results/DescriptorFrequency";
-import type { CupperAlignmentRow } from "@/components/results/CupperAlignment";
-import { DescriptoresTab } from "./DescriptoresTab";
+import { CupperAlignment, type CupperAlignmentRow } from "@/components/results/CupperAlignment";
+import { useSheetAddress } from "./useSheetAddress";
 import {
   OwnerParticipantSection,
   type ParticipantResult,
@@ -65,12 +63,11 @@ import { ArrowLeft, RefreshCw } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SessionOverview } from "@/components/results/SessionOverview";
 import { CoffeeCards } from "@/components/results/CoffeeCards";
-import { SampleGroupBlock } from "@/components/results/SampleGroupBlock";
 import type { CardsStrings } from "@/components/results/cardsStrings";
-import { formatSigned } from "@/components/ui/ScoreWithContext";
-import { fillPattern } from "@/lib/fillPattern";
+import type { SheetStrings } from "@/components/results/sheetStrings";
+import type { SheetData } from "@/lib/reports/coffeeSheet";
 import { wheelNodeLabels } from "@/lib/flavorWheelLabels";
-import { coffeeCards } from "@/lib/reports/coffeeCards";
+import { coffeeCards, compareOptions } from "@/lib/reports/coffeeCards";
 import type { OverviewData } from "@/lib/reports/overview";
 import type { OverviewStrings } from "@/components/results/overviewStrings";
 import type { ResultsPartsStrings } from "@/components/results/partsStrings";
@@ -106,10 +103,11 @@ type MatrixTranslations = {
   reasons: Record<string, string>;
 };
 
-// The first tab is the results themselves (the overview, then a card per
-// coffee). "panel" is the organizer's working view: the per-cupper matrix,
-// until package R5 gives it its own page. "descriptores" stays until R3.
-type Tab = "resumen" | "panel" | "descriptores";
+// The first view is the results themselves (the overview, then a card per
+// coffee, each opening its sheet). "panel" is the organizer's working view: the
+// per-cupper matrix and the alignment table, until package R5 gives it its own
+// page. A participant has ONE view and no tab bar.
+type Tab = "resumen" | "panel";
 
 // What lies under the territories of "Comparar" (FlavorCompare's `ground`):
 // "rings" is the recommendation, "families" the alternative. One line, the
@@ -158,7 +156,6 @@ export function ResultsClient({
   currentUserId,
   lastUpdatedLabel,
   participants,
-  descriptorFrequency,
   blockLabels,
   cupperAlignment,
   partialSyncNotice,
@@ -166,7 +163,6 @@ export function ResultsClient({
   overview,
   format,
   myAlignment,
-  isSoloDescriptors,
   guestSave = null,
   myDraftNotice = null,
   closedNotice = null,
@@ -222,7 +218,6 @@ export function ResultsClient({
   currentUserId: string;
   lastUpdatedLabel?: string | null;
   participants?: ParticipantResult[] | null;
-  descriptorFrequency?: SampleBlockFreq[] | null;
   blockLabels?: Record<string, string>;
   cupperAlignment?: CupperAlignmentRow[] | null;
   partialSyncNotice?: string | null;
@@ -237,6 +232,10 @@ export function ResultsClient({
     t: OverviewStrings;
     /** R2, step 2: the words of the coffee cards and of "Comparar". */
     cards: CardsStrings;
+    /** R3: per coffee, the panel's descriptors stage by stage (null where this
+     *  viewer may not read them), and the words of the sheet. */
+    sheets: Record<string, SheetData | null>;
+    sheet: SheetStrings;
   };
   // Narrowed session format (mirrors session.format, typed) — feeds the
   // Resumen dashboard's score derivation and ranking gates.
@@ -244,10 +243,6 @@ export function ResultsClient({
   // Every viewer's own alignment triple (never another cupper's row/name/id).
   myAlignment?: { alignment: number; matches: number; opportunities: number } | null;
   // Group-session submission progress, shown in the Resumen dashboard.
-  // True for solo descriptive/combined sessions — the Descriptores tab (and
-  // the Resumen highlights card) feed from the current user's own data
-  // instead of the anonymous group core.
-  isSoloDescriptors?: boolean;
   // Non-null only when the viewer is an anonymous guest: the "save your
   // results" banner that sends them through the normal login flow with a
   // claim token (see lib/guestClaim.ts).
@@ -337,7 +332,6 @@ export function ResultsClient({
     referenceN: string;
     compareWith: string;
     tabResultados: string;
-    tabDescriptores: string;
     ownerSection: string;
     liveUpdatesDown: string;
     myDraftCta: string;
@@ -346,23 +340,7 @@ export function ResultsClient({
     closeEmailsResent: string;
     closeEmailsResendError: string;
     closeEmailsInProgress: string;
-    descViewAll: string;
-    descByGroup: string;
-    descOf: string;
-    descParticipants: string;
-    descEmptyStage: string;
-    descEmptyBlock: string;
-    descEmptyAll: string;
-    cloudTitle: string;
-    cloudScopeSession: string;
-    cloudScopeSample: string;
-    cloudScopeTaster: string;
-    cloudEmpty: string;
-    hideSingles: string;
     filterSampleAll: string;
-    filterBlockLabel: string;
-    soloCloudTitle: string;
-    tasterScopeAll: string;
     alignTitle: string;
     alignSubtitle: string;
     alignExcluded: string;
@@ -394,11 +372,8 @@ export function ResultsClient({
     save: string;
     saving: string;
     cancel: string;
-    /** "Incluye {n} evaluación parcial" / "…evaluaciones parciales": raw, `{n}` filled here. */
-    partial: { includesOne: string; includesMany: string };
     detail: SampleDetailDialogTranslations;
     matrix: MatrixTranslations;
-    breakdown: ScoreBreakdownTranslations;
     help: ResultsHelp;
   };
 }) {
@@ -465,11 +440,16 @@ export function ResultsClient({
   // Set after a metadata save when the linked coffee belongs to someone else
   // — the label still saved, but the coffee record itself was skipped.
   const [coffeeNotOwnedNotice, setCoffeeNotOwnedNotice] = useState(false);
-  // Personal drill-down dialog. participantId is non-null only when the owner
-  // opens another catador's evaluation from the CVA matrix.
-  const [detail, setDetail] = useState<{ sampleId: string; participantId: string | null } | null>(
-    null,
-  );
+  // The coffee's sheet. WHICH coffee is open lives in the address (reload and
+  // "back" keep it: `useSheetAddress`); which cupper the organizer reads is
+  // local, non-null only when the sheet was opened from a cell of the matrix.
+  const sheetAddress = useSheetAddress(session.samples.map((sm) => sm.id));
+  const [detailParticipantId, setDetailParticipantId] = useState<string | null>(null);
+  const openSheet = (sampleId: string, participantId: string | null = null) => {
+    setDetailParticipantId(participantId);
+    sheetAddress.open(sampleId);
+  };
+  const closeSheet = sheetAddress.close;
   // Evaluation ids already counted toward the badge — SEEDED with the ids that
   // were visible at page load, and never cleared (only the counter resets on
   // refresh), so the no-op UPDATE storms from exclusion toggles / owner
@@ -584,7 +564,16 @@ export function ResultsClient({
   const editingExtrinsicSample =
     session.samples.find((s) => s.id === editingExtrinsicSampleId) ?? null;
 
-  const detailSample = detail ? (session.samples.find((s) => s.id === detail.sampleId) ?? null) : null;
+  const detailSample = sheetAddress.sampleId
+    ? (session.samples.find((sm) => sm.id === sheetAddress.sampleId) ?? null)
+    : null;
+  // The sheet's dialog stays MOUNTED while closed (on the last coffee opened, or
+  // the first one), so that it sees itself open: that is when it notes where
+  // focus was, to give it back to that card when it closes.
+  const [lastSheetId, setLastSheetId] = useState<string | null>(null);
+  if (detailSample && detailSample.id !== lastSheetId) setLastSheetId(detailSample.id);
+  const sheetSample =
+    detailSample ?? session.samples.find((sm) => sm.id === lastSheetId) ?? session.samples[0] ?? null;
   const detailParticipants: SampleDetailParticipant[] | null =
     (isOwner || isAdminViewer) && participants && participants.length > 0 ? participants : null;
 
@@ -692,7 +681,6 @@ export function ResultsClient({
   };
 
   const canViewIndividual = (isOwner || isAdminViewer) && isGroup && !!participants?.length;
-  const canViewDescriptors = !!descriptorFrequency?.length;
 
   // ─── Reference (control) sample — display-only Δ basis for the ranking,
   // table, radar, matrix, and drill-down surfaces. Scoring is untouched;
@@ -736,14 +724,11 @@ export function ResultsClient({
   };
   const cards = coffeeCards({ samples: session.samples, referenceId, ctx: rankCtx, data: overview.data });
 
-  // ─── Descriptores tab filters (lifted so the Resumen dashboard can
-  // preselect a sample before switching tabs) ────────────────────────────────
-  const [descSampleId, setDescSampleId] = useState<"all" | string>("all");
-  const [descBlockId, setDescBlockId] = useState<string>("general");
+  // The alignment table's own filter: one coffee, or all of them.
+  const [alignSampleId, setAlignSampleId] = useState<"all" | string>("all");
 
-  // Defensive: fall back to the results if a gated tab is selected without access.
-  const effectiveTab: Tab =
-    (tab === "descriptores" && !canViewDescriptors) || (tab === "panel" && !canViewIndividual) ? "resumen" : tab;
+  // Defensive: fall back to the results if the Panel is selected without access.
+  const effectiveTab: Tab = tab === "panel" && !canViewIndividual ? "resumen" : tab;
 
   // "Comparar con: Referencia 1 · Referencia 2" — only when there are several.
   const compareSelector =
@@ -764,10 +749,9 @@ export function ResultsClient({
       </div>
     ) : null;
 
-  // A participant of an affective session has ONE view: no tab bar then.
+  // A participant has ONE view: no tab bar then.
   const tabItems = [
     { id: "resumen", label: translations.tabResultados },
-    ...(canViewDescriptors ? [{ id: "descriptores", label: translations.tabDescriptores }] : []),
     ...(canViewIndividual ? [{ id: "panel", label: overview.cards.tabPanel }] : []),
   ];
 
@@ -925,10 +909,7 @@ export function ResultsClient({
           <PillTabs
             items={tabItems}
             value={effectiveTab}
-            onChange={(id) => {
-              setTab(id as Tab);
-              setDetail(null);
-            }}
+            onChange={(id) => setTab(id as Tab)}
             ariaLabel={translations.title}
           />
         </div>
@@ -1135,45 +1116,7 @@ export function ResultsClient({
       {guestSave && !isAdminViewer && (
         <GuestSaveCta sessionId={session.id} locale={locale} translations={guestSave} />
       )}
-      {effectiveTab === "descriptores" && canViewDescriptors ? (
-        <div className="p-4 lg:p-6">
-          <DescriptoresTab
-            descriptorFrequency={descriptorFrequency!}
-            blockLabels={blockLabels ?? {}}
-            cupperAlignment={cupperAlignment ?? null}
-            participants={isOwner || isAdminViewer ? (participants ?? null) : null}
-            isOwner={isOwner || isAdminViewer}
-            isSoloDescriptors={isSoloDescriptors ?? false}
-            format={format ?? asSessionFormat(session.format)}
-            sampleId={descSampleId}
-            onSampleIdChange={setDescSampleId}
-            blockId={descBlockId}
-            onBlockIdChange={setDescBlockId}
-            locale={locale}
-            t={{
-              cloudTitle: translations.cloudTitle,
-              soloCloudTitle: translations.soloCloudTitle,
-              cloudEmpty: translations.cloudEmpty,
-              hideSingles: translations.hideSingles,
-              filterSampleAll: translations.filterSampleAll,
-              filterBlockLabel: translations.filterBlockLabel,
-              tasterScopeAll: translations.tasterScopeAll,
-              descViewAll: translations.descViewAll,
-              descByGroup: translations.descByGroup,
-              descOf: translations.descOf,
-              descParticipants: translations.descParticipants,
-              descEmptyBlock: translations.descEmptyBlock,
-              descEmptyAll: translations.descEmptyAll,
-              close: translations.cancel,
-              alignTitle: translations.alignTitle,
-              alignSubtitle: translations.alignSubtitle,
-              alignExcluded: translations.alignExcluded,
-              alignNoData: translations.alignNoData,
-            }}
-            help={translations.help}
-          />
-        </div>
-      ) : effectiveTab === "resumen" ? (
+      {effectiveTab === "resumen" ? (
         <div className="p-4 lg:p-6 flex flex-col gap-6">
           <SessionOverview
             samples={session.samples}
@@ -1188,7 +1131,7 @@ export function ResultsClient({
             parts={overview.parts}
             t={overview.t}
             compare={{ closed: sessionClosed, ground: COMPARE_GROUND, t: overview.cards }}
-            onOpenSample={(id) => setDetail({ sampleId: id, participantId: null })}
+            onOpenSample={(id) => openSheet(id)}
           />
           <CoffeeCards
             cards={cards}
@@ -1198,7 +1141,7 @@ export function ResultsClient({
             // coffee), and the admin's lens is read-only (`isOwner` is false there).
             canReveal={isOwner && cuppingOpen}
             onReveal={handleReveal}
-            onOpenSample={(id) => setDetail({ sampleId: id, participantId: null })}
+            onOpenSample={(id) => openSheet(id)}
             familyLabels={overview.familyLabels}
             nodeLabels={wheelNodeLabels(locale === "en" ? "en" : "es")}
             parts={overview.parts}
@@ -1224,7 +1167,7 @@ export function ResultsClient({
                 format={format ?? asSessionFormat(session.format)}
                 cupsPerSample={session.cupsPerSample}
                 readOnly={isAdminViewer}
-                onOpenDetail={(sampleId, participantId) => setDetail({ sampleId, participantId })}
+                onOpenDetail={(sampleId, participantId) => openSheet(sampleId, participantId)}
                 referenceBadge={translations.referenceBadge}
                 t={translations.matrix}
               />
@@ -1240,91 +1183,119 @@ export function ResultsClient({
               translations={noteTranslations}
             />
           )}
+          {/* Organizer only: how close each cupper's descriptors are to the group's.
+              It came from the Descriptores tab unchanged; package R5 redraws it. */}
+          {canViewIndividual && cupperAlignment && cupperAlignment.length > 0 && (
+            <section className="flex flex-col gap-3">
+              {session.samples.length > 1 && (
+                <PillTabs
+                  items={[
+                    { id: "all", label: translations.filterSampleAll },
+                    ...session.samples.map((sm) => ({ id: sm.id, label: sm.label })),
+                  ]}
+                  value={alignSampleId}
+                  onChange={(id) => setAlignSampleId(id)}
+                  ariaLabel={translations.alignTitle}
+                  size="sm"
+                />
+              )}
+              <CupperAlignment
+                rows={cupperAlignment}
+                sampleFilter={alignSampleId === "all" ? null : alignSampleId}
+                t={{
+                  title: translations.alignTitle,
+                  subtitle: translations.alignSubtitle,
+                  excluded: translations.alignExcluded,
+                  noData: translations.alignNoData,
+                }}
+                titleAction={
+                  <InfoHint
+                    title={translations.help.alineacion.title}
+                    body={translations.help.alineacion.body}
+                    closeLabel={translations.help.closeLabel}
+                  />
+                }
+              />
+            </section>
+          )}
         </div>
       )}
       </div>
 
-      {detailSample && (
+      {sheetSample && (
         <SampleDetailDialog
-          open
-          onClose={() => setDetail(null)}
-          sample={detailSample}
+          open={detailSample !== null}
+          onClose={closeSheet}
+          sample={sheetSample}
           isOwner={isOwner}
           participants={detailParticipants}
-          initialParticipantId={detail?.participantId ?? null}
+          initialParticipantId={detailParticipantId}
           format={format ?? asSessionFormat(session.format)}
           cupsPerSample={session.cupsPerSample}
           locale={locale}
           referenceBadge={translations.referenceBadge}
           referenceCount={references.length}
-          // What the table and the radar cards carried about the GROUP on this coffee,
-          // in the viewer's own lens and only where they may read the group's results.
+          // Everything of the GROUP the sheet shows, already gated: the card's own
+          // context and quality rows, the group's stored numbers only where this
+          // viewer may read the group's results, the server-built wheel, defects
+          // and descriptor lists, and "Comparar con" only on a closed session.
           group={(() => {
-            const card = cards.find((c) => c.sample.id === detailSample.id);
-            const agg = detailSample.aggregateScore;
-            if (!card?.context || !isGroup || !canViewGroup || !agg || agg.communityScore == null) return null;
-            const partials = agg.partialCount ?? 0;
-            const partialPattern = partials === 1 ? translations.partial.includesOne : translations.partial.includesMany;
-            const mine = card.context.mine;
-            const ownDelta =
-              mine !== null && referenceMyScore !== null && detailSample.id !== referenceId
-                ? mine - referenceMyScore
-                : null;
-            // The quality plot only where "tú vs. grupo" does not already show it.
-            const showQuality =
-              card.quality !== null &&
-              detailSample.comparison?.status !== "ok" &&
-              !(card.isReference && overview.referencePinned) &&
-              card.quality.some((row) => row.group !== null);
-            return (
-              <SampleGroupBlock
-                title={overview.cards.groupTitle}
-                context={
-                  // a fixed reference's number is a rule, not an average: the number alone
-                  card.isReference && overview.referencePinned
-                    ? { ...card.context, spread: null, included: null, mine: null, difference: null, indicative: false, suppressed: false }
-                    : card.context
-                }
-                scoreStrings={overview.parts.score}
-                partialLine={partials > 0 && partialPattern ? fillPattern(partialPattern, { n: partials }) : null}
-                ownDeltaLine={
-                  ownDelta === null ? null : fillPattern(overview.cards.yourDelta, { delta: formatSigned(ownDelta) })
-                }
-                breakdown={
-                  <ScoreBreakdownPanel
-                    variant="group"
-                    group={agg}
-                    cupsPerSample={session.cupsPerSample}
-                    setup={{
-                      cupsPerSample: session.cupsPerSample,
-                      uniformityTracked: session.cupsPerSample >= 2,
-                      roundingEnforced: true,
-                    }}
-                    t={translations.breakdown}
-                  />
-                }
-                quality={
-                  showQuality && card.quality
-                    ? {
-                        title: overview.cards.qualityTitle,
-                        rows: card.quality,
-                        labels: overview.cards.attributes,
-                        strings: overview.parts.dotPlot,
-                      }
-                    : null
-                }
-              />
-            );
+            const card = cards.find((c) => c.sample.id === sheetSample.id) ?? null;
+            const agg = sheetSample.aggregateScore;
+            const aggregate = isGroup && canViewGroup && agg && agg.communityScore != null ? agg : null;
+            const mine = card?.context?.mine ?? null;
+            const options = compareOptions({
+              closed: sessionClosed,
+              samples: session.samples,
+              order: cards.filter((c) => !c.isReference).map((c) => c.sample.id),
+              data: overview.data,
+            });
+            const self = options?.find((o) => o.id === sheetSample.id) ?? null;
+            return {
+              card,
+              aggregate,
+              referencePinned: overview.referencePinned,
+              ownDelta:
+                aggregate && mine !== null && referenceMyScore !== null && sheetSample.id !== referenceId
+                  ? mine - referenceMyScore
+                  : null,
+              wheel: overview.data.samples[sheetSample.id]?.wheel ?? null,
+              defects: overview.data.samples[sheetSample.id]?.defects ?? null,
+              blocks: overview.sheets[sheetSample.id] ?? null,
+              compare:
+                options && self
+                  ? {
+                      self,
+                      others: options.filter((o) => o.id !== sheetSample.id),
+                      names: Object.fromEntries(
+                        session.samples.map((sm) => [
+                          sm.id,
+                          sm.revealed && sm.coffee ? `${sm.label} ${sm.coffee.name}` : sm.label,
+                        ]),
+                      ),
+                      short: Object.fromEntries(
+                        session.samples.map((sm) => [sm.id, sm.revealed && sm.coffee ? sm.coffee.name : sm.label]),
+                      ),
+                    }
+                  : null,
+              compareGround: COMPARE_GROUND,
+            };
           })()}
+          familyLabels={overview.familyLabels}
+          blockLabels={blockLabels ?? {}}
+          parts={overview.parts}
+          cards={overview.cards}
+          overview={overview.t}
+          s={overview.sheet}
           // S10 WP4b (Kim C2): the cupper's own post-close note (editable) under their notes;
           // the owner reads another cupper's note here, read-only. Never in the score area.
           extra={(viewerId) => {
             if (!sessionClosed || !noteTranslations || !postCloseNotes) return null;
             if (viewerId === "me") {
-              const mine = postCloseNotes.mine[detailSample.id];
+              const mine = postCloseNotes.mine[sheetSample.id];
               return mine && !isAdminViewer ? (
                 <PostCloseNoteEditor
-                  key={detailSample.id}
+                  key={sheetSample.id}
                   note={mine}
                   locale={locale}
                   userId={currentUserId}
@@ -1332,7 +1303,7 @@ export function ResultsClient({
                 />
               ) : null;
             }
-            const theirs = postCloseNotes.byCupper?.[viewerId]?.[detailSample.id];
+            const theirs = postCloseNotes.byCupper?.[viewerId]?.[sheetSample.id];
             return theirs ? (
               <PostCloseNoteReadOnly text={theirs.text} at={theirs.at} locale={locale} translations={noteTranslations} />
             ) : null;
@@ -1342,15 +1313,15 @@ export function ResultsClient({
           onEdit={
             isAdminViewer || !cuppingOpen
               ? undefined
-              : () => handleEditSample(detailSample.id)
+              : () => handleEditSample(sheetSample.id)
           }
           onEditMetadata={
             // Closed = read-only: the metadata dialog's save throws
             // session_closed once the session closed, so the button goes away.
             isOwner && cuppingOpen
               ? () => {
-                  setDetail(null);
-                  setEditingSampleId(detailSample.id);
+                  closeSheet();
+                  setEditingSampleId(sheetSample.id);
                 }
               : undefined
           }
@@ -1358,20 +1329,20 @@ export function ResultsClient({
             // Post-close coffee naming (WP-B): a coffee-less sample (express
             // sessions) may get its coffee AFTER the close — the one write
             // updateSampleMetadata allows on a closed session, owner only.
-            isOwner && !isAdminViewer && sessionClosed && !detailSample.hasCoffee
+            isOwner && !isAdminViewer && sessionClosed && !sheetSample.hasCoffee
               ? () => {
-                  setDetail(null);
-                  setEditingSampleId(detailSample.id);
+                  closeSheet();
+                  setEditingSampleId(sheetSample.id);
                 }
               : undefined
           }
           onEditExtrinsic={
             // Blind integrity: origin data is only ever editable once the
             // sample is revealed, and the admin god-mode view stays read-only.
-            isOwner && detailSample.revealed && !isAdminViewer
+            isOwner && sheetSample.revealed && !isAdminViewer
               ? () => {
-                  setDetail(null);
-                  setEditingExtrinsicSampleId(detailSample.id);
+                  closeSheet();
+                  setEditingExtrinsicSampleId(sheetSample.id);
                 }
               : undefined
           }
