@@ -1,0 +1,169 @@
+/* The ranking: one row per coffee on ONE fixed scale. Layout by the width of
+   the ranking's own column (a container query): stacked on a phone, one line
+   from 600 px. Pixels on purpose (the root is 14 px). */
+.rank {
+  container-type: inline-size;
+  font-family: var(--font-ui);
+  font-size: 12.25px;
+  line-height: 1.3;
+  color: var(--color-on-surface);
+}
+.head,
+.row {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  column-gap: 8px;
+}
+.head { grid-template-areas: ". axis axis"; }
+.row {
+  grid-template-areas:
+    "place name score"
+    "place strip strip"
+    "place ctx ctx";
+  row-gap: 2px;
+  align-items: center;
+  position: relative;
+  padding: 10px 0;
+  border-top: 1px solid var(--color-surface-container-highest);
+}
+.rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.place {
+  grid-area: place;
+  align-self: start;
+  padding-left: 10px;
+  font-family: var(--font-display);
+  font-size: 21px;
+  line-height: 1.1;
+  color: var(--color-on-surface-variant);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+.name {
+  grid-area: name;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+}
+.label { font-weight: 600; }
+.coffee { color: var(--color-on-surface-variant); }
+/* The number: ink, always. */
+.score {
+  grid-area: score;
+  text-align: right;
+  font-family: var(--font-display);
+  font-size: 21px;
+  line-height: 1.1;
+  color: var(--color-on-surface);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+.ctx { grid-area: ctx; min-width: 0; }
+.axis { grid-area: axis; }
+.stripWrap { grid-area: strip; }
+/* 12 px at each end, so a mark at 58 or at 100 is whole and the numbers of
+   the axis, centred on their ticks, stay inside the column. */
+.axis,
+.stripWrap { padding-inline: 12px; }
+.strip,
+.ticks {
+  display: block;
+  width: 100%;
+  overflow: visible;
+}
+.strip { height: 26px; }
+.ticks { height: 16px; }
+.tickText {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  fill: var(--color-on-surface-variant);
+}
+.base { stroke: var(--color-outline-variant); stroke-width: 1; }
+.neutral { stroke: var(--color-outline-variant); stroke-width: 1; }
+.reference {
+  stroke: var(--color-outline);
+  stroke-width: 2;
+  stroke-dasharray: 4 3;
+}
+.whisker {
+  stroke: var(--color-on-surface-variant);
+  stroke-width: 2;
+  stroke-linecap: butt;
+}
+/* The group: a filled dot. The reader: a ring. Shape repeats what colour says. */
+.group {
+  fill: var(--color-secondary);
+  stroke: var(--color-surface-container-lowest);
+  stroke-width: 1.5;
+}
+.mine {
+  fill: none;
+  stroke: var(--color-primary-container);
+  stroke-width: 2.5;
+}
+/* A mark drawn at an edge because its score is outside the scale. */
+.off {
+  fill: none;
+  stroke: var(--color-on-surface);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* The single tie bar: one bar down the left edge that joins the rows with no
+   clear difference between them. It is drawn in three pieces (the first row of
+   a run, the rows inside it, the last one) so that it needs no measuring. */
+.tieStart::before,
+.tieMid::before,
+.tieEnd::before {
+  content: "";
+  position: absolute;
+  left: 1px;
+  width: 3px;
+  background: var(--color-on-surface);
+}
+.tieStart::before { top: 16px; bottom: -1px; border-radius: 2px 2px 0 0; }
+.tieMid::before { top: 0; bottom: -1px; }
+.tieEnd::before { top: 0; height: 28px; border-radius: 0 0 2px 2px; }
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 10px 0 0;
+  color: var(--color-on-surface-variant);
+}
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.swatch {
+  width: 22px;
+  height: 16px;
+  flex: none;
+  overflow: visible;
+}
+.tieSwatch { stroke: var(--color-on-surface); stroke-width: 3; stroke-linecap: round; }
+.note {
+  margin: 6px 0 0;
+  color: var(--color-on-surface-variant);
+}
+
+@container (min-width: 600px) {
+  .head,
+  .row {
+    grid-template-columns: 30px minmax(140px, 1fr) minmax(220px, 1.5fr) 76px;
+  }
+  .head { grid-template-areas: ". . axis ."; }
+  .row {
+    grid-template-areas:
+      "place name strip score"
+      "place ctx strip score";
+  }
+  .name { align-self: end; }
+  .ctx { align-self: start; }
+  .score { font-size: 24px; }
+}

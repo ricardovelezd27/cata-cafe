@@ -1,0 +1,178 @@
+/* The counted flavour wheel and its comparison. Every stroke keeps its painted
+   width whatever the scale of the drawing (non-scaling-stroke), and every text
+   takes its size from the component (a painted size divided by the scale), so
+   nothing here sets a font-size on an SVG text. Pixels on purpose. */
+.figure {
+  margin: 0;
+  min-width: 0;
+}
+/* The drawing is as wide as its column, up to 420 px: beyond that a wheel only
+   gets emptier, not clearer. */
+.frame {
+  width: 100%;
+  max-width: 420px;
+  margin-inline: auto;
+}
+.svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.mini {
+  display: block;
+  width: 72px;
+  height: 72px;
+  flex: none;
+}
+.caption {
+  margin: 8px 0 0;
+  font-family: var(--font-ui);
+  font-size: 12.25px;
+  line-height: 1.35;
+  color: var(--color-on-surface-variant);
+  text-align: center;
+}
+
+/* The quiet ground: a ring per person. */
+.ring,
+.ringOuter,
+.cut,
+.territory,
+.under,
+.tagRing {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+}
+.ring { stroke: var(--color-outline-variant); stroke-width: 1; }
+.ringOuter { stroke: var(--color-outline); stroke-width: 1.25; }
+/* A petal: the family's tone, as long as the people who found it. */
+.petal { fill: var(--family-tone); }
+/* Optional ground: each family's whole sector in a pale tint of its tone, so
+   all nine families are seen and the solid part reads as "this many of all". */
+.track { fill: var(--family-tone); fill-opacity: 0.18; }
+/* The same rings again, in the colour of the paper and only over the petals:
+   they cut each petal into one step per person, so a count can be read off it. */
+.cut { stroke: var(--color-surface-container-lowest); stroke-width: 1.25; }
+
+/* The words: ink. A family nobody found is quieter, never coloured. */
+/* Lining figures: the display face's default figures are old-style, and an
+   old-style 0 or 1 beside a name reads as a letter. */
+.count,
+.countMuted,
+.tagText {
+  font-family: var(--font-display);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+.count { font-weight: 600; fill: var(--color-on-surface); }
+.countMuted { font-weight: 400; fill: var(--color-on-surface-variant); }
+.name,
+.nameMuted { font-family: var(--font-ui); }
+.name { fill: var(--color-on-surface); }
+.nameMuted { fill: var(--color-on-surface-variant); }
+
+/* ── The comparison ───────────────────────────────────────────────────────── */
+/* Alone: colour AND line style AND the letter tell the coffees apart. */
+.fillA0 { fill: var(--color-primary-container); fill-opacity: 0.16; }
+.fillA1 { fill: var(--color-secondary); fill-opacity: 0.13; }
+.centre { fill: var(--color-surface-container-lowest); }
+/* A paper-coloured line under each outline keeps it legible over petals and rings. */
+.under { stroke: var(--color-surface-container-lowest); stroke-width: 4.5; }
+.territory { stroke-width: 2; stroke-linejoin: round; }
+.lineA0 { stroke: var(--color-primary-container); }
+.lineA1 { stroke: var(--color-secondary); stroke-dasharray: 8 3.5; }
+.lineA2 { stroke: var(--color-on-surface); stroke-dasharray: 2 3.5; }
+/* Over a coffee's petals: ink outlines, so colour stays the family's. */
+.lineO0 { stroke: var(--color-on-surface); }
+.lineO1 { stroke: var(--color-on-surface); stroke-dasharray: 6 4; }
+.tagDisc { fill: var(--color-surface-container-lowest); }
+.tagRing { stroke-width: 1.5; }
+.tagText { font-weight: 700; fill: var(--color-on-surface); }
+
+.legend {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 16px;
+  margin: 8px 0 0;
+  padding: 0;
+  font-family: var(--font-ui);
+  font-size: 12.25px;
+  line-height: 1.35;
+  color: var(--color-on-surface);
+}
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.swatch {
+  width: 28px;
+  height: 14px;
+  flex: none;
+  overflow: visible;
+}
+.swatchLine { fill: none; stroke-width: 2; }
+.swatchPetal { fill: var(--color-on-surface-variant); }
+.legendTag {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-variant-numeric: lining-nums;
+}
+
+/* The table is the exact reading and the text equivalent of the drawing. */
+.tableWrap {
+  margin-top: 12px;
+  overflow-x: auto;
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-ui);
+  font-size: 12.25px;
+  line-height: 1.3;
+  color: var(--color-on-surface);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+.table th,
+.table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--color-surface-container-highest);
+  text-align: center;
+  font-weight: 400;
+}
+.table thead th {
+  border-bottom-color: var(--color-outline-variant);
+  vertical-align: bottom;
+}
+.table th:first-child {
+  padding-left: 0;
+  text-align: left;
+}
+.thTag {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+}
+.thN {
+  display: block;
+  color: var(--color-on-surface-variant);
+  white-space: nowrap;
+}
+.family {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.familyDot {
+  width: 10px;
+  height: 10px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--family-tone);
+}
+.cell { font-weight: 600; }
+.cellZero { color: var(--color-on-surface-variant); }

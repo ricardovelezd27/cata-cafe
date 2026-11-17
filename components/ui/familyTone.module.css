@@ -1,0 +1,16 @@
+/* The nine flavour families, each mapped to its token ONCE. A part that draws a
+   family's dot, bar, petal or arc takes one of these classes and paints with
+   var(--family-tone). DESIGN.md "Flavor Family Colors": the tone marks a shape,
+   never text and never the ground behind text. The class names are the family
+   ids of lib/flavorWheel.ts (WHEEL_FAMILY_ORDER). */
+.floral { --family-tone: var(--color-flavor-floral); }
+.fruity { --family-tone: var(--color-flavor-fruity); }
+.sour_fermented { --family-tone: var(--color-flavor-sour); }
+.green_veg { --family-tone: var(--color-flavor-green); }
+.other { --family-tone: var(--color-flavor-other); }
+.roasted { --family-tone: var(--color-flavor-roasted); }
+.spice { --family-tone: var(--color-flavor-spice); }
+.nutty_cocoa { --family-tone: var(--color-flavor-nutty); }
+.sweet { --family-tone: var(--color-flavor-sweet); }
+/* A count that belongs to no family (a plain "6 de 7"). */
+.neutral { --family-tone: var(--color-on-surface-variant); }

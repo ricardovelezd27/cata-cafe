@@ -1,0 +1,58 @@
+/* A score and what is said beside it. The number is INK at every size: nothing
+   here colours or names a score by quality (DESIGN.md "No quality bands").
+   Pixels on purpose (the root is 14 px). */
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  font-family: var(--font-ui);
+  color: var(--color-on-surface);
+}
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+}
+.score {
+  font-family: var(--font-display);
+  font-weight: 500;
+  line-height: 1;
+  color: var(--color-on-surface);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+.sm { font-size: 21px; }
+.md { font-size: 31.5px; }
+.lg { font-size: 42px; }
+.line {
+  margin: 0;
+  font-size: 12.25px;
+  line-height: 1.35;
+  color: var(--color-on-surface-variant);
+  font-variant-numeric: tabular-nums;
+}
+/* A number inside a line of context is ink too, a step heavier than its words. */
+.num {
+  color: var(--color-on-surface);
+  font-weight: 600;
+}
+.flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  margin-top: 2px;
+}
+/* A neutral word in an outline. Not a quality: "indicativo" says how many
+   cuppers are behind the number, "sin diferencia clara" names a neighbour. */
+.flag {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-pill);
+  font-size: 12.25px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--color-on-surface-variant);
+}
