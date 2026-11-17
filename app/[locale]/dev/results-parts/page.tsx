@@ -1,7 +1,9 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { buildCardsStrings } from "@/components/results/cardsStrings";
 import { buildOverviewStrings, type OverviewStrings } from "@/components/results/overviewStrings";
 import { buildResultsPartsStrings } from "@/components/results/partsStrings";
+import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
 import { OVERVIEW_SCENARIOS } from "@/lib/dev/overviewFixtures";
 import { referenceCopySuffix, referenceExplanation } from "@/lib/referenceRules";
 import { GALLERY_SECTIONS, ResultsPartsGallery, type GallerySection } from "./ResultsPartsGallery";
@@ -25,6 +27,8 @@ export default async function ResultsPartsDevPage({
   setRequestLocale(locale);
   const t = await getTranslations("results");
   const tCups = await getTranslations("cupping.cups");
+  const tAttr = await getTranslations("attributes");
+  const tg = await getTranslations("group");
   // The words of each invented cupping, chosen as the results page chooses them
   // (the reference's title and explanation depend on the format and the mode).
   const overviewStrings: Record<string, OverviewStrings> = Object.fromEntries(
@@ -62,6 +66,18 @@ export default async function ResultsPartsDevPage({
       locale={locale === "en" ? "en" : "es"}
       strings={buildResultsPartsStrings(t)}
       overviewStrings={overviewStrings}
+      cardsStrings={buildCardsStrings(t, {
+        inProgress: t("table.inProgress"),
+        notEvaluated: t("table.notEvaluated"),
+        inProgressLegend: t("table.inProgressLegend"),
+        partialLabel: t("partial.label"),
+        reveal: tg("reveal"),
+        revealed: tg("revealed"),
+        referenceBadge: t("referenceBadge"),
+        attributes: Object.fromEntries(
+          AFFECTIVE_ATTRIBUTES.map((a) => [a.id, tAttr(a.id as Parameters<typeof tAttr>[0])]),
+        ),
+      })}
       only={sections}
     />
   );

@@ -65,6 +65,7 @@ export function SampleDetailDialog({
   referenceBadge,
   referenceCount = 1,
   extra,
+  group,
   t,
 }: {
   open: boolean;
@@ -94,6 +95,10 @@ export function SampleDetailDialog({
   /** Extra content under the detail for the shown viewer ("me" or a participant id): the
    *  post-close note (S10 WP4b). Kept as a slot so this dialog never knows about it. */
   extra?: (viewerId: string) => ReactNode;
+  /** "El grupo en este café" (R2): the group's score, its arithmetic and its value per
+   *  quality attribute. Shown in the viewer's own lens only, never while the organizer
+   *  browses one cupper. A slot, so this dialog knows nothing of the gates behind it. */
+  group?: ReactNode;
   t: SampleDetailDialogTranslations;
 }) {
   const initialViewerId = initialParticipantId ?? "me";
@@ -221,6 +226,7 @@ export function SampleDetailDialog({
           t={t}
         />
         {extra?.(viewerId)}
+        {!activeParticipant ? group : null}
 
         {/* S10 WP5b B3 + B6: the viewer's own lens only (never when the owner browses a cupper). */}
         {!activeParticipant && t.compare && (

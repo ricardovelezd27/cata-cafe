@@ -7,10 +7,7 @@ import { subscribeWithSessionAuth } from "@/lib/supabase/realtimeAuth";
 import { revealSample, refreshAggregateScores, resendCloseEmails, finishSoloSession, closeSession } from "@/app/actions/community";
 import { planFinish, soloCloseAsIsOffer } from "@/lib/closeRules";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { ScoreTable, type ScoreTableTranslations } from "@/components/results/ScoreTable";
-import { SampleRadarChart } from "@/components/results/SampleRadarChart";
-import type { ScoreBreakdownTranslations } from "@/components/results/ScoreBreakdownPanel";
-import { FlavorCloud } from "@/components/results/FlavorCloud";
+import { ScoreBreakdownPanel, type ScoreBreakdownTranslations } from "@/components/results/ScoreBreakdownPanel";
 import type { SampleBlockFreq } from "@/components/results/DescriptorFrequency";
 import type { CupperAlignmentRow } from "@/components/results/CupperAlignment";
 import { DescriptoresTab } from "./DescriptoresTab";
@@ -30,7 +27,6 @@ import {
 } from "@/components/offline/SessionSyncStatus";
 import { canShowMyScore } from "@/lib/evaluationState";
 import {
-  referenceBadgeText,
   referencesOf,
   resolveCompareReference,
 } from "@/lib/referenceRules";
@@ -68,6 +64,13 @@ import { calcIndividualScore, hasIndividualScore } from "@/lib/scoring";
 import { ArrowLeft, RefreshCw } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SessionOverview } from "@/components/results/SessionOverview";
+import { CoffeeCards } from "@/components/results/CoffeeCards";
+import { SampleGroupBlock } from "@/components/results/SampleGroupBlock";
+import type { CardsStrings } from "@/components/results/cardsStrings";
+import { formatSigned } from "@/components/ui/ScoreWithContext";
+import { fillPattern } from "@/lib/fillPattern";
+import { wheelNodeLabels } from "@/lib/flavorWheelLabels";
+import { coffeeCards } from "@/lib/reports/coffeeCards";
 import type { OverviewData } from "@/lib/reports/overview";
 import type { OverviewStrings } from "@/components/results/overviewStrings";
 import type { ResultsPartsStrings } from "@/components/results/partsStrings";
@@ -103,33 +106,15 @@ type MatrixTranslations = {
   reasons: Record<string, string>;
 };
 
-type Tab = "resumen" | "resultados" | "descriptores";
-type ResultsView = "tabla" | "grafico";
+// The first tab is the results themselves (the overview, then a card per
+// coffee). "panel" is the organizer's working view: the per-cupper matrix,
+// until package R5 gives it its own page. "descriptores" stays until R3.
+type Tab = "resumen" | "panel" | "descriptores";
 
-const RESULTS_VIEW_KEY = "cata_results_view";
-const RESULTS_VIEW_EVENT = "cata-results-view-change";
-
-// Persisted Tabla/Gráfico choice read via an external store (same pattern as
-// DashboardIntro) so we avoid setState-in-effect and hydration flashes.
-function subscribeResultsView(cb: () => void) {
-  window.addEventListener("storage", cb);
-  window.addEventListener(RESULTS_VIEW_EVENT, cb);
-  return () => {
-    window.removeEventListener("storage", cb);
-    window.removeEventListener(RESULTS_VIEW_EVENT, cb);
-  };
-}
-function getResultsViewSnapshot(): ResultsView {
-  // Private mode / blocked storage can throw on read (F-resultados-10).
-  try {
-    return localStorage.getItem(RESULTS_VIEW_KEY) === "grafico" ? "grafico" : "tabla";
-  } catch {
-    return "tabla";
-  }
-}
-function getResultsViewServerSnapshot(): ResultsView {
-  return "tabla";
-}
+// What lies under the territories of "Comparar" (FlavorCompare's `ground`):
+// "rings" is the recommendation, "families" the alternative. One line, the
+// owner's to confirm.
+const COMPARE_GROUND: "rings" | "families" = "rings";
 
 // "Comparar con" pick (S6 multi-reference): which reference the Δ chips use.
 // Same external-store pattern; "" = nothing chosen → the active reference.
@@ -250,6 +235,8 @@ export function ResultsClient({
     familyLabels: Record<WheelFamilyId, string>;
     parts: ResultsPartsStrings;
     t: OverviewStrings;
+    /** R2, step 2: the words of the coffee cards and of "Comparar". */
+    cards: CardsStrings;
   };
   // Narrowed session format (mirrors session.format, typed) — feeds the
   // Resumen dashboard's score derivation and ranking gates.
@@ -345,35 +332,12 @@ export function ResultsClient({
     refreshing: string;
     refreshNew: string;
     refreshNewGeneric: string;
-    radarMine: string;
-    radarCommunity: string;
-    deltaAttribute: string;
-    radar: {
-      score: string;
-      reveal: string;
-      communityScore: string;
-      includedLine: string;
-      noAffective: string;
-      requiresAffective: string;
-      partialLabel?: string;
-      includesOne?: string;
-      includesMany?: string;
-      axisNotEvaluated?: string;
-    };
-    flavorProfiles: string;
     referenceBadge: string;
     /** "Referencia {n}" — raw ICU string, `{n}` replaced here. */
     referenceN: string;
     compareWith: string;
-    deltaVsReference: string;
-    deltaVsReferenceAria: string;
-    referenceLegend: string;
-    tabResumen: string;
     tabResultados: string;
     tabDescriptores: string;
-    viewTable: string;
-    viewChart: string;
-    communityPending: string;
     ownerSection: string;
     liveUpdatesDown: string;
     myDraftCta: string;
@@ -430,39 +394,8 @@ export function ResultsClient({
     save: string;
     saving: string;
     cancel: string;
-    dashboard: {
-      statSamples: string;
-      statParticipation: string;
-      statAvg: string;
-      statBest: string;
-      statAvgMine: string;
-      statAvgCommunity: string;
-      ranking: string;
-      notScored: string;
-      performance: string;
-      myAvg: string;
-      communityAvg: string;
-      alignmentLabel: string;
-      alignmentNote: string;
-      highlights: string;
-      soloTopDescriptors: string;
-      viewInDescriptors: string;
-      communityPending: string;
-      sdAria: string;
-      referenceBadge: string;
-      deltaVsReference: string;
-      deltaVsReferenceAria: string;
-      anchorTitle: string;
-      anchorHint: string;
-      includedOf: string;
-      rankIndicative: string;
-      rankNoClearGap: string;
-      scoreLegend: string;
-      basisMine: string;
-      fewNote: string;
-      rankHelp: string;
-    };
-    table: ScoreTableTranslations;
+    /** "Incluye {n} evaluación parcial" / "…evaluaciones parciales": raw, `{n}` filled here. */
+    partial: { includesOne: string; includesMany: string };
     detail: SampleDetailDialogTranslations;
     matrix: MatrixTranslations;
     breakdown: ScoreBreakdownTranslations;
@@ -471,20 +404,6 @@ export function ResultsClient({
 }) {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("resumen");
-  // Sub-view of the Resultados tab, persisted across visits.
-  const resultsView = useSyncExternalStore(
-    subscribeResultsView,
-    getResultsViewSnapshot,
-    getResultsViewServerSnapshot,
-  );
-  const changeResultsView = (v: string) => {
-    try {
-      window.localStorage.setItem(RESULTS_VIEW_KEY, v === "grafico" ? "grafico" : "tabla");
-    } catch {
-      // Private mode / storage denied — the choice just won't persist.
-    }
-    window.dispatchEvent(new Event(RESULTS_VIEW_EVENT));
-  };
   const compareChoice = useSyncExternalStore(
     subscribeCompareRef,
     getCompareRefSnapshot,
@@ -772,9 +691,6 @@ export function ResultsClient({
     });
   };
 
-  // One merged view: community data renders whenever the viewer may see it —
-  // the old "Mis resultados / Resultados grupales" toggle is gone.
-  const showCommunity = canViewGroup;
   const canViewIndividual = (isOwner || isAdminViewer) && isGroup && !!participants?.length;
   const canViewDescriptors = !!descriptorFrequency?.length;
 
@@ -786,13 +702,11 @@ export function ResultsClient({
   // the Δ chips compare against — the viewer's pick, the ACTIVE one by default.
   const references = referencesOf(session.samples);
   const referenceId = resolveCompareReference(session.samples, compareChoice);
-  const badgeFor = (s: { referenceRank?: number | null }) =>
-    referenceBadgeText(translations.referenceBadge, s.referenceRank, references.length);
   const referenceSample = referenceId
     ? (session.samples.find((s) => s.id === referenceId) ?? null)
     : null;
-  // Same "my score" derivation ScoreTable/ResumenTab use: pick the format's
-  // affective dataset, guard on hasAffectiveData, then calcIndividualScore.
+  // The viewer's own score of the reference they compare against: pick the
+  // format's affective dataset, guard on hasAffectiveData, then calcIndividualScore.
   const referenceMyScore = ((): number | null => {
     if (!referenceSample) return null;
     const affData =
@@ -809,18 +723,27 @@ export function ResultsClient({
     });
     return typeof score === "number" ? score : null;
   })();
-  // Each surface pairs bases itself (ScoreTable per row, ResumenTab via
-  // rankFor's basis, the radar own-vs-own) — never mix my score with the
-  // reference's community score in one Δ.
+  // Never mix my score with the reference's community score in one difference:
+  // a card compares the score it shows (`overviewView`), and the drill-down's
+  // group block adds the viewer's own score against their own score of the reference.
+
+  // One card per coffee: built once, for the row and for the drill-down.
+  const rankCtx = {
+    format: resolvedFormat,
+    isGroup,
+    canViewGroup,
+    cupsPerSample: session.cupsPerSample,
+  };
+  const cards = coffeeCards({ samples: session.samples, referenceId, ctx: rankCtx, data: overview.data });
 
   // ─── Descriptores tab filters (lifted so the Resumen dashboard can
   // preselect a sample before switching tabs) ────────────────────────────────
   const [descSampleId, setDescSampleId] = useState<"all" | string>("all");
   const [descBlockId, setDescBlockId] = useState<string>("general");
 
-  // Defensive: fall back to the dashboard if a gated tab is selected without access.
+  // Defensive: fall back to the results if a gated tab is selected without access.
   const effectiveTab: Tab =
-    tab === "descriptores" && !canViewDescriptors ? "resumen" : tab;
+    (tab === "descriptores" && !canViewDescriptors) || (tab === "panel" && !canViewIndividual) ? "resumen" : tab;
 
   // "Comparar con: Referencia 1 · Referencia 2" — only when there are several.
   const compareSelector =
@@ -841,12 +764,11 @@ export function ResultsClient({
       </div>
     ) : null;
 
+  // A participant of an affective session has ONE view: no tab bar then.
   const tabItems = [
-    { id: "resumen", label: translations.tabResumen },
-    { id: "resultados", label: translations.tabResultados },
-    ...(canViewDescriptors
-      ? [{ id: "descriptores", label: translations.tabDescriptores }]
-      : []),
+    { id: "resumen", label: translations.tabResultados },
+    ...(canViewDescriptors ? [{ id: "descriptores", label: translations.tabDescriptores }] : []),
+    ...(canViewIndividual ? [{ id: "panel", label: overview.cards.tabPanel }] : []),
   ];
 
   // S1: the exports this viewer gets, by the same rules as the footer it replaced.
@@ -998,17 +920,21 @@ export function ResultsClient({
       {/* Tabs — the one part that stays while the page scrolls (S1). The negative
           top equals <main>'s padding (p-4 / lg:p-6): sticky offsets are measured
           inside that padding, so top-0 would leave a strip of content above. */}
-      <div data-results-tabs className="sticky -top-4 lg:-top-6 z-[2] border-b border-outline-variant bg-surface px-4 py-2">
-        <PillTabs
-          items={tabItems}
-          value={effectiveTab}
-          onChange={(id) => {
-            setTab(id as Tab);
-            setDetail(null);
-          }}
-          ariaLabel={translations.title}
-        />
-      </div>
+      {tabItems.length > 1 ? (
+        <div data-results-tabs className="sticky -top-4 lg:-top-6 z-[2] border-b border-outline-variant bg-surface px-4 py-2">
+          <PillTabs
+            items={tabItems}
+            value={effectiveTab}
+            onChange={(id) => {
+              setTab(id as Tab);
+              setDetail(null);
+            }}
+            ariaLabel={translations.title}
+          />
+        </div>
+      ) : (
+        <div className="border-b border-outline-variant" />
+      )}
 
       {/* Content — scrolls with the page (no inner scroller, S1) */}
       <div>
@@ -1251,12 +1177,7 @@ export function ResultsClient({
         <div className="p-4 lg:p-6 flex flex-col gap-6">
           <SessionOverview
             samples={session.samples}
-            ctx={{
-              format: format ?? asSessionFormat(session.format),
-              isGroup,
-              canViewGroup,
-              cupsPerSample: session.cupsPerSample,
-            }}
+            ctx={rankCtx}
             referenceId={referenceId}
             data={overview.data}
             myAlignment={myAlignment ?? null}
@@ -1266,122 +1187,27 @@ export function ResultsClient({
             familyLabels={overview.familyLabels}
             parts={overview.parts}
             t={overview.t}
-            onOpenSample={(id) => {
-              setTab("resultados");
-              setDetail({ sampleId: id, participantId: null });
-            }}
+            compare={{ closed: sessionClosed, ground: COMPARE_GROUND, t: overview.cards }}
+            onOpenSample={(id) => setDetail({ sampleId: id, participantId: null })}
+          />
+          <CoffeeCards
+            cards={cards}
+            format={resolvedFormat}
+            referencePinned={overview.referencePinned}
+            // "Revelar" is refused once the cupping is over (closing reveals every
+            // coffee), and the admin's lens is read-only (`isOwner` is false there).
+            canReveal={isOwner && cuppingOpen}
+            onReveal={handleReveal}
+            onOpenSample={(id) => setDetail({ sampleId: id, participantId: null })}
+            familyLabels={overview.familyLabels}
+            nodeLabels={wheelNodeLabels(locale === "en" ? "en" : "es")}
+            parts={overview.parts}
+            t={overview.cards}
           />
         </div>
       ) : (
         <div className="p-4 lg:p-6 flex flex-col gap-5">
-          {references.length > 1 && compareSelector}
-          {/* Tabla / Gráfico sub-view switch — the hint's content follows the active sub-view */}
-          <div className="flex w-full max-w-[400px] items-center justify-center gap-2 self-center">
-            <SegmentedControl
-              className="w-full max-w-[360px]"
-              items={[
-                { id: "tabla", label: translations.viewTable },
-                { id: "grafico", label: translations.viewChart },
-              ]}
-              value={resultsView}
-              onChange={changeResultsView}
-              ariaLabel={translations.tabResultados}
-            />
-            <InfoHint
-              title={translations.help[resultsView].title}
-              body={translations.help[resultsView].body}
-              closeLabel={translations.help.closeLabel}
-            />
-            {referenceId !== null && (
-              <InfoHint
-                title={translations.help.referencia.title}
-                body={translations.help.referencia.body}
-                closeLabel={translations.help.closeLabel}
-              />
-            )}
-          </div>
-
-          {/* Community results not yet visible to this participant */}
-          {isGroup && !canViewGroup && (
-            <div className="rounded-card border border-outline-variant bg-surface-container-low px-4 py-3 text-sm text-on-surface-variant">
-              {translations.communityPending}
-            </div>
-          )}
-
-          {resultsView === "tabla" ? (
-            <>
-              <ScoreTable
-                samples={session.samples}
-                cupsPerSample={session.cupsPerSample}
-                format={format ?? asSessionFormat(session.format)}
-                showCommunity={showCommunity}
-                isOwner={isOwner}
-                onReveal={handleReveal}
-                onOpenDetail={(id) => setDetail({ sampleId: id, participantId: null })}
-                referenceId={referenceId}
-                t={{
-                  ...translations.table,
-                  referenceBadge: translations.referenceBadge,
-                  deltaVsReference: translations.deltaVsReference,
-                  deltaVsReferenceAria: translations.deltaVsReferenceAria,
-                  referenceLegend: translations.referenceLegend,
-                }}
-              />
-              {session.samples.some((s) => Object.keys(s.descriptive).length > 0) && (
-                <div className="rounded-card border border-outline-variant bg-surface-container-lowest p-4">
-                  <div className="mb-3 font-display text-[15px] font-medium text-primary-container">
-                    {translations.flavorProfiles}
-                  </div>
-                  <div className="flex flex-col gap-4">
-                    {session.samples.map((sample) => (
-                      <div key={sample.id}>
-                        <div className="mb-1 text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">
-                          {sample.label}
-                        </div>
-                        <FlavorCloud descriptive={sample.descriptive} locale={locale === "en" ? "en" : "es"} />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-              {session.samples.map((sample) => (
-                <div key={sample.id} className="flex flex-col">
-                  <SampleRadarChart
-                    sample={sample}
-                    format={format ?? asSessionFormat(session.format)}
-                    cupsPerSample={session.cupsPerSample}
-                    showCommunity={showCommunity}
-                    isOwner={isOwner}
-                    onReveal={handleReveal}
-                    referenceMyScore={sample.id === referenceId ? null : referenceMyScore}
-                    referenceBadge={badgeFor(sample)}
-                    deltaVsReference={translations.deltaVsReference}
-                    deltaVsReferenceAria={translations.deltaVsReferenceAria}
-                    inProgressLabel={translations.table.inProgress}
-                    notEvaluatedLabel={translations.table.notEvaluated}
-                    sessionClosed={!cuppingOpen}
-                    t={{
-                      mine: translations.radarMine,
-                      community: translations.radarCommunity,
-                      deltaAttribute: translations.deltaAttribute,
-                      breakdown: translations.breakdown,
-                      radar: translations.radar,
-                    }}
-                  />
-                  {Object.keys(sample.descriptive).length > 0 && (
-                    <div className="rounded-b-card border border-t-0 border-outline-variant bg-surface-container-lowest px-4 pb-4 pt-3">
-                      <FlavorCloud descriptive={sample.descriptive} locale={locale === "en" ? "en" : "es"} />
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Owner-only: per-catador analysis, integrated into Resultados */}
+          {/* The organizer's working view: every cupper's evaluation, by name. */}
           {canViewIndividual && (
             <section className="flex flex-col gap-3">
               <h2 className="section-title inline-flex items-center gap-1.5 text-xl">
@@ -1431,6 +1257,65 @@ export function ResultsClient({
           locale={locale}
           referenceBadge={translations.referenceBadge}
           referenceCount={references.length}
+          // What the table and the radar cards carried about the GROUP on this coffee,
+          // in the viewer's own lens and only where they may read the group's results.
+          group={(() => {
+            const card = cards.find((c) => c.sample.id === detailSample.id);
+            const agg = detailSample.aggregateScore;
+            if (!card?.context || !isGroup || !canViewGroup || !agg || agg.communityScore == null) return null;
+            const partials = agg.partialCount ?? 0;
+            const partialPattern = partials === 1 ? translations.partial.includesOne : translations.partial.includesMany;
+            const mine = card.context.mine;
+            const ownDelta =
+              mine !== null && referenceMyScore !== null && detailSample.id !== referenceId
+                ? mine - referenceMyScore
+                : null;
+            // The quality plot only where "tú vs. grupo" does not already show it.
+            const showQuality =
+              card.quality !== null &&
+              detailSample.comparison?.status !== "ok" &&
+              !(card.isReference && overview.referencePinned) &&
+              card.quality.some((row) => row.group !== null);
+            return (
+              <SampleGroupBlock
+                title={overview.cards.groupTitle}
+                context={
+                  // a fixed reference's number is a rule, not an average: the number alone
+                  card.isReference && overview.referencePinned
+                    ? { ...card.context, spread: null, included: null, mine: null, difference: null, indicative: false, suppressed: false }
+                    : card.context
+                }
+                scoreStrings={overview.parts.score}
+                partialLine={partials > 0 && partialPattern ? fillPattern(partialPattern, { n: partials }) : null}
+                ownDeltaLine={
+                  ownDelta === null ? null : fillPattern(overview.cards.yourDelta, { delta: formatSigned(ownDelta) })
+                }
+                breakdown={
+                  <ScoreBreakdownPanel
+                    variant="group"
+                    group={agg}
+                    cupsPerSample={session.cupsPerSample}
+                    setup={{
+                      cupsPerSample: session.cupsPerSample,
+                      uniformityTracked: session.cupsPerSample >= 2,
+                      roundingEnforced: true,
+                    }}
+                    t={translations.breakdown}
+                  />
+                }
+                quality={
+                  showQuality && card.quality
+                    ? {
+                        title: overview.cards.qualityTitle,
+                        rows: card.quality,
+                        labels: overview.cards.attributes,
+                        strings: overview.parts.dotPlot,
+                      }
+                    : null
+                }
+              />
+            );
+          })()}
           // S10 WP4b (Kim C2): the cupper's own post-close note (editable) under their notes;
           // the owner reads another cupper's note here, read-only. Never in the score area.
           extra={(viewerId) => {

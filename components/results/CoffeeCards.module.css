@@ -1,0 +1,321 @@
+/* The coffee cards: one per coffee, under the overview. Pixels on purpose (the
+   root is 14 px). On a phone the cards are ONE sideways row: the next card
+   shows at the edge, so nobody has to be told the row moves, and the numbered
+   steps under it say which coffee this is and how many there are (never dots).
+   From 768 px the same list is a grid and the steps are gone. Every number is
+   ink; a family's colour is in the wheel only. */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.intro {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.title {
+  font-size: 21px;
+  line-height: 1.2;
+}
+.note,
+.caption,
+.aside {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: 12.25px;
+  line-height: 1.4;
+  color: var(--color-on-surface-variant);
+}
+
+/* ── The row ──────────────────────────────────────────────────────────────── */
+/* It bleeds over the page's own side padding (14 px) so a card can show at the
+   screen's edge; `scroll-padding` keeps a card's start where the page's text
+   starts. */
+.row {
+  position: relative;
+  display: flex;
+  gap: 12px;
+  margin: 0 -14px;
+  padding: 2px 14px 6px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scroll-padding: 0 14px;
+  scrollbar-width: none;
+  list-style: none;
+}
+.row::-webkit-scrollbar { display: none; }
+
+.card {
+  position: relative;
+  display: flex;
+  flex: 0 0 82%;
+  max-width: 320px;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-card);
+  background: var(--color-surface-container-lowest);
+  font-family: var(--font-ui);
+  color: var(--color-on-surface);
+  scroll-snap-align: start;
+}
+/* One coffee alone: no row to move, the card takes the width. */
+.card:only-child {
+  flex-basis: 100%;
+  max-width: none;
+}
+/* The whole card opens its coffee: one button laid over it. */
+.cover {
+  appearance: none;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-card);
+  background: none;
+  cursor: pointer;
+}
+.cover:hover { background: color-mix(in srgb, var(--color-on-surface) 3%, transparent); }
+.cover:focus-visible { outline-offset: -2px; }
+
+.top {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+/* Its place in the ranking: a numeral in the display face, a step quieter. */
+.place {
+  flex: none;
+  min-width: 18px;
+  font-family: var(--font-display);
+  font-size: 21px;
+  line-height: 1.1;
+  color: var(--color-on-surface-variant);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+.names {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+/* A card's name: the card heading (17.5 px, ink). */
+.cardTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 17.5px;
+  font-weight: 500;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.coffee {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  color: var(--color-on-surface-variant);
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin: 0;
+}
+/* A neutral word in an outline: a state of the reader's own evaluation, or
+   "Referencia". Never a colour that grades. */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-pill);
+  font-size: 12.25px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--color-on-surface-variant);
+}
+
+/* ── What was found in it ─────────────────────────────────────────────────── */
+.flavour {
+  --wheel-medium: 104px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-surface-container-highest);
+}
+.found {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+.marks {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+/* ── An affective session: the eight quality attributes ───────────────────── */
+.quality {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-surface-container-highest);
+}
+.qualityList {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px 16px;
+  margin: 0;
+}
+.qualityRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  font-size: 12.25px;
+  line-height: 1.5;
+}
+.qualityRow dt {
+  min-width: 0;
+  color: var(--color-on-surface-variant);
+  overflow-wrap: anywhere;
+}
+.qualityRow dd {
+  margin: 0;
+  font-weight: 600;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+/* ── The foot: what a tap does, and the organizer's one tap ───────────────── */
+.foot {
+  display: flex;
+  min-height: 44px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin-bottom: -8px;
+}
+.open {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-primary-container);
+}
+.revealed {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12.25px;
+  font-weight: 600;
+  color: var(--color-on-surface-variant);
+}
+/* Above the cover, so it is its own target. */
+.reveal {
+  appearance: none;
+  position: relative;
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0 14px;
+  border: 1px solid var(--color-primary-container);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-container-lowest);
+  color: var(--color-primary-container);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.reveal:hover { background: var(--color-surface-container-low); }
+
+/* ── The numbered steps (phones) ──────────────────────────────────────────── */
+/* Like the row, they bleed over the page's side padding: eight steps fit one
+   line on a 375 px phone; more wrap, each still a full target. */
+.steps {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin: 0 -14px;
+}
+/* A 44 px target around a 24 px numbered circle. */
+.step {
+  appearance: none;
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: none;
+  cursor: pointer;
+}
+.stepMark {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--color-outline);
+  border-radius: 50%;
+  font-family: var(--font-ui);
+  font-size: 12.25px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--color-on-surface-variant);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+.stepMark[data-on="1"] {
+  border-color: var(--color-primary-container);
+  background: var(--color-primary-container);
+  color: var(--color-on-primary);
+}
+
+/* From 768 px: a grid, every card in view, no steps. */
+@media (min-width: 768px) {
+  .section { gap: 16px; }
+  .row {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(248px, 1fr));
+    gap: 16px;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+    scroll-snap-type: none;
+  }
+  .card,
+  .card:only-child {
+    max-width: none;
+    padding: 20px;
+  }
+  .steps { display: none; }
+}

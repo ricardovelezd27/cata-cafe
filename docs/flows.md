@@ -1171,9 +1171,17 @@ participants and members only take part.
 
 ## 5. Results page structure
 
-`/sessions/[id]/results` is one 3-tab shell (`ResultsClient.tsx`) shown to **every**
-viewer — owner and participant alike. There is no separate participant-only or
-owner-only page; gating happens *inside* the tabs and the drill-down dialog.
+`/sessions/[id]/results` is one shell (`ResultsClient.tsx`) shown to **every**
+viewer, owner and participant alike. There is no separate participant-only or
+owner-only page; gating happens *inside* the views and the drill-down dialog.
+Since R2 (2026-11) the first view is the results themselves: the overview's tiles,
+then one card per coffee. It has up to three tabs: "Resultados" (everyone),
+"Descriptores" (when descriptor data exists; it stays until the coffee's sheet of
+package R3) and "Panel" (the organizer, or the admin's read-only lens, of a group
+session with participants: the per-cupper matrix). A viewer with ONE view (a
+participant of an affective session, a solo affective cupping) gets no tab bar.
+The table of 17 columns, the radar cards and the Tabla / Gráfico switch are gone:
+what they showed lives on a card, in the drill-down, or in "Exportar" (the CSV).
 S8-21: `hasCoffee` in the results payload is sent only to the owner/super-admin or
 for a revealed sample, so a participant cannot tell whether an unrevealed (blind)
 sample has a coffee linked; every consumer of the flag is owner-gated.
@@ -1186,19 +1194,22 @@ the viewer already saw.
 
 ```mermaid
 flowchart TD
-    subgraph T1 ["Resumen — session dashboard"]
-        R1["Stat row: samples, participation, avg, best"]
-        R2["Ranking — community score in group,\nown score in solo\n+ \"± X.X\" consensus SD chip"]
-        R3["Mi desempeño — my avg vs. community avg\n+ my consensus-alignment bar"]
-        R4["Highlights — per-sample descriptor line"]
+    subgraph T1 ["Resultados — the overview, then a card per coffee (every viewer)"]
+        R1["Overview tiles (SessionOverview):\nthe first of the ranking, every coffee on one scale,\nthe flavour of each coffee, you and the panel,\nthe reference, who cupped, defective cups"]
+        R1b["'Cada café | Comparar' in the flavour tile:\nup to 3 coffees on one wheel, counts in a table\n(closed sessions only)"]
+        R2["Café por café (CoffeeCards):\none card per coffee, references first;\na sideways row with numbered steps on phones,\na grid from 768 px"]
+        R2o{"organizer of an\nopen cupping?"}
+        R2r["'Revelar' on the card"]
+        R1 --> R1b
+        R1 --> R2
+        R2 --> R2o
+        R2o -- yes --> R2r
     end
 
-    subgraph T2 ["Resultados — one merged mine + community view"]
-        S1["Tabla / Gráfico\n(SegmentedControl, persisted via\nlocalStorage cata_results_view)"]
-        S2{"isOwner?"}
-        S3["Análisis por catador —\nCVA matrix + exclusion switches\n+ DE (SD) column"]
-        S1 --> S2
-        S2 -- yes --> S3
+    subgraph T2 ["Panel — the organizer (or the admin's lens) of a group session"]
+        S3["Análisis por catador —\nmatrix + exclusion switches\n+ DE (SD) column"]
+        S4["Notes the cuppers added after the close"]
+        S3 --> S4
     end
 
     subgraph T3 ["Descriptores — shown when descriptor data exists\n(solo descriptive/combined sessions use their own data)"]
@@ -1213,12 +1224,13 @@ flowchart TD
         D4 -- yes --> D5
     end
 
-    R2 -.->|open row| DET
-    S1 -.->|open table cell / radar header| DET
+    R1 -.->|open a tile or a ranking row| DET
+    R2 -.->|open a card| DET
     S3 -.->|open matrix cell| DET
-    R4 -.->|"ver en Descriptores"| T3
 
     DET["Sample drill-down dialog\n(SampleDetailDialog)"]
+    DET --> DETG{"own lens, and the viewer\nmay read the group's results?"}
+    DETG -- yes --> DETGB["'El grupo en este café' (SampleGroupBlock):\nthe group's score with its context,\nits arithmetic, the value per quality attribute"]
     DET --> DETOWNER{"isOwner?"}
     DETOWNER -- yes --> DETX["Catador switcher +\nedit sample metadata +\nedit origin data (ExtrinsicEditDialog,\nrevealed samples only)"]
 ```
@@ -1228,11 +1240,19 @@ the whole-sample descriptor profile, deduped per cupper across all blocks, and
 feeds the same word cloud / frequency bars / consensus-sentence panels as any
 other block selection.
 
-The owner's reference sample (if set), cupped first (see §1), is pulled out of
-the ranking (R2) as a standalone "Referencia (ancla)" card above it — excluded
-from the ranking, the session average and "Mejor muestra" — while every other
-sample's ranking row (R2) and matrix cell (S3) still shows a display-only
-signed Δ against it, explained by the `help.referencia` InfoHint.
+The owner's reference sample (if set), cupped first (see §1), is outside the
+ranking, the session average and "first": it has its own tile in the overview and
+its card comes first, marked "Fuera del ranking". Every other coffee's card shows
+a display-only signed difference against it (the score the card shows against the
+reference's same kind of score); with several references the "Comparar con"
+selector lives in the reference's tile. The drill-down's group block adds the
+viewer's own score against their own score of the reference.
+
+A card and its tile can never disagree: both read `overviewView`
+(`lib/reports/overview.ts`), and a card's own additions (the viewer's state, the
+three most chosen descriptors, the value per quality attribute) are
+`coffeeCards` (`lib/reports/coffeeCards.ts`), built from the data the server
+already gated.
 
 ### Reference pin keeps the ratings (S10 WP5b, B2)
 

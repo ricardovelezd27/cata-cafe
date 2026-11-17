@@ -83,7 +83,7 @@ Light mode only. Warm parchment background (#FDFBF7). Typography-forward: Cormor
 | `CupIndicators` | Cup uniformity/defect status |
 | `ScoreDisplay` | CVA score card with breakdown |
 
-Other feature surfaces: `components/offline/` (OfflineBanner, SyncConflictModal, OfflineFirstLoadError), `components/onboarding/` (WelcomeModal), `components/results/` (ScoreTable, SampleRadarChart, descriptor frequency).
+Other feature surfaces: `components/offline/` (OfflineBanner, SyncConflictModal, OfflineFirstLoadError), `components/onboarding/` (WelcomeModal), `components/results/` (SessionOverview, CoffeeCards, descriptor frequency).
 
 All new UI components go in `components/ui/` as CSS Modules. No inline styles in new work.
 

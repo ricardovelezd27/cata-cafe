@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { CountedList } from "@/components/results/CountedList";
 import { FlavorCompare, type CompareCoffee } from "@/components/results/FlavorCompare";
 import { FlavorWheel, WheelCaption } from "@/components/results/FlavorWheel";
+import type { CardsStrings } from "@/components/results/cardsStrings";
 import type { OverviewStrings } from "@/components/results/overviewStrings";
 import type { ResultsPartsStrings } from "@/components/results/partsStrings";
 import { RankStrip } from "@/components/results/RankStrip";
@@ -188,12 +189,14 @@ export function ResultsPartsGallery({
   locale,
   strings,
   overviewStrings,
+  cardsStrings,
   only,
 }: {
   locale: FixtureLocale;
   strings: ResultsPartsStrings;
   /** The overview's words for each invented cupping, by scenario id. */
   overviewStrings: Record<string, OverviewStrings>;
+  cardsStrings: CardsStrings;
   /** Show only these groups (`?only=wheel,compare`); everything without it. */
   only?: readonly GallerySection[];
 }) {
@@ -307,9 +310,11 @@ export function ResultsPartsGallery({
               <p className={css.listTitle}>{scenario.title[locale]}</p>
               <OverviewFixture
                 scenario={scenario}
+                locale={locale}
                 familyLabels={families}
                 parts={strings}
                 t={overviewStrings[scenario.id]}
+                cards={cardsStrings}
               />
             </div>
           ))}

@@ -174,9 +174,14 @@ describe("G-01: reduced motion", () => {
     expect(read("app/[locale]/page.tsx")).toMatch(/stage-ground/);
   });
 
-  it("the radar lets Recharts follow the OS setting", () => {
-    const src = read("components/results/SampleRadarChart.tsx");
-    expect(src).not.toMatch(/isAnimationActive\s*\n/);
-    expect(src).toMatch(/isAnimationActive="auto"/);
+  it("the results page draws no animated chart: its radar is gone and nothing there uses Recharts", () => {
+    // The radar (the one Recharts drawing of the results page, which had to follow
+    // the OS setting) went with package R2: the cards and the wheel are plain SVG.
+    const rule = { include: /\.tsx?$/ };
+    const sources = walkSource("components/results", "a11yBase:results", rule).concat(
+      walkSource("app/[locale]/app/sessions/[id]/results", "a11yBase:results", rule),
+    );
+    expect(sources.length).toBeGreaterThan(10);
+    expect(sources.filter((f) => /from "recharts"/.test(read(f)))).toEqual([]);
   });
 });

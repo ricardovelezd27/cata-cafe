@@ -147,7 +147,7 @@ cata-cafe/
 │   │   │       └── [id]/
 │   │   │           ├── cup/        # Main cupping interface (CupClient)
 │   │   │           ├── waiting/    # Pre-start waiting room (group/async sessions)
-│   │   │           ├── results/    # 3-tab shell — Resumen (dashboard) / Resultados (Tabla·Gráfico) / Descriptores
+│   │   │           ├── results/    # Resultados (overview tiles + a card per coffee) / Descriptores / Panel (organizer's matrix)
 │   │   │           ├── edit/, invite/  # owner edit form; invite link + QR
 │   │   │           └── print/      # HTML twin of the CVA form
 │   │   ├── join/[token]/page.tsx   # Invite join page (outside /app/ — no auth guard); join/coffee/[token] for coffee invites
@@ -201,19 +201,19 @@ cata-cafe/
 │   │   #   Badge/StatusPill/ScorePill, PageHeader, SearchInput, Select, EmptyState,
 │   │   #   Pagination, FilterBar, ConfirmDialog — ALWAYS reuse these for list pages,
 │   │   #   status/score pills, page headers, and delete confirmations.
-│   ├── results/                    # ScoreTable, SampleRadarChart, DescriptorFrequency, WordCloud, FlavorCloud,
+│   ├── results/                    # SessionOverview + CoffeeCards (R2), DescriptorFrequency, WordCloud, FlavorCloud,
 │   │   #   CupperAlignment, ExtrinsicSummary, chartColors (Recharts palette, MD3-derived hex),
 │   │   #   SampleDetail/SampleDetailDialog (personal per-sample drill-down),
 │   │   #   OwnerParticipantSection (owner CVA matrix + exclusion toggle),
 │   │   #   ScoreBreakdownPanel ("¿Cómo se calculó?" — typed t prop, no private LABELS dict).
 │   │   #   MyResultsSummary/IndividualResultsPanel DELETED (2026-08 results redesign);
 │   │   #   folded into the overview (SessionOverview, R2) + OwnerParticipantSection (owner matrix).
-│   │   # The results ROUTE (app/[locale]/app/sessions/[id]/results/) owns the 3-tab
-│   │   #   shell: ResultsClient.tsx (tabs, docked header/footer, drill-down state),
-│   │   #   the overview (components/results/SessionOverview.tsx, R2: it replaced ResumenTab.tsx),
-│   │   #   DescriptoresTab.tsx (filters + cloud + frequency +
-│   │   #   alignment). The Resultados tab has no separate file — its Tabla/Gráfico
-│   │   #   sub-view is inline JSX in ResultsClient.tsx.
+│   │   # The results ROUTE (app/[locale]/app/sessions/[id]/results/) owns the shell:
+│   │   #   ResultsClient.tsx (tabs, header, drill-down state). First view = the overview
+│   │   #   (SessionOverview, R2) then one card per coffee (CoffeeCards, R2 step 2);
+│   │   #   DescriptoresTab.tsx (filters + cloud + frequency + alignment, until R3);
+│   │   #   "Panel" = OwnerParticipantSection + the post-close notes, inline in ResultsClient.tsx.
+│   │   #   ScoreTable, SampleRadarChart and the Tabla / Gráfico switch are DELETED (R2 step 2).
 │   ├── landing/                    # Marketing landing (dark stage), rebuilt 2026-11 as the design system's reference:
 │   │   #   Hero (one message + four icon chips) + HeroFoundingCard (an offer token whose button goes to the form: ScrollToLink),
 │   │   #   StepsShowcase (three app screens that pile up; StepsActiveObserver + stepsProgress.ts),
@@ -440,6 +440,15 @@ All writes go through `app/actions/`. Call `revalidatePath()` after mutations to
 - **Two cuppers (audit A-02, accepted by the owner's decision 6)**: a participant of a two-cupper session sees the group's score beside their own, as before this package, and so can work out the other person's total. What needs three: the spread, "first", "diferencia", "Tú y el panel", the group's flavour wheel.
 - The page's title is the session's name (one `h1`, through `PageHeader`) with one line of facts under it; who cupped is said once, in its tile (not in the header nor in a notice over the overview).
 - Fixtures: `lib/dev/overviewFixtures.ts` builds invented cuppings through the real `computeGroupAggregate` and `buildOverviewData`; the dev board (`/dev/results-parts?only=overview`, development only) shows the states no test account can (a participant looking at a closed group cupping, two cuppers, a free reference).
+
+### The coffee cards and "Comparar" (R2 step 2, 2026-11)
+- Under the overview, ONE CARD PER COFFEE (`components/results/CoffeeCards.tsx`): references first and marked "Fuera del ranking", then the ranking's order. They replaced the table of 17 columns (`ScoreTable`), the radar cards (`SampleRadarChart`) and the Tabla / Gráfico switch (`cata_results_view`), all deleted. A card opens the drill-down (`SampleDetailDialog`), which stays until package R3 builds the coffee's sheet. The page's tabs are "Resultados" (overview + cards), "Descriptores" (until R3) and "Panel" (the organizer's matrix and the post-close notes, until R5); with one view there is no tab bar.
+- **One pure model** (`lib/reports/coffeeCards.ts`, tested in `tests/coffeeCards.test.ts`): `coffeeCards` takes the order, the places and everything said beside a score from `overviewView` (a card can never disagree with its tile), and adds the viewer's own state (`none | draft | submitted`, declared partial), the wheel with the three most chosen descriptors (`countedDescriptors`) and the viewer's marks, and `qualityRows` (the viewer's value per quality attribute under `canShowMyRatings`; the group's only under `ctx.canViewGroup` and `panelGates(...).groupQualityByAttribute`, two included cuppers). It adds no gate: the wheel's counts come from the server-built `OverviewData`. A test serialises what the cards add for a participant and scans it, and pins the set of fields.
+- **What a card shows**: place and label, the name once revealed, "En curso" / "Sin evaluar" (the viewer's own row) and "Parcial · sin puntaje", the score through `ScoreWithContext` (a fixed reference prints its number alone), the wheel + "Lo más elegido" (own scope: "Lo que marcaste", names only; a participant under three cuppers: one sentence), and in an AFFECTIVE session the eight quality attributes as a small list instead of a wheel. "Revelar" is on the card only for the organizer of a cupping that is still open (`revealSample` is refused after the close).
+- **Phones (under 768 px, `PHONE_MAX`)**: a CSS scroll-snap row (cards 82 % wide, the next one showing), NUMBERED steps under it as real 44 px buttons (never dots), and the row is ONE Tab stop: a roving tabindex on the cards' cover buttons, arrow keys / Home / End move between cards. From 768 px it is a grid and every card is its own stop.
+- **The drill-down's group block** (`SampleGroupBlock`, a slot of `SampleDetailDialog` rendered in the viewer's own lens only): the group's score with its context, "¿Cómo se calculó?" of the group, "Incluye n evaluaciones parciales", the viewer's own score against their own score of the reference, and the quality dot plot (mine and the group's, 1 to 9) where `SampleComparisons` does not already show it. Rendered only when `isGroup && canViewGroup` and the sample has a community score.
+- **"Cada café | Comparar"** in the overview's flavour tile (`OverviewCompare`): only once the session is CLOSED and only coffees whose counts this viewer may see (`compareOptions` over `wheelCompareInput`); up to three coffees, the first three of the ranking to start, each with the letter of its label (numbers when two labels would share a letter). What lies under the territories is ONE constant, `COMPARE_GROUND` in `ResultsClient.tsx` ("rings"; "families" is the alternative, the owner's to confirm).
+- **Deliberately gone with the table** (the CSV in "Exportar" has the full table): the group's average per attribute when ONE cupper is included (it is one person's ratings; the organizer has the matrix), "Revelar" on a closed session (it was refused by the server), the legend "mine / community" of the table.
 
 ### Personal comparisons and the repeated sample (S10 WP5b, closed sessions only)
 - **B3 (`TODO(kim-validar:B3)`)**: in the cupper's OWN drill-down of a sample of a CLOSED group session (`session.status === "closed"`, `canViewGroup`, never the owner/admin lens) `SampleComparisons` (`components/results/`) shows "tú vs. grupo": the total next to the community score with its SD (no lowest/highest total: review H3), each attribute and each intensity, and the descriptors the cupper shares with the group's most chosen ones (the Descriptores tab's own lists, top 3 per block with at least 2 cuppers) and those the group chose that they did not. Built on the server by the pure `buildPersonalComparison` (`lib/reports/personalComparison.ts`). **Privacy gate**: with fewer than `RANKING_POLICY.minN` (3) included cuppers the payload is `{ status: "too_few", included }` and nothing else, and EVERY row (each attribute, each intensity) carries a group number only when at least 3 included cuppers have a value for THAT row (review H2; otherwise "—" and the "menos de 3" line once); a descriptor counts as "most chosen" only when at least 2 OTHER cuppers picked it; excluded cuppers never enter an average; the payload carries the viewer's own values plus anonymous aggregates, never another cupper's per-attribute value, name or id. Neutral wording: never "error", no red/green. No Δ was added (it stays where the page already shows it).

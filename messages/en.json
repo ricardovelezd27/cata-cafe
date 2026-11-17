@@ -1336,6 +1336,33 @@
       "referenceScore": "{score}",
       "referenceCompared": "The differences (Δ) are worked out against this one.",
       "preliminary": "Preliminary results: only you see them. They update when you press “{button}”."
+    },
+    "cards": {
+      "title": "Coffee by coffee",
+      "note": "Each coffee with its score and what was found in it. Open one to see your whole evaluation.",
+      "noteAffective": "Each coffee with its score and its quality, attribute by attribute. Open one to see your whole evaluation.",
+      "noteDescriptive": "Each coffee with what was found in it. Open one to see your whole evaluation.",
+      "rowLabel": "The coffees of this cupping",
+      "outsideRanking": "Outside the ranking",
+      "viewDetail": "See detail",
+      "viewDetailOf": "See detail: {label}",
+      "mostChosen": "Most chosen",
+      "youMarked": "What you marked",
+      "tooFew": "The group's flavour is shown from 3 cuppers included.",
+      "qualityGroup": "Quality, 1 to 9 · group average",
+      "qualityMine": "Quality, 1 to 9 · your values",
+      "qualityTitle": "Quality, attribute by attribute",
+      "stepsLabel": "Go to a coffee",
+      "step": "Coffee {n} of {total}: {label}",
+      "compareLabel": "How to see the flavour",
+      "compareEach": "Each coffee",
+      "compare": "Compare",
+      "comparePick": "Coffees compared",
+      "compareHint": "Pick two or three coffees. Each carries its letter on the drawing; the figures are in the table.",
+      "compareNeedTwo": "Pick at least two coffees to compare them.",
+      "tabPanel": "Panel",
+      "groupTitle": "The group on this coffee",
+      "yourDelta": "Your score against the reference: {delta}"
     }
   },
   "community": {
