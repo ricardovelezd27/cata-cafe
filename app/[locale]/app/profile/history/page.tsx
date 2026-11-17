@@ -86,7 +86,6 @@ export default async function HistoryPage({
     filterScoreBand: tScoreBand("scoreBucket"),
     filterYear: tYear("year"),
     emptyBody: t("empty"),
-    newSessionLabel: tSession("new"),
     expressLabel: tSession("express.cta"),
     noResults: tc("noResults"),
     sessionDeleted: t("sessionDeleted"),
@@ -99,7 +98,6 @@ export default async function HistoryPage({
       <HistoryTable
         rows={rows}
         locale={locale}
-        newSessionHref={`/${locale}/app/sessions/new`}
         expressHref={`/${locale}/app/sessions/express`}
         translations={tableTranslations}
       />

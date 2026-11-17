@@ -69,6 +69,7 @@ export type CoffeesTableTranslations = {
   adminOwnerPrefix: string;
   // Fully-empty state (zero coffees at all)
   noData: string;
+  noDataBody: string;
   // Generic table controls (DataTable / FilterBar / Pagination)
   searchPlaceholder: string;
   showing: string;
@@ -211,6 +212,9 @@ export default function CoffeesTable({
       {
         key: "origin",
         label: t.colOrigin,
+        // F-13: hidden on tablets (768 to 1023 px), shown from 1024; the coffee's page keeps it.
+        headerClassName: "hidden lg:table-cell",
+        cellClassName: "hidden lg:table-cell",
         sortable: true,
         sortValue: (row) => row.country ?? "",
         render: (row) =>
@@ -226,6 +230,8 @@ export default function CoffeesTable({
       {
         key: "process",
         label: t.colProcess,
+        headerClassName: "hidden lg:table-cell",
+        cellClassName: "hidden lg:table-cell",
         sortable: true,
         sortValue: (row) => row.processType ?? "",
         render: (row) => <ProcessBadge type={row.processType} />,
@@ -233,6 +239,8 @@ export default function CoffeesTable({
       {
         key: "variety",
         label: t.colVariety,
+        headerClassName: "hidden lg:table-cell",
+        cellClassName: "hidden lg:table-cell",
         sortable: true,
         sortValue: (row) => row.variety ?? "",
         render: (row) => row.variety ?? <span className="text-on-surface-variant">—</span>,
@@ -475,7 +483,7 @@ export default function CoffeesTable({
         );
       }}
       emptyState={
-        <EmptyState icon={<CoffeeIcon size={20} aria-hidden />} title={t.noData} />
+        <EmptyState icon={<CoffeeIcon size={20} aria-hidden />} title={t.noData} body={t.noDataBody} />
       }
       noResults={t.noResults}
       initialSort={{ key: "name", dir: "asc" }}

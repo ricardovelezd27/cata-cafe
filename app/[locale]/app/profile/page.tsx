@@ -10,6 +10,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { LevelBadge } from "@/components/profile/LevelBadge";
 import { Badge, StatusPill } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { TextActionLink, textActionClasses } from "@/components/ui/TextAction";
 import { calcActivityPoints, computeLevel, LEVELS } from "@/lib/gamification";
 import { ROLE_LABELS, COUNTRIES } from "@/lib/constants";
@@ -344,7 +345,15 @@ export default async function ProfilePage({
                 </TextActionLink>
               </div>
               {recentSessions.length === 0 ? (
-                <p className="text-sm text-on-surface-variant">{t("noOwnedSessions")}</p>
+                <EmptyState
+                  icon={<ClipboardList size={20} aria-hidden />}
+                  title={t("noOwnedSessions")}
+                  action={
+                    <GuestGateLink href={`/${locale}/app/sessions/express`} className={textActionClasses("link")}>
+                      {tSession("express.cta")}
+                    </GuestGateLink>
+                  }
+                />
               ) : (
                 <div className="space-y-2">
                   {recentSessions.map((s) => (
@@ -384,7 +393,15 @@ export default async function ProfilePage({
                 </GuestGateLink>
               </div>
               {recentCoffees.length === 0 ? (
-                <p className="text-sm text-on-surface-variant">{t("myCoffeesEmpty")}</p>
+                <EmptyState
+                  icon={<Coffee size={20} aria-hidden />}
+                  title={t("myCoffeesEmpty")}
+                  action={
+                    <GuestGateLink href={`/${locale}/app/coffees/new`} className={textActionClasses("link")}>
+                      {tCoffee("createCoffee")}
+                    </GuestGateLink>
+                  }
+                />
               ) : (
                 <div className="space-y-2">
                   {recentCoffees.map((c) => (

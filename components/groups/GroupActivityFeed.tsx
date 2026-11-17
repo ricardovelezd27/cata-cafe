@@ -1,3 +1,5 @@
+import { EmptyState } from "@/components/ui/EmptyState";
+
 // Presentational-only server component: page.tsx does the data fetching,
 // stream-merging, and translation (t()) calls, then hands this component a
 // flat list of already-translated messages + raw timestamps to render.
@@ -39,7 +41,7 @@ export function GroupActivityFeed({
       <h2 className="section-title text-xl">{title}</h2>
       <div className="bg-surface-container-lowest rounded-card border border-outline-variant shadow-card p-5">
         {events.length === 0 ? (
-          <p className="text-sm text-on-surface-variant">{emptyText}</p>
+          <EmptyState title={emptyText} />
         ) : (
           <ul className="divide-y divide-outline-variant">
             {events.map((event, i) => (

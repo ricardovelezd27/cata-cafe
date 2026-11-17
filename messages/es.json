@@ -1373,7 +1373,7 @@
     "colSessions": "Sesiones",
     "colLastScore": "Últ. puntaje",
     "colLastDate": "Última cata",
-    "noData": "No hay cafés registrados. Crea tu primera sesión para empezar.",
+    "noData": "Aún no hay cafés.",
     "showing": "Mostrando {from}–{to} de {total} cafés",
     "view": "Ver →",
     "listPublic": "Público",
@@ -1564,7 +1564,10 @@
       "unlink": "Desvincular"
     },
     "tasteThis": "Catar este café",
-    "needsConnection": "Necesita conexión"
+    "needsConnection": "Necesita conexión",
+    "scoreDetails": "¿Cómo se calculó?",
+    "historyEmptyBody": "Usa «Catar este café», arriba.",
+    "noDataBody": "Crea el primero con «Crear café», arriba."
   },
   "offline": {
     "bannerOffline": "Sin conexión. Tus evaluaciones se guardan localmente.",
@@ -2187,7 +2190,7 @@
       "cancelNamed": "Cancelar la edición de {name}",
       "nameLabelNamed": "Nombre visible de {name}"
     },
-    "empty": "Aún no tienes grupos. Crea uno para reutilizar tu roster de catadores en cada sesión.",
+    "empty": "Aún no tienes grupos.",
     "coCuppersTitle": "Personas con las que has catado",
     "noCoCuppers": "Aún no has catado con nadie más — invita por correo.",
     "sessionOne": "sesión",
@@ -2272,7 +2275,8 @@
     "emailLabel": "Correo",
     "quickAddNamed": "Añadir a {name} al grupo",
     "addToGroupNamed": "Añadir a grupo: {name}",
-    "removeRowNamed": "Quitar la fila {n}"
+    "removeRowNamed": "Quitar la fila {n}",
+    "emptyBody": "Crea uno con «Crear grupo», arriba, para reutilizar tu lista de catadores en cada sesión."
   },
   "guestGate": {
     "title": "Termina de crear tu cuenta",

@@ -48,8 +48,7 @@ export type HistoryTableTranslations = {
   filterScoreBand: string;
   filterYear: string;
   emptyBody: string;
-  newSessionLabel: string;
-  /** "Catar ahora" — the express path, offered first in the empty state. */
+  /** "Catar ahora" — the express path, the empty state's one action. */
   expressLabel: string;
   noResults: string;
   sessionDeleted: string;
@@ -72,13 +71,11 @@ function CoffeeLabelOnly({ row }: { row: HistoryRow }) {
 export function HistoryTable({
   rows,
   locale,
-  newSessionHref,
   expressHref,
   translations: t,
 }: {
   rows: HistoryRow[];
   locale: string;
-  newSessionHref: string;
   expressHref: string;
   translations: HistoryTableTranslations;
 }) {
@@ -245,14 +242,9 @@ export function HistoryTable({
           icon={<Coffee size={20} />}
           title={t.emptyBody}
           action={
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              <GuestGateLink href={expressHref} className={buttonClasses("primary")}>
-                {t.expressLabel}
-              </GuestGateLink>
-              <GuestGateLink href={newSessionHref} className={buttonClasses("secondary")}>
-                {t.newSessionLabel}
-              </GuestGateLink>
-            </div>
+            <GuestGateLink href={expressHref} className={buttonClasses("primary")}>
+              {t.expressLabel}
+            </GuestGateLink>
           }
         />
       }

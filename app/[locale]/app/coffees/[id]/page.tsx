@@ -3,9 +3,6 @@ import { profileDisplayName } from "@/lib/accountDeletion/deletedProfile";
 import { requireAppUser } from "@/lib/auth";
 import Link from "next/link";
 import {
-  ClipboardList,
-  CheckCircle2,
-  Users,
   Star,
   Pencil,
   FileDown,
@@ -19,7 +16,10 @@ import { computeCoffeeAggregate } from "@/lib/coffeeAggregate";
 import { loadCoffeeAggregateSamples } from "@/lib/coffees/aggregateSamples";
 import { computeCoffeeLifetimeScore } from "@/lib/coffeeLifetimeScore";
 import { buildLifetimeLines, type LifetimeLabels } from "@/lib/coffeeLifetimeLines";
-import { LifetimeScoreCard } from "@/components/coffees/LifetimeScoreCard";
+import { CoffeeScoreBlock } from "@/components/coffees/CoffeeScoreBlock";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { QUALITY_SCALE, scalePct } from "@/lib/resultsScales";
+import { historyCommunityScoreShown } from "@/lib/coffeePageDisplay";
 import { formatCoffeeCode } from "@/lib/coffeeCode";
 import { FLAVOR_DESC_KEYS } from "@/lib/descriptors";
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
@@ -132,6 +132,8 @@ export default async function CoffeeProfilePage({
   const lifetime = computeCoffeeLifetimeScore(samples.map((s) => s.lifetime));
   const lifetimeLines = buildLifetimeLines(lifetime, t.raw("lifetime") as LifetimeLabels);
   const hasResults = samples.length > 0;
+  // Sessions whose community score the "Apariciones en sesiones" list already shows.
+  const sessionRowIds = new Set(showResults ? aggregate.sessionRows.map((r) => r.sessionId) : []);
 
   // The viewer's own average across their history rows — the one number that
   // is meaningful even when the owner keeps community results private.
@@ -298,27 +300,46 @@ export default async function CoffeeProfilePage({
 
           <div className="grid content-start grid-cols-2 gap-3 xl:grid-cols-4">
             {showResults ? (
-              <>
-                <StatCard
-                  label={t("statSessions")}
-                  value={String(aggregate.sessionsCount)}
-                  subtext=""
-                  icon={<ClipboardList size={18} />}
-                />
-                <StatCard
-                  label={t("statEvals")}
-                  value={String(aggregate.evaluationsCount)}
-                  subtext=""
-                  icon={<CheckCircle2 size={18} />}
-                />
-                <StatCard
-                  label={t("lifetime.title")}
-                  value={lifetimeLines.headline ?? "—"}
-                  subtext=""
-                  accent
-                  icon={<Users size={18} />}
-                />
-              </>
+              // I-07: one score block. The number, what it rests on, and the
+              // arithmetic, the defect tally, the counts and the latest
+              // evaluations on demand. Same lines, same gate as before.
+              <CoffeeScoreBlock
+                title={t("lifetime.title")}
+                lines={lifetimeLines}
+                showLines={hasResults}
+                counts={{
+                  sessionsLabel: t("statSessions"),
+                  sessions: aggregate.sessionsCount,
+                  evaluationsLabel: t("statEvals"),
+                  evaluations: aggregate.evaluationsCount,
+                }}
+                detailsLabel={t("scoreDetails")}
+              >
+              <section className="mt-2 border-t border-outline-variant/50 pt-3">
+                <h3 className={`mb-2 ${SUB_H3}`}>{t("recentTastingsTitle")}</h3>
+                {/* Anonymous — never shows cupper identity */}
+                {aggregate.recentEvaluations.length === 0 ? (
+                  <EmptyState title={t("recentTastingsEmpty")} />
+                ) : (
+                  <ul className="divide-y divide-outline-variant/50">
+                    {aggregate.recentEvaluations.map((ev, i) => (
+                      <li
+                        key={i}
+                        className="flex items-baseline justify-between gap-3 py-2 text-sm first:pt-0 last:pb-0"
+                      >
+                        <span className="truncate text-on-surface">{ev.sessionName}</span>
+                        <span className="flex shrink-0 items-baseline gap-3">
+                          <ScorePill score={ev.individualScore} />
+                          <span className="whitespace-nowrap text-xs text-on-surface-variant">
+                            {formatDate(ev.submittedAt)}
+                          </span>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+              </CoffeeScoreBlock>
             ) : (
               <div className="col-span-2 flex items-center rounded-card border border-outline-variant bg-surface-container-lowest p-5 shadow-card xl:col-span-3">
                 {privateNotice}
@@ -332,9 +353,6 @@ export default async function CoffeeProfilePage({
                 icon={<Star size={18} />}
               />
             </Link>
-            {showResults && hasResults && (
-              <LifetimeScoreCard title={t("lifetime.title")} lines={lifetimeLines} />
-            )}
           </div>
         </div>
 
@@ -366,7 +384,7 @@ export default async function CoffeeProfilePage({
                             <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface-container">
                               <div
                                 className="h-full rounded-full bg-primary-container"
-                                style={{ width: `${Math.min(100, (value / 9) * 100)}%` }}
+                                style={{ width: `${scalePct(value, QUALITY_SCALE.min, QUALITY_SCALE.max)}%` }}
                               />
                             </div>
                             <span className="w-8 text-right text-xs font-semibold text-on-surface">
@@ -403,9 +421,9 @@ export default async function CoffeeProfilePage({
                 <h3 className={`mb-2 ${SUB_H3}`}>{t("sessionsListTitle")}</h3>
                 <p className="mb-2 font-sans text-xs text-on-surface-variant">{tc("scoreLegend")}</p>
                 {aggregate.sessionRows.length === 0 ? (
-                  <p className="text-sm text-on-surface-variant">
-                    {aggregate.sessionsCount > 0 ? t("sessionsOthersNote") : t("noResults")}
-                  </p>
+                  <EmptyState
+                    title={aggregate.sessionsCount > 0 ? t("sessionsOthersNote") : t("noResults")}
+                  />
                 ) : (
                   <div className="space-y-2">
                     {aggregate.sessionRows.map((row, i) => (
@@ -445,33 +463,6 @@ export default async function CoffeeProfilePage({
               </section>
             )}
 
-            {showResults && (
-              <section>
-                <h3 className={`mb-2 ${SUB_H3}`}>{t("recentTastingsTitle")}</h3>
-                {/* Anonymous — never shows cupper identity */}
-                {aggregate.recentEvaluations.length === 0 ? (
-                  <p className="text-sm text-on-surface-variant">{t("recentTastingsEmpty")}</p>
-                ) : (
-                  <ul className="divide-y divide-outline-variant/50">
-                    {aggregate.recentEvaluations.map((ev, i) => (
-                      <li
-                        key={i}
-                        className="flex items-baseline justify-between gap-3 py-2 text-sm first:pt-0 last:pb-0"
-                      >
-                        <span className="truncate text-on-surface">{ev.sessionName}</span>
-                        <span className="flex shrink-0 items-baseline gap-3">
-                          <ScorePill score={ev.individualScore} />
-                          <span className="whitespace-nowrap text-xs text-on-surface-variant">
-                            {formatDate(ev.submittedAt)}
-                          </span>
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </section>
-            )}
-
             <section id="historial">
               <div className="mb-2 flex items-center justify-between">
                 <h3 className={SUB_H3}>{t("tastingHistory")}</h3>
@@ -480,7 +471,8 @@ export default async function CoffeeProfilePage({
                 </TextActionLink>
               </div>
               {history.length === 0 ? (
-                <p className="text-sm text-on-surface-variant">{th("empty")}</p>
+                // The page's header already offers "Catar este café": point to it in words.
+                <EmptyState title={th("empty")} body={t("historyEmptyBody")} />
               ) : (
                 <div className="space-y-2">
                   {history.map((h) => {
@@ -516,12 +508,15 @@ export default async function CoffeeProfilePage({
                               </Badge>
                             )}
                           </span>
-                          <span className="flex flex-col items-end gap-0.5">
-                            <span className="text-[10px] uppercase tracking-wide text-on-surface-variant">
-                              {th("communityScore")}
+                          {/* Said once: shown here only for a session the list above does not show. */}
+                          {historyCommunityScoreShown(h.sessionId, sessionRowIds) && (
+                            <span className="flex flex-col items-end gap-0.5">
+                              <span className="text-[10px] uppercase tracking-wide text-on-surface-variant">
+                                {th("communityScore")}
+                              </span>
+                              <ScorePill score={h.communityScore} />
                             </span>
-                            <ScorePill score={h.communityScore} />
-                          </span>
+                          )}
                         </div>
                       </div>
                     );
