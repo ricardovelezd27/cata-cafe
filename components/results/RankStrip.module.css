@@ -11,7 +11,7 @@
 .head,
 .row {
   display: grid;
-  grid-template-columns: 30px minmax(0, 1fr) auto;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
   column-gap: 8px;
 }
 .head { grid-template-areas: ". axis axis"; }
@@ -47,6 +47,22 @@
   overflow-wrap: anywhere;
   font-size: 14px;
 }
+/* A row that opens its coffee: one button laid over the whole row (a row is
+   never under 44 px tall), named by the row's visible name. */
+.open {
+  appearance: none;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  cursor: pointer;
+}
+.open:hover { background: color-mix(in srgb, var(--color-on-surface) 5%, transparent); }
+.open:focus-visible { outline-offset: -2px; }
 .label { font-weight: 600; }
 .coffee { color: var(--color-on-surface-variant); }
 /* The number: ink, always. */
@@ -155,7 +171,7 @@
 @container (min-width: 600px) {
   .head,
   .row {
-    grid-template-columns: 30px minmax(140px, 1fr) minmax(220px, 1.5fr) 76px;
+    grid-template-columns: 38px minmax(140px, 1fr) minmax(220px, 1.5fr) 76px;
   }
   .head { grid-template-areas: ". . axis ."; }
   .row {

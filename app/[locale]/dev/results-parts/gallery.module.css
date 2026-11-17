@@ -129,6 +129,8 @@
 .miniLine { color: var(--color-on-surface-variant); }
 
 .sectionTitleNext { margin-top: 32px; }
+.scenario { margin-top: 20px; }
+.scenario > .listTitle { margin-bottom: 8px; }
 .listTitle + .grid { margin-top: 4px; }
 
 .narrowRow {
