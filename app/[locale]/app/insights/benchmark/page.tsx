@@ -41,7 +41,7 @@ export default async function InsightsBenchmarkPage({
     <div className="flex flex-col gap-5 pb-8">
       <div>
         <h2 className="text-xl mb-1">{t("title")}</h2>
-        <p className="text-sm text-brown-mid">{t("subtitle")}</p>
+        <p className="text-sm text-on-surface-variant">{t("subtitle")}</p>
       </div>
 
       <BenchmarkPanel

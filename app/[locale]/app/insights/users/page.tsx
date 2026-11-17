@@ -34,7 +34,7 @@ export default async function InsightsUsersPage({
 
   return (
     <div className="flex flex-col gap-4 pb-8">
-      <p className="text-sm text-brown-mid">{t("lead")}</p>
+      <p className="text-sm text-on-surface-variant">{t("lead")}</p>
       <p className="text-sm text-on-surface-variant">
         {t("summary", { registered, guests })}
       </p>

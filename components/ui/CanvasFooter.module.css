@@ -9,10 +9,10 @@
      (home indicator, Chrome bottom toolbar) — mis-taps there hit the browser's
      back arrow instead of "Anterior". */
   padding: 12px 24px calc(12px + env(safe-area-inset-bottom, 0px));
-  background: color-mix(in oklch, var(--color-bg) 92%, transparent);
+  background: color-mix(in oklch, var(--color-surface) 92%, transparent);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  border-top: 1px solid var(--color-brown-light);
+  border-top: 1px solid var(--color-outline-variant);
 }
 
 @media (max-width: 640px) {
@@ -55,7 +55,7 @@
 }
 
 .button:focus-visible {
-  outline: 2px solid var(--color-green-dark);
+  outline: 2px solid var(--color-primary-container);
   outline-offset: 2px;
 }
 
@@ -63,28 +63,28 @@
 
 .prev {
   background: transparent;
-  color: var(--color-brown-dark);
-  border-color: var(--color-brown-light);
+  color: var(--color-on-surface);
+  border-color: var(--color-outline-variant);
 }
 
 .prev:hover:not(:disabled) {
-  background: var(--color-cream);
+  background: var(--color-surface-container);
 }
 
 .next {
-  background: var(--color-green-dark);
-  color: var(--color-white);
+  background: var(--color-primary-container);
+  color: var(--color-surface-container-lowest);
 }
 
 .next:hover:not(:disabled) {
-  background: color-mix(in oklch, var(--color-green-dark) 88%, black);
+  background: color-mix(in oklch, var(--color-primary-container) 88%, black);
 }
 
 .nextPhase {
-  background: var(--color-amber);
-  color: var(--color-white);
+  background: var(--color-secondary);
+  color: var(--color-surface-container-lowest);
 }
 
 .nextPhase:hover:not(:disabled) {
-  background: color-mix(in oklch, var(--color-amber) 88%, black);
+  background: color-mix(in oklch, var(--color-secondary) 88%, black);
 }

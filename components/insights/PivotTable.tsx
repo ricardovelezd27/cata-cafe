@@ -70,7 +70,7 @@ export function PivotTable({ result, heatmap, measureLabel, t }: PivotTableProps
 
   if (rowKeys.length === 0) {
     return (
-      <div className="flex items-center justify-center h-40 text-sm text-brown-mid">{t.empty}</div>
+      <div className="flex items-center justify-center h-40 text-sm text-on-surface-variant">{t.empty}</div>
     );
   }
 
@@ -96,14 +96,14 @@ export function PivotTable({ result, heatmap, measureLabel, t }: PivotTableProps
         <thead>
           <tr>
             <th
-              className="sticky top-0 left-0 z-20 bg-white px-3 py-2 text-left border-b"
+              className="sticky top-0 left-0 z-20 bg-surface-container-lowest px-3 py-2 text-left border-b"
               style={{ borderColor: BORDER }}
               aria-hidden
             />
             {totalOnly ? (
               <th
                 scope="col"
-                className="sticky top-0 z-10 bg-white px-3 py-2 text-right text-xs font-semibold text-brown-mid uppercase tracking-wide border-b whitespace-nowrap"
+                className="sticky top-0 z-10 bg-surface-container-lowest px-3 py-2 text-right text-xs font-semibold text-on-surface-variant uppercase tracking-wide border-b whitespace-nowrap"
                 style={{ borderColor: BORDER }}
               >
                 {measureLabel}
@@ -114,7 +114,7 @@ export function PivotTable({ result, heatmap, measureLabel, t }: PivotTableProps
                   <th
                     key={c.key}
                     scope="col"
-                    className="sticky top-0 z-10 bg-white px-3 py-2 text-right text-xs font-semibold text-brown-mid uppercase tracking-wide border-b whitespace-nowrap"
+                    className="sticky top-0 z-10 bg-surface-container-lowest px-3 py-2 text-right text-xs font-semibold text-on-surface-variant uppercase tracking-wide border-b whitespace-nowrap"
                     style={{ borderColor: BORDER }}
                   >
                     {c.label}
@@ -122,7 +122,7 @@ export function PivotTable({ result, heatmap, measureLabel, t }: PivotTableProps
                 ))}
                 <th
                   scope="col"
-                  className="sticky top-0 z-10 bg-white px-3 py-2 text-right text-xs font-semibold text-brown-dark uppercase tracking-wide border-b border-l whitespace-nowrap"
+                  className="sticky top-0 z-10 bg-surface-container-lowest px-3 py-2 text-right text-xs font-semibold text-on-surface uppercase tracking-wide border-b border-l whitespace-nowrap"
                   style={{ borderColor: BORDER }}
                 >
                   {t.total}
@@ -138,7 +138,7 @@ export function PivotTable({ result, heatmap, measureLabel, t }: PivotTableProps
               <tr key={r.key}>
                 <th
                   scope="row"
-                  className="sticky left-0 z-10 bg-white px-3 py-2 text-left font-medium text-brown-dark border-b whitespace-nowrap"
+                  className="sticky left-0 z-10 bg-surface-container-lowest px-3 py-2 text-left font-medium text-on-surface border-b whitespace-nowrap"
                   style={{ borderColor: BORDER }}
                 >
                   {r.label}
@@ -148,7 +148,7 @@ export function PivotTable({ result, heatmap, measureLabel, t }: PivotTableProps
                     const cell = rowCells[TOTAL_COL] ?? { value: null, count: 0 };
                     return (
                       <td
-                        className="px-3 py-2 text-right tabular-nums text-brown-dark border-b"
+                        className="px-3 py-2 text-right tabular-nums text-on-surface border-b"
                         style={{ borderColor: BORDER, ...(heatmap ? heatStyle(cell.value, min, max) : {}) }}
                         title={formatTemplate(t.countHint, { count: cell.count })}
                       >
@@ -163,7 +163,7 @@ export function PivotTable({ result, heatmap, measureLabel, t }: PivotTableProps
                       return (
                         <td
                           key={c.key}
-                          className="px-3 py-2 text-right tabular-nums text-brown-dark border-b"
+                          className="px-3 py-2 text-right tabular-nums text-on-surface border-b"
                           style={{
                             borderColor: BORDER,
                             ...(heatmap ? heatStyle(cell.value, min, max) : {}),
@@ -175,7 +175,7 @@ export function PivotTable({ result, heatmap, measureLabel, t }: PivotTableProps
                       );
                     })}
                     <td
-                      className="px-3 py-2 text-right tabular-nums font-semibold text-brown-dark border-b border-l"
+                      className="px-3 py-2 text-right tabular-nums font-semibold text-on-surface border-b border-l"
                       style={{ borderColor: BORDER }}
                       title={formatTemplate(t.countHint, { count: rowTotals[r.key]?.count ?? 0 })}
                     >
@@ -191,14 +191,14 @@ export function PivotTable({ result, heatmap, measureLabel, t }: PivotTableProps
           <tr>
             <th
               scope="row"
-              className="sticky left-0 z-10 bg-white px-3 py-2 text-left font-semibold text-brown-dark border-t whitespace-nowrap"
+              className="sticky left-0 z-10 bg-surface-container-lowest px-3 py-2 text-left font-semibold text-on-surface border-t whitespace-nowrap"
               style={{ borderColor: BORDER }}
             >
               {t.grandTotal}
             </th>
             {totalOnly ? (
               <td
-                className="px-3 py-2 text-right tabular-nums font-semibold text-brown-dark border-t"
+                className="px-3 py-2 text-right tabular-nums font-semibold text-on-surface border-t"
                 style={{ borderColor: BORDER }}
               >
                 {formatValue(grandTotal.value)}
@@ -208,14 +208,14 @@ export function PivotTable({ result, heatmap, measureLabel, t }: PivotTableProps
                 {colKeys.map((c) => (
                   <td
                     key={c.key}
-                    className="px-3 py-2 text-right tabular-nums font-semibold text-brown-dark border-t"
+                    className="px-3 py-2 text-right tabular-nums font-semibold text-on-surface border-t"
                     style={{ borderColor: BORDER }}
                   >
                     {formatValue(colTotals[c.key]?.value ?? null)}
                   </td>
                 ))}
                 <td
-                  className="px-3 py-2 text-right tabular-nums font-semibold text-brown-dark border-t border-l"
+                  className="px-3 py-2 text-right tabular-nums font-semibold text-on-surface border-t border-l"
                   style={{ borderColor: BORDER }}
                 >
                   {formatValue(grandTotal.value)}

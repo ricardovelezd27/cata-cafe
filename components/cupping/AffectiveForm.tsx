@@ -127,7 +127,7 @@ export function AffectiveForm({
                 </div>
 
                 {/* Right: notes */}
-                <div className="min-w-0 mt-5 pt-5 border-t border-brown-light lg:mt-0 lg:pt-0 lg:border-t-0 lg:border-l lg:pl-6">
+                <div className="min-w-0 mt-5 pt-5 border-t border-outline-variant lg:mt-0 lg:pt-0 lg:border-t-0 lg:border-l lg:pl-6">
                   <Notes
                     value={getStr(`${attr.affectiveId}_notas`)}
                     onChange={(v) => set(`${attr.affectiveId}_notas`, v)}
@@ -170,7 +170,7 @@ export function AffectiveForm({
 
       {showCups && lockedAffective && lockedCupsNote && (
         <FormSection title={copy.title}>
-          <p className="font-sans text-sm text-brown-mid">{lockedCupsNote}</p>
+          <p className="font-sans text-sm text-on-surface-variant">{lockedCupsNote}</p>
         </FormSection>
       )}
       {showCups && !lockedAffective && (
@@ -186,7 +186,7 @@ export function AffectiveForm({
             onSetDefect={(i, type) => onChange(applyDefectChoice(d, cupsPerSample, i, type))}
           />
           {(nonUniformCount > 0 || defectiveCount > 0) && (
-            <div className="mt-2 text-[11px] text-brown-mid">
+            <div className="mt-2 text-[11px] text-on-surface-variant">
               {cupSummary(copy, nonUniformCount, defectiveCount)}
             </div>
           )}

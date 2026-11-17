@@ -54,15 +54,15 @@ export function EvaluationGuardModal({
       closeLabel={t.review}
     >
       <div className="space-y-5">
-        {body && <p className="font-sans text-sm text-brown-dark">{body}</p>}
+        {body && <p className="font-sans text-sm text-on-surface">{body}</p>}
 
         <ul className="space-y-1.5">
           {items.map((item, i) => (
-            <li key={i} className="font-sans text-sm text-brown-dark">
+            <li key={i} className="font-sans text-sm text-on-surface">
               {item.sample && (
                 <span className="font-semibold">{item.sample}: </span>
               )}
-              <span className="text-brown-mid">
+              <span className="text-on-surface-variant">
                 {item.sections.join(", ")}
               </span>
             </li>
@@ -73,7 +73,7 @@ export function EvaluationGuardModal({
         {notes && notes.length > 0 && (
           <ul className="space-y-1.5">
             {notes.map((n, i) => (
-              <li key={i} className="font-sans text-sm text-brown-dark">
+              <li key={i} className="font-sans text-sm text-on-surface">
                 {n}
               </li>
             ))}
@@ -88,7 +88,7 @@ export function EvaluationGuardModal({
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 rounded-md border border-brown-light font-sans text-sm text-brown-dark hover:bg-cream focus-visible:outline-2 focus-visible:outline-offset-2"
+            className="px-4 py-2 rounded-pill border border-outline-variant font-sans text-sm text-on-surface hover:bg-surface-container focus-visible:outline-2 focus-visible:outline-offset-2"
           >
             {t.review}
           </button>
@@ -96,7 +96,7 @@ export function EvaluationGuardModal({
             <button
               type="button"
               onClick={secondary.onClick}
-              className="px-4 py-2 rounded-md border border-green-dark font-sans text-sm font-semibold text-green-dark hover:bg-cream focus-visible:outline-2 focus-visible:outline-offset-2"
+              className="px-4 py-2 rounded-pill border border-primary-container font-sans text-sm font-semibold text-primary-container hover:bg-surface-container focus-visible:outline-2 focus-visible:outline-offset-2"
             >
               {secondary.label}
             </button>
@@ -104,7 +104,7 @@ export function EvaluationGuardModal({
           <button
             type="button"
             onClick={onConfirm}
-            className="px-4 py-2 rounded-md bg-green-dark font-sans text-sm font-semibold text-white hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2"
+            className="px-4 py-2 rounded-pill bg-primary-container font-sans text-sm font-semibold text-white hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2"
           >
             {t.confirm}
           </button>

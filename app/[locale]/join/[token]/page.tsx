@@ -167,16 +167,16 @@ export default async function JoinPage({
       : `/${locale}/auth/login?next=${encodeURIComponent(`/${locale}/join/${token}`)}`;
     return (
       <main className="flex flex-1 items-center justify-center px-6 py-16">
-        <div className="w-full max-w-md bg-[#FDFBF7] border border-brown-light rounded-card p-8 text-center space-y-4">
-          <p className="text-lg font-semibold text-red-defect">{copy[0]}</p>
-          <p className="text-sm text-brown-mid">{copy[1]}</p>
+        <div className="w-full max-w-md bg-[#FDFBF7] border border-outline-variant rounded-card p-8 text-center space-y-4">
+          <p className="text-lg font-semibold text-error">{copy[0]}</p>
+          <p className="text-sm text-on-surface-variant">{copy[1]}</p>
           <div className="flex flex-col gap-2 text-sm">
-            <Link href={`/${locale}/app`} className="flex min-h-[44px] items-center justify-center text-brown-mid underline hover:text-green-dark">
+            <Link href={`/${locale}/app`} className="flex min-h-[44px] items-center justify-center text-on-surface-variant underline hover:text-primary-container">
               {t("joinHome")}
             </Link>
             <Link
               href={loginHref}
-              className="flex min-h-[44px] items-center justify-center text-brown-mid underline hover:text-green-dark"
+              className="flex min-h-[44px] items-center justify-center text-on-surface-variant underline hover:text-primary-container"
             >
               {tAuth("loginTitle")}
             </Link>
@@ -187,7 +187,7 @@ export default async function JoinPage({
   }
 
   const lateNote = decision.late ? (
-    <p className="text-sm text-green-dark font-medium">{t("joinLateNote")}</p>
+    <p className="text-sm text-primary-container font-medium">{t("joinLateNote")}</p>
   ) : null;
 
   // Valid token, no user yet: offer guest (anonymous) join instead of forcing
@@ -196,17 +196,17 @@ export default async function JoinPage({
     const loginHref = `/${locale}/auth/login?next=${encodeURIComponent(`/${locale}/join/${token}`)}`;
     return (
       <main className="flex flex-1 items-center justify-center px-6 py-16">
-        <div className="w-full max-w-md bg-[#FDFBF7] border border-brown-light rounded-card p-8 space-y-6">
+        <div className="w-full max-w-md bg-[#FDFBF7] border border-outline-variant rounded-card p-8 space-y-6">
           <div>
             <h1 className="page-title text-2xl">
               {invite.session.name}
             </h1>
-            <p className="text-sm text-brown-mid mt-1">{t("joinSession")}</p>
+            <p className="text-sm text-on-surface-variant mt-1">{t("joinSession")}</p>
             {lateNote}
           </div>
           {deadline}
           <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-brown-mid mb-2">
+            <p className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant mb-2">
               {t("continueAsGuest")}
             </p>
             <GuestJoinForm
@@ -228,7 +228,7 @@ export default async function JoinPage({
             />
           </div>
           <div className="text-center">
-            <Link href={loginHref} className="text-sm text-brown-mid underline hover:text-green-dark">
+            <Link href={loginHref} className="text-sm text-on-surface-variant underline hover:text-primary-container">
               {t("orSignIn")}
             </Link>
           </div>
@@ -242,12 +242,12 @@ export default async function JoinPage({
 
   return (
     <main className="flex flex-1 items-center justify-center px-6 py-16">
-      <div className="w-full max-w-md bg-[#FDFBF7] border border-brown-light rounded-card p-8 space-y-6">
+      <div className="w-full max-w-md bg-[#FDFBF7] border border-outline-variant rounded-card p-8 space-y-6">
         <div>
           <h1 className="page-title text-2xl">
             {invite.session.name}
           </h1>
-          <p className="text-sm text-brown-mid mt-1">{t("joinSession")}</p>
+          <p className="text-sm text-on-surface-variant mt-1">{t("joinSession")}</p>
           {lateNote}
         </div>
         {deadline}

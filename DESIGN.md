@@ -96,6 +96,7 @@ All tokens are CSS custom properties in `app/globals.css`, exposed as Tailwind u
 | `--color-on-primary-container` | `#98bca6` | `text-on-primary-container` | Subtle text on dark green surfaces |
 | `--color-primary-fixed` | `#c7ebd4` | `bg-primary-fixed` | Light green tint for selected card bg |
 | `--color-primary-fixed-dim` | `#abcfb8` | `bg-primary-fixed-dim` | Muted green highlight |
+| `--color-primary-muted` | `#6b8f71` | `text-primary-muted`, `hover:bg-primary-muted` | The softer green: hover on a green fill, a focus border, a small green accent (the legacy `green-mid`, same value) |
 | `--color-secondary` | `#9d4326` | `bg-secondary` | Terracotta accent — highlights, warnings |
 | `--color-secondary-container` | `#fd8c6a` | `bg-secondary-container` | Light terracotta fill |
 | `--color-on-secondary` | `#ffffff` | `text-on-secondary` | Text on secondary bg |
@@ -123,12 +124,12 @@ All tokens are CSS custom properties in `app/globals.css`, exposed as Tailwind u
 
 ### Backward-Compat Aliases (legacy code)
 
-These keep existing Tailwind utility classes working. Never use them in new code; they are renamed to the role names and the block is deleted (package T3 of the audit's plan). `green-mid` is the one alias with no role of its own: it keeps its value under a role name, so the rename changes nothing on screen.
+The old names below were renamed to the role names by package T3 of the audit's plan (each to the role with the same value, so nothing moved on screen); `tests/appTokens.test.ts` fails on a new one. `green-mid` had no role of its own: it is now `primary-muted`, same value. The alias block of `app/globals.css` keeps only `green-light`, because the landing still reads it; the folders that may still use an old name are listed, with their reason, in that test, and the list only shrinks. `text-white` and `border-white` are Tailwind's own white, not aliases. The table says what each old name became.
 
 | Old class | Maps to |
 |---|---|
 | `text-green-dark` / `bg-green-dark` | `primary-container` (#2c4c3b) |
-| `text-green-mid` / `bg-green-mid` | #6b8f71 (unchanged) |
+| `text-green-mid` / `bg-green-mid` | `primary-muted` (#6b8f71) |
 | `text-green-light` / `bg-green-light` | `primary-fixed-dim` (#abcfb8) |
 | `text-amber` / `bg-amber` / `text-amber-warm` | `secondary` (#9d4326) |
 | `bg-bg` | `surface` (#fff8f6) |

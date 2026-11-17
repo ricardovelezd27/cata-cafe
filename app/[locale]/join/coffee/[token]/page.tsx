@@ -41,15 +41,15 @@ export default async function JoinCoffeePage({
   if (!isValid) {
     return (
       <main className="flex flex-1 items-center justify-center px-6 py-16">
-        <div className="w-full max-w-md bg-[#FDFBF7] border border-brown-light rounded-card p-8 text-center space-y-4">
-          <p className="text-lg font-semibold text-red-defect">{t("share.invalidToken")}</p>
+        <div className="w-full max-w-md bg-[#FDFBF7] border border-outline-variant rounded-card p-8 text-center space-y-4">
+          <p className="text-lg font-semibold text-error">{t("share.invalidToken")}</p>
           <div className="flex flex-col gap-2 text-sm">
-            <Link href={`/${locale}/app`} className="flex min-h-[44px] items-center justify-center text-brown-mid underline hover:text-green-dark">
+            <Link href={`/${locale}/app`} className="flex min-h-[44px] items-center justify-center text-on-surface-variant underline hover:text-primary-container">
               {tErrors("home")}
             </Link>
             <Link
               href={`/${locale}/auth/login`}
-              className="flex min-h-[44px] items-center justify-center text-brown-mid underline hover:text-green-dark"
+              className="flex min-h-[44px] items-center justify-center text-on-surface-variant underline hover:text-primary-container"
             >
               {tAuth("loginTitle")}
             </Link>
@@ -65,16 +65,16 @@ export default async function JoinCoffeePage({
     const loginHref = `/${locale}/auth/login?next=${encodeURIComponent(`/${locale}/join/coffee/${token}`)}`;
     return (
       <main className="flex flex-1 items-center justify-center px-6 py-16">
-        <div className="w-full max-w-md bg-[#FDFBF7] border border-brown-light rounded-card p-8 space-y-6">
+        <div className="w-full max-w-md bg-[#FDFBF7] border border-outline-variant rounded-card p-8 space-y-6">
           <div>
             <h1 className="page-title text-2xl">
               {invite.coffee.name}
             </h1>
-            <p className="text-sm text-brown-mid mt-1">{t("share.joinTitle")}</p>
+            <p className="text-sm text-on-surface-variant mt-1">{t("share.joinTitle")}</p>
           </div>
           <Link
             href={loginHref}
-            className="block w-full text-center py-3 rounded-pill bg-green-dark text-white font-bold hover:bg-green-mid transition"
+            className="block w-full text-center py-3 rounded-pill bg-primary-container text-white font-bold hover:bg-primary-muted transition"
           >
             {t("share.joinLogin")}
           </Link>
@@ -87,12 +87,12 @@ export default async function JoinCoffeePage({
 
   return (
     <main className="flex flex-1 items-center justify-center px-6 py-16">
-      <div className="w-full max-w-md bg-[#FDFBF7] border border-brown-light rounded-card p-8 space-y-6">
+      <div className="w-full max-w-md bg-[#FDFBF7] border border-outline-variant rounded-card p-8 space-y-6">
         <div>
           <h1 className="page-title text-2xl">
             {invite.coffee.name}
           </h1>
-          <p className="text-sm text-brown-mid mt-1">
+          <p className="text-sm text-on-surface-variant mt-1">
             {t("share.joinBody", { name: invite.coffee.name })}
           </p>
         </div>

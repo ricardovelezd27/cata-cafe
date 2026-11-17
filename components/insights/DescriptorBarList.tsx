@@ -12,7 +12,7 @@ interface DescriptorBarListProps {
  */
 export function DescriptorBarList({ rows, emptyLabel }: DescriptorBarListProps) {
   if (rows.length === 0) {
-    return <div className="text-sm text-brown-mid py-6 text-center">{emptyLabel}</div>;
+    return <div className="text-sm text-on-surface-variant py-6 text-center">{emptyLabel}</div>;
   }
 
   const max = Math.max(...rows.map((r) => r.value));
@@ -21,7 +21,7 @@ export function DescriptorBarList({ rows, emptyLabel }: DescriptorBarListProps) 
     <div className="flex flex-col gap-2">
       {rows.map((r) => (
         <div key={r.key} className="flex items-center gap-3">
-          <span className="w-32 shrink-0 text-xs text-brown-dark truncate" title={r.label}>
+          <span className="w-32 shrink-0 text-xs text-on-surface truncate" title={r.label}>
             {r.label}
           </span>
           <div className="flex-1 h-4 bg-[#F5F0E6] rounded-sm overflow-hidden">
@@ -33,7 +33,7 @@ export function DescriptorBarList({ rows, emptyLabel }: DescriptorBarListProps) 
               }}
             />
           </div>
-          <span className="w-8 shrink-0 text-right text-xs font-semibold text-brown-dark tabular-nums">
+          <span className="w-8 shrink-0 text-right text-xs font-semibold text-on-surface tabular-nums">
             {r.value}
           </span>
         </div>

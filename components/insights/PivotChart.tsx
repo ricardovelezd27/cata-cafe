@@ -37,7 +37,7 @@ export function PivotChart({ result, view, measureLabel, t }: PivotChartProps) {
 
   if (rowKeys.length === 0) {
     return (
-      <div className="flex items-center justify-center h-40 text-sm text-brown-mid">{t.empty}</div>
+      <div className="flex items-center justify-center h-40 text-sm text-on-surface-variant">{t.empty}</div>
     );
   }
 

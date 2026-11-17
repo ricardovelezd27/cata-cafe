@@ -51,7 +51,7 @@ export function InsightChart({
 
   if (rows.length === 0) {
     return (
-      <div className="flex items-center justify-center h-40 text-sm text-brown-mid">
+      <div className="flex items-center justify-center h-40 text-sm text-on-surface-variant">
         {emptyLabel}
       </div>
     );
@@ -63,13 +63,13 @@ export function InsightChart({
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-[#E8E0D0] text-left">
-              <th className="py-2 pr-4 text-xs font-semibold text-brown-mid uppercase tracking-wide">
+              <th className="py-2 pr-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
                 {dimensionLabel}
               </th>
-              <th className="py-2 pr-4 text-xs font-semibold text-brown-mid uppercase tracking-wide text-right">
+              <th className="py-2 pr-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wide text-right">
                 {valueLabel}
               </th>
-              <th className="py-2 text-xs font-semibold text-brown-mid uppercase tracking-wide text-right">
+              <th className="py-2 text-xs font-semibold text-on-surface-variant uppercase tracking-wide text-right">
                 {countLabel}
               </th>
             </tr>
@@ -77,7 +77,7 @@ export function InsightChart({
           <tbody>
             {rows.map((r) => (
               <tr key={r.key} className="border-b border-[#F5F0E6]">
-                <td className="py-2 pr-4 text-brown-dark">
+                <td className="py-2 pr-4 text-on-surface">
                   <span className="inline-flex items-center gap-2">
                     {r.color && (
                       <span
@@ -89,10 +89,10 @@ export function InsightChart({
                     {r.label}
                   </span>
                 </td>
-                <td className="py-2 pr-4 text-right font-semibold text-brown-dark tabular-nums">
+                <td className="py-2 pr-4 text-right font-semibold text-on-surface tabular-nums">
                   {r.value}
                 </td>
-                <td className="py-2 text-right text-brown-mid tabular-nums">{r.count}</td>
+                <td className="py-2 text-right text-on-surface-variant tabular-nums">{r.count}</td>
               </tr>
             ))}
           </tbody>

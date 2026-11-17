@@ -161,7 +161,7 @@ export function CoffeeShareManager({
           type="button"
           disabled={isPending}
           onClick={handleGenerate}
-          className="min-h-[44px] rounded-pill bg-primary-container text-white text-xs font-semibold px-3 py-1.5 hover:bg-green-mid transition disabled:opacity-60"
+          className="min-h-[44px] rounded-pill bg-primary-container text-white text-xs font-semibold px-3 py-1.5 hover:bg-primary-muted transition disabled:opacity-60"
         >
           {isPending ? t.generating : t.generateLink}
         </button>

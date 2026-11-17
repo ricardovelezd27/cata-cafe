@@ -41,7 +41,7 @@ interface OriginContextPanelProps {
 }
 
 const selectClass =
-  "w-full rounded-input border border-[#E8E0D0] bg-white px-3 py-2 text-sm text-brown-dark focus:border-[#3D5A3E]";
+  "w-full rounded-input border border-[#E8E0D0] bg-surface-container-lowest px-3 py-2 text-sm text-on-surface focus:border-[#3D5A3E]";
 
 interface OriginRow {
   year: number;
@@ -94,18 +94,18 @@ export function OriginContextPanel({
   }
 
   return (
-    <section className="bg-white rounded-card border border-[#E8E0D0] shadow-card p-5">
+    <section className="bg-surface-container-lowest rounded-card border border-[#E8E0D0] shadow-card p-5">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg">{t.title}</h2>
-        {isPending && <Loader2 size={16} className="animate-spin text-brown-mid" aria-hidden />}
+        {isPending && <Loader2 size={16} className="animate-spin text-on-surface-variant" aria-hidden />}
       </div>
 
       {countries.length === 0 ? (
-        <div className="text-sm text-brown-mid py-8 text-center">{t.empty}</div>
+        <div className="text-sm text-on-surface-variant py-8 text-center">{t.empty}</div>
       ) : (
         <>
           <label className="flex flex-col gap-1 max-w-xs mb-5">
-            <span className="text-xs font-semibold text-brown-mid uppercase tracking-wide">
+            <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
               {t.country}
             </span>
             <select
@@ -122,7 +122,7 @@ export function OriginContextPanel({
           </label>
 
           {production.length === 0 ? (
-            <div className="text-sm text-brown-mid py-8 text-center">{t.empty}</div>
+            <div className="text-sm text-on-surface-variant py-8 text-center">{t.empty}</div>
           ) : (
             <>
               <div ref={ref} className="w-full">
@@ -167,7 +167,7 @@ export function OriginContextPanel({
               </div>
 
               {scoreLines.length > 0 && (
-                <p className="text-xs text-brown-mid mt-3">
+                <p className="text-xs text-on-surface-variant mt-3">
                   {t.avgScore}: {scoreLines.join(" · ")}
                 </p>
               )}

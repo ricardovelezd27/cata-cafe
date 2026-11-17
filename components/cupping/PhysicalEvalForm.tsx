@@ -22,27 +22,27 @@ interface DefectRowViewProps {
 function DefectRowView({ defect, count, onChange }: DefectRowViewProps) {
   const full = calcFullDefects(count, defect.ratio);
   return (
-    <div className="flex items-center gap-2 mb-1.5 px-3 py-1.5 bg-cream rounded-sm">
-      <div className="flex-1 text-xs text-brown-dark">
+    <div className="flex items-center gap-2 mb-1.5 px-3 py-1.5 bg-surface-container rounded-sm">
+      <div className="flex-1 text-xs text-on-surface">
         {defect.name}{" "}
-        <span className="text-brown-mid text-[10px]">({defect.ratio})</span>
+        <span className="text-on-surface-variant text-[10px]">({defect.ratio})</span>
       </div>
       <div className="flex items-center gap-1">
         <button
           type="button"
           onClick={() => onChange(Math.max(0, count - 1))}
-          className="w-7 h-7 rounded-sm border border-brown-light bg-white text-brown-dark text-sm font-mono tabular-nums hover:bg-cream transition-colors"
+          className="w-7 h-7 rounded-sm border border-outline-variant bg-surface-container-lowest text-on-surface text-sm font-mono tabular-nums hover:bg-surface-container transition-colors"
           aria-label="Decrease"
         >
           −
         </button>
-        <span className="w-9 text-center text-sm font-semibold text-green-dark font-mono tabular-nums">
+        <span className="w-9 text-center text-sm font-semibold text-primary-container font-mono tabular-nums">
           {count}
         </span>
         <button
           type="button"
           onClick={() => onChange(count + 1)}
-          className="w-7 h-7 rounded-sm border border-brown-light bg-white text-brown-dark text-sm font-mono tabular-nums hover:bg-cream transition-colors"
+          className="w-7 h-7 rounded-sm border border-outline-variant bg-surface-container-lowest text-on-surface text-sm font-mono tabular-nums hover:bg-surface-container transition-colors"
           aria-label="Increase"
         >
           +
@@ -50,7 +50,7 @@ function DefectRowView({ defect, count, onChange }: DefectRowViewProps) {
       </div>
       <div
         className={`w-12 text-right text-[13px] font-semibold font-mono tabular-nums ${
-          full > 0 ? "text-red-defect" : "text-brown-mid"
+          full > 0 ? "text-error" : "text-on-surface-variant"
         }`}
       >
         {full.toFixed(1)}
@@ -88,10 +88,10 @@ export function PhysicalEvalForm({
         <h2 className="text-lg">Evaluación física</h2>
         <BetaBadge />
       </div>
-      <div className="text-xs text-brown-mid mb-3">
+      <div className="text-xs text-on-surface-variant mb-3">
         No aplica todavía — sección en desarrollo
       </div>
-      <div className="text-[11px] text-brown-mid mb-4 p-3 bg-cream rounded-sm text-center italic">
+      <div className="text-[11px] text-on-surface-variant mb-4 p-3 bg-surface-container rounded-sm text-center italic">
         Con base en una muestra de 350g
       </div>
 
@@ -107,8 +107,8 @@ export function PhysicalEvalForm({
                 aria-pressed={active}
                 className={`px-3 py-1.5 rounded-pill border text-[11px] font-medium transition-colors ${
                   active
-                    ? "bg-green-dark text-white border-green-dark"
-                    : "bg-transparent text-brown-dark border-brown-light hover:bg-cream"
+                    ? "bg-primary-container text-white border-primary-container"
+                    : "bg-transparent text-on-surface border-outline-variant hover:bg-surface-container"
                 }`}
               >
                 {c}
@@ -129,9 +129,9 @@ export function PhysicalEvalForm({
             step={0.1}
             min={0}
             max={100}
-            className="w-24 px-3 py-2 border border-brown-light rounded-sm text-sm bg-cream text-brown-dark text-center font-mono tabular-nums focus:border-green-dark"
+            className="w-24 px-3 py-2 border border-outline-variant rounded-sm text-sm bg-surface-container text-on-surface text-center font-mono tabular-nums focus:border-primary-container"
           />
-          <span className="text-sm text-brown-mid">%</span>
+          <span className="text-sm text-on-surface-variant">%</span>
         </div>
       </FormSection>
 
@@ -140,13 +140,13 @@ export function PhysicalEvalForm({
           <table className="w-full border-collapse text-xs">
             <thead>
               <tr>
-                <th className="text-left py-2 px-2 text-brown-mid border-b border-brown-light font-mono text-[10px] uppercase tracking-wider font-semibold">
+                <th className="text-left py-2 px-2 text-on-surface-variant border-b border-outline-variant font-mono text-[10px] uppercase tracking-wider font-semibold">
                   Zaranda
                 </th>
-                <th className="text-center py-2 px-2 text-brown-mid border-b border-brown-light font-mono text-[10px] uppercase tracking-wider font-semibold">
+                <th className="text-center py-2 px-2 text-on-surface-variant border-b border-outline-variant font-mono text-[10px] uppercase tracking-wider font-semibold">
                   Gramos
                 </th>
-                <th className="text-right py-2 px-2 text-brown-mid border-b border-brown-light font-mono text-[10px] uppercase tracking-wider font-semibold">
+                <th className="text-right py-2 px-2 text-on-surface-variant border-b border-outline-variant font-mono text-[10px] uppercase tracking-wider font-semibold">
                   %
                 </th>
               </tr>
@@ -158,7 +158,7 @@ export function PhysicalEvalForm({
                 const pct = totalG > 0 ? ((g / totalG) * 100).toFixed(1) : "0.0";
                 return (
                   <tr key={s}>
-                    <td className="py-1.5 px-2 text-brown-dark font-mono tabular-nums">#{s}</td>
+                    <td className="py-1.5 px-2 text-on-surface font-mono tabular-nums">#{s}</td>
                     <td className="py-1.5 px-2 text-center">
                       <input
                         type="number"
@@ -168,10 +168,10 @@ export function PhysicalEvalForm({
                         placeholder="0"
                         step={0.1}
                         min={0}
-                        className="w-16 py-1 px-2 border border-brown-light rounded-sm text-xs text-center bg-cream text-brown-dark font-mono tabular-nums focus:border-green-dark"
+                        className="w-16 py-1 px-2 border border-outline-variant rounded-sm text-xs text-center bg-surface-container text-on-surface font-mono tabular-nums focus:border-primary-container"
                       />
                     </td>
-                    <td className="py-1.5 px-2 text-right text-brown-mid font-mono tabular-nums">
+                    <td className="py-1.5 px-2 text-right text-on-surface-variant font-mono tabular-nums">
                       {pct}%
                     </td>
                   </tr>
@@ -192,8 +192,8 @@ export function PhysicalEvalForm({
             onChange={(n) => set(`phys_cat1_${def.name}_count`, n)}
           />
         ))}
-        <div className="flex justify-end py-2 border-t-2 border-green-dark mt-3">
-          <span className="text-[13px] font-bold text-green-dark font-mono tabular-nums">
+        <div className="flex justify-end py-2 border-t-2 border-primary-container mt-3">
+          <span className="text-[13px] font-bold text-primary-container font-mono tabular-nums">
             Total Cat. 1: {totalCat1.toFixed(1)}
           </span>
         </div>
@@ -209,8 +209,8 @@ export function PhysicalEvalForm({
             onChange={(n) => set(`phys_cat2_${def.name}_count`, n)}
           />
         ))}
-        <div className="flex justify-end py-2 border-t-2 border-green-dark mt-3">
-          <span className="text-[13px] font-bold text-green-dark font-mono tabular-nums">
+        <div className="flex justify-end py-2 border-t-2 border-primary-container mt-3">
+          <span className="text-[13px] font-bold text-primary-container font-mono tabular-nums">
             Total Cat. 2: {totalCat2.toFixed(1)}
           </span>
         </div>
@@ -220,12 +220,12 @@ export function PhysicalEvalForm({
         <div className="text-center py-4">
           <div
             className={`text-5xl font-display font-medium tabular-nums ${
-              totalCat1 + totalCat2 > 0 ? "text-red-defect" : "text-green-dark"
+              totalCat1 + totalCat2 > 0 ? "text-error" : "text-primary-container"
             }`}
           >
             {(totalCat1 + totalCat2).toFixed(1)}
           </div>
-          <div className="text-[11px] text-brown-mid mt-2 font-mono tabular-nums">
+          <div className="text-[11px] text-on-surface-variant mt-2 font-mono tabular-nums">
             Cat. 1: {totalCat1.toFixed(1)} · Cat. 2: {totalCat2.toFixed(1)}
           </div>
         </div>

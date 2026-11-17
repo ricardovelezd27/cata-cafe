@@ -19,8 +19,8 @@ function formatNumber(v: number | null | undefined): string {
   return Number.isInteger(v) ? String(v) : v.toFixed(2);
 }
 
-const CARD_CLASS = "bg-white rounded-card border border-[#E8E0D0] p-3 mt-2";
-const CAPTION_CLASS = "text-xs font-semibold text-brown-mid uppercase tracking-wide mb-2";
+const CARD_CLASS = "bg-surface-container-lowest rounded-card border border-[#E8E0D0] p-3 mt-2";
+const CAPTION_CLASS = "text-xs font-semibold text-on-surface-variant uppercase tracking-wide mb-2";
 
 function MiniTable({ headers, rows }: { headers: string[]; rows: (string | number)[][] }) {
   return (
@@ -31,7 +31,7 @@ function MiniTable({ headers, rows }: { headers: string[]; rows: (string | numbe
             {headers.map((h, i) => (
               <th
                 key={i}
-                className={`py-1.5 pr-3 text-xs font-semibold text-brown-mid uppercase tracking-wide ${
+                className={`py-1.5 pr-3 text-xs font-semibold text-on-surface-variant uppercase tracking-wide ${
                   i > 0 ? "text-right" : ""
                 }`}
               >
@@ -47,7 +47,7 @@ function MiniTable({ headers, rows }: { headers: string[]; rows: (string | numbe
                 <td
                   key={ci}
                   className={`py-1.5 pr-3 ${
-                    ci === 0 ? "text-brown-dark" : "text-right text-brown-dark tabular-nums"
+                    ci === 0 ? "text-on-surface" : "text-right text-on-surface tabular-nums"
                   }`}
                 >
                   {cell}
@@ -115,7 +115,7 @@ export function ChatBlock({ block, t }: ChatBlockProps) {
       return (
         <div className={CARD_CLASS}>
           <div className={CAPTION_CLASS}>{t.session.candidatesTitle}</div>
-          <ul className="flex flex-col gap-1 text-sm text-brown-dark">
+          <ul className="flex flex-col gap-1 text-sm text-on-surface">
             {candidates.map((c) => (
               <li key={c.id}>
                 {c.name} &middot; {c.date} &middot; {c.status}
@@ -185,12 +185,12 @@ export function ChatBlock({ block, t }: ChatBlockProps) {
         {chips.map(([key, value]) => (
           <div
             key={key}
-            className="rounded-pill bg-cream border border-[#E8E0D0] px-3 py-1.5 flex flex-col items-start gap-0.5"
+            className="rounded-pill bg-surface-container border border-[#E8E0D0] px-3 py-1.5 flex flex-col items-start gap-0.5"
           >
-            <span className="text-[10px] font-semibold text-brown-mid uppercase tracking-wide">
+            <span className="text-[10px] font-semibold text-on-surface-variant uppercase tracking-wide">
               {t.overview[key] ?? key}
             </span>
-            <span className="text-sm font-semibold text-brown-dark tabular-nums">
+            <span className="text-sm font-semibold text-on-surface tabular-nums">
               {formatNumber(value)}
             </span>
           </div>

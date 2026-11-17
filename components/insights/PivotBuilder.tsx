@@ -72,12 +72,12 @@ type View = "table" | "grouped" | "stacked" | "line";
 const MAX_FILTER_ENTRIES = 5;
 
 const selectClass =
-  "w-full rounded-input border border-[#E8E0D0] bg-white px-3 py-2 text-sm text-brown-dark focus:border-[#3D5A3E]";
+  "w-full rounded-input border border-[#E8E0D0] bg-surface-container-lowest px-3 py-2 text-sm text-on-surface focus:border-[#3D5A3E]";
 const pickerSelectClass =
-  "rounded-input border border-[#E8E0D0] bg-white px-2 py-1 text-xs text-brown-dark focus:border-[#3D5A3E]";
+  "rounded-input border border-[#E8E0D0] bg-surface-container-lowest px-2 py-1 text-xs text-on-surface focus:border-[#3D5A3E]";
 const addFieldButtonClass =
-  "inline-flex items-center gap-1 rounded-pill border border-dashed border-[#E8E0D0] px-3 py-1 text-xs font-semibold text-[#3D5A3E] hover:border-[#3D5A3E] hover:bg-cream transition-colors";
-const shelfLabelClass = "text-xs font-semibold text-brown-mid uppercase tracking-wide";
+  "inline-flex items-center gap-1 rounded-pill border border-dashed border-[#E8E0D0] px-3 py-1 text-xs font-semibold text-[#3D5A3E] hover:border-[#3D5A3E] hover:bg-surface-container transition-colors";
+const shelfLabelClass = "text-xs font-semibold text-on-surface-variant uppercase tracking-wide";
 
 function FieldChip({
   label,
@@ -98,7 +98,7 @@ function FieldChip({
   // interactive there.
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-pill border border-[#E8E0D0] bg-cream px-3 py-1 text-xs font-medium text-brown-dark ${
+      className={`inline-flex items-center gap-1.5 rounded-pill border border-[#E8E0D0] bg-surface-container px-3 py-1 text-xs font-medium text-on-surface ${
         onClick ? "hover:border-[#3D5A3E]" : ""
       }`}
     >
@@ -114,7 +114,7 @@ function FieldChip({
           type="button"
           onClick={onRemove}
           aria-label={removeLabel}
-          className="text-brown-mid hover:text-red-defect"
+          className="text-on-surface-variant hover:text-error"
         >
           <X size={12} />
         </button>
@@ -332,7 +332,7 @@ export function PivotBuilder({ locale, t, loadedConfig, loadKey, onConfigChange 
   return (
     <div className="flex flex-col gap-5">
       {/* Builder controls */}
-      <div className="bg-white rounded-card border border-[#E8E0D0] shadow-card p-5 flex flex-col gap-4">
+      <div className="bg-surface-container-lowest rounded-card border border-[#E8E0D0] shadow-card p-5 flex flex-col gap-4">
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 max-w-2xl">
           <label className="flex flex-col gap-1">
             <span className={shelfLabelClass}>{t.dataset}</span>
@@ -539,23 +539,23 @@ export function PivotBuilder({ locale, t, loadedConfig, loadKey, onConfigChange 
           </div>
         </div>
 
-        <p className="text-xs text-brown-mid">
+        <p className="text-xs text-on-surface-variant">
           {t.maxRowsHint} {t.maxColsHint}
         </p>
       </div>
 
       {/* Preview */}
-      <div className="bg-white rounded-card border border-[#E8E0D0] shadow-card p-5">
+      <div className="bg-surface-container-lowest rounded-card border border-[#E8E0D0] shadow-card p-5">
         <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <div className="inline-flex rounded-pill border border-[#E8E0D0] bg-cream p-1">
+            <div className="inline-flex rounded-pill border border-[#E8E0D0] bg-surface-container p-1">
               {viewOptions.map((opt) => (
                 <button
                   key={opt.id}
                   type="button"
                   onClick={() => setView(opt.id)}
                   className={`px-3 py-1 rounded-pill text-xs font-semibold transition-colors ${
-                    view === opt.id ? "bg-[#3D5A3E] text-white" : "text-brown-mid hover:text-brown-dark"
+                    view === opt.id ? "bg-[#3D5A3E] text-white" : "text-on-surface-variant hover:text-on-surface"
                   }`}
                 >
                   {opt.label}
@@ -570,7 +570,7 @@ export function PivotBuilder({ locale, t, loadedConfig, loadKey, onConfigChange 
                 className={`px-3 py-1 rounded-pill text-xs font-semibold border transition-colors ${
                   heatmap
                     ? "bg-[#3D5A3E] text-white border-[#3D5A3E]"
-                    : "border-[#E8E0D0] text-brown-mid hover:text-brown-dark"
+                    : "border-[#E8E0D0] text-on-surface-variant hover:text-on-surface"
                 }`}
               >
                 {t.heatmap}
@@ -578,7 +578,7 @@ export function PivotBuilder({ locale, t, loadedConfig, loadKey, onConfigChange 
             )}
           </div>
           {isPending && (
-            <span className="flex items-center gap-1.5 text-xs text-brown-mid">
+            <span className="flex items-center gap-1.5 text-xs text-on-surface-variant">
               <Loader2 size={14} className="animate-spin" />
               {t.running}
             </span>
@@ -586,9 +586,9 @@ export function PivotBuilder({ locale, t, loadedConfig, loadKey, onConfigChange 
         </div>
 
         {error ? (
-          <div className="text-sm text-red-defect py-8 text-center">{t.error}</div>
+          <div className="text-sm text-error py-8 text-center">{t.error}</div>
         ) : result === null ? (
-          <div className="flex items-center justify-center h-40 text-sm text-brown-mid">
+          <div className="flex items-center justify-center h-40 text-sm text-on-surface-variant">
             <Loader2 size={16} className="animate-spin mr-2" />
             {t.running}
           </div>
@@ -627,7 +627,7 @@ export function PivotBuilder({ locale, t, loadedConfig, loadKey, onConfigChange 
             onChange={(e) => setFilterDialogSearch(e.target.value)}
           />
           {filterDialogLoading ? (
-            <div className="flex items-center justify-center h-24 text-sm text-brown-mid">
+            <div className="flex items-center justify-center h-24 text-sm text-on-surface-variant">
               <Loader2 size={16} className="animate-spin mr-2" />
               {t.running}
             </div>
@@ -636,7 +636,7 @@ export function PivotBuilder({ locale, t, loadedConfig, loadKey, onConfigChange 
               {filteredDialogValues.map((v) => (
                 <label
                   key={v.key}
-                  className="flex min-h-[44px] items-center gap-2 text-sm text-brown-dark py-1 px-1 rounded-input hover:bg-cream cursor-pointer"
+                  className="flex min-h-[44px] items-center gap-2 text-sm text-on-surface py-1 px-1 rounded-input hover:bg-surface-container cursor-pointer"
                 >
                   <input
                     type="checkbox"
@@ -647,7 +647,7 @@ export function PivotBuilder({ locale, t, loadedConfig, loadKey, onConfigChange 
                 </label>
               ))}
               {filteredDialogValues.length === 0 && (
-                <p className="text-sm text-brown-mid py-4 text-center">{t.empty}</p>
+                <p className="text-sm text-on-surface-variant py-4 text-center">{t.empty}</p>
               )}
             </div>
           )}
@@ -655,7 +655,7 @@ export function PivotBuilder({ locale, t, loadedConfig, loadKey, onConfigChange 
             <button
               type="button"
               onClick={() => setFilterDialogSelected(new Set())}
-              className="text-xs text-brown-mid hover:text-red-defect"
+              className="text-xs text-on-surface-variant hover:text-error"
             >
               {t.clearFilter}
             </button>

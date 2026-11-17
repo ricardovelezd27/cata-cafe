@@ -378,7 +378,7 @@ export function FlavorPicker({
       {/* Selected chips — persistent section, visible on the form */}
       <div className="mb-3">
         <div className="flex items-center justify-between mb-2">
-          <span className="font-mono text-[10px] font-semibold tracking-[0.16em] uppercase text-brown-mid">
+          <span className="font-mono text-[10px] font-semibold tracking-[0.16em] uppercase text-on-surface-variant">
             {t.selected}
             {maxSelect !== undefined && (
               <span className="ml-1 normal-case tracking-normal">
@@ -388,7 +388,7 @@ export function FlavorPicker({
           </span>
         </div>
         {value.length === 0 ? (
-          <p className="text-[12px] text-brown-mid italic">{t.none}</p>
+          <p className="text-[12px] text-on-surface-variant italic">{t.none}</p>
         ) : (
           // Chips paint 30 px, 15 px apart in height: each one's 44 px hit area
           // (HIT_Y44) meets the next row's at the midpoint (F-03).
@@ -439,7 +439,7 @@ export function FlavorPicker({
           <Search
             size={15}
             aria-hidden
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-brown-mid"
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant"
           />
           <input
             ref={inputRef}
@@ -455,14 +455,14 @@ export function FlavorPicker({
             placeholder={t.search}
             aria-label={t.search}
             autoComplete="off"
-            className="min-h-[44px] w-full rounded-pill border-[1.5px] border-brown-light/60 bg-bg py-1.5 pl-9 pr-3 text-[13px] text-brown-dark placeholder:text-brown-mid focus:border-green-mid"
+            className="min-h-[44px] w-full rounded-pill border-[1.5px] border-outline-variant/60 bg-surface py-1.5 pl-9 pr-3 text-[13px] text-on-surface placeholder:text-on-surface-variant focus:border-primary-muted"
           />
         </div>
 
         {dropdownOpen && (
           <ul
             role="listbox"
-            className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-brown-light/50 bg-bg py-1 shadow-lg"
+            className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-input border border-outline-variant/50 bg-surface py-1 shadow-lg"
           >
             {results.map((m, i) => (
               <li key={m.id} role="option" aria-selected={i === clampedHi}>
@@ -475,7 +475,7 @@ export function FlavorPicker({
                   }}
                   onMouseEnter={() => setHi(i)}
                   className={`flex w-full items-center gap-2 px-3 py-1.5 text-left ${
-                    i === clampedHi ? "bg-cream" : ""
+                    i === clampedHi ? "bg-surface-container" : ""
                   }`}
                 >
                   <span
@@ -483,11 +483,11 @@ export function FlavorPicker({
                     style={{ background: m.color }}
                     aria-hidden
                   />
-                  <span className="text-[13px] font-medium text-brown-dark">
+                  <span className="text-[13px] font-medium text-on-surface">
                     {m.label}
                   </span>
                   {m.path && (
-                    <span className="ml-auto truncate pl-2 text-[11px] text-brown-mid">
+                    <span className="ml-auto truncate pl-2 text-[11px] text-on-surface-variant">
                       {m.path}
                     </span>
                   )}
@@ -516,7 +516,7 @@ export function FlavorPicker({
           setNavId(null);
           setOpen(true);
         }}
-        className="inline-flex items-center gap-1.5 rounded-pill border-[1.5px] border-dashed border-green-mid px-3.5 py-1.5 text-[13px] font-medium text-green-dark transition-colors hover:bg-green-mid/10"
+        className="inline-flex items-center gap-1.5 rounded-pill border-[1.5px] border-dashed border-primary-muted px-3.5 py-1.5 text-[13px] font-medium text-primary-container transition-colors hover:bg-primary-muted/10"
       >
         <Plus size={15} aria-hidden />
         {t.add}
@@ -553,18 +553,18 @@ export function FlavorPicker({
             type="button"
             onClick={() => setNavId(null)}
             aria-current={navId === null ? "location" : undefined}
-            className={`font-medium ${navId === null ? "text-brown-dark" : "text-green-dark hover:underline"}`}
+            className={`font-medium ${navId === null ? "text-on-surface" : "text-primary-container hover:underline"}`}
           >
             {t.all}
           </button>
           {crumbs.map((c) => (
             <span key={c.id} className="flex items-center gap-1">
-              <ChevronRight size={13} className="text-brown-mid" aria-hidden />
+              <ChevronRight size={13} className="text-on-surface-variant" aria-hidden />
               <button
                 type="button"
                 onClick={() => setNavId(c.id)}
                 aria-current={c.id === navId ? "location" : undefined}
-                className={`font-medium ${c.id === navId ? "text-brown-dark" : "text-green-dark hover:underline"}`}
+                className={`font-medium ${c.id === navId ? "text-on-surface" : "text-primary-container hover:underline"}`}
               >
                 {label(c, locale)}
               </button>
@@ -578,7 +578,7 @@ export function FlavorPicker({
             onClick={() =>
               setNavId(flavorNodeById(navId)?.parentId ?? null)
             }
-            className="inline-flex items-center gap-1 text-[12px] font-medium text-green-dark hover:underline mb-3"
+            className="inline-flex items-center gap-1 text-[12px] font-medium text-primary-container hover:underline mb-3"
           >
             <ChevronLeft size={14} aria-hidden />
             {t.back}
@@ -629,7 +629,7 @@ export function FlavorPicker({
                     type="button"
                     onClick={() => setNavId(node.id)}
                     aria-label={label(node, locale)}
-                    className="-my-[7px] inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full text-brown-mid hover:bg-cream hover:text-brown-dark transition-colors"
+                    className="-my-[7px] inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"
                   >
                     <ChevronRight size={18} aria-hidden />
                   </button>
@@ -657,7 +657,7 @@ export function FlavorPicker({
               setFileUnder(null);
               setLimitHit(false);
             }}
-            className="rounded-pill bg-green-dark px-5 py-2 text-[13px] font-semibold text-bg"
+            className="rounded-pill bg-primary-container px-5 py-2 text-[13px] font-semibold text-surface"
           >
             {t.done}
           </button>

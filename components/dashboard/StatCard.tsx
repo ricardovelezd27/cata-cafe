@@ -12,7 +12,7 @@ export function StatCard({ label, value, subtext, accent, icon }: StatCardProps)
   return (
     <div className="relative bg-surface-container-lowest rounded-card border border-outline-variant shadow-card p-5 flex flex-col gap-1">
       {icon && (
-        <span className="absolute top-4 right-4 text-green-mid opacity-70">
+        <span className="absolute top-4 right-4 text-primary-muted opacity-70">
           {icon}
         </span>
       )}

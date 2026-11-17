@@ -47,7 +47,7 @@ interface ExplorerBuilderProps {
 }
 
 const selectClass =
-  "w-full rounded-input border border-[#E8E0D0] bg-white px-3 py-2 text-sm text-brown-dark focus:border-[#3D5A3E]";
+  "w-full rounded-input border border-[#E8E0D0] bg-surface-container-lowest px-3 py-2 text-sm text-on-surface focus:border-[#3D5A3E]";
 
 export function ExplorerBuilder({ locale, t, loadedConfig, loadKey, onConfigChange }: ExplorerBuilderProps) {
   const [dataset, setDataset] = useState<Dataset>("evaluations");
@@ -153,10 +153,10 @@ export function ExplorerBuilder({ locale, t, loadedConfig, loadKey, onConfigChan
   return (
     <div className="flex flex-col gap-5">
       {/* Builder controls */}
-      <div className="bg-white rounded-card border border-[#E8E0D0] shadow-card p-5">
+      <div className="bg-surface-container-lowest rounded-card border border-[#E8E0D0] shadow-card p-5">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-semibold text-brown-mid uppercase tracking-wide">
+            <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
               {t.dataset}
             </span>
             <select
@@ -173,7 +173,7 @@ export function ExplorerBuilder({ locale, t, loadedConfig, loadKey, onConfigChan
           </label>
 
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-semibold text-brown-mid uppercase tracking-wide">
+            <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
               {t.dimension}
             </span>
             <select
@@ -190,7 +190,7 @@ export function ExplorerBuilder({ locale, t, loadedConfig, loadKey, onConfigChan
           </label>
 
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-semibold text-brown-mid uppercase tracking-wide">
+            <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
               {t.measure}
             </span>
             <select
@@ -207,7 +207,7 @@ export function ExplorerBuilder({ locale, t, loadedConfig, loadKey, onConfigChan
           </label>
 
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-semibold text-brown-mid uppercase tracking-wide">
+            <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
               {t.chartType}
             </span>
             <select
@@ -226,7 +226,7 @@ export function ExplorerBuilder({ locale, t, loadedConfig, loadKey, onConfigChan
 
         <div className="grid grid-cols-2 gap-3 mt-3 max-w-md">
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-semibold text-brown-mid uppercase tracking-wide">
+            <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
               {t.dateFrom}
             </span>
             <input
@@ -237,7 +237,7 @@ export function ExplorerBuilder({ locale, t, loadedConfig, loadKey, onConfigChan
             />
           </label>
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-semibold text-brown-mid uppercase tracking-wide">
+            <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
               {t.dateTo}
             </span>
             <input
@@ -251,13 +251,13 @@ export function ExplorerBuilder({ locale, t, loadedConfig, loadKey, onConfigChan
       </div>
 
       {/* Preview */}
-      <div className="bg-white rounded-card border border-[#E8E0D0] shadow-card p-5">
+      <div className="bg-surface-container-lowest rounded-card border border-[#E8E0D0] shadow-card p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-sans text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
             {t.dimensions[dimension]} · {t.measures[measure]}
           </h2>
           {isPending && (
-            <span className="flex items-center gap-1.5 text-xs text-brown-mid">
+            <span className="flex items-center gap-1.5 text-xs text-on-surface-variant">
               <Loader2 size={14} className="animate-spin" />
               {t.running}
             </span>
@@ -265,9 +265,9 @@ export function ExplorerBuilder({ locale, t, loadedConfig, loadKey, onConfigChan
         </div>
 
         {error ? (
-          <div className="text-sm text-red-defect py-8 text-center">{t.error}</div>
+          <div className="text-sm text-error py-8 text-center">{t.error}</div>
         ) : rows === null ? (
-          <div className="flex items-center justify-center h-40 text-sm text-brown-mid">
+          <div className="flex items-center justify-center h-40 text-sm text-on-surface-variant">
             <Loader2 size={16} className="animate-spin mr-2" />
             {t.running}
           </div>

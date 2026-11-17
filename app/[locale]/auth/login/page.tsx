@@ -41,7 +41,7 @@ export default async function LoginPage({
 
   return (
     <main className="flex flex-1 items-center justify-center px-6 py-16">
-      <div className="w-full max-w-md bg-[#FDFBF7] border border-brown-light rounded-card p-8 space-y-5">
+      <div className="w-full max-w-md bg-[#FDFBF7] border border-outline-variant rounded-card p-8 space-y-5">
         <h1 className="page-title text-3xl">{t("loginTitle")}</h1>
         {/* Guest arriving from the results-page "save your results" banner:
             same login flow, one line of context (see lib/guestClaim.ts). */}

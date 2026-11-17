@@ -84,7 +84,7 @@ export function DashboardIntro({
         onClick={reopen}
         className="min-h-[44px] group inline-flex items-center gap-2 text-sm text-on-surface-variant hover:text-primary-container transition-colors"
       >
-        <HelpCircle size={15} className="text-green-mid" />
+        <HelpCircle size={15} className="text-primary-muted" />
         <span className="underline decoration-outline-variant decoration-1 underline-offset-4 group-hover:decoration-primary-container">
           {t.reopen}
         </span>
@@ -110,7 +110,7 @@ export function DashboardIntro({
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "linear-gradient(180deg, color-mix(in oklab, var(--color-green-dark) 5%, white) 0%, white 42%)",
+            "linear-gradient(180deg, color-mix(in oklab, var(--color-primary-container) 5%, white) 0%, white 42%)",
         }}
       />
 
@@ -125,7 +125,7 @@ export function DashboardIntro({
         </button>
 
         {/* heading */}
-        <p className="mono text-[11px] font-semibold uppercase tracking-[0.18em] text-green-mid">
+        <p className="mono text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-muted">
           {t.eyebrow}
         </p>
         <h2 className="section-title mt-1 max-w-xl text-2xl leading-tight sm:text-[26px]">
@@ -165,7 +165,7 @@ export function DashboardIntro({
           <button
             onClick={() => setShowCalc((v) => !v)}
             aria-expanded={showCalc}
-            className="min-h-[44px] inline-flex items-center gap-2 text-sm font-semibold text-primary-container transition-colors hover:text-green-mid"
+            className="min-h-[44px] inline-flex items-center gap-2 text-sm font-semibold text-primary-container transition-colors hover:text-primary-muted"
           >
             <Sigma size={15} className="text-secondary" />
             {t.ctaCalc}
@@ -222,7 +222,7 @@ export function DashboardIntro({
                       key={i}
                       className="flex max-w-[68ch] gap-2 text-[13px] leading-relaxed text-on-surface-variant"
                     >
-                      <span aria-hidden className="text-green-mid">
+                      <span aria-hidden className="text-primary-muted">
                         ·
                       </span>
                       {note}

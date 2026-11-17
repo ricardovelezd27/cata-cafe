@@ -349,7 +349,7 @@ export function flavorNodeColor(id: string): string {
  */
 export function getContrastTextColor(hex: string): string {
   const [, , l] = hexToHsl(hex)
-  return l > 0.6 ? 'var(--color-brown-dark)' : 'var(--color-bg)'
+  return l > 0.6 ? 'var(--color-on-surface)' : 'var(--color-surface)'
 }
 
 /**

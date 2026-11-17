@@ -19,6 +19,9 @@
   --color-primary-fixed-dim:    #abcfb8;
   --color-on-primary-fixed:     #002113;
   --color-on-primary-fixed-variant: #2d4d3c;
+  /* The softer green: hover on a green fill, a focus border, a small green accent.
+     It was the legacy `green-mid`; same value under its role name (T3, DESIGN.md). */
+  --color-primary-muted:        #6b8f71;
 
   --color-secondary:              #9d4326;
   --color-on-secondary:           #ffffff;
@@ -62,29 +65,11 @@
   --color-warning-container:    #f6e388;
   --color-on-warning-container: #574600;
 
-  /* ── Compatibility aliases (maps old names to new values) ─ */
-  /* These keep existing Tailwind utility classes working.     */
-  --color-background: var(--color-surface);
-  --color-foreground: var(--color-on-surface);
-  --background:       var(--color-surface);
-  --foreground:       var(--color-on-surface);
-
-  --color-green-dark:  var(--color-primary-container); /* #2c4c3b */
-  --color-green-mid:   #6b8f71;
+  /* ── Legacy alias (T3: every other alias was renamed to its role) ─ */
+  /* Kept only because the landing still reads it (components/landing/HeroSection.tsx
+     `text-green-light`, and the unlayered `.text-green-light` rule below). Do not use it
+     in new code; it goes when the landing moves to `primary-fixed-dim`. */
   --color-green-light: var(--color-primary-fixed-dim); /* #abcfb8 */
-
-  --color-amber:      var(--color-secondary);          /* #9d4326 */
-  --color-amber-warm: var(--color-secondary);
-
-  --color-bg:    var(--color-surface);                 /* #fff8f6 */
-  --color-cream: var(--color-surface-container);       /* #f6ece8 */
-  --color-white: var(--color-surface-container-lowest);/* #ffffff */
-
-  --color-brown-dark:  var(--color-on-surface);        /* #1f1b19 */
-  --color-brown-mid:   var(--color-on-surface-variant);/* #424843 */
-  --color-brown-light: var(--color-outline-variant);   /* #c1c8c2 */
-
-  --color-red-defect: var(--color-error);              /* #ba1a1a */
 
   /* ── Flavor families (CATA pills only) ─────────────────── */
   --color-flavor-floral:  #c2368f;
@@ -184,6 +169,9 @@
   --color-primary-fixed-dim:    #abcfb8;
   --color-on-primary-fixed:     #002113;
   --color-on-primary-fixed-variant: #2d4d3c;
+  /* The softer green: hover on a green fill, a focus border, a small green accent.
+     It was the legacy `green-mid`; same value under its role name (T3, DESIGN.md). */
+  --color-primary-muted:        #6b8f71;
 
   --color-secondary:              #9d4326;
   --color-on-secondary:           #ffffff;
@@ -224,26 +212,9 @@
   --color-warning-container:    #f6e388;
   --color-on-warning-container: #574600;
 
-  /* Compatibility aliases */
-  --color-background: #fff8f6;
-  --color-foreground: #1f1b19;
-
-  --color-green-dark:  #2c4c3b;
-  --color-green-mid:   #6b8f71;
+  /* Legacy alias, kept for the landing only (see the :root block). `white` is
+     Tailwind's own (#fff): `text-white` / `border-white` keep it. */
   --color-green-light: #abcfb8;
-
-  --color-amber:      #9d4326;
-  --color-amber-warm: #9d4326;
-
-  --color-bg:    #fff8f6;
-  --color-cream: #f6ece8;
-  --color-white: #ffffff;
-
-  --color-brown-dark:  #1f1b19;
-  --color-brown-mid:   #424843;
-  --color-brown-light: #c1c8c2;
-
-  --color-red-defect: #ba1a1a;
 
   /* Flavor families */
   --color-flavor-floral:  #c2368f;

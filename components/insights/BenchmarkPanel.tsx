@@ -29,7 +29,7 @@ interface BenchmarkPanelProps {
 }
 
 const selectClass =
-  "w-full rounded-input border border-[#E8E0D0] bg-white px-3 py-2 text-sm text-brown-dark focus:border-[#3D5A3E]";
+  "w-full rounded-input border border-[#E8E0D0] bg-surface-container-lowest px-3 py-2 text-sm text-on-surface focus:border-[#3D5A3E]";
 
 // Comparison bars are scaled against a fixed CVA/SCA score band rather than
 // 0–100 — scores below 60 essentially never occur, so a 60–100 scale keeps
@@ -87,11 +87,11 @@ export function BenchmarkPanel({ slices, initialComparison, t }: BenchmarkPanelP
   const showEmpty = mine.n === 0 || benchmark.n === 0;
 
   return (
-    <section className="bg-white rounded-card border border-[#E8E0D0] shadow-card p-5">
+    <section className="bg-surface-container-lowest rounded-card border border-[#E8E0D0] shadow-card p-5">
       <div className="flex items-start justify-between gap-3 mb-4">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 flex-1">
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-semibold text-brown-mid uppercase tracking-wide">
+            <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
               {t.country}
             </span>
             <select
@@ -109,7 +109,7 @@ export function BenchmarkPanel({ slices, initialComparison, t }: BenchmarkPanelP
           </label>
 
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-semibold text-brown-mid uppercase tracking-wide">
+            <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
               {t.process}
             </span>
             <select
@@ -127,7 +127,7 @@ export function BenchmarkPanel({ slices, initialComparison, t }: BenchmarkPanelP
           </label>
 
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-semibold text-brown-mid uppercase tracking-wide">
+            <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
               {t.variety}
             </span>
             <select
@@ -145,12 +145,12 @@ export function BenchmarkPanel({ slices, initialComparison, t }: BenchmarkPanelP
           </label>
         </div>
         {isPending && (
-          <Loader2 size={16} className="animate-spin text-brown-mid shrink-0 mt-2.5" aria-hidden />
+          <Loader2 size={16} className="animate-spin text-on-surface-variant shrink-0 mt-2.5" aria-hidden />
         )}
       </div>
 
       {showEmpty ? (
-        <div className="text-sm text-brown-mid py-8 text-center">{t.empty}</div>
+        <div className="text-sm text-on-surface-variant py-8 text-center">{t.empty}</div>
       ) : (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
@@ -183,7 +183,7 @@ export function BenchmarkPanel({ slices, initialComparison, t }: BenchmarkPanelP
         </>
       )}
 
-      <p className="text-[11px] text-brown-mid/70 leading-relaxed mt-4">{t.methodologyNote}</p>
+      <p className="text-[11px] text-on-surface-variant/70 leading-relaxed mt-4">{t.methodologyNote}</p>
     </section>
   );
 }
@@ -210,18 +210,18 @@ function StatBlock({
   return (
     <div className="rounded-card border border-[#E8E0D0] bg-[#FAF7F0] p-4 flex flex-col gap-1">
       <div className="flex items-baseline justify-between gap-2">
-        <span className="text-xs font-semibold text-brown-mid uppercase tracking-wide">
+        <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
           {title}
         </span>
-        <span className="text-[11px] text-brown-mid whitespace-nowrap">
+        <span className="text-[11px] text-on-surface-variant whitespace-nowrap">
           {n} {nLabel}
         </span>
       </div>
-      <span className="text-[10px] text-brown-mid uppercase tracking-wide mt-2">{avgLabel}</span>
+      <span className="text-[10px] text-on-surface-variant uppercase tracking-wide mt-2">{avgLabel}</span>
       <span className="font-display text-3xl leading-none" style={{ color }}>
         {fmtScore(avg)}
       </span>
-      <span className="text-xs text-brown-mid mt-1">
+      <span className="text-xs text-on-surface-variant mt-1">
         {subLabel}: {subValue}
       </span>
     </div>
@@ -239,7 +239,7 @@ function ComparisonBar({
 }) {
   return (
     <div className="flex items-center gap-3">
-      <span className="w-32 shrink-0 text-xs text-brown-dark truncate" title={label}>
+      <span className="w-32 shrink-0 text-xs text-on-surface truncate" title={label}>
         {label}
       </span>
       <div className="flex-1 h-4 bg-[#F5F0E6] rounded-sm overflow-hidden">
@@ -248,7 +248,7 @@ function ComparisonBar({
           style={{ width: `${barPercent(value)}%`, backgroundColor: color }}
         />
       </div>
-      <span className="w-14 shrink-0 text-right text-xs font-semibold text-brown-dark tabular-nums">
+      <span className="w-14 shrink-0 text-right text-xs font-semibold text-on-surface tabular-nums">
         {fmtScore(value)}
       </span>
     </div>
