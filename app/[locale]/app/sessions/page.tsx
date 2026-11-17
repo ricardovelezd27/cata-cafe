@@ -195,8 +195,6 @@ export default async function SessionsList({
     },
     noResults: tc("noResults"),
     editLabel: tc("edit"),
-    newSessionLabel: t("new"),
-    expressLabel: t("express.cta"),
     duplicateLabel: tc("duplicate"),
     duplicateError: tc("duplicateError"),
     duplicateDropped: tc.raw("duplicateDropped") as string,
@@ -252,8 +250,6 @@ export default async function SessionsList({
         rows={rows}
         locale={locale}
         hasDraft={hasDraft}
-        newSessionHref={`/${locale}/app/sessions/new`}
-        expressHref={`/${locale}/app/sessions/express`}
         translations={tableTranslations}
         deleteTranslations={deleteTranslations}
         isAdmin={isAdmin}

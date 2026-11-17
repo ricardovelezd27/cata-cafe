@@ -11,17 +11,8 @@ import { StatCard } from "@/components/dashboard/StatCard";
 import { FormatBadge } from "@/components/dashboard/FormatBadge";
 import { DashboardIntro } from "@/components/dashboard/DashboardIntro";
 import { WarmupFigure } from "@/components/warmup/figures";
-
-const STATUS_STYLES: Record<string, string> = {
-  draft: "text-secondary border border-secondary/50",
-  active: "text-primary-container border border-primary-container",
-  closed: "bg-[#F0EDE6] text-on-surface-variant border border-outline-variant",
-};
-const STATUS_LABELS: Record<string, string> = {
-  draft: "BORRADOR",
-  active: "ABIERTA",
-  closed: "CERRADA",
-};
+import { Badge, ScorePill, StatusPill } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 function timeAgo(date: Date, locale: string): string {
   const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
@@ -173,6 +164,11 @@ export default async function Dashboard({
   const coffeeMap = new Map(topCoffeeDetails.map((c) => [c.id, c]));
 
   const hasData = recentSessions.length > 0;
+  const statusLabels = {
+    draft: tc("statusDraft"),
+    active: tc("statusActive"),
+    closed: tc("statusClosed"),
+  };
 
   return (
     <div className="space-y-8">
@@ -182,7 +178,7 @@ export default async function Dashboard({
           <h1 className="font-display text-3xl text-primary-container leading-tight">
             {t("welcome", { name: profile?.displayName ?? "" })}
           </h1>
-          <p className="text-sm text-on-surface-variant mt-1">{t("subtitle")}</p>
+          <p className="text-sm text-on-surface-variant mt-1 max-w-[68ch]">{t("subtitle")}</p>
         </div>
         <div className="flex shrink-0 flex-col items-stretch gap-2 sm:flex-row sm:items-center">
           <GuestGateLink
@@ -200,9 +196,9 @@ export default async function Dashboard({
         </div>
       </header>
 
-      {/* Why / What / How intro + scoring methodology */}
+      {/* How it works + scoring methodology: collapsed for a returning user (S6, F-15) */}
       <DashboardIntro
-        newSessionHref={`/${locale}/app/sessions/new`}
+        sessionCount={recentSessions.length}
         t={{
           eyebrow: t("intro.eyebrow"),
           title: t("intro.title"),
@@ -212,7 +208,6 @@ export default async function Dashboard({
           what: t("intro.what"),
           howLabel: t("intro.howLabel"),
           how: t("intro.how"),
-          ctaPrimary: t("fullWizardCta"),
           ctaCalc: t("intro.ctaCalc"),
           dismiss: t("intro.dismiss"),
           reopen: t("intro.reopen"),
@@ -228,79 +223,9 @@ export default async function Dashboard({
         }}
       />
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard
-          label={t("statSessions")}
-          value={String(sessionCount)}
-          subtext={t("statSessionsSub")}
-          icon={<ClipboardList size={20} />}
-        />
-        <StatCard
-          label={t("statSamples")}
-          value={String(evaluatedSampleCount)}
-          subtext={t("statSamplesSubEvals")}
-          icon={<Coffee size={20} />}
-        />
-        <StatCard
-          label={t("statAvg")}
-          value={avgScore ?? t("noAvg")}
-          subtext={t("statAvgSub")}
-          accent
-          icon={<Star size={20} />}
-        />
-      </div>
-
-      {/* Movimiento Sensorial — pre-cupping warm-ups (guest-reachable, plain Link) */}
-      <Link
-        href={`/${locale}/app/warmup`}
-        className="group flex items-center gap-4 rounded-card border border-outline-variant bg-surface-container-low px-5 py-4 transition-colors hover:bg-primary-fixed/40 md:gap-6"
-      >
-        <span className="hidden h-16 w-16 shrink-0 overflow-hidden rounded-card sm:block" aria-hidden>
-          <WarmupFigure
-            kind="arm-raise"
-            eyes="open"
-            pose={{ a: 0.75 }}
-            path={{ from: { a: 0 }, to: { a: 1 }, progress: 0.75 }}
-            frame="tile"
-          />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">
-            {tw("dashboard.eyebrow")}
-          </span>
-          <span className="mt-0.5 block font-display text-xl text-primary-container">
-            {tw("dashboard.title")}
-          </span>
-          <span className="mt-1 block text-sm leading-relaxed text-on-surface-variant">
-            {tw("dashboard.body")}
-          </span>
-        </span>
-        <span className="hidden shrink-0 items-center gap-1 text-sm font-semibold text-primary-container sm:inline-flex">
-          {tw("dashboard.cta")}
-          <ChevronRight size={16} className="transition-transform group-hover:translate-x-0.5" aria-hidden />
-        </span>
-        <ChevronRight size={16} className="shrink-0 text-on-surface-variant sm:hidden" aria-hidden />
-      </Link>
-
-      {/* Empty state */}
+      {/* Their own sessions first (S6, F-15): a returning user's first fold shows them; a newcomer sees the empty state */}
       {!hasData ? (
-        <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
-          <span className="text-6xl">☕</span>
-          <p className="font-display text-2xl text-primary-container">{t("emptyTitle")}</p>
-          <GuestGateLink
-            href={`/${locale}/app/sessions/express`}
-            className="mt-2 px-6 py-3 rounded-pill bg-primary-container text-white font-semibold text-sm hover:bg-primary transition-colors"
-          >
-            {t("expressCta")}
-          </GuestGateLink>
-          <GuestGateLink
-            href={`/${locale}/app/sessions/new`}
-            className="px-6 py-3 rounded-pill border border-primary-container text-primary-container font-semibold text-sm hover:bg-primary-fixed transition-colors"
-          >
-            {t("fullWizardCta")}
-          </GuestGateLink>
-        </div>
+        <EmptyState icon={<Coffee size={20} />} title={t("emptyTitle")} body={t("emptyBody")} />
       ) : (
         /* Middle row */
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -321,17 +246,9 @@ export default async function Dashboard({
                         </span>
                         <FormatBadge format={s.format} />
                         {s.createdBy !== user.id && (
-                          <span className="text-xs px-2 py-0.5 rounded-full font-semibold border border-outline-variant text-on-surface-variant">
-                            {tSession("table.participantBadge")}
-                          </span>
+                          <Badge tone="outline">{tSession("table.participantBadge")}</Badge>
                         )}
-                        <span
-                          className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
-                            STATUS_STYLES[s.status] ?? STATUS_STYLES.closed
-                          }`}
-                        >
-                          {STATUS_LABELS[s.status] ?? s.status.toUpperCase()}
-                        </span>
+                        <StatusPill status={s.status} labels={statusLabels} />
                       </div>
                       <div className="flex items-center gap-2 mt-1 text-xs text-on-surface-variant">
                         <span>
@@ -380,11 +297,7 @@ export default async function Dashboard({
                         )}
                       </div>
                       <div className="flex flex-col items-end gap-1 shrink-0">
-                        <span
-                          className={`text-xs px-2 py-0.5 rounded-full font-semibold bg-surface-container-high text-on-surface`}
-                        >
-                          {avg.toFixed(2)}
-                        </span>
+                        <ScorePill score={avg} />
                         <span className="text-xs text-on-surface-variant">
                           {t("cuppingsCount", { count: g._count.coffeeId })}
                         </span>
@@ -397,6 +310,61 @@ export default async function Dashboard({
           </section>
         </div>
       )}
+
+      {/* Stat cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <StatCard
+          label={t("statSessions")}
+          value={String(sessionCount)}
+          subtext={t("statSessionsSub")}
+          icon={<ClipboardList size={20} />}
+        />
+        <StatCard
+          label={t("statSamples")}
+          value={String(evaluatedSampleCount)}
+          subtext={t("statSamplesSubEvals")}
+          icon={<Coffee size={20} />}
+        />
+        <StatCard
+          label={t("statAvg")}
+          value={avgScore ?? t("noAvg")}
+          subtext={t("statAvgSub")}
+          accent
+          icon={<Star size={20} />}
+        />
+      </div>
+
+      {/* Movimiento Sensorial — pre-cupping warm-ups (guest-reachable, plain Link) */}
+      <Link
+        href={`/${locale}/app/warmup`}
+        className="group flex items-center gap-4 rounded-card border border-outline-variant bg-surface-container-low px-5 py-4 transition-colors hover:bg-primary-fixed/40 md:gap-6"
+      >
+        <span className="hidden h-16 w-16 shrink-0 overflow-hidden rounded-card sm:block" aria-hidden>
+          <WarmupFigure
+            kind="arm-raise"
+            eyes="open"
+            pose={{ a: 0.75 }}
+            path={{ from: { a: 0 }, to: { a: 1 }, progress: 0.75 }}
+            frame="tile"
+          />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">
+            {tw("dashboard.eyebrow")}
+          </span>
+          <span className="mt-0.5 block font-display text-xl text-primary-container">
+            {tw("dashboard.title")}
+          </span>
+          <span className="mt-1 block max-w-[68ch] text-sm leading-relaxed text-on-surface-variant">
+            {tw("dashboard.body")}
+          </span>
+        </span>
+        <span className="hidden shrink-0 items-center gap-1 text-sm font-semibold text-primary-container sm:inline-flex">
+          {tw("dashboard.cta")}
+          <ChevronRight size={16} className="transition-transform group-hover:translate-x-0.5" aria-hidden />
+        </span>
+        <ChevronRight size={16} className="shrink-0 text-on-surface-variant sm:hidden" aria-hidden />
+      </Link>
 
       {/* Activity feed */}
       {hasData && (
