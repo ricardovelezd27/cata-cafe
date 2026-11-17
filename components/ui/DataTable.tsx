@@ -62,6 +62,10 @@ export type SelectionConfig<T> = {
 
 const CHECKBOX_CLASS =
   "h-4 w-4 cursor-pointer rounded border-outline-variant accent-primary-container disabled:cursor-default disabled:opacity-40";
+/** The checkbox is the row's control, so its label is a 44 px box (DESIGN.md
+ *  "Accessibility"). The negative margin keeps the cell's layout as it was. */
+const CHECKBOX_BOX =
+  "-m-[15px] inline-flex min-h-[44px] min-w-[44px] cursor-pointer items-center justify-center";
 
 /** Hoisted to module scope — never redeclare components inside render. Shared
  *  with callers' mobile cards so every table's checkbox looks the same. */
@@ -77,15 +81,17 @@ export function SelectionCheckbox({
   disabled?: boolean;
 }) {
   return (
-    <input
-      type="checkbox"
-      className={CHECKBOX_CLASS}
-      checked={checked}
-      disabled={disabled}
-      aria-label={ariaLabel}
-      onChange={onChange}
-      onClick={(e) => e.stopPropagation()}
-    />
+    <label className={CHECKBOX_BOX} onClick={(e) => e.stopPropagation()}>
+      <input
+        type="checkbox"
+        className={CHECKBOX_CLASS}
+        checked={checked}
+        disabled={disabled}
+        aria-label={ariaLabel}
+        onChange={onChange}
+        onClick={(e) => e.stopPropagation()}
+      />
+    </label>
   );
 }
 
@@ -106,15 +112,17 @@ function HeaderCheckbox({
     if (ref.current) ref.current.indeterminate = state === "some";
   }, [state]);
   return (
-    <input
-      ref={ref}
-      type="checkbox"
-      className={CHECKBOX_CLASS}
-      checked={state === "all"}
-      disabled={disabled}
-      aria-label={ariaLabel}
-      onChange={onChange}
-    />
+    <label className={CHECKBOX_BOX}>
+      <input
+        ref={ref}
+        type="checkbox"
+        className={CHECKBOX_CLASS}
+        checked={state === "all"}
+        disabled={disabled}
+        aria-label={ariaLabel}
+        onChange={onChange}
+      />
+    </label>
   );
 }
 
@@ -171,7 +179,7 @@ function Th({
         <button
           type="button"
           onClick={onSort}
-          className={`inline-flex w-full items-center gap-1 cursor-pointer select-none transition-colors hover:text-on-surface ${alignToJustify(align)}`}
+          className={`-my-3 inline-flex min-h-[44px] w-full items-center gap-1 cursor-pointer select-none transition-colors hover:text-on-surface ${alignToJustify(align)}`}
         >
           {label}
           {icon}
@@ -466,7 +474,7 @@ export function DataTable<T>({
                         );
                       })}
                       {hasTrailingColumn && (
-                        <td className="whitespace-nowrap px-4 py-3 text-right">
+                        <td className="whitespace-nowrap px-4 py-2 text-right">
                           <div className="flex items-center justify-end gap-3">
                             {rowActions?.(row)}
                             {href && (
@@ -474,7 +482,7 @@ export function DataTable<T>({
                                 href={href}
                                 tabIndex={-1}
                                 aria-hidden
-                                className="inline-flex text-on-surface-variant transition-colors hover:text-primary-container"
+                                className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center text-on-surface-variant transition-colors hover:text-primary-container"
                               >
                                 <ChevronRight size={16} aria-hidden />
                               </Link>

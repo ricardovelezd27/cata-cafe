@@ -26,7 +26,7 @@ export function Pagination({
             type="button"
             disabled={page <= 1}
             onClick={() => onPageChange(page - 1)}
-            className="inline-flex items-center gap-1 rounded-pill border border-outline-variant px-3 py-1 text-sm text-on-surface-variant transition-colors hover:border-outline disabled:cursor-not-allowed disabled:opacity-40"
+            className="inline-flex min-h-[44px] items-center gap-1 rounded-pill border border-outline-variant px-3 py-1 text-sm text-on-surface-variant transition-colors hover:border-outline disabled:cursor-not-allowed disabled:opacity-40"
           >
             <ChevronLeft size={14} aria-hidden />
             {translations.prev}
@@ -35,7 +35,7 @@ export function Pagination({
             type="button"
             disabled={page >= totalPages}
             onClick={() => onPageChange(page + 1)}
-            className="inline-flex items-center gap-1 rounded-pill border border-outline-variant px-3 py-1 text-sm text-on-surface-variant transition-colors hover:border-outline disabled:cursor-not-allowed disabled:opacity-40"
+            className="inline-flex min-h-[44px] items-center gap-1 rounded-pill border border-outline-variant px-3 py-1 text-sm text-on-surface-variant transition-colors hover:border-outline disabled:cursor-not-allowed disabled:opacity-40"
           >
             {translations.next}
             <ChevronRight size={14} aria-hidden />

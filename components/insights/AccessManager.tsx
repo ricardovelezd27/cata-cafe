@@ -114,19 +114,26 @@ export function AccessManager({ users: initialUsers, t }: AccessManagerProps) {
                   aria-checked={user.isSuperAdmin || user.analyticsAccess}
                   disabled={user.isSuperAdmin}
                   onClick={() => toggle(user)}
-                  className={`relative w-10 h-6 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                    user.isSuperAdmin || user.analyticsAccess
-                      ? "bg-[#3D5A3E]"
-                      : "bg-[#E8E0D0]"
-                  }`}
+                  // A 44 px box around the unchanged 35 x 21 track (F-03); the
+                  // negative margin keeps the row's height.
+                  className="-my-[10px] inline-flex min-h-[44px] min-w-[44px] items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <span
-                    className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                    aria-hidden
+                    className={`relative w-10 h-6 rounded-full transition-colors ${
                       user.isSuperAdmin || user.analyticsAccess
-                        ? "translate-x-[18px]"
-                        : "translate-x-0.5"
+                        ? "bg-[#3D5A3E]"
+                        : "bg-[#E8E0D0]"
                     }`}
-                  />
+                  >
+                    <span
+                      className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                        user.isSuperAdmin || user.analyticsAccess
+                          ? "translate-x-[18px]"
+                          : "translate-x-0.5"
+                      }`}
+                    />
+                  </span>
                 </button>
               </label>
             </li>

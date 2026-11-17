@@ -111,7 +111,7 @@ export function PostComposer({
         maxLength={5000}
         required
       />
-      <label className="flex items-start gap-2.5 text-sm text-on-surface cursor-pointer">
+      <label className="flex min-h-[44px] items-center gap-2.5 text-sm text-on-surface cursor-pointer">
         <input
           type="checkbox"
           checked={notifyByEmail}

@@ -1,12 +1,16 @@
 .root { width: 100%; }
 .counter { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.16em; color: var(--color-brown-mid); font-weight: 500; }
 .count strong { font-family: var(--font-display); font-size: 18px; font-weight: 600; color: var(--color-brown-dark); margin-right: 2px; font-variant-numeric: tabular-nums; }
-.familyList { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; }
+/* Hit areas (F-03): every pill paints 29 to 30 px and the rows are 15 px apart, so a
+   pill's 44 px tall hit area (::before) meets the next row's at the midpoint
+   and never overlaps it. Across a row it reaches half the gap to each side. */
+.familyList { display: flex; flex-wrap: wrap; gap: 15px 8px; align-items: flex-start; --gap-x: 8px; }
 .family { display: contents; }
 /* Two color states only (unselected / .selected) — color never transitions, so there is
    no intermediate frame. The only animation is a quick press scale, which touches transform
    alone. -webkit-tap-highlight-color kills the mobile tap overlay that read as a 3rd state. */
-.pill { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: var(--radius-pill); border: 1.5px solid var(--pill-color); background: var(--pill-bg-soft); color: var(--pill-color); font-family: var(--font-ui); font-size: 13px; font-weight: 500; line-height: 1; white-space: nowrap; transition: transform var(--transition-fast); -webkit-tap-highlight-color: transparent; touch-action: manipulation; -webkit-user-select: none; user-select: none; }
+.pill { position: relative; display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: var(--radius-pill); border: 1.5px solid var(--pill-color); background: var(--pill-bg-soft); color: var(--pill-color); font-family: var(--font-ui); font-size: 13px; font-weight: 500; line-height: 1; white-space: nowrap; transition: transform var(--transition-fast); -webkit-tap-highlight-color: transparent; touch-action: manipulation; -webkit-user-select: none; user-select: none; }
+.pill::before { content: ""; position: absolute; left: calc(var(--gap-x, 0px) / -2); right: calc(var(--gap-x, 0px) / -2); top: 50%; height: 44px; transform: translateY(-50%); }
 .pill:not(:disabled):active { transform: scale(0.94); }
 /* H-04: the app's one indicator, not the pill's own colour (a pale pill colour
    was under 3 : 1 against the paper). */
@@ -15,14 +19,14 @@
 .pill .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
 .selected { background: var(--pill-color) !important; border-color: transparent !important; color: var(--pill-text, var(--color-bg)) !important; }
 .selected .dot { background: rgba(255, 255, 255, 0.65); }
-.sub { font-size: 11.5px; padding: 5px 11px; cursor: pointer; }
+.sub { font-size: 11.5px; padding: 7.75px 11px; cursor: pointer; }
 /* Hover hint only on mouse devices, never on selected pills — keeps touch to two states. */
 @media (hover: hover) {
   .sub:not(:disabled):not(.selected):hover { background: color-mix(in oklch, var(--pill-color) 20%, transparent) !important; }
 }
-.subRow { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 8px; margin: -2px 0 2px; background: color-mix(in oklch, var(--color-cream) 60%, var(--color-bg)); border-radius: 8px; }
+.subRow { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 15px 6px; --gap-x: 6px; padding: 6px 8px; margin: -2px 0 2px; background: color-mix(in oklch, var(--color-cream) 60%, var(--color-bg)); border-radius: 8px; }
 @media (max-width: 480px) {
-  .pill { padding: 6px 11px; font-size: 12px; }
-  .sub { font-size: 10.5px; padding: 4px 9px; }
-  .familyList { gap: 6px; }
+  .pill { padding: 7.5px 11px; font-size: 12px; }
+  .sub { font-size: 10.5px; padding: 8.25px 9px; }
+  .familyList { gap: 15px 6px; --gap-x: 6px; }
 }

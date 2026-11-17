@@ -33,7 +33,7 @@ import {
   DeleteCoffeeButton,
   type DeleteCoffeeTranslations,
 } from "@/components/coffees/DeleteCoffeeButton";
-import { Badge, ButtonLink, ScorePill } from "@/components/ui";
+import { Badge, ButtonLink, ScorePill, TextActionLink } from "@/components/ui";
 import { ReportLink } from "@/components/ui/ReportLink";
 import { coffeeSessionOriginEditedAt } from "@/lib/originEdit";
 import { historyCupsPerSample, isQuickImpression } from "@/lib/historyRules";
@@ -474,12 +474,9 @@ export default async function CoffeeProfilePage({
             <section id="historial">
               <div className="mb-2 flex items-center justify-between">
                 <h3 className={SUB_H3}>{t("tastingHistory")}</h3>
-                <Link
-                  href={`/${locale}/app/profile/history`}
-                  className="text-xs font-semibold text-primary-container hover:underline"
-                >
+                <TextActionLink href={`/${locale}/app/profile/history`} className="-my-[15px]">
                   {tProfile("viewHistory")}
-                </Link>
+                </TextActionLink>
               </div>
               {history.length === 0 ? (
                 <p className="text-sm text-on-surface-variant">{th("empty")}</p>

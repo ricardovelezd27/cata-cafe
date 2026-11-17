@@ -32,7 +32,7 @@ export function InfoHint({
         type="button"
         onClick={() => setOpen(true)}
         aria-label={title}
-        className={`inline-flex shrink-0 items-center justify-center -m-1.5 rounded-pill p-2.5 text-on-surface-variant transition-colors hover:text-primary-container ${className}`}
+        className={`-m-[10px] inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-pill text-on-surface-variant transition-colors hover:text-primary-container ${className}`}
       >
         <Info size={15} aria-hidden />
       </button>

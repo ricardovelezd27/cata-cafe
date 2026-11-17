@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ClipboardList, Coffee, Users, ChevronRight, ChevronLeft } from "lucide-react";
 import { completeOnboarding, dismissOnboarding } from "@/app/actions/profile";
-import { useActionFeedback } from "@/components/ui";
+import { TextAction, useActionFeedback } from "@/components/ui";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
 import { COUNTRIES } from "@/lib/constants";
 
@@ -130,13 +130,14 @@ export default function WelcomeModal({ locale, initialDisplayName, translations:
             >
               {t.start} <ChevronRight className="w-4 h-4" />
             </button>
-            <button
+            <TextAction
+              tone="none"
               onClick={handleDismiss}
               disabled={isPending}
               className="text-sm text-on-surface-variant hover:text-on-surface transition-colors"
             >
               {t.skip}
-            </button>
+            </TextAction>
           </div>
         )}
 

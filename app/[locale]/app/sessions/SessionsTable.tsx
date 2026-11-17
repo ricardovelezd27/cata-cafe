@@ -111,7 +111,7 @@ export function SessionsTable({
           <div className="flex flex-wrap items-center gap-1.5">
             <Link
               href={row.href}
-              className="font-semibold text-on-surface transition-colors hover:text-primary-container"
+              className="inline-block min-h-[24px] font-semibold text-on-surface transition-colors hover:text-primary-container"
             >
               {row.name}
             </Link>
@@ -224,7 +224,7 @@ export function SessionsTable({
             <Link
               href={`/${locale}/app/sessions/${row.id}/edit`}
               aria-label={t.editLabel}
-              className="inline-flex min-h-[40px] min-w-[40px] items-center justify-center rounded-sm p-1.5 text-on-surface-variant transition-colors hover:text-primary-container"
+              className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-sm p-1.5 text-on-surface-variant transition-colors hover:text-primary-container"
             >
               <Pencil size={16} />
             </Link>
@@ -247,7 +247,7 @@ export function SessionsTable({
             <div className="min-w-0 space-y-1">
               <Link
                 href={row.href}
-                className="block truncate font-semibold text-on-surface transition-colors hover:text-primary-container"
+                className="block min-h-[24px] truncate font-semibold text-on-surface transition-colors hover:text-primary-container"
               >
                 {row.name}
               </Link>

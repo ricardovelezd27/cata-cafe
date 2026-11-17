@@ -1,6 +1,7 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { requireAppUser } from "@/lib/auth";
-import { ClipboardList, Users, CheckCircle2, Coffee } from "lucide-react";
+import { ClipboardList, Users, CheckCircle2, Coffee, BarChart3, ChevronRight } from "lucide-react";
+import { isSuperAdminEmail, isAiAdminEmail } from "@/lib/analytics/access";
 import Link from "next/link";
 import { GuestGateLink } from "@/components/guest/GuestGateLink";
 import { prisma } from "@/lib/prisma";
@@ -9,6 +10,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { LevelBadge } from "@/components/profile/LevelBadge";
 import { Badge, StatusPill } from "@/components/ui/Badge";
+import { TextActionLink, textActionClasses } from "@/components/ui/TextAction";
 import { calcActivityPoints, computeLevel, LEVELS } from "@/lib/gamification";
 import { ROLE_LABELS, COUNTRIES } from "@/lib/constants";
 import { sessionHref } from "@/lib/sessionRouting";
@@ -124,6 +126,13 @@ export default async function ProfilePage({
   // email to show and a path to finish creating the account. Access limits
   // live in the nav gate (GuestGateLink), not in the shape of this page.
   const isGuest = user.is_anonymous === true;
+  // F-14: Insights is not a tab of the phone's bottom bar (five tabs at most);
+  // the people who have it reach it from here. Same condition as the app
+  // layout's showInsights (the sidebar keeps its item), registered users only.
+  const showInsights =
+    !isGuest &&
+    (isSuperAdminEmail(user.email) || isAiAdminEmail(user.email) || !!profile?.analyticsAccess);
+  const tInsights = await getTranslations("insights");
   const identityLine = isGuest ? tGate("guestLabel") : user.email;
   // Supabase keeps the old address until the confirmation link is opened;
   // `new_email` is the pending one (S8-07, F-cuenta-5).
@@ -330,12 +339,9 @@ export default async function ProfilePage({
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
                   {t("recentSessions")}
                 </h3>
-                <Link
-                  href={`/${locale}/app/sessions`}
-                  className="text-xs font-semibold text-primary-container hover:underline"
-                >
+                <TextActionLink href={`/${locale}/app/sessions`} className="-my-[15px]">
                   {t("viewAllSessions")}
-                </Link>
+                </TextActionLink>
               </div>
               {recentSessions.length === 0 ? (
                 <p className="text-sm text-on-surface-variant">{t("noOwnedSessions")}</p>
@@ -372,7 +378,7 @@ export default async function ProfilePage({
                 </h3>
                 <GuestGateLink
                   href={`/${locale}/app/coffees`}
-                  className="text-xs font-semibold text-primary-container hover:underline"
+                  className={textActionClasses("link", "-my-[15px]")}
                 >
                   {t("viewAllCoffees")}
                 </GuestGateLink>
@@ -408,6 +414,16 @@ export default async function ProfilePage({
           <h2 className="mb-3 font-display text-xl text-primary-container">{t("account")}</h2>
           <div className="rounded-card border border-outline-variant bg-surface-container-lowest p-4">
             <div className="mb-3 text-sm text-on-surface-variant">{identityLine}</div>
+            {showInsights && (
+              <GuestGateLink
+                href={`/${locale}/app/insights`}
+                className="mb-3 flex min-h-[44px] items-center gap-3 rounded-input border border-outline-variant px-4 text-sm font-semibold text-on-surface transition-colors hover:bg-surface-container"
+              >
+                <BarChart3 size={18} strokeWidth={1.8} aria-hidden />
+                <span className="flex-1">{tInsights("title")}</span>
+                <ChevronRight size={16} aria-hidden className="text-on-surface-variant" />
+              </GuestGateLink>
+            )}
             {pendingEmail && (
               <p role="status" className="mb-3 text-sm text-on-surface">
                 {t("changeEmailPending", { email: pendingEmail })}

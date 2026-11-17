@@ -147,8 +147,10 @@ export function PendingDraftsBadge({
     return null;
   }
 
+  // Each pill is a link or a button: a 44 px box around the small pill (the
+  // negative margin keeps the strip's height).
   const linkClass =
-    "inline-flex focus-visible:outline-2 focus-visible:outline-offset-2 rounded-pill";
+    "-my-[10px] inline-flex min-h-[44px] items-center focus-visible:outline-2 focus-visible:outline-offset-2 rounded-pill";
   const waitingPill = (
     <Badge tone="accent">{label.replace("{count}", String(counts.waiting))}</Badge>
   );

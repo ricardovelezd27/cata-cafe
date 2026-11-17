@@ -2,6 +2,7 @@
 
 import { LocaleSwitchLink } from "@/components/layout/LocaleSwitchLink";
 import type { NavTranslations } from "@/components/layout/navItems";
+import { textActionClasses } from "@/components/ui/TextAction";
 import { useShellCovered } from "@/hooks/useShellLayer";
 
 export default function TopBar({
@@ -25,7 +26,11 @@ export default function TopBar({
       </span>
       <LocaleSwitchLink
         locale={locale}
-        className="text-xs text-on-surface-variant uppercase hover:text-on-surface transition-colors"
+        // A 44 px box (F-14); the negative margin keeps the label where it was.
+        className={textActionClasses(
+          "none",
+          "-mr-[15px] text-xs text-on-surface-variant uppercase hover:text-on-surface transition-colors",
+        )}
       >
         {otherLocale}
       </LocaleSwitchLink>

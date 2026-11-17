@@ -18,7 +18,7 @@ function CheckField({ id, label, checked, onChange }: CheckFieldProps) {
   return (
     <label
       htmlFor={id}
-      className="flex items-center gap-2 mb-1.5 cursor-pointer text-brown-dark text-sm"
+      className="flex min-h-[44px] items-center gap-2 mb-1.5 cursor-pointer text-brown-dark text-sm"
     >
       <input
         id={id}

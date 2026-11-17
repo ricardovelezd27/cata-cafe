@@ -13,6 +13,7 @@ import {
 import { resolveDescriptor } from "@/lib/descriptors";
 import { searchFlavors, shouldOfferFileUnder, norm, type FlavorMatchType } from "@/lib/flavorSearch";
 import pillStyles from "@/components/ui/CATAPills.module.css";
+import { HIT_Y44 } from "@/components/ui/hitArea";
 
 type Locale = "es" | "en";
 
@@ -389,7 +390,9 @@ export function FlavorPicker({
         {value.length === 0 ? (
           <p className="text-[12px] text-brown-mid italic">{t.none}</p>
         ) : (
-          <div className="flex flex-wrap gap-1.5">
+          // Chips paint 30 px, 15 px apart in height: each one's 44 px hit area
+          // (HIT_Y44) meets the next row's at the midpoint (F-03).
+          <div className="flex flex-wrap gap-x-1.5 gap-y-[15px]">
             {value.map((id) => {
               const info = resolveDescriptor(id, locale);
               const color = info?.color ?? flavorNodeColor(id);
@@ -405,7 +408,7 @@ export function FlavorPicker({
                   type="button"
                   onClick={() => toggle(id)}
                   aria-label={`${t.remove}: ${chipLabel}`}
-                  className="inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-[12px] font-medium"
+                  className={`${HIT_Y44} inline-flex min-h-[30px] items-center gap-1.5 rounded-pill px-2.5 py-1 text-[12px] font-medium`}
                   style={{ background: color, color: getContrastTextColor(color) }}
                 >
                   {chipLabel}
@@ -580,8 +583,9 @@ export function FlavorPicker({
           </button>
         )}
 
-        {/* Node list */}
-        <div className="flex flex-col gap-2">
+        {/* Node list: 30 px pills 15 px apart, so each pill's 44 px hit area
+            (CATAPills .pill::before) meets the next one's at the midpoint. */}
+        <div className="flex flex-col gap-[15px]">
           {children.map((node) => {
             const grandchildren = flavorChildren(node.id);
             const hasChildren = grandchildren.length > 0;
@@ -623,7 +627,7 @@ export function FlavorPicker({
                     type="button"
                     onClick={() => setNavId(node.id)}
                     aria-label={label(node, locale)}
-                    className="shrink-0 rounded-full p-1.5 text-brown-mid hover:bg-cream hover:text-brown-dark transition-colors"
+                    className="-my-[7px] inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full text-brown-mid hover:bg-cream hover:text-brown-dark transition-colors"
                   >
                     <ChevronRight size={18} aria-hidden />
                   </button>

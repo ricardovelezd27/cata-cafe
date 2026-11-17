@@ -2,22 +2,22 @@
 
 import { GuestGateLink } from "@/components/guest/GuestGateLink";
 import { usePathname } from "next/navigation";
-import { NAV_ITEMS, INSIGHTS_ITEM, isActive, type NavTranslations } from "@/components/layout/navItems";
+import { NAV_ITEMS, isActive, type NavTranslations } from "@/components/layout/navItems";
 import { useShellCovered } from "@/hooks/useShellLayer";
 
 export default function BottomNav({
   locale,
   className = "",
-  showInsights = false,
   translations,
 }: {
   locale: string;
   className?: string;
-  showInsights?: boolean;
   translations: NavTranslations;
 }) {
   const pathname = usePathname();
-  const tabs = (showInsights ? [...NAV_ITEMS, INSIGHTS_ITEM] : NAV_ITEMS).filter((i) => !i.hideOnMobile);
+  // Five tabs at most (DESIGN.md "Breakpoint rule", F-14): Insights is reached
+  // from Perfil on phones; the sidebar keeps its item.
+  const tabs = NAV_ITEMS.filter((i) => !i.hideOnMobile);
   // Inert while the full-screen cupping layer covers the shell (H-03).
   const covered = useShellCovered();
 
@@ -37,8 +37,12 @@ export default function BottomNav({
               key={href}
               href={`/${locale}${href}`}
               aria-current={active ? "page" : undefined}
-              className={`flex-1 flex flex-col items-center justify-center gap-1 text-xs transition-colors ${
-                active ? "text-primary-container" : "text-on-surface-variant"
+              // Labels paint 12 px (F-14); the active tab is marked by weight and a
+              // bar along its top edge, not by colour alone.
+              className={`relative flex-1 flex flex-col items-center justify-center gap-1 text-[12px] transition-colors ${
+                active
+                  ? "font-semibold text-primary-container before:absolute before:inset-x-3 before:top-0 before:h-[3px] before:rounded-b-pill before:bg-primary-container before:content-['']"
+                  : "text-on-surface-variant"
               }`}
             >
               <Icon size={20} strokeWidth={active ? 2.5 : 1.8} />
