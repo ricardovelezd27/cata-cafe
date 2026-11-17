@@ -101,7 +101,7 @@ export const CVA_TEXT: Record<Locale, Record<string, string>> = {
     none: "—",
     incomplete: "Evaluación incompleta",
     partialDeclared: "evaluación parcial (secciones no evaluadas)",
-    unsent: "Evaluación sin enviar: el puntaje aparece al enviarla",
+    unsent: "Evaluación sin enviar",
     sheetDescriptive: "Hoja descriptiva",
     sheetAffective: "Hoja afectiva",
     // Official-form furniture
@@ -187,7 +187,7 @@ export const CVA_TEXT: Record<Locale, Record<string, string>> = {
     none: "—",
     incomplete: "Incomplete evaluation",
     partialDeclared: "partial evaluation (sections not evaluated)",
-    unsent: "Unsent evaluation: the score appears once it is submitted",
+    unsent: "Unsent evaluation",
     sheetDescriptive: "Descriptive sheet",
     sheetAffective: "Affective sheet",
     // Official-form furniture
