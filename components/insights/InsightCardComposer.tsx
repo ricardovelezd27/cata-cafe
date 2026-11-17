@@ -70,7 +70,7 @@ const PIVOT_TABLE_MAX_ROWS = 10;
 const PIVOT_TABLE_MAX_COLS = 7;
 
 const inputClass =
-  "w-full rounded-input border border-[#E8E0D0] bg-surface-container-lowest px-3 py-2 text-sm text-on-surface focus:border-[#3D5A3E]";
+  "w-full rounded-input border border-outline-variant bg-surface-container-lowest px-3 py-2 text-sm text-on-surface focus:border-primary-container";
 
 function emptyPivotResult(measure: MeasureId): PivotResult {
   return {
@@ -154,7 +154,8 @@ export function InsightCardComposer({ locale, config, citationLines, t }: Insigh
     try {
       const dataUrl = await toPng(cardRef.current, {
         pixelRatio: 2,
-        backgroundColor: "#FDFBF7",
+        // The token's value: the image's own canvas cannot read a CSS variable.
+        backgroundColor: getComputedStyle(document.documentElement).getPropertyValue("--color-surface").trim() || undefined,
         width: CARD_WIDTH,
         height: CARD_HEIGHT,
       });
@@ -198,7 +199,7 @@ export function InsightCardComposer({ locale, config, citationLines, t }: Insigh
     <div className="grid grid-cols-1 gap-5 items-start">
       {/* Controls */}
       <div className="flex flex-col gap-4">
-        <div className="bg-surface-container-lowest rounded-card border border-[#E8E0D0] shadow-card p-5 flex flex-col gap-4">
+        <div className="bg-surface-container-lowest rounded-card border border-outline-variant shadow-card p-5 flex flex-col gap-4">
           <label className="flex flex-col gap-1">
             <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
               {t.headline}
@@ -218,7 +219,7 @@ export function InsightCardComposer({ locale, config, citationLines, t }: Insigh
               type="button"
               onClick={handleDownloadPng}
               disabled={exporting}
-              className="flex items-center gap-1.5 rounded-pill bg-[#3D5A3E] text-white text-sm font-semibold px-4 py-2 disabled:opacity-50"
+              className="flex items-center gap-1.5 rounded-pill bg-primary-container text-on-primary text-sm font-semibold px-4 py-2 disabled:opacity-50"
             >
               {exporting ? <Loader2 size={15} className="animate-spin" /> : <ImageDown size={15} />}
               {t.downloadPng}
@@ -227,7 +228,7 @@ export function InsightCardComposer({ locale, config, citationLines, t }: Insigh
               type="button"
               onClick={() => generateTexts(false)}
               disabled={liPending}
-              className="flex items-center gap-1.5 rounded-pill border border-[#E8E0D0] bg-surface-container-lowest text-sm font-semibold text-on-surface px-4 py-2 disabled:opacity-50 hover:border-[#3D5A3E] hover:text-[#3D5A3E]"
+              className="flex items-center gap-1.5 rounded-pill border border-outline-variant bg-surface-container-lowest text-sm font-semibold text-on-surface px-4 py-2 disabled:opacity-50 hover:border-primary-container hover:text-primary-container"
             >
               <Sparkles size={15} />
               {t.generateTexts}
@@ -237,7 +238,7 @@ export function InsightCardComposer({ locale, config, citationLines, t }: Insigh
         </div>
 
         {(liPending || liResult) && (
-          <div className="bg-surface-container rounded-card border border-[#E8E0D0] shadow-card p-5">
+          <div className="bg-surface-container rounded-card border border-outline-variant shadow-card p-5">
             {liPending ? (
               <div className="flex items-center gap-2 text-sm text-on-surface-variant animate-pulse">
                 <Sparkles size={16} />
@@ -264,11 +265,11 @@ export function InsightCardComposer({ locale, config, citationLines, t }: Insigh
                   onCopy={copyText}
                 />
                 {liContent.hashtags.length > 0 && (
-                  <p className="text-xs text-[#3D5A3E] font-medium">
+                  <p className="text-xs text-primary-container font-medium">
                     {liContent.hashtags.map((h) => `#${h}`).join(" ")}
                   </p>
                 )}
-                <div className="flex items-center justify-between gap-3 pt-2 mt-1 border-t border-[#E8E0D0]">
+                <div className="flex items-center justify-between gap-3 pt-2 mt-1 border-t border-outline-variant">
                   <span className="text-[11px] text-on-surface-variant/70">
                     {t.ai.disclaimer}
                     {liResult?.ok ? ` · ${liResult.model}` : ""}
@@ -276,7 +277,7 @@ export function InsightCardComposer({ locale, config, citationLines, t }: Insigh
                   <button
                     type="button"
                     onClick={() => generateTexts(true)}
-                    className="flex items-center gap-1 text-xs font-semibold text-[#3D5A3E] hover:underline shrink-0"
+                    className="flex items-center gap-1 text-xs font-semibold text-primary-container hover:underline shrink-0"
                   >
                     <RefreshCw size={12} />
                     {t.ai.regenerate}
@@ -291,7 +292,7 @@ export function InsightCardComposer({ locale, config, citationLines, t }: Insigh
                 <button
                   type="button"
                   onClick={() => generateTexts(false)}
-                  className="text-xs font-semibold text-[#3D5A3E] hover:underline shrink-0"
+                  className="text-xs font-semibold text-primary-container hover:underline shrink-0"
                 >
                   {t.ai.regenerate}
                 </button>
@@ -302,7 +303,7 @@ export function InsightCardComposer({ locale, config, citationLines, t }: Insigh
       </div>
 
       {/* Preview */}
-      <div className="bg-surface-container-lowest rounded-card border border-[#E8E0D0] shadow-card p-5">
+      <div className="bg-surface-container-lowest rounded-card border border-outline-variant shadow-card p-5">
         <div
           ref={scaleRef}
           className="relative w-full overflow-hidden"
@@ -322,10 +323,10 @@ export function InsightCardComposer({ locale, config, citationLines, t }: Insigh
             <div
               ref={cardRef}
               className="flex flex-col justify-between px-16 py-10 shrink-0"
-              style={{ width: CARD_WIDTH, height: CARD_HEIGHT, backgroundColor: "#FDFBF7" }}
+              style={{ width: CARD_WIDTH, height: CARD_HEIGHT, backgroundColor: "var(--color-surface)" }}
             >
               <div className="flex items-center justify-between">
-                <span className="font-bold text-2xl" style={{ color: "#3D5A3E" }}>
+                <span className="font-bold text-2xl text-primary-container">
                   Cata Café
                 </span>
                 <span className="text-sm text-on-surface-variant">catacafe.app</span>
@@ -424,13 +425,13 @@ function PostBlock({
         <button
           type="button"
           onClick={() => onCopy(lang, text)}
-          className="flex items-center gap-1 text-xs font-semibold text-[#3D5A3E] hover:underline"
+          className="flex items-center gap-1 text-xs font-semibold text-primary-container hover:underline"
         >
           {copied ? <Check size={13} /> : <Copy size={13} />}
           {copied ? copiedLabel : copyLabel}
         </button>
       </div>
-      <pre className="whitespace-pre-wrap font-sans text-sm text-on-surface bg-surface-container-lowest border border-[#E8E0D0] rounded-card p-3">
+      <pre className="whitespace-pre-wrap font-sans text-sm text-on-surface bg-surface-container-lowest border border-outline-variant rounded-card p-3">
         {text}
       </pre>
     </div>

@@ -16,16 +16,11 @@ import {
 } from "recharts";
 import { useContainerWidth } from "@/hooks/useContainerWidth";
 import type { ChartType, InsightRow } from "@/lib/analytics/types";
+import { getChartColors, seriesColor } from "@/components/results/chartColors";
 
 const CHART_HEIGHT = 300;
 
-const GREEN = "#3D5A3E";
-const AMBER = "#C17817";
-const GRID = "#E8E0D0";
-const AXIS_TEXT = "#8B7355";
 
-// Brand-derived cycle for pie slices (and bars without descriptor colors).
-const PALETTE = [GREEN, AMBER, "#6B8F71", "#A83232", "#8B7355", "#D9A441", "#4E6E58", "#B5651D"];
 
 interface InsightChartProps {
   rows: InsightRow[];
@@ -48,6 +43,8 @@ export function InsightChart({
   emptyLabel,
 }: InsightChartProps) {
   const { ref, width } = useContainerWidth();
+  // S10: the shared chart colours (tokens), never a private palette.
+  const colors = getChartColors();
 
   if (rows.length === 0) {
     return (
@@ -62,7 +59,7 @@ export function InsightChart({
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-[#E8E0D0] text-left">
+            <tr className="border-b border-outline-variant text-left">
               <th className="py-2 pr-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
                 {dimensionLabel}
               </th>
@@ -76,7 +73,7 @@ export function InsightChart({
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.key} className="border-b border-[#F5F0E6]">
+              <tr key={r.key} className="border-b border-outline-variant/50">
                 <td className="py-2 pr-4 text-on-surface">
                   <span className="inline-flex items-center gap-2">
                     {r.color && (
@@ -110,23 +107,23 @@ export function InsightChart({
           data={rows}
           margin={{ top: 8, right: 8, bottom: 8, left: 0 }}
         >
-          <CartesianGrid stroke={GRID} vertical={false} />
+          <CartesianGrid stroke={colors.grid} vertical={false} />
           <XAxis
             dataKey="label"
-            tick={{ fontSize: 10, fill: AXIS_TEXT }}
+            tick={{ fontSize: 10, fill: colors.axisText }}
             interval={0}
             angle={rows.length > 6 ? -35 : 0}
             textAnchor={rows.length > 6 ? "end" : "middle"}
             height={rows.length > 6 ? 70 : 30}
           />
-          <YAxis tick={{ fontSize: 10, fill: AXIS_TEXT }} width={40} />
+          <YAxis tick={{ fontSize: 10, fill: colors.axisText }} width={40} />
           <Tooltip
             formatter={(value) => [String(value), valueLabel]}
-            contentStyle={{ fontSize: 12, borderColor: GRID }}
+            contentStyle={{ fontSize: 12, borderColor: colors.grid }}
           />
           <Bar dataKey="value" name={valueLabel} radius={[3, 3, 0, 0]}>
             {rows.map((r, i) => (
-              <Cell key={r.key} fill={r.color ?? PALETTE[i % PALETTE.length]} />
+              <Cell key={r.key} fill={r.color ?? seriesColor(colors, i)} />
             ))}
           </Bar>
         </BarChart>
@@ -139,20 +136,20 @@ export function InsightChart({
           data={rows}
           margin={{ top: 8, right: 8, bottom: 8, left: 0 }}
         >
-          <CartesianGrid stroke={GRID} vertical={false} />
-          <XAxis dataKey="label" tick={{ fontSize: 10, fill: AXIS_TEXT }} />
-          <YAxis tick={{ fontSize: 10, fill: AXIS_TEXT }} width={40} />
+          <CartesianGrid stroke={colors.grid} vertical={false} />
+          <XAxis dataKey="label" tick={{ fontSize: 10, fill: colors.axisText }} />
+          <YAxis tick={{ fontSize: 10, fill: colors.axisText }} width={40} />
           <Tooltip
             formatter={(value) => [String(value), valueLabel]}
-            contentStyle={{ fontSize: 12, borderColor: GRID }}
+            contentStyle={{ fontSize: 12, borderColor: colors.grid }}
           />
           <Line
             type="monotone"
             dataKey="value"
             name={valueLabel}
-            stroke={GREEN}
+            stroke={colors.mine}
             strokeWidth={2}
-            dot={{ r: 3, fill: GREEN }}
+            dot={{ r: 3, fill: colors.mine }}
           />
         </LineChart>
       )}
@@ -169,18 +166,18 @@ export function InsightChart({
             label={({ name, percent }) =>
               `${name} ${percent != null ? Math.round(percent * 100) : 0}%`
             }
-            labelLine={{ stroke: GRID }}
+            labelLine={{ stroke: colors.grid }}
             fontSize={11}
           >
             {rows.map((r, i) => (
-              <Cell key={r.key} fill={r.color ?? PALETTE[i % PALETTE.length]} />
+              <Cell key={r.key} fill={r.color ?? seriesColor(colors, i)} />
             ))}
           </Pie>
           <Tooltip
             formatter={(value) => [String(value), valueLabel]}
-            contentStyle={{ fontSize: 12, borderColor: GRID }}
+            contentStyle={{ fontSize: 12, borderColor: colors.grid }}
           />
-          <Legend wrapperStyle={{ fontSize: 11, color: AXIS_TEXT }} />
+          <Legend wrapperStyle={{ fontSize: 11, color: colors.axisText }} />
         </PieChart>
       )}
     </div>

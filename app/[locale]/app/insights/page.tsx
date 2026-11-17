@@ -16,7 +16,7 @@ export function generateStaticParams() {
 
 function ChartCard({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="bg-surface-container-lowest rounded-card border border-[#E8E0D0] shadow-card p-5">
+    <section className="bg-surface-container-lowest rounded-card border border-outline-variant shadow-card p-5">
       <h2 className="font-sans text-xs font-semibold text-on-surface-variant uppercase tracking-wide mb-4">
         {title}
       </h2>
@@ -56,7 +56,7 @@ export default async function InsightsDashboardPage({
       <div className="flex items-center justify-end">
         <a
           href={`/api/insights/report?locale=${locale}`}
-          className="inline-flex items-center gap-1.5 rounded-pill border border-[#E8E0D0] bg-surface-container-lowest px-3 py-1.5 text-xs font-semibold text-on-surface hover:border-[#3D5A3E] hover:text-[#3D5A3E] transition-colors"
+          className="inline-flex items-center gap-1.5 rounded-pill border border-outline-variant bg-surface-container-lowest px-3 py-1.5 text-xs font-semibold text-on-surface hover:border-primary-container hover:text-primary-container transition-colors"
         >
           <Download size={16} />
           {t("report.download")}

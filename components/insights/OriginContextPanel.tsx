@@ -16,12 +16,9 @@ import { useContainerWidth } from "@/hooks/useContainerWidth";
 import { runOriginContext } from "@/app/actions/analytics";
 import { useActionFeedback } from "@/components/ui/Toast";
 import type { OriginContext } from "@/lib/analytics/benchmarks";
+import { getChartColors } from "@/components/results/chartColors";
 
 const CHART_HEIGHT = 280;
-const GREEN = "#3D5A3E";
-const AMBER = "#C17817";
-const GRID = "#E8E0D0";
-const AXIS_TEXT = "#8B7355";
 
 export interface OriginContextTranslations {
   title: string;
@@ -41,7 +38,7 @@ interface OriginContextPanelProps {
 }
 
 const selectClass =
-  "w-full rounded-input border border-[#E8E0D0] bg-surface-container-lowest px-3 py-2 text-sm text-on-surface focus:border-[#3D5A3E]";
+  "w-full rounded-input border border-outline-variant bg-surface-container-lowest px-3 py-2 text-sm text-on-surface focus:border-primary-container";
 
 interface OriginRow {
   year: number;
@@ -67,6 +64,8 @@ export function OriginContextPanel({
   const [isPending, startTransition] = useTransition();
   const feedback = useActionFeedback();
   const { ref, width } = useContainerWidth();
+  // S10: the shared chart colours (tokens), never a private palette.
+  const colors = getChartColors();
 
   function onCountryChange(next: string) {
     setCountryCode(next);
@@ -94,7 +93,7 @@ export function OriginContextPanel({
   }
 
   return (
-    <section className="bg-surface-container-lowest rounded-card border border-[#E8E0D0] shadow-card p-5">
+    <section className="bg-surface-container-lowest rounded-card border border-outline-variant shadow-card p-5">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg">{t.title}</h2>
         {isPending && <Loader2 size={16} className="animate-spin text-on-surface-variant" aria-hidden />}
@@ -133,23 +132,23 @@ export function OriginContextPanel({
                     data={rows}
                     margin={{ top: 8, right: 8, bottom: 8, left: 0 }}
                   >
-                    <CartesianGrid stroke={GRID} vertical={false} />
-                    <XAxis dataKey="year" tick={{ fontSize: 10, fill: AXIS_TEXT }} />
-                    <YAxis yAxisId="left" tick={{ fontSize: 10, fill: AXIS_TEXT }} width={44} />
+                    <CartesianGrid stroke={colors.grid} vertical={false} />
+                    <XAxis dataKey="year" tick={{ fontSize: 10, fill: colors.axisText }} />
+                    <YAxis yAxisId="left" tick={{ fontSize: 10, fill: colors.axisText }} width={44} />
                     <YAxis
                       yAxisId="right"
                       orientation="right"
-                      tick={{ fontSize: 10, fill: AXIS_TEXT }}
+                      tick={{ fontSize: 10, fill: colors.axisText }}
                       width={36}
                       allowDecimals={false}
                     />
-                    <Tooltip contentStyle={{ fontSize: 12, borderColor: GRID }} />
-                    <Legend wrapperStyle={{ fontSize: 11, color: AXIS_TEXT }} />
+                    <Tooltip contentStyle={{ fontSize: 12, borderColor: colors.grid }} />
+                    <Legend wrapperStyle={{ fontSize: 11, color: colors.axisText }} />
                     <Bar
                       yAxisId="right"
                       dataKey="evaluations"
                       name={t.myActivity}
-                      fill={AMBER}
+                      fill={colors.community}
                       radius={[3, 3, 0, 0]}
                     />
                     <Line
@@ -157,9 +156,9 @@ export function OriginContextPanel({
                       type="monotone"
                       dataKey="production"
                       name={t.production}
-                      stroke={GREEN}
+                      stroke={colors.mine}
                       strokeWidth={2}
-                      dot={{ r: 2.5, fill: GREEN }}
+                      dot={{ r: 2.5, fill: colors.mine }}
                       connectNulls
                     />
                   </ComposedChart>

@@ -59,7 +59,7 @@ export function AiSummaryPanel({ locale, target, translations: t }: AiSummaryPan
   const errored = result != null && !result.ok && !result.skipped;
 
   return (
-    <div className="bg-surface-container rounded-card border border-[#E8E0D0] shadow-card p-5">
+    <div className="bg-surface-container rounded-card border border-outline-variant shadow-card p-5">
       {isPending ? (
         <div className="flex items-center gap-2 text-sm text-on-surface-variant animate-pulse">
           <Sparkles size={16} />
@@ -86,7 +86,7 @@ export function AiSummaryPanel({ locale, target, translations: t }: AiSummaryPan
               ))}
             </ul>
           )}
-          <div className="flex items-center justify-between gap-3 pt-3 mt-1 border-t border-[#E8E0D0]">
+          <div className="flex items-center justify-between gap-3 pt-3 mt-1 border-t border-outline-variant">
             <span className="text-[11px] text-on-surface-variant/70">
               {t.disclaimer}
               {result?.ok ? ` · ${result.model}` : ""}
@@ -94,7 +94,7 @@ export function AiSummaryPanel({ locale, target, translations: t }: AiSummaryPan
             <button
               type="button"
               onClick={() => generate(true)}
-              className="flex items-center gap-1 text-xs font-semibold text-[#3D5A3E] hover:underline shrink-0"
+              className="flex items-center gap-1 text-xs font-semibold text-primary-container hover:underline shrink-0"
             >
               <RefreshCw size={12} />
               {t.regenerate}
@@ -109,7 +109,7 @@ export function AiSummaryPanel({ locale, target, translations: t }: AiSummaryPan
           <button
             type="button"
             onClick={() => generate(false)}
-            className="text-xs font-semibold text-[#3D5A3E] hover:underline shrink-0"
+            className="text-xs font-semibold text-primary-container hover:underline shrink-0"
           >
             {t.regenerate}
           </button>
@@ -118,7 +118,7 @@ export function AiSummaryPanel({ locale, target, translations: t }: AiSummaryPan
         <button
           type="button"
           onClick={() => generate(false)}
-          className="flex items-center gap-2 text-sm font-semibold text-[#3D5A3E] hover:underline"
+          className="flex items-center gap-2 text-sm font-semibold text-primary-container hover:underline"
         >
           <Sparkles size={16} />
           {t.generate}

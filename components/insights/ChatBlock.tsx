@@ -19,7 +19,7 @@ function formatNumber(v: number | null | undefined): string {
   return Number.isInteger(v) ? String(v) : v.toFixed(2);
 }
 
-const CARD_CLASS = "bg-surface-container-lowest rounded-card border border-[#E8E0D0] p-3 mt-2";
+const CARD_CLASS = "bg-surface-container-lowest rounded-card border border-outline-variant p-3 mt-2";
 const CAPTION_CLASS = "text-xs font-semibold text-on-surface-variant uppercase tracking-wide mb-2";
 
 function MiniTable({ headers, rows }: { headers: string[]; rows: (string | number)[][] }) {
@@ -27,7 +27,7 @@ function MiniTable({ headers, rows }: { headers: string[]; rows: (string | numbe
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-[#E8E0D0] text-left">
+          <tr className="border-b border-outline-variant text-left">
             {headers.map((h, i) => (
               <th
                 key={i}
@@ -42,7 +42,7 @@ function MiniTable({ headers, rows }: { headers: string[]; rows: (string | numbe
         </thead>
         <tbody>
           {rows.map((row, ri) => (
-            <tr key={ri} className="border-b border-[#F5F0E6] last:border-0">
+            <tr key={ri} className="border-b border-outline-variant/50 last:border-0">
               {row.map((cell, ci) => (
                 <td
                   key={ci}
@@ -185,7 +185,7 @@ export function ChatBlock({ block, t }: ChatBlockProps) {
         {chips.map(([key, value]) => (
           <div
             key={key}
-            className="rounded-pill bg-surface-container border border-[#E8E0D0] px-3 py-1.5 flex flex-col items-start gap-0.5"
+            className="rounded-pill bg-surface-container border border-outline-variant px-3 py-1.5 flex flex-col items-start gap-0.5"
           >
             <span className="text-[10px] font-semibold text-on-surface-variant uppercase tracking-wide">
               {t.overview[key] ?? key}
