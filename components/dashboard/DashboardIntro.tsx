@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
-import { GuestGateLink } from "@/components/guest/GuestGateLink";
-import { X, ChevronDown, Sigma, ArrowRight, HelpCircle } from "lucide-react";
+import { X, ChevronDown, Sigma, HelpCircle } from "lucide-react";
+import { introStartsCollapsed } from "@/lib/dashboardIntro";
 
 export type IntroTranslations = {
   eyebrow: string;
@@ -13,7 +13,6 @@ export type IntroTranslations = {
   what: string;
   howLabel: string;
   how: string;
-  ctaPrimary: string;
   ctaCalc: string;
   dismiss: string;
   reopen: string;
@@ -51,10 +50,11 @@ function getServerSnapshot() {
 
 export function DashboardIntro({
   t,
-  newSessionHref,
+  sessionCount,
 }: {
   t: IntroTranslations;
-  newSessionHref: string;
+  /** The person's sessions (owned or joined): one or more makes them a returning user (S6, F-15). */
+  sessionCount: number;
 }) {
   const dismissed = useSyncExternalStore(
     subscribe,
@@ -62,19 +62,23 @@ export function DashboardIntro({
     getServerSnapshot,
   );
   const [showCalc, setShowCalc] = useState(false);
+  // Reopened on this page view only (not stored): a returning user who opens it sees it until they leave.
+  const [expanded, setExpanded] = useState(false);
 
   function dismiss() {
     localStorage.setItem(STORAGE_KEY, "1");
     setShowCalc(false);
+    setExpanded(false);
     window.dispatchEvent(new Event(STORE_EVENT));
   }
 
   function reopen() {
     localStorage.removeItem(STORAGE_KEY);
+    setExpanded(true);
     window.dispatchEvent(new Event(STORE_EVENT));
   }
 
-  if (dismissed) {
+  if (!expanded && introStartsCollapsed({ sessionCount, dismissed })) {
     return (
       <button
         onClick={reopen}
@@ -149,7 +153,7 @@ export function DashboardIntro({
                   {step.label}
                 </span>
               </div>
-              <p className="mt-2 text-sm leading-relaxed text-on-surface-variant">
+              <p className="mt-2 max-w-[68ch] text-sm leading-relaxed text-on-surface-variant">
                 {step.body}
               </p>
             </li>
@@ -158,14 +162,6 @@ export function DashboardIntro({
 
         {/* actions */}
         <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-3">
-          <GuestGateLink
-            href={newSessionHref}
-            className="min-h-[44px] inline-flex items-center gap-2 rounded-input bg-primary-container px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary"
-          >
-            {t.ctaPrimary}
-            <ArrowRight size={15} />
-          </GuestGateLink>
-
           <button
             onClick={() => setShowCalc((v) => !v)}
             aria-expanded={showCalc}
@@ -191,7 +187,7 @@ export function DashboardIntro({
               <h3 className="text-lg">
                 {t.calcTitle}
               </h3>
-              <p className="mt-1 text-sm text-on-surface-variant">{t.calcLead}</p>
+              <p className="mt-1 max-w-[68ch] text-sm text-on-surface-variant">{t.calcLead}</p>
 
               {/* the formula, set apart and scrollable on narrow screens */}
               <div className="mt-3 overflow-x-auto rounded-sm border border-outline-variant bg-surface-container-lowest px-4 py-3">
@@ -211,7 +207,7 @@ export function DashboardIntro({
                     <dt className="mono shrink-0 pt-px text-sm font-bold text-secondary">
                       {row.term}
                     </dt>
-                    <dd className="text-sm leading-relaxed text-on-surface-variant">
+                    <dd className="max-w-[68ch] text-sm leading-relaxed text-on-surface-variant">
                       {row.body}
                     </dd>
                   </div>
@@ -224,7 +220,7 @@ export function DashboardIntro({
                   (note, i) => (
                     <li
                       key={i}
-                      className="flex gap-2 text-[13px] leading-relaxed text-on-surface-variant"
+                      className="flex max-w-[68ch] gap-2 text-[13px] leading-relaxed text-on-surface-variant"
                     >
                       <span aria-hidden className="text-green-mid">
                         ·

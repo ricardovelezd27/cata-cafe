@@ -1,12 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { GuestGateLink } from "@/components/guest/GuestGateLink";
 import { Coffee, Pencil } from "lucide-react";
 import { DataTable, type Column, type Facet } from "@/components/ui/DataTable";
 import { Badge, StatusPill } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { buttonClasses } from "@/components/ui/Button";
 import { DeleteSessionButton, type DeleteSessionTranslations } from "./DeleteSessionButton";
 import { DuplicateButton } from "@/components/DuplicateButton";
 import { DeadlineBanner, type DeadlineBannerTranslations } from "@/components/session/DeadlineBanner";
@@ -61,9 +59,6 @@ export type SessionsTableTranslations = {
   statuses: { draft: string; active: string; closed: string };
   noResults: string;
   editLabel: string;
-  newSessionLabel: string;
-  /** "Catar ahora" — the express path, offered first in the empty state. */
-  expressLabel: string;
   duplicateLabel: string;
   duplicateError: string;
   duplicateDropped: string;
@@ -81,8 +76,6 @@ export function SessionsTable({
   rows,
   locale,
   hasDraft,
-  newSessionHref,
-  expressHref,
   translations: t,
   deleteTranslations,
   isAdmin = false,
@@ -90,8 +83,6 @@ export function SessionsTable({
   rows: SessionRow[];
   locale: string;
   hasDraft: boolean;
-  newSessionHref: string;
-  expressHref: string;
   translations: SessionsTableTranslations;
   deleteTranslations: DeleteSessionTranslations;
   isAdmin?: boolean;
@@ -299,16 +290,6 @@ export function SessionsTable({
           icon={<Coffee size={20} />}
           title={t.emptyTitle}
           body={t.emptyBody}
-          action={
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              <GuestGateLink href={expressHref} className={buttonClasses("primary")}>
-                {t.expressLabel}
-              </GuestGateLink>
-              <GuestGateLink href={newSessionHref} className={buttonClasses("secondary")}>
-                {t.newSessionLabel}
-              </GuestGateLink>
-            </div>
-          }
         />
       }
       noResults={t.noResults}
