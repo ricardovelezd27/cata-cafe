@@ -1164,6 +1164,8 @@
     "exclusionNotice": "El organizador dejó tu evaluación fuera del resultado del grupo ({reason}). Tus propios resultados no cambian.",
     "exclusionNoticeNoReason": "El organizador dejó tu evaluación fuera del resultado del grupo. Tus propios resultados no cambian.",
     "downloadCsvNoNames": "CSV sin nombres",
+    "exportOpen": "Exportar",
+    "exportTitle": "Exportar resultados",
     "downloadCsv": "Datos por catador (CSV)",
     "needsConnection": "Necesita conexión",
     "closedUnsentNotice": "Tenías {count, plural, one {# muestra completa} other {# muestras completas}} sin enviar cuando se cerró la cata. No cuentan en los resultados.",

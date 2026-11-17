@@ -56,16 +56,16 @@ import {
   SegmentedControl,
   InfoHint,
   Button,
-  ButtonLink,
   useActionFeedback,
 } from "@/components/ui";
-import { ReportLink } from "@/components/ui/ReportLink";
+import { ResultsExportSheet } from "@/components/results/ResultsExportSheet";
+import { resultsExportActions } from "@/lib/resultsExports";
 import { useForegroundResume } from "@/hooks/useForegroundResume";
 import { assignSampleCoffee, updateSampleMetadata } from "@/app/actions/sessions";
 import { CoffeePicker, type UsableCoffee } from "@/components/coffees/CoffeePicker";
 import { asSessionFormat, type SessionFormat } from "@/lib/constants";
 import { calcIndividualScore, hasIndividualScore } from "@/lib/scoring";
-import { ArrowLeft, FileDown, Printer, RefreshCw } from "lucide-react";
+import { ArrowLeft, RefreshCw } from "lucide-react";
 import { ResumenTab } from "./ResumenTab";
 import type { SampleResult, ResultsHelp } from "./types";
 
@@ -326,6 +326,10 @@ export function ResultsClient({
     downloadCsv: string;
     downloadCsvNoNames: string;
     needsConnection: string;
+    /** S1: the one "Exportar" button and its sheet. */
+    exportOpen: string;
+    exportTitle: string;
+    exportClose: string;
     refresh: string;
     refreshing: string;
     refreshNew: string;
@@ -834,10 +838,23 @@ export function ResultsClient({
       : []),
   ];
 
+  // S1: the exports this viewer gets, by the same rules as the footer it replaced.
+  const exportActions = resultsExportActions({
+    isGroup,
+    canViewGroup,
+    isOwner,
+    isAdminViewer,
+    hasSubmitted: session.samples.some((s) => s.myEvaluation?.status === "submitted"),
+  });
+
   return (
-    <div className="absolute inset-0 bottom-[calc(var(--bottom-nav-height)+env(safe-area-inset-bottom,0px))] lg:bottom-0 flex flex-col bg-surface text-on-surface">
-      {/* Docked header — three stacked rows, same structure on mobile and desktop */}
-      <div className="shrink-0 z-[1] border-b border-outline-variant bg-surface">
+    // S1 (F-01): the page is in normal flow, so the app shell's <main> is the ONE
+    // scroll container. The header (title, actions, notices) scrolls away; only
+    // the tabs stay (sticky). The negative margins cancel <main>'s padding, as the
+    // absolutely positioned box before this did.
+    <div className="-mx-4 -mt-4 lg:-mx-6 lg:-mt-6 bg-surface text-on-surface">
+      {/* Header — scrolls with the page */}
+      <div className="bg-surface">
         {/* Row 1: title block — no controls */}
         <div className="px-4 pt-3 pb-1">
           <div className="font-display text-xl text-primary-container leading-tight">
@@ -848,8 +865,8 @@ export function ResultsClient({
           </div>
         </div>
 
-        {/* Row 2: actions */}
-        <div className="flex items-center gap-2 px-4 py-2">
+        {/* Row 2: actions. "Exportar" opens the one sheet with every export (S1). */}
+        <div className="flex flex-wrap items-center gap-2 px-4 py-2">
           {/* Admin view: /cup would just bounce back here — hide the loop.
               A closed session's cupping form is final, so the button never
               renders once the session is closed (for anyone). */}
@@ -866,6 +883,7 @@ export function ResultsClient({
           {/* A closed or expired session never changes its scores (refreshAggregateScores
               is a no-op there), so the button is only offered while cupping is open.
               `cuppingOpen` is the server's `!isSessionExpired(session)`. */}
+          <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
           {cuppingOpen && (
             <Button
               size="sm"
@@ -873,7 +891,6 @@ export function ResultsClient({
               icon={<RefreshCw size={14} aria-hidden className={refreshing ? "animate-spin" : ""} />}
               onClick={handleRefreshScores}
               disabled={refreshing}
-              className="ml-auto"
             >
               {refreshing
                 ? translations.refreshing
@@ -884,6 +901,24 @@ export function ResultsClient({
                     : translations.refresh}
             </Button>
           )}
+          <ResultsExportSheet
+            sessionId={session.id}
+            locale={locale}
+            actions={exportActions}
+            t={{
+              open: translations.exportOpen,
+              title: translations.exportTitle,
+              close: translations.exportClose,
+              viewForm: translations.viewForm,
+              downloadPdf: translations.downloadPdf,
+              downloadSummary: translations.downloadSummary,
+              downloadFicha: translations.downloadFicha,
+              downloadCsv: translations.downloadCsv,
+              downloadCsvNoNames: translations.downloadCsvNoNames,
+              needsConnection: translations.needsConnection,
+            }}
+          />
+          </div>
         </div>
 
         {liveUpdatesDown && (
@@ -951,21 +986,25 @@ export function ResultsClient({
             {lastUpdatedLabel && <span>{lastUpdatedLabel}</span>}
           </div>
         )}
-        <div className="px-4 pb-2">
-          <PillTabs
-            items={tabItems}
-            value={effectiveTab}
-            onChange={(id) => {
-              setTab(id as Tab);
-              setDetail(null);
-            }}
-            ariaLabel={translations.title}
-          />
-        </div>
       </div>
 
-      {/* Scrollable content region — header/footer dock outside it */}
-      <div className="flex-1 min-h-0 overflow-y-auto">
+      {/* Tabs — the one part that stays while the page scrolls (S1). The negative
+          top equals <main>'s padding (p-4 / lg:p-6): sticky offsets are measured
+          inside that padding, so top-0 would leave a strip of content above. */}
+      <div data-results-tabs className="sticky -top-4 lg:-top-6 z-[2] border-b border-outline-variant bg-surface px-4 py-2">
+        <PillTabs
+          items={tabItems}
+          value={effectiveTab}
+          onChange={(id) => {
+            setTab(id as Tab);
+            setDetail(null);
+          }}
+          ariaLabel={translations.title}
+        />
+      </div>
+
+      {/* Content — scrolls with the page (no inner scroller, S1) */}
+      <div>
       {adminViewNotice && (
         <div
           role="status"
@@ -1372,99 +1411,6 @@ export function ResultsClient({
           )}
         </div>
       )}
-      </div>
-
-      {/* Print CTA — docked footer */}
-      <div
-        className="shrink-0 border-t border-outline-variant bg-surface px-4 pt-3"
-        style={{ paddingBottom: "max(12px, calc(env(safe-area-inset-bottom) + 8px))" }}
-      >
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <div className="flex gap-2 sm:flex-[2]">
-            <Button
-              size="md"
-              variant="secondary"
-              icon={<Printer size={16} aria-hidden />}
-              className="flex-1"
-              onClick={() => router.push(`/${locale}/app/sessions/${session.id}/print`)}
-            >
-              {translations.viewForm}
-            </Button>
-            {/* Server-generated CVA PDF — plain link so no @react-pdf ships to the client. */}
-            <ReportLink
-              href={`/api/sessions/${session.id}/cva-pdf?locale=${locale}`}
-              filename={`cva-${session.id}.pdf`}
-              offlineLabel={translations.needsConnection}
-              size="md"
-              variant="primary"
-              icon={<FileDown size={16} aria-hidden />}
-              className="flex-1"
-            >
-              {translations.downloadPdf}
-            </ReportLink>
-          </div>
-          {/* Personal summary PDF — inline so iOS opens the native viewer. Group
-              sessions only once the group results are visible (the route enforces
-              the same gate with a 409). */}
-          <div className="flex flex-col gap-2 sm:flex-1 sm:flex-row">
-            {(!isGroup || canViewGroup) &&
-              session.samples.some((s) => s.myEvaluation?.status === "submitted") && (
-              <ReportLink
-                href={`/api/sessions/${session.id}/participant-summary?locale=${locale}&inline=1`}
-                filename={`resumen-${session.id}.pdf`}
-                offlineLabel={translations.needsConnection}
-                newTab
-                size="md"
-                variant="secondary"
-                icon={<FileDown size={16} aria-hidden />}
-                className="w-full sm:flex-1"
-              >
-                {translations.downloadSummary}
-              </ReportLink>
-            )}
-            {/* Owner-tier "Ficha técnica" — the route 404s for anyone else. */}
-            {(isOwner || isAdminViewer) && (
-              <ReportLink
-                href={`/api/sessions/${session.id}/ficha-tecnica?locale=${locale}&inline=1`}
-                filename={`ficha-${session.id}.pdf`}
-                offlineLabel={translations.needsConnection}
-                newTab
-                size="md"
-                variant="secondary"
-                icon={<FileDown size={16} aria-hidden />}
-                className="w-full sm:flex-1"
-              >
-                {translations.downloadFicha}
-              </ReportLink>
-            )}
-            {/* Owner raw data (CSV) — a plain URL; the route 404s for anyone else. */}
-            {(isOwner || isAdminViewer) && (
-              <ButtonLink
-                href={`/api/sessions/${session.id}/results-csv?locale=${locale}`}
-                size="md"
-                variant="secondary"
-                icon={<FileDown size={16} aria-hidden />}
-                className="w-full sm:flex-1"
-              >
-                {translations.downloadCsv}
-              </ButtonLink>
-            )}
-            {/* S10 WP5a (D5): same data, codes instead of names, safe to share. */}
-            {(isOwner || isAdminViewer) && (
-              <ReportLink
-                href={`/api/sessions/${session.id}/results-csv?locale=${locale}&names=0`}
-                filename={locale === "en" ? "results-no-names.csv" : "resultados-sin-nombres.csv"}
-                offlineLabel={translations.needsConnection}
-                size="md"
-                variant="secondary"
-                icon={<FileDown size={16} aria-hidden />}
-                className="w-full sm:flex-1"
-              >
-                {translations.downloadCsvNoNames}
-              </ReportLink>
-            )}
-          </div>
-        </div>
       </div>
 
       {detailSample && (

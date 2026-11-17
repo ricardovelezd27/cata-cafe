@@ -1164,6 +1164,8 @@
     "exclusionNotice": "The organizer left your evaluation out of the group result ({reason}). Your own results do not change.",
     "exclusionNoticeNoReason": "The organizer left your evaluation out of the group result. Your own results do not change.",
     "downloadCsvNoNames": "CSV without names",
+    "exportOpen": "Export",
+    "exportTitle": "Export results",
     "downloadCsv": "Data per cupper (CSV)",
     "needsConnection": "Needs a connection",
     "closedUnsentNotice": "You had {count, plural, one {# complete sample} other {# complete samples}} unsent when the session closed. They do not count in the results.",
