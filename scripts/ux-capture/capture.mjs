@@ -20,14 +20,17 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { GuardError, assertLocalBase, assertTestAddress, buildTargetUrl, isReadOnlyMethod, shouldBlockWebSocket, signInUrl } from "./lib/guard.mjs";
 import { FIXTURE_FINE, FIXTURE_HTML, FIXTURE_UNNAMED, readControlNames } from "./lib/axnames.mjs";
-import { hiddenScrollHeight, isHydrated, measure, redactPage } from "./lib/measure.mjs";
+import { hiddenScrollHeight, isHydrated, redactPage, runMeasure } from "./lib/measure.mjs";
 import { captureName, orderScreens, parsePlanSpecs, resolveTokens, validatePlan } from "./lib/plan.mjs";
+import { describeRequests, reconcileBlocked, runMeasureFixture, runStepsFixture } from "./lib/selftest.mjs";
+import { runStep } from "./lib/steps.mjs";
 import { readMeasures, renderSummary, summarizeMeasure } from "./lib/summarize.mjs";
 
 const TOOL = dirname(fileURLToPath(import.meta.url));
 
-/** 375x667 is the small phone of every before/after; 390x844 is the audit's "phone". */
+/** 320x568 is the narrowest phone that still matters; 375x667 is the small phone of every before/after; 390x844 is the audit's "phone". */
 const DEVICES = {
+  tiny: { width: 320, height: 568, touch: true },
   small: { width: 375, height: 667, touch: true },
   phone: { width: 390, height: 844, touch: true },
   tablet: { width: 768, height: 1024, touch: true },
@@ -87,10 +90,19 @@ async function newReadOnlyContext(browser, device, opt, origin) {
     reducedMotion: opt.motion ? "no-preference" : "reduce",
     serviceWorkers: "block",
   });
-  const counter = { blocked: 0, blockedSockets: 0, allowedSockets: 0, sockets: [] };
+  // blockedRequests keeps method + path (never the query: it can carry a token) so a report can say WHICH writes were stopped
+  const counter = { blocked: 0, blockedRequests: [], blockedSockets: 0, allowedSockets: 0, sockets: [] };
   await ctx.route("**/*", (route) => {
-    if (isReadOnlyMethod(route.request().method())) return route.continue();
+    const request = route.request();
+    if (isReadOnlyMethod(request.method())) return route.continue();
     counter.blocked++;
+    let path = "?";
+    try {
+      path = new URL(request.url()).pathname;
+    } catch {
+      /* keep "?" */
+    }
+    if (counter.blockedRequests.length < 200) counter.blockedRequests.push({ method: request.method(), path });
     return route.abort("blockedbyclient");
   });
   // `route` does not see WebSocket traffic: a socket can send (broadcast, presence) with the user's token.
@@ -180,13 +192,30 @@ async function selfTest(browser, origin, opt) {
     Object.entries(FIXTURE_UNNAMED).every(([id, why]) => got[id] === why) &&
     FIXTURE_FINE.every((id) => !(id in got));
 
+  // 5. the measure on a fixture page: hit areas (a transparent ::before, a checkbox in its label), painted text size, primary buttons
+  const measured = await runMeasureFixture(page);
+
+  // 6. steps: a click and a waitFor on controls that appear late, and the two clear refusals
+  const stepProblems = await runStepsFixture(page);
+
+  // 7. every write the test tried was blocked. The page can add blocked writes of its own (the Next dev overlay posts to
+  //    /__nextjs_original-stack-frames): those are listed, not counted against the test.
+  const blockedWrites = reconcileBlocked(
+    methods.map((method) => ({ method, path: "/api/health" })),
+    counter.blockedRequests,
+  );
+
   await ctx.close();
-  const ok = namesOk && reached.length === 0 && counter.blocked === methods.length && closedOk && allowedOk && hydrated;
+  const ok = namesOk && reached.length === 0 && blockedWrites.allBlocked && closedOk && allowedOk && hydrated && measured.problems.length === 0 && stepProblems.length === 0;
   console.log(
     `self-test: ${ok ? "PASS" : "FAIL"}: ` +
-      `writes ${methods.length} tried, ${counter.blocked} blocked, ${reached.length} reached the server; ` +
+      `writes ${methods.length} tried, ${blockedWrites.allBlocked ? "all blocked" : `NOT blocked: ${describeRequests(blockedWrites.missing)}`}, ${reached.length} reached the server` +
+      `${blockedWrites.extra.length ? `; ${blockedWrites.extra.length} other write${blockedWrites.extra.length === 1 ? "" : "s"} by the page itself also blocked (${describeRequests(blockedWrites.extra)})` : ""}; ` +
       `sockets: dev hot-reload ${allowedOk ? "allowed" : "NOT allowed"}, ${closedUrls.length} others (other host, other path, other port) ${closedOk ? "closed" : "NOT all closed"}; ` +
-      `page ${hydrated ? "hydrated" : "did NOT hydrate"}; accessible names ${namesOk ? `read from Chrome (${named.unnamedCount} of ${named.counts.checked} fixture controls unnamed, as expected)` : `WRONG on the fixture: ${JSON.stringify(got)}`}; context total: ${counter.allowedSockets} sockets allowed, ${counter.blockedSockets} blocked`,
+      `page ${hydrated ? "hydrated" : "did NOT hydrate"}; accessible names ${namesOk ? `read from Chrome (${named.unnamedCount} of ${named.counts.checked} fixture controls unnamed, as expected)` : `WRONG on the fixture: ${JSON.stringify(got)}`}; ` +
+      `measure fixture ${measured.problems.length === 0 ? "as expected (hit areas, painted text size, primary buttons)" : `WRONG: ${measured.problems.join(" | ")}`}; ` +
+      `steps ${stepProblems.length === 0 ? "wait for late controls and refuse clearly" : `WRONG: ${stepProblems.join(" | ")}`}; ` +
+      `context total: ${counter.allowedSockets} sockets allowed, ${counter.blockedSockets} blocked`,
   );
   return ok;
 }
@@ -277,17 +306,10 @@ async function main() {
                 () => false,
               );
               await page.waitForTimeout(screen.settle || 1800);
-              for (const st of screen.steps ?? []) {
-                if (st.click) await page.locator(st.click).first().click({ timeout: 8000 });
-                if (st.wait) await page.waitForTimeout(st.wait);
-                if (st.scrollTo != null) await page.evaluate((v) => window.scrollTo(0, v), st.scrollTo);
-                if (st.press) await page.keyboard.press(st.press);
-                if (st.hover) await page.locator(st.hover).first().hover({ timeout: 8000 });
-                if (st.eval) await page.evaluate(st.eval);
-              }
+              for (const [i, st] of (screen.steps ?? []).entries()) await runStep(page, st, i);
               await page.addStyleTag({ content: "nextjs-portal{display:none!important}" }).catch(() => {});
               if (redact.length) await page.evaluate(redactPage, redact);
-              const m = await page.evaluate(measure);
+              const m = await runMeasure(page);
               // accessible names as Chrome computes them (lib/axnames.mjs); `unnamedControls` is what has none
               const names = await readControlNames(page);
               m.unnamedControls = names.unnamed;

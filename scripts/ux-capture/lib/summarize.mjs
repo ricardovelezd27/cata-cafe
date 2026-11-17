@@ -29,10 +29,18 @@ export function summarizeMeasure(m) {
     headings: (m.headings ?? []).slice(0, 8).map((h) => `${h.tag} ${h.px}px/${h.weight} ${h.color}`),
     bodyTextPx: mode(m.textSizes),
     smallestTextPx: sizes.length ? Math.min(...sizes) : null,
+    // text under 12 px as PAINTED (a scaled SVG counts at its drawn size); ...Css is the CSS size, as before 2026-11-17
     textUnder12: m.layout?.under12Count ?? null,
+    textUnder12Css: m.layout?.under12CssCount ?? m.layout?.under12Count ?? null,
     targets: m.targetsTotal,
+    // targets under 44 / 24 px by what a tap reaches (own box + hit-area pseudo-element + checkbox label); ...OwnBox is the
+    // element's own box, which is what every run before 2026-11-17 recorded under the plain name (so an old run's plain
+    // number is read as its OwnBox number)
     targetsUnder44: m.targetsUnder44Count,
     targetsUnder24: m.targetsUnder24Count,
+    targetsUnder44OwnBox: m.targetsUnder44OwnBoxCount ?? m.targetsUnder44Count,
+    targetsUnder24OwnBox: m.targetsUnder24OwnBoxCount ?? m.targetsUnder24Count,
+    hitAreaControls: (m.targetsWithHitArea ?? []).length,
     unnamedControls: (m.unnamedControls ?? []).length,
     lowContrast: m.lowContrastCount,
     worstContrast: worst ? `${worst.ratio} "${worst.text.slice(0, 24)}" ${worst.fg} on ${worst.bg}` : null,
@@ -56,9 +64,13 @@ export const COMPARED_COUNTS = [
   "bodyTextPx",
   "smallestTextPx",
   "textUnder12",
+  "textUnder12Css",
   "targets",
   "targetsUnder44",
   "targetsUnder24",
+  "targetsUnder44OwnBox",
+  "targetsUnder24OwnBox",
+  "hitAreaControls",
   "unnamedControls",
   "lowContrast",
   "primariesInFold",
@@ -97,11 +109,11 @@ export function renderSummary(measures) {
   for (const [plan, rows] of Object.entries(byPlan)) {
     rows.sort((a, b) => a[0].localeCompare(b[0]));
     lines.push(`## ${plan}`, "");
-    lines.push("| capture | final | h | h-over | h1 | body px | min px | <12px | <44 | <24 | contrast | unnamed | primary in fold | docked |");
-    lines.push("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|");
+    lines.push("| capture | final | h | h-over | h1 | body px | min px | <12px | <12px css | <44 | <44 own box | <24 | <24 own box | contrast | unnamed | primary in fold | docked |");
+    lines.push("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|");
     for (const [name, s] of rows) {
       lines.push(
-        `| ${name} | ${s.final} | ${s.docHeight} | ${s.hOverflow ? "YES" : "no"} | ${s.h1Count} | ${s.bodyTextPx} | ${s.smallestTextPx} | ${s.textUnder12} | ${s.targetsUnder44} | ${s.targetsUnder24} | ${s.lowContrast} | ${s.unnamedControls} | ${s.primariesInFold} | ${s.docked.length} |`,
+        `| ${name} | ${s.final} | ${s.docHeight} | ${s.hOverflow ? "YES" : "no"} | ${s.h1Count} | ${s.bodyTextPx} | ${s.smallestTextPx} | ${s.textUnder12} | ${s.textUnder12Css} | ${s.targetsUnder44} | ${s.targetsUnder44OwnBox} | ${s.targetsUnder24} | ${s.targetsUnder24OwnBox} | ${s.lowContrast} | ${s.unnamedControls} | ${s.primariesInFold} | ${s.docked.length} |`,
       );
     }
     lines.push("");
