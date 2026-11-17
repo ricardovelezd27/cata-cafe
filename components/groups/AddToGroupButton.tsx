@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check } from "lucide-react";
 import { addMemberByUserId, createGroupWithMembers } from "@/app/actions/groups";
@@ -12,10 +12,13 @@ const NEW_GROUP_VALUE = "__new__";
 
 export function AddToGroupButton({
   candidateUserId,
+  candidateName,
   groups,
   t,
 }: {
   candidateUserId: string;
+  /** N2: the name the card shows, so the select says whom it adds. */
+  candidateName: string;
   groups: GroupOption[];
   t: {
     addToGroup: string;
@@ -24,6 +27,10 @@ export function AddToGroupButton({
     create: string;
     added: string;
     errorGeneric: string;
+    /** N2: raw template with {name}; begins with the select's own visible text ("Añadir a grupo: {name}"). */
+    addToGroupNamed: string;
+    /** N2: visible label of the new group's name field. */
+    groupName: string;
   };
 }) {
   const router = useRouter();
@@ -34,6 +41,7 @@ export function AddToGroupButton({
   const feedback = useActionFeedback();
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const uid = useId();
 
   const handleSelect = (value: string) => {
     setError(null);
@@ -90,22 +98,31 @@ export function AddToGroupButton({
 
   if (creating) {
     return (
-      <form onSubmit={handleCreateAndAdd} className="flex gap-2">
-        <input
-          autoFocus
-          className="flex-1 min-w-0 px-2.5 py-1.5 border border-outline-variant rounded-input text-xs bg-surface-container-lowest text-on-surface focus:border-primary-container"
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          placeholder={t.namePlaceholder}
-          maxLength={80}
-        />
-        <button
-          type="submit"
-          disabled={pending || !newName.trim()}
-          className="px-3 py-1.5 rounded-pill bg-primary-container text-white text-xs font-semibold disabled:opacity-50 whitespace-nowrap"
+      <form onSubmit={handleCreateAndAdd} className="space-y-1.5">
+        <label
+          htmlFor={`${uid}-new-group`}
+          className="block text-xs text-on-surface-variant font-semibold uppercase tracking-wide"
         >
-          {t.create}
-        </button>
+          {t.groupName}
+        </label>
+        <div className="flex gap-2">
+          <input
+            id={`${uid}-new-group`}
+            autoFocus
+            className="min-h-[44px] flex-1 min-w-0 px-2.5 py-1.5 border border-outline-variant rounded-input text-xs bg-surface-container-lowest text-on-surface focus:border-primary-container"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder={t.namePlaceholder}
+            maxLength={80}
+          />
+          <button
+            type="submit"
+            disabled={pending || !newName.trim()}
+            className="min-h-[44px] px-3 py-1.5 rounded-pill bg-primary-container text-white text-xs font-semibold disabled:opacity-50 whitespace-nowrap"
+          >
+            {t.create}
+          </button>
+        </div>
       </form>
     );
   }
@@ -116,7 +133,8 @@ export function AddToGroupButton({
         value={selected}
         onChange={(e) => handleSelect(e.target.value)}
         disabled={pending}
-        className="w-full px-3 py-2 border border-outline-variant rounded-input text-sm bg-surface-container-lowest text-on-surface focus:border-primary-container disabled:opacity-50"
+        aria-label={t.addToGroupNamed.replace("{name}", candidateName)}
+        className="min-h-[44px] w-full px-3 py-2 border border-outline-variant rounded-input text-sm bg-surface-container-lowest text-on-surface focus:border-primary-container disabled:opacity-50"
       >
         <option value="" disabled>
           {t.addToGroup}

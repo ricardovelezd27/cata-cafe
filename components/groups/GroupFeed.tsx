@@ -5,7 +5,7 @@
 // a plain read-only render. Dates arrive as ISO strings from the server
 // component (page.tsx) and are localized here on the client.
 
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil, Trash2, Check, X } from "lucide-react";
 import { updateGroupPost, deleteGroupPost } from "@/app/actions/groups";
@@ -32,7 +32,20 @@ export type GroupFeedTranslations = {
   deleteBody: string;
   error: string;
   emailSentBadge: string;
+  /** N2: visible labels of the edit fields. */
+  titleLabel: string;
+  bodyLabel: string;
+  /** N2: raw templates with {title}: each icon button names the announcement it acts on. */
+  editNamed: string;
+  deleteNamed: string;
 };
+
+/** How an announcement is named in its buttons: its title, else the start of its text. */
+function postLabel(post: { title: string | null; body: string }): string {
+  if (post.title) return post.title;
+  const body = post.body.replace(/\s+/g, " ").trim();
+  return body.length > 40 ? `${body.slice(0, 40)}…` : body;
+}
 
 function formatPostDate(iso: string, locale: string): string {
   const date = new Date(iso);
@@ -57,6 +70,7 @@ export function GroupFeed({
   t: GroupFeedTranslations;
 }) {
   const router = useRouter();
+  const uid = useId();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editBody, setEditBody] = useState("");
@@ -104,6 +118,8 @@ export function GroupFeed({
 
   const inputCls =
     "w-full border border-outline-variant rounded-input px-3 py-2 text-sm text-on-surface bg-surface-container-lowest focus:border-primary-container transition-colors";
+  // The label style of the group forms (GroupNameControls, CreateGroupDialog).
+  const labelCls = "block text-xs text-on-surface-variant font-semibold uppercase tracking-wide";
 
   if (posts.length === 0) {
     return <p className="text-sm text-on-surface-variant">{isOwner ? t.empty : t.emptyMember}</p>;
@@ -120,14 +136,22 @@ export function GroupFeed({
           >
             {isEditing ? (
               <div className="space-y-2">
+                <label htmlFor={`${uid}-title-${post.id}`} className={labelCls}>
+                  {t.titleLabel}
+                </label>
                 <input
+                  id={`${uid}-title-${post.id}`}
                   autoFocus
-                  className={inputCls + " font-semibold"}
+                  className={inputCls + " min-h-[44px] font-semibold"}
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
                   maxLength={120}
                 />
+                <label htmlFor={`${uid}-body-${post.id}`} className={labelCls}>
+                  {t.bodyLabel}
+                </label>
                 <textarea
+                  id={`${uid}-body-${post.id}`}
                   className={inputCls + " min-h-[96px]"}
                   value={editBody}
                   onChange={(e) => setEditBody(e.target.value)}
@@ -138,7 +162,7 @@ export function GroupFeed({
                     type="button"
                     onClick={() => saveEdit(post.id)}
                     disabled={savingId === post.id || !editBody.trim()}
-                    className="inline-flex items-center gap-1.5 rounded-pill bg-primary-container px-3 py-1.5 text-xs font-semibold text-on-primary hover:bg-primary transition-colors disabled:opacity-50"
+                    className="inline-flex min-h-[44px] items-center gap-1.5 rounded-pill bg-primary-container px-3 py-1.5 text-xs font-semibold text-on-primary hover:bg-primary transition-colors disabled:opacity-50"
                   >
                     <Check size={14} /> {t.save}
                   </button>
@@ -146,7 +170,7 @@ export function GroupFeed({
                     type="button"
                     onClick={cancelEdit}
                     disabled={savingId === post.id}
-                    className="inline-flex items-center gap-1.5 rounded-pill px-3 py-1.5 text-xs font-medium text-on-surface-variant hover:text-on-surface transition-colors disabled:opacity-50"
+                    className="inline-flex min-h-[44px] items-center gap-1.5 rounded-pill px-3 py-1.5 text-xs font-medium text-on-surface-variant hover:text-on-surface transition-colors disabled:opacity-50"
                   >
                     <X size={14} /> {t.cancel}
                   </button>
@@ -165,17 +189,19 @@ export function GroupFeed({
                         type="button"
                         onClick={() => startEdit(post)}
                         title={t.edit}
-                        className="p-1.5 text-on-surface-variant hover:text-on-surface transition-colors"
+                        aria-label={t.editNamed.replace("{title}", postLabel(post))}
+                        className="inline-flex h-[44px] w-[44px] items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors"
                       >
-                        <Pencil size={14} />
+                        <Pencil size={14} aria-hidden />
                       </button>
                       <button
                         type="button"
                         onClick={() => setDeleteTarget(post.id)}
                         title={t.delete}
-                        className="p-1.5 text-on-surface-variant hover:text-error transition-colors"
+                        aria-label={t.deleteNamed.replace("{title}", postLabel(post))}
+                        className="inline-flex h-[44px] w-[44px] items-center justify-center text-on-surface-variant hover:text-error transition-colors"
                       >
-                        <Trash2 size={14} />
+                        <Trash2 size={14} aria-hidden />
                       </button>
                     </div>
                   )}

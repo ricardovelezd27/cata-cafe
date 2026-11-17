@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2, Pencil, Check, X, Send } from "lucide-react";
 import { removeMember, updateMemberDisplayName, resendInvitation } from "@/app/actions/groups";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useActionFeedback } from "@/components/ui/Toast";
 import { Badge } from "@/components/ui/Badge";
+import { HIT_Y44 } from "@/components/ui/hitArea";
 
 type Member = {
   id: string;
@@ -41,6 +42,14 @@ export function MemberList({
     resent: string;
     resendFailed: string;
     resendRateLimited: string;
+    /** N2: raw templates with {name}, so each icon button says whom it acts on. */
+    removeNamed: string;
+    editNameNamed: string;
+    resendNamed: string;
+    saveNamed: string;
+    cancelNamed: string;
+    /** Label of the rename field (screen readers only: the field takes the name's place in the row). */
+    nameLabelNamed: string;
   };
 }) {
   const router = useRouter();
@@ -54,6 +63,9 @@ export function MemberList({
     Record<string, "sent" | "skipped" | "failed" | "rate_limited">
   >({});
   const [, start] = useTransition();
+  const uid = useId();
+  /** The member as the roster shows them (the owner's own view: name, else the address it already displays). */
+  const named = (template: string, m: Member) => template.replace("{name}", m.displayName || m.email);
 
   // Runs inside ConfirmDialog. A failure is toasted with its own localized
   // copy (feedback.run) and the dialog closes; success refreshes the roster.
@@ -124,9 +136,13 @@ export function MemberList({
           >
             {isEditing ? (
               <div className="flex flex-1 items-center gap-2 min-w-0">
+                <label htmlFor={`${uid}-name-${m.id}`} className="sr-only">
+                  {named(t.nameLabelNamed, m)}
+                </label>
                 <input
+                  id={`${uid}-name-${m.id}`}
                   autoFocus
-                  className="min-w-0 flex-1 rounded-input border border-outline-variant bg-surface-container-lowest px-2.5 py-1.5 text-sm text-on-surface transition-colors focus:border-primary-container"
+                  className="min-h-[44px] min-w-0 flex-1 rounded-input border border-outline-variant bg-surface-container-lowest px-2.5 py-1.5 text-sm text-on-surface transition-colors focus:border-primary-container"
                   value={editValue}
                   onChange={(e) => setEditValue(e.target.value)}
                   placeholder={t.namePlaceholder}
@@ -137,17 +153,20 @@ export function MemberList({
                   onClick={() => saveEdit(m.id)}
                   disabled={pendingId === m.id || !editValue.trim()}
                   title={t.save}
-                  className="p-1.5 text-primary-container transition-colors hover:text-primary disabled:opacity-50"
+                  aria-label={named(t.saveNamed, m)}
+                  className={`${HIT_Y44} p-1.5 text-primary-container transition-colors hover:text-primary disabled:opacity-50`}
                 >
-                  <Check size={16} />
+                  <Check size={16} aria-hidden />
                 </button>
                 <button
                   type="button"
                   onClick={cancelEdit}
                   disabled={pendingId === m.id}
-                  className="p-1.5 text-on-surface-variant transition-colors hover:text-on-surface disabled:opacity-50"
+                  title={t.cancel}
+                  aria-label={named(t.cancelNamed, m)}
+                  className={`${HIT_Y44} p-1.5 text-on-surface-variant transition-colors hover:text-on-surface disabled:opacity-50`}
                 >
-                  <X size={16} />
+                  <X size={16} aria-hidden />
                 </button>
               </div>
             ) : (
@@ -183,9 +202,10 @@ export function MemberList({
                     onClick={() => onResend(m.id)}
                     disabled={pendingId === m.id}
                     title={t.resend}
-                    className="p-1.5 text-on-surface-variant transition-colors hover:text-primary-container disabled:opacity-50"
+                    aria-label={named(t.resendNamed, m)}
+                    className={`${HIT_Y44} p-1.5 text-on-surface-variant transition-colors hover:text-primary-container disabled:opacity-50`}
                   >
-                    <Send size={16} />
+                    <Send size={16} aria-hidden />
                   </button>
                 )}
                 <button
@@ -193,18 +213,20 @@ export function MemberList({
                   onClick={() => startEdit(m)}
                   disabled={pendingId === m.id}
                   title={t.editName}
-                  className="p-1.5 text-on-surface-variant hover:text-primary-container transition-colors disabled:opacity-50"
+                  aria-label={named(t.editNameNamed, m)}
+                  className={`${HIT_Y44} p-1.5 text-on-surface-variant hover:text-primary-container transition-colors disabled:opacity-50`}
                 >
-                  <Pencil size={16} />
+                  <Pencil size={16} aria-hidden />
                 </button>
                 <button
                   type="button"
                   onClick={() => setRemoveTarget(m)}
                   disabled={pendingId === m.id}
                   title={t.removeMember}
-                  className="p-1.5 text-on-surface-variant hover:text-error transition-colors disabled:opacity-50"
+                  aria-label={named(t.removeNamed, m)}
+                  className={`${HIT_Y44} p-1.5 text-on-surface-variant hover:text-error transition-colors disabled:opacity-50`}
                 >
-                  <Trash2 size={16} />
+                  <Trash2 size={16} aria-hidden />
                 </button>
               </div>
             )}

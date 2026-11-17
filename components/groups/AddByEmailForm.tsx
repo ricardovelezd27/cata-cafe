@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Clock, X, type LucideIcon } from "lucide-react";
 import { addMemberByEmail } from "@/app/actions/groups";
@@ -32,6 +32,8 @@ export function AddByEmailForm({
     sendSkippedNotice: string;
     inviteRateLimited: string;
     errorGeneric: string;
+    /** N2: visible label of the address field; the name field is labelled by displayNamePlaceholder. */
+    emailLabel: string;
   };
 }) {
   const router = useRouter();
@@ -40,9 +42,12 @@ export function AddByEmailForm({
   const feedback = useActionFeedback();
   const [status, setStatus] = useState<EmailStatus | null>(null);
   const [pending, start] = useTransition();
+  const uid = useId();
 
+  // The label style of the group forms (GroupNameControls, CreateGroupDialog).
+  const labelCls = "block text-xs text-on-surface-variant font-semibold uppercase tracking-wide";
   const inputCls =
-    "w-full px-3 py-2 border border-outline-variant rounded-input text-sm bg-surface-container-lowest text-on-surface focus:border-primary-container";
+    "min-h-[44px] w-full px-3 py-2 border border-outline-variant rounded-input text-sm bg-surface-container-lowest text-on-surface focus:border-primary-container";
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,25 +71,37 @@ export function AddByEmailForm({
 
   return (
     <form onSubmit={onSubmit} className="space-y-2">
-      <input
-        type="email"
-        className={inputCls}
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        placeholder={t.emailPlaceholder}
-        required
-      />
-      <input
-        className={inputCls}
-        value={displayName}
-        onChange={(e) => setDisplayName(e.target.value)}
-        placeholder={t.displayNamePlaceholder}
-        maxLength={80}
-      />
+      <div className="space-y-1.5">
+        <label htmlFor={`${uid}-email`} className={labelCls}>
+          {t.emailLabel}
+        </label>
+        <input
+          id={`${uid}-email`}
+          type="email"
+          className={inputCls}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder={t.emailPlaceholder}
+          required
+        />
+      </div>
+      <div className="space-y-1.5">
+        <label htmlFor={`${uid}-name`} className={labelCls}>
+          {t.displayNamePlaceholder}
+        </label>
+        <input
+          id={`${uid}-name`}
+          className={inputCls}
+          value={displayName}
+          onChange={(e) => setDisplayName(e.target.value)}
+          placeholder={t.displayNamePlaceholder}
+          maxLength={80}
+        />
+      </div>
       <button
         type="submit"
         disabled={pending || !email.trim()}
-        className="px-4 py-2 rounded-pill bg-primary-container text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+        className="min-h-[44px] px-4 py-2 rounded-pill bg-primary-container text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
       >
         {t.addMember}
       </button>

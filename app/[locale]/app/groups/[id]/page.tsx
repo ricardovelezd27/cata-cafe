@@ -104,6 +104,10 @@ export default async function GroupDetailPage({
     deleteBody: t("feed.deleteBody"),
     error: t("feed.error"),
     emailSentBadge: t("feed.emailSentBadge"),
+    titleLabel: t("feed.titleLabel"),
+    bodyLabel: t("feed.bodyLabel"),
+    editNamed: t.raw("feed.editNamed") as string,
+    deleteNamed: t.raw("feed.deleteNamed") as string,
   };
 
   // Sessions linked to this group via the CuppingSession.groupId FK (Groups
@@ -387,6 +391,8 @@ export default async function GroupDetailPage({
     notifyNone: t("feed.notifyNone"),
     sendSummaryTemplate: t.raw("sendSummary") as string,
     sendRateLimited: t("sendRateLimited"),
+    titleLabel: t("feed.titleLabel"),
+    bodyLabel: t("feed.bodyLabel"),
   };
 
   return (
@@ -394,7 +400,7 @@ export default async function GroupDetailPage({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
           href={`/${locale}/app/groups`}
-          className="inline-flex w-fit items-center gap-1 text-sm text-on-surface-variant transition-colors hover:text-on-surface"
+          className="inline-flex min-h-[44px] w-fit items-center gap-1 text-sm text-on-surface-variant transition-colors hover:text-on-surface"
         >
           <ChevronLeft size={16} aria-hidden />
           {t("backToGroups")}
@@ -409,9 +415,9 @@ export default async function GroupDetailPage({
           />
           <Link
             href={`/${locale}/app/sessions/new?groupId=${id}`}
-            className="inline-flex items-center gap-1.5 rounded-pill bg-primary-container px-4 py-2 text-sm font-medium text-on-primary transition-colors hover:bg-primary"
+            className="inline-flex min-h-[44px] items-center gap-1.5 rounded-pill bg-primary-container px-4 py-2 text-sm font-medium text-on-primary transition-colors hover:bg-primary"
           >
-            <Plus size={16} /> {t("createSessionCta")}
+            <Plus size={16} aria-hidden /> {t("createSessionCta")}
           </Link>
         </div>
       </div>
@@ -502,6 +508,12 @@ export default async function GroupDetailPage({
             resent: t("memberEdit.resent"),
             resendFailed: t("memberEdit.resendFailed"),
             resendRateLimited: t("memberEdit.resendRateLimited"),
+            removeNamed: t.raw("memberEdit.removeNamed") as string,
+            editNameNamed: t.raw("memberEdit.editNameNamed") as string,
+            resendNamed: t.raw("memberEdit.resendNamed") as string,
+            saveNamed: t.raw("memberEdit.saveNamed") as string,
+            cancelNamed: t.raw("memberEdit.cancelNamed") as string,
+            nameLabelNamed: t.raw("memberEdit.nameLabelNamed") as string,
           }}
         />
       </div>
@@ -532,6 +544,7 @@ export default async function GroupDetailPage({
               noCoCuppers: t("noCoCuppers"),
               added: t("added"),
               errorGeneric: t("errorGeneric"),
+              addNamed: t.raw("quickAddNamed") as string,
             }}
           />
         </div>
@@ -549,6 +562,7 @@ export default async function GroupDetailPage({
               sendSkippedNotice: t("sendSkippedNotice"),
               inviteRateLimited: t("invitesRateLimitedShort"),
               errorGeneric: t("errorGeneric"),
+              emailLabel: t("emailLabel"),
             }}
           />
         </div>

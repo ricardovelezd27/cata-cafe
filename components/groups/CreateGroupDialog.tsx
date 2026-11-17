@@ -6,11 +6,12 @@
 // CreateGroupForm — group creation and the initial invite blast now happen
 // in one atomic call to createGroupWithMembers.
 
-import { useRef, useState, useTransition } from "react";
+import { useId, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, X, Check } from "lucide-react";
 import { createGroupWithMembers } from "@/app/actions/groups";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
+import { HIT_44 } from "@/components/ui/hitArea";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -36,6 +37,11 @@ export type CreateGroupTranslations = {
   invitesRateLimited: string;
   errorGeneric: string;
   closeLabel: string;
+  /** N2: visible labels: the name field (groupName) and each row's address field (emailLabel); a row's name field uses displayNamePlaceholder. */
+  groupName: string;
+  emailLabel: string;
+  /** N2: raw template with {n}: "Quitar la fila {n}". */
+  removeRowNamed: string;
 };
 
 type MemberRow = { email: string; displayName: string };
@@ -70,6 +76,7 @@ export function CreateGroupDialog({
   // create (and email) a second group.
   const [navigating, setNavigating] = useState(false);
   const [pending, start] = useTransition();
+  const uid = useId();
   // Idempotency key of THIS dialog session: a replayed submit (double tap,
   // retry after a lost response) returns the stored group instead of making
   // another one. A fresh key on every reset.
@@ -169,35 +176,43 @@ export function CreateGroupDialog({
 
   const inputCls =
     "w-full px-3 py-2 border border-outline-variant rounded-input text-sm bg-surface-container-lowest text-on-surface focus:border-primary-container";
+  const labelCls = "block text-xs text-on-surface-variant font-semibold uppercase tracking-wide";
 
   return (
     <>
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-pill bg-primary-container text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+        className="inline-flex min-h-[44px] items-center gap-1.5 px-4 py-2 rounded-pill bg-primary-container text-white text-sm font-semibold hover:opacity-90 transition-opacity"
       >
-        <Plus size={16} />
+        <Plus size={16} aria-hidden />
         {t.createGroupCta}
       </button>
 
       <ResponsiveDialog open={open} onOpenChange={handleOpenChange} title={t.createGroupTitle} closeLabel={t.closeLabel}>
         <form onSubmit={onSubmit} className="space-y-5">
-          <input
-            autoFocus
-            className={inputCls}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder={t.namePlaceholder}
-            maxLength={80}
-            required
-          />
+          <div className="space-y-1.5">
+            <label htmlFor={`${uid}-name`} className={labelCls}>
+              {t.groupName}
+            </label>
+            <input
+              id={`${uid}-name`}
+              autoFocus
+              className={inputCls + " min-h-[44px]"}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={t.namePlaceholder}
+              maxLength={80}
+              required
+            />
+          </div>
 
           <div className="space-y-1.5">
-            <label className="block text-xs text-on-surface-variant font-semibold uppercase tracking-wide">
+            <label htmlFor={`${uid}-description`} className={labelCls}>
               {t.descriptionLabel}
             </label>
             <textarea
+              id={`${uid}-description`}
               className={inputCls + " min-h-[72px]"}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -207,33 +222,46 @@ export function CreateGroupDialog({
           </div>
 
           <div className="space-y-2">
-            <label className="block text-xs text-on-surface-variant font-semibold uppercase tracking-wide">
+            <p id={`${uid}-members`} className={labelCls}>
               {t.membersSectionTitle}
-            </label>
-            <div className="space-y-2">
+            </p>
+            <div role="group" aria-labelledby={`${uid}-members`} className="space-y-2">
               {rows.map((row, i) => (
                 <div key={i} className="flex flex-col sm:flex-row gap-2">
-                  <input
-                    type="email"
-                    className={inputCls + " sm:flex-1"}
-                    value={row.email}
-                    onChange={(e) => updateRow(i, { email: e.target.value })}
-                    placeholder={t.emailPlaceholder}
-                  />
-                  <input
-                    className={inputCls + " sm:flex-1"}
-                    value={row.displayName}
-                    onChange={(e) => updateRow(i, { displayName: e.target.value })}
-                    placeholder={t.displayNamePlaceholder}
-                    maxLength={80}
-                  />
+                  <div className="space-y-1.5 sm:flex-1">
+                    <label htmlFor={`${uid}-email-${i}`} className={labelCls}>
+                      {t.emailLabel}
+                    </label>
+                    <input
+                      id={`${uid}-email-${i}`}
+                      type="email"
+                      className={inputCls + " min-h-[44px]"}
+                      value={row.email}
+                      onChange={(e) => updateRow(i, { email: e.target.value })}
+                      placeholder={t.emailPlaceholder}
+                    />
+                  </div>
+                  <div className="space-y-1.5 sm:flex-1">
+                    <label htmlFor={`${uid}-display-${i}`} className={labelCls}>
+                      {t.displayNamePlaceholder}
+                    </label>
+                    <input
+                      id={`${uid}-display-${i}`}
+                      className={inputCls + " min-h-[44px]"}
+                      value={row.displayName}
+                      onChange={(e) => updateRow(i, { displayName: e.target.value })}
+                      placeholder={t.displayNamePlaceholder}
+                      maxLength={80}
+                    />
+                  </div>
                   <button
                     type="button"
                     onClick={() => removeRow(i)}
                     title={t.removeRow}
-                    className="shrink-0 self-start sm:self-center p-2 text-on-surface-variant hover:text-error transition-colors"
+                    aria-label={t.removeRowNamed.replace("{n}", String(i + 1))}
+                    className={`${HIT_44} shrink-0 self-start sm:self-end p-2 text-on-surface-variant hover:text-error transition-colors`}
                   >
-                    <X size={16} />
+                    <X size={16} aria-hidden />
                   </button>
                 </div>
               ))}
@@ -241,18 +269,18 @@ export function CreateGroupDialog({
             <button
               type="button"
               onClick={addRow}
-              className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary-container hover:opacity-80 transition-opacity"
+              className="inline-flex min-h-[44px] items-center gap-1.5 text-sm font-semibold text-primary-container hover:opacity-80 transition-opacity"
             >
-              <Plus size={14} /> {t.addAnotherMember}
+              <Plus size={14} aria-hidden /> {t.addAnotherMember}
             </button>
           </div>
 
           {candidates.length > 0 && (
             <div className="space-y-2">
-              <label className="block text-xs text-on-surface-variant font-semibold uppercase tracking-wide">
+              <p id={`${uid}-quick-add`} className={labelCls}>
                 {t.quickAddTitle}
-              </label>
-              <div className="flex flex-wrap gap-2">
+              </p>
+              <div role="group" aria-labelledby={`${uid}-quick-add`} className="flex flex-wrap gap-2">
                 {candidates.map((c) => {
                   const selected = selectedCandidates.has(c.userId);
                   return (
@@ -261,7 +289,7 @@ export function CreateGroupDialog({
                       type="button"
                       onClick={() => toggleCandidate(c.userId)}
                       className={
-                        "inline-flex items-center gap-1 px-3 py-1.5 rounded-pill text-xs font-semibold border transition-colors " +
+                        "inline-flex min-h-[44px] items-center gap-1 px-3 py-1.5 rounded-pill text-xs font-semibold border transition-colors " +
                         (selected
                           ? "bg-primary-container text-white border-primary-container"
                           : "bg-surface-container-lowest text-on-surface border-outline-variant hover:border-primary-container")
@@ -296,7 +324,7 @@ export function CreateGroupDialog({
             <button
               type="submit"
               disabled={pending || navigating || !name.trim()}
-              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-pill bg-primary-container text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+              className="inline-flex min-h-[44px] items-center gap-1.5 px-5 py-2.5 rounded-pill bg-primary-container text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
             >
               {pending ? t.creating : t.createAndInvite}
             </button>
