@@ -184,7 +184,7 @@ export default function CoffeesTable({
             <span className="inline-flex items-center gap-2">
               <Link
                 href={`/${locale}/app/coffees/${row.id}`}
-                className="inline-block min-h-[24px] font-semibold text-on-surface hover:text-primary-container"
+                className="inline-block min-h-[24px] min-w-[24px] font-semibold text-on-surface hover:text-primary-container"
               >
                 {row.name}
               </Link>
@@ -433,7 +433,7 @@ export default function CoffeesTable({
                 <span className="inline-flex flex-wrap items-center gap-2">
                   <Link
                     href={`/${locale}/app/coffees/${row.id}`}
-                    className="inline-block min-h-[24px] font-semibold leading-tight text-on-surface hover:text-primary-container"
+                    className="inline-block min-h-[24px] min-w-[24px] font-semibold leading-tight text-on-surface hover:text-primary-container"
                   >
                     {row.name}
                   </Link>

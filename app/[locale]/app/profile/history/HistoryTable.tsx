@@ -198,7 +198,7 @@ export function HistoryTable({
               ) : (
                 <GuestGateLink
                   href={`/${locale}/app/coffees/${row.coffeeId}`}
-                  className="block truncate font-semibold text-on-surface transition-colors hover:text-primary-container"
+                  className="min-h-[24px] min-w-[24px] block truncate font-semibold text-on-surface transition-colors hover:text-primary-container"
                 >
                   {row.coffeeName}
                 </GuestGateLink>
@@ -206,7 +206,7 @@ export function HistoryTable({
               {row.sessionId ? (
                 <Link
                   href={`/${locale}/app/sessions/${row.sessionId}/results`}
-                  className="block truncate text-xs text-on-surface-variant transition-colors hover:text-primary-container"
+                  className="min-h-[24px] min-w-[24px] block truncate text-xs text-on-surface-variant transition-colors hover:text-primary-container"
                 >
                   {row.sessionName}
                 </Link>

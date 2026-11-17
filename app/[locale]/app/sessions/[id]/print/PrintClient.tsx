@@ -1284,7 +1284,7 @@ export function PrintClient({
       >
         <button
           onClick={() => window.history.back()}
-          className="flex items-center gap-1.5 rounded-pill border border-white/40 px-3 py-1.5 font-ui text-xs font-medium text-white transition-colors hover:bg-white/10"
+          className="min-h-[44px] flex items-center gap-1.5 rounded-pill border border-white/40 px-3 py-1.5 font-ui text-xs font-medium text-white transition-colors hover:bg-white/10"
         >
           <ArrowLeft size={14} aria-hidden />
           Volver
@@ -1294,7 +1294,7 @@ export function PrintClient({
         </span>
         <button
           onClick={() => printPage()}
-          className="flex items-center gap-1.5 rounded-pill bg-white px-4 py-1.5 font-ui text-xs font-medium text-primary-container transition-colors hover:bg-surface-container"
+          className="min-h-[44px] flex items-center gap-1.5 rounded-pill bg-white px-4 py-1.5 font-ui text-xs font-medium text-primary-container transition-colors hover:bg-surface-container"
         >
           <Printer size={14} aria-hidden />
           Imprimir

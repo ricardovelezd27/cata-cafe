@@ -171,12 +171,12 @@ export default async function JoinPage({
           <p className="text-lg font-semibold text-red-defect">{copy[0]}</p>
           <p className="text-sm text-brown-mid">{copy[1]}</p>
           <div className="flex flex-col gap-2 text-sm">
-            <Link href={`/${locale}/app`} className="text-brown-mid underline hover:text-green-dark">
+            <Link href={`/${locale}/app`} className="flex min-h-[44px] items-center justify-center text-brown-mid underline hover:text-green-dark">
               {t("joinHome")}
             </Link>
             <Link
               href={loginHref}
-              className="text-brown-mid underline hover:text-green-dark"
+              className="flex min-h-[44px] items-center justify-center text-brown-mid underline hover:text-green-dark"
             >
               {tAuth("loginTitle")}
             </Link>

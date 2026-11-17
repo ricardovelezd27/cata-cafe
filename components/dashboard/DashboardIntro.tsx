@@ -78,7 +78,7 @@ export function DashboardIntro({
     return (
       <button
         onClick={reopen}
-        className="group inline-flex items-center gap-2 text-sm text-on-surface-variant hover:text-primary-container transition-colors"
+        className="min-h-[44px] group inline-flex items-center gap-2 text-sm text-on-surface-variant hover:text-primary-container transition-colors"
       >
         <HelpCircle size={15} className="text-green-mid" />
         <span className="underline decoration-outline-variant decoration-1 underline-offset-4 group-hover:decoration-primary-container">
@@ -115,7 +115,7 @@ export function DashboardIntro({
         <button
           onClick={dismiss}
           aria-label={t.dismiss}
-          className="absolute right-3 top-3 grid h-7 w-7 place-items-center rounded-pill text-on-surface-variant hover:bg-surface-container hover:text-primary-container transition-colors"
+          className="absolute right-1 top-1 grid h-[44px] w-[44px] place-items-center rounded-pill text-on-surface-variant hover:bg-surface-container hover:text-primary-container transition-colors"
         >
           <X size={15} />
         </button>
@@ -160,7 +160,7 @@ export function DashboardIntro({
         <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-3">
           <GuestGateLink
             href={newSessionHref}
-            className="inline-flex items-center gap-2 rounded-input bg-primary-container px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary"
+            className="min-h-[44px] inline-flex items-center gap-2 rounded-input bg-primary-container px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary"
           >
             {t.ctaPrimary}
             <ArrowRight size={15} />
@@ -169,7 +169,7 @@ export function DashboardIntro({
           <button
             onClick={() => setShowCalc((v) => !v)}
             aria-expanded={showCalc}
-            className="inline-flex items-center gap-2 text-sm font-semibold text-primary-container transition-colors hover:text-green-mid"
+            className="min-h-[44px] inline-flex items-center gap-2 text-sm font-semibold text-primary-container transition-colors hover:text-green-mid"
           >
             <Sigma size={15} className="text-secondary" />
             {t.ctaCalc}
@@ -242,7 +242,7 @@ export function DashboardIntro({
         <div className="mt-5">
           <button
             onClick={dismiss}
-            className="text-sm font-medium text-on-surface-variant underline decoration-outline-variant decoration-1 underline-offset-4 transition-colors hover:text-primary-container hover:decoration-primary-container"
+            className="min-h-[44px] min-w-[44px] text-sm font-medium text-on-surface-variant underline decoration-outline-variant decoration-1 underline-offset-4 transition-colors hover:text-primary-container hover:decoration-primary-container"
           >
             {t.dismiss}
           </button>

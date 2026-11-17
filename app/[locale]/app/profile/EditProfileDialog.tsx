@@ -25,7 +25,7 @@ export function EditProfileDialog({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1.5 rounded-pill border border-primary-container px-4 py-2 text-sm font-semibold text-primary-container transition-colors hover:bg-primary-fixed"
+        className="min-h-[44px] inline-flex items-center gap-1.5 rounded-pill border border-primary-container px-4 py-2 text-sm font-semibold text-primary-container transition-colors hover:bg-primary-fixed"
       >
         <Pencil size={15} />
         {label}

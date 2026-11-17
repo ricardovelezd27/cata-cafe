@@ -111,7 +111,7 @@ export function SessionsTable({
           <div className="flex flex-wrap items-center gap-1.5">
             <Link
               href={row.href}
-              className="inline-block min-h-[24px] font-semibold text-on-surface transition-colors hover:text-primary-container"
+              className="inline-block min-h-[24px] min-w-[24px] font-semibold text-on-surface transition-colors hover:text-primary-container"
             >
               {row.name}
             </Link>

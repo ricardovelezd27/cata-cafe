@@ -139,19 +139,19 @@ export function CoffeeShareManager({
             readOnly
             value={inviteUrl}
             onFocus={(e) => e.target.select()}
-            className="flex-1 border border-outline-variant rounded-input px-3 py-2 text-xs font-mono truncate bg-surface-container-lowest"
+            className="min-h-[44px] flex-1 border border-outline-variant rounded-input px-3 py-2 text-xs font-mono truncate bg-surface-container-lowest"
           />
           <button
             type="button"
             onClick={handleCopy}
-            className="rounded-pill border border-outline-variant text-xs font-semibold px-3 py-1.5 hover:bg-surface-container whitespace-nowrap"
+            className="min-h-[44px] rounded-pill border border-outline-variant text-xs font-semibold px-3 py-1.5 hover:bg-surface-container whitespace-nowrap"
           >
             {copied ? t.copied : t.copyLink}
           </button>
           <button
             type="button"
             onClick={() => setAskRotate(true)}
-            className="rounded-pill border border-outline-variant text-xs font-semibold px-3 py-1.5 hover:bg-surface-container whitespace-nowrap"
+            className="min-h-[44px] rounded-pill border border-outline-variant text-xs font-semibold px-3 py-1.5 hover:bg-surface-container whitespace-nowrap"
           >
             {t.rotate}
           </button>
@@ -161,7 +161,7 @@ export function CoffeeShareManager({
           type="button"
           disabled={isPending}
           onClick={handleGenerate}
-          className="rounded-pill bg-primary-container text-white text-xs font-semibold px-3 py-1.5 hover:bg-green-mid transition disabled:opacity-60"
+          className="min-h-[44px] rounded-pill bg-primary-container text-white text-xs font-semibold px-3 py-1.5 hover:bg-green-mid transition disabled:opacity-60"
         >
           {isPending ? t.generating : t.generateLink}
         </button>
@@ -194,7 +194,7 @@ export function CoffeeShareManager({
                     setAlsoRotate(true);
                     setAskRevoke(s);
                   }}
-                  className="rounded-pill border border-outline-variant text-xs font-semibold px-3 py-1.5 hover:bg-surface-container disabled:opacity-60"
+                  className="min-h-[44px] rounded-pill border border-outline-variant text-xs font-semibold px-3 py-1.5 hover:bg-surface-container disabled:opacity-60"
                 >
                   {t.revoke}
                 </button>

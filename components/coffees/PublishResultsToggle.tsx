@@ -73,7 +73,7 @@ export function PublishResultsToggle({ coffeeId, resultsPublished, translations 
         type="button"
         onClick={handleClick}
         disabled={isPending}
-        className="text-xs font-semibold px-3 py-1.5 rounded-pill border border-outline-variant text-on-surface hover:bg-surface-container transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="min-h-[44px] text-xs font-semibold px-3 py-1.5 rounded-pill border border-outline-variant text-on-surface hover:bg-surface-container transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {resultsPublished
           ? translations.unpublish
