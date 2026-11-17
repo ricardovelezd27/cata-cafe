@@ -67,6 +67,8 @@ export default async function GroupsPage({
     create: t("create"),
     added: t("added"),
     errorGeneric: t("errorGeneric"),
+    addToGroupNamed: t.raw("addToGroupNamed") as string,
+    groupName: t("groupName"),
     sessionOne: t("sessionOne"),
     sessionMany: t("sessionMany"),
     evaluationOne: t("evaluationOne"),
@@ -102,6 +104,9 @@ export default async function GroupsPage({
     invitesRateLimited: t("invitesRateLimited"),
     errorGeneric: t("errorGeneric"),
     closeLabel: tActions("cancel"),
+    groupName: t("groupName"),
+    emailLabel: t("emailLabel"),
+    removeRowNamed: t.raw("removeRowNamed") as string,
   };
 
   return (

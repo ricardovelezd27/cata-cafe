@@ -2104,7 +2104,11 @@
       "delete": "Eliminar",
       "deleteTitle": "Eliminar anuncio",
       "deleteBody": "El anuncio se eliminará para todos los miembros. Esta acción no se puede deshacer.",
-      "error": "No se pudo publicar el anuncio. Inténtalo de nuevo."
+      "error": "No se pudo publicar el anuncio. Inténtalo de nuevo.",
+      "titleLabel": "Título",
+      "bodyLabel": "Anuncio",
+      "editNamed": "Editar el anuncio «{title}»",
+      "deleteNamed": "Eliminar el anuncio «{title}»"
     },
     "emailOptOut": {
       "badge": "Se dio de baja de los correos",
@@ -2129,7 +2133,13 @@
       "resendRateLimited": "Alcanzaste el límite de envíos. Inténtalo más tarde.",
       "error": "No se pudo guardar. Inténtalo de nuevo.",
       "removeTitle": "Quitar del grupo",
-      "removeBodyNamed": "¿Quitar a {name} del grupo?"
+      "removeBodyNamed": "¿Quitar a {name} del grupo?",
+      "removeNamed": "Quitar a {name}",
+      "editNameNamed": "Editar el nombre de {name}",
+      "resendNamed": "Reenviar la invitación a {name}",
+      "saveNamed": "Guardar el nombre de {name}",
+      "cancelNamed": "Cancelar la edición de {name}",
+      "nameLabelNamed": "Nombre visible de {name}"
     },
     "empty": "Aún no tienes grupos. Crea uno para reutilizar tu roster de catadores en cada sesión.",
     "coCuppersTitle": "Personas con las que has catado",
@@ -2212,7 +2222,11 @@
     "noGroupOption": "Sin grupo",
     "autoInviteAsync": "Avisar al grupo por correo al crear la sesión",
     "autoInviteSummary": "Invitación enviada a {sent} integrantes · {skipped} omitidas · {failed} fallidas",
-    "joinSessionLink": "Unirme a la sesión"
+    "joinSessionLink": "Unirme a la sesión",
+    "emailLabel": "Correo",
+    "quickAddNamed": "Añadir a {name} al grupo",
+    "addToGroupNamed": "Añadir a grupo: {name}",
+    "removeRowNamed": "Quitar la fila {n}"
   },
   "guestGate": {
     "title": "Termina de crear tu cuenta",

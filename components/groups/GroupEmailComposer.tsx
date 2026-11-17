@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useId, useRef, useState, useTransition } from "react";
 import { Mail, Check, Clock, X, RotateCcw, type LucideIcon } from "lucide-react";
 import { sendGroupEmail, type GroupEmailSummary } from "@/app/actions/groups";
 
@@ -69,6 +69,9 @@ export function GroupEmailComposer({
 
   const inputCls =
     "w-full px-3 py-2 border border-outline-variant rounded-input text-sm bg-surface-container-lowest text-on-surface focus:border-primary-container";
+  // The label style of the group forms (GroupNameControls, CreateGroupDialog).
+  const labelCls = "block text-xs text-on-surface-variant font-semibold uppercase tracking-wide";
+  const uid = useId();
 
   const submit = () => {
     if (!subject.trim() || !message.trim()) return;
@@ -108,28 +111,40 @@ export function GroupEmailComposer({
 
   return (
     <form onSubmit={onSubmit} className="space-y-4 bg-surface-container-lowest border border-outline-variant rounded-card p-5">
-      <input
-        className={inputCls}
-        value={subject}
-        onChange={(e) => {
-          setSubject(e.target.value);
-          edited();
-        }}
-        placeholder={t.subject}
-        maxLength={200}
-        required
-      />
-      <textarea
-        className={inputCls + " min-h-[120px]"}
-        value={message}
-        onChange={(e) => {
-          setMessage(e.target.value);
-          edited();
-        }}
-        placeholder={t.message}
-        maxLength={5000}
-        required
-      />
+      <div className="space-y-1.5">
+        <label htmlFor={`${uid}-subject`} className={labelCls}>
+          {t.subject}
+        </label>
+        <input
+          id={`${uid}-subject`}
+          className={inputCls + " min-h-[44px]"}
+          value={subject}
+          onChange={(e) => {
+            setSubject(e.target.value);
+            edited();
+          }}
+          placeholder={t.subject}
+          maxLength={200}
+          required
+        />
+      </div>
+      <div className="space-y-1.5">
+        <label htmlFor={`${uid}-message`} className={labelCls}>
+          {t.message}
+        </label>
+        <textarea
+          id={`${uid}-message`}
+          className={inputCls + " min-h-[120px]"}
+          value={message}
+          onChange={(e) => {
+            setMessage(e.target.value);
+            edited();
+          }}
+          placeholder={t.message}
+          maxLength={5000}
+          required
+        />
+      </div>
 
       {sessions.length > 0 && (
         <div className="space-y-2">
@@ -146,21 +161,27 @@ export function GroupEmailComposer({
             {t.includeInviteLink}
           </label>
           {includeInvite && (
-            <select
-              value={sessionId}
-              onChange={(e) => {
-                setSessionId(e.target.value);
-                edited();
-              }}
-              className={inputCls}
-              title={t.selectSession}
-            >
-              {sessions.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
+            <div className="space-y-1.5">
+              <label htmlFor={`${uid}-session`} className={labelCls}>
+                {t.selectSession}
+              </label>
+              <select
+                id={`${uid}-session`}
+                value={sessionId}
+                onChange={(e) => {
+                  setSessionId(e.target.value);
+                  edited();
+                }}
+                className={inputCls + " min-h-[44px]"}
+                title={t.selectSession}
+              >
+                {sessions.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           )}
         </div>
       )}
@@ -168,9 +189,9 @@ export function GroupEmailComposer({
       <button
         type="submit"
         disabled={pending || !subject.trim() || !message.trim()}
-        className="inline-flex items-center gap-2 px-5 py-2 rounded-pill bg-primary-container text-white font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+        className="inline-flex min-h-[44px] items-center gap-2 px-5 py-2 rounded-pill bg-primary-container text-white font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
       >
-        <Mail size={16} />
+        <Mail size={16} aria-hidden />
         {pending ? t.sending : t.send}
       </button>
 
@@ -195,7 +216,7 @@ export function GroupEmailComposer({
               type="button"
               onClick={submit}
               disabled={pending}
-              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-pill border border-outline text-sm font-semibold text-on-surface hover:bg-surface-container transition-colors disabled:opacity-50"
+              className="inline-flex min-h-[44px] items-center gap-2 px-4 py-1.5 rounded-pill border border-outline text-sm font-semibold text-on-surface hover:bg-surface-container transition-colors disabled:opacity-50"
             >
               <RotateCcw size={14} />
               {pending ? t.retrying : t.retryFailed}

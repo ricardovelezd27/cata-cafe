@@ -40,7 +40,7 @@ export function LeaveGroupButton({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1.5 rounded-pill border border-outline-variant px-4 py-2 text-sm font-medium text-error transition-colors hover:bg-error-container"
+        className="inline-flex min-h-[44px] items-center gap-1.5 rounded-pill border border-outline-variant px-4 py-2 text-sm font-medium text-error transition-colors hover:bg-error-container"
       >
         <LogOut size={16} /> {t.cta}
       </button>

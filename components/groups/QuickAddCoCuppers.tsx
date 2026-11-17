@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Check, Plus } from "lucide-react";
 import { addMemberByUserId } from "@/app/actions/groups";
 import { useActionFeedback } from "@/components/ui/Toast";
+import { HIT_44 } from "@/components/ui/hitArea";
 
 type Candidate = { userId: string; displayName: string };
 
@@ -15,7 +16,13 @@ export function QuickAddCoCuppers({
 }: {
   groupId: string;
   candidates: Candidate[];
-  t: { noCoCuppers: string; added: string; errorGeneric: string };
+  t: {
+    noCoCuppers: string;
+    added: string;
+    errorGeneric: string;
+    /** N2: raw template with {name}: "Añadir a {name} al grupo". */
+    addNamed: string;
+  };
 }) {
   const router = useRouter();
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
@@ -60,9 +67,10 @@ export function QuickAddCoCuppers({
                 type="button"
                 onClick={() => onAdd(c.userId)}
                 disabled={pendingId === c.userId}
-                className="p-1.5 text-on-surface-variant hover:text-primary-container transition-colors disabled:opacity-50 shrink-0"
+                aria-label={t.addNamed.replace("{name}", c.displayName)}
+                className={`${HIT_44} p-1.5 text-on-surface-variant hover:text-primary-container transition-colors disabled:opacity-50 shrink-0`}
               >
-                <Plus size={16} />
+                <Plus size={16} aria-hidden />
               </button>
             )}
           </div>

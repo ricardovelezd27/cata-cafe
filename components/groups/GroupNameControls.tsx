@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil, Check, Trash2 } from "lucide-react";
 import { updateGroup, deleteGroup } from "@/app/actions/groups";
@@ -39,6 +39,7 @@ export function GroupNameControls({
   const [error, setError] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [pending, start] = useTransition();
+  const uid = useId();
 
   const save = (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,20 +66,27 @@ export function GroupNameControls({
     return (
       <form onSubmit={save} className="space-y-3">
         <div className="space-y-1.5">
-          <label className="sr-only">{t.groupName}</label>
+          <label htmlFor={`${uid}-name`} className="sr-only">
+            {t.groupName}
+          </label>
           <input
+            id={`${uid}-name`}
             autoFocus
-            className="w-full px-3 py-2 border border-outline-variant rounded-input text-lg font-display bg-surface-container-lowest text-on-surface focus:border-primary-container"
+            className="min-h-[44px] w-full px-3 py-2 border border-outline-variant rounded-input text-lg font-display bg-surface-container-lowest text-on-surface focus:border-primary-container"
             value={value}
             onChange={(e) => setValue(e.target.value)}
             maxLength={80}
           />
         </div>
         <div className="space-y-1.5">
-          <label className="block text-xs text-on-surface-variant font-semibold uppercase tracking-wide">
+          <label
+            htmlFor={`${uid}-description`}
+            className="block text-xs text-on-surface-variant font-semibold uppercase tracking-wide"
+          >
             {t.descriptionLabel}
           </label>
           <textarea
+            id={`${uid}-description`}
             className="w-full px-3 py-2 border border-outline-variant rounded-input text-sm bg-surface-container-lowest text-on-surface focus:border-primary-container min-h-[72px]"
             value={descValue}
             onChange={(e) => setDescValue(e.target.value)}
@@ -89,7 +97,7 @@ export function GroupNameControls({
         <button
           type="submit"
           disabled={pending || !value.trim()}
-          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-pill bg-primary-container text-white text-sm font-semibold disabled:opacity-50"
+          className="inline-flex min-h-[44px] items-center gap-1.5 px-3 py-2 rounded-pill bg-primary-container text-white text-sm font-semibold disabled:opacity-50"
         >
           <Check size={16} /> {t.saveDetails}
         </button>
@@ -114,18 +122,19 @@ export function GroupNameControls({
               setEditing(true);
             }}
             title={t.editDetails}
-            className="p-1.5 text-on-surface-variant hover:text-primary-container transition-colors shrink-0"
+            aria-label={t.editDetails}
+            className="inline-flex h-[44px] w-[44px] items-center justify-center text-on-surface-variant hover:text-primary-container transition-colors shrink-0"
           >
-            <Pencil size={16} />
+            <Pencil size={16} aria-hidden />
           </button>
         </div>
         <button
           type="button"
           onClick={() => setDeleteOpen(true)}
           disabled={pending}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-pill border border-outline-variant text-sm font-semibold text-error hover:bg-error-container transition-colors disabled:opacity-50 shrink-0"
+          className="inline-flex min-h-[44px] items-center gap-1.5 px-3 py-1.5 rounded-pill border border-outline-variant text-sm font-semibold text-error hover:bg-error-container transition-colors disabled:opacity-50 shrink-0"
         >
-          <Trash2 size={16} /> {t.delete}
+          <Trash2 size={16} aria-hidden /> {t.delete}
         </button>
       </div>
       {error && <p className="text-xs text-error">{error}</p>}

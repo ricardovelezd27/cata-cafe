@@ -2104,7 +2104,11 @@
       "delete": "Delete",
       "deleteTitle": "Delete announcement",
       "deleteBody": "The announcement will be removed for every member. This cannot be undone.",
-      "error": "Couldn't publish the announcement. Please try again."
+      "error": "Couldn't publish the announcement. Please try again.",
+      "titleLabel": "Title",
+      "bodyLabel": "Announcement",
+      "editNamed": "Edit the announcement “{title}”",
+      "deleteNamed": "Delete the announcement “{title}”"
     },
     "emailOptOut": {
       "badge": "Unsubscribed from emails",
@@ -2129,7 +2133,13 @@
       "resendRateLimited": "You reached the sending limit. Try again later.",
       "error": "Couldn't save. Please try again.",
       "removeTitle": "Remove from group",
-      "removeBodyNamed": "Remove {name} from the group?"
+      "removeBodyNamed": "Remove {name} from the group?",
+      "removeNamed": "Remove {name}",
+      "editNameNamed": "Edit the name of {name}",
+      "resendNamed": "Resend the invitation to {name}",
+      "saveNamed": "Save the name of {name}",
+      "cancelNamed": "Cancel editing {name}",
+      "nameLabelNamed": "Display name of {name}"
     },
     "empty": "You don't have any groups yet. Create one to reuse your cupper roster across sessions.",
     "coCuppersTitle": "People you've cupped with",
@@ -2212,7 +2222,11 @@
     "noGroupOption": "No group",
     "autoInviteAsync": "Email the group when the session is created",
     "autoInviteSummary": "Invitation sent to {sent} members · {skipped} skipped · {failed} failed",
-    "joinSessionLink": "Join the session"
+    "joinSessionLink": "Join the session",
+    "emailLabel": "Email",
+    "quickAddNamed": "Add {name} to the group",
+    "addToGroupNamed": "Add to group: {name}",
+    "removeRowNamed": "Remove row {n}"
   },
   "guestGate": {
     "title": "Finish creating your account",

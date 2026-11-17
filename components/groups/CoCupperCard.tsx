@@ -25,6 +25,8 @@ export function CoCupperCard({
     create: string;
     added: string;
     errorGeneric: string;
+    addToGroupNamed: string;
+    groupName: string;
     sessionOne: string;
     sessionMany: string;
     evaluationOne: string;
@@ -66,7 +68,7 @@ export function CoCupperCard({
         </p>
       </div>
 
-      <AddToGroupButton candidateUserId={cupper.userId} groups={groups} t={t} />
+      <AddToGroupButton candidateUserId={cupper.userId} candidateName={cupper.displayName} groups={groups} t={t} />
     </div>
   );
 }

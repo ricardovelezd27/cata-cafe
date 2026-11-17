@@ -6,7 +6,7 @@
 // opt-in (unticked by default, S8-03 F-grupos-2) and the checkbox says how many
 // people it will reach; after publishing, the outcome is shown inline.
 
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Send } from "lucide-react";
 import { createGroupPost } from "@/app/actions/groups";
@@ -26,6 +26,9 @@ export type PostComposerTranslations = {
   /** Raw template with {sent}/{skipped}/{failed}. */
   sendSummaryTemplate: string;
   sendRateLimited: string;
+  /** N2: visible labels of the two fields (the placeholders stay as hints). */
+  titleLabel: string;
+  bodyLabel: string;
 };
 
 // next-intl gotcha: a {placeholder} message must be interpolated locally from
@@ -53,6 +56,9 @@ export function PostComposer({
   const [notice, setNotice] = useState<{ text: string; tone: "ok" | "warn" } | null>(null);
   const [pending, start] = useTransition();
 
+  const uid = useId();
+  // The label style of the group forms (GroupNameControls, CreateGroupDialog).
+  const labelCls = "block text-xs text-on-surface-variant font-semibold uppercase tracking-wide";
   const inputCls =
     "w-full border border-outline-variant rounded-input px-3.5 py-2.5 text-sm text-on-surface bg-surface-container-lowest focus:border-primary-container transition-colors";
 
@@ -96,21 +102,33 @@ export function PostComposer({
       className="bg-surface-container-lowest border border-outline-variant rounded-card p-5 space-y-4"
     >
       <h3 className="font-display text-xl text-on-surface">{t.composerTitle}</h3>
-      <input
-        className={inputCls}
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        placeholder={t.titlePlaceholder}
-        maxLength={120}
-      />
-      <textarea
-        className={inputCls + " min-h-[100px]"}
-        value={body}
-        onChange={(e) => setBody(e.target.value)}
-        placeholder={t.bodyPlaceholder}
-        maxLength={5000}
-        required
-      />
+      <div className="space-y-1.5">
+        <label htmlFor={`${uid}-title`} className={labelCls}>
+          {t.titleLabel}
+        </label>
+        <input
+          id={`${uid}-title`}
+          className={inputCls + " min-h-[44px]"}
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder={t.titlePlaceholder}
+          maxLength={120}
+        />
+      </div>
+      <div className="space-y-1.5">
+        <label htmlFor={`${uid}-body`} className={labelCls}>
+          {t.bodyLabel}
+        </label>
+        <textarea
+          id={`${uid}-body`}
+          className={inputCls + " min-h-[100px]"}
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          placeholder={t.bodyPlaceholder}
+          maxLength={5000}
+          required
+        />
+      </div>
       <label className="flex min-h-[44px] items-center gap-2.5 text-sm text-on-surface cursor-pointer">
         <input
           type="checkbox"
@@ -140,9 +158,9 @@ export function PostComposer({
       <button
         type="submit"
         disabled={pending || !body.trim()}
-        className="inline-flex items-center gap-2 rounded-pill bg-primary-container px-5 py-2.5 text-sm font-medium text-on-primary hover:bg-primary transition-colors disabled:opacity-50"
+        className="inline-flex min-h-[44px] items-center gap-2 rounded-pill bg-primary-container px-5 py-2.5 text-sm font-medium text-on-primary hover:bg-primary transition-colors disabled:opacity-50"
       >
-        <Send size={16} />
+        <Send size={16} aria-hidden />
         {pending ? t.publishing : t.publish}
       </button>
     </form>
