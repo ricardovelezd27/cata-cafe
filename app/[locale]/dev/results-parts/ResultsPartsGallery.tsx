@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { CountedList } from "@/components/results/CountedList";
 import { FlavorCompare, type CompareCoffee } from "@/components/results/FlavorCompare";
 import { FlavorWheel, WheelCaption } from "@/components/results/FlavorWheel";
+import type { OverviewStrings } from "@/components/results/overviewStrings";
 import type { ResultsPartsStrings } from "@/components/results/partsStrings";
 import { RankStrip } from "@/components/results/RankStrip";
 import { wheelCaptionText } from "@/components/results/wheelCaption";
@@ -27,7 +28,9 @@ import {
 import { countedDescriptors, countedFamilies } from "@/lib/flavorWheel";
 import { wheelHeadline } from "@/lib/flavorWheelLayout";
 import { INTENSITY_SCALE, QUALITY_SCALE, countBar } from "@/lib/resultsScales";
+import { OVERVIEW_SCENARIOS } from "@/lib/dev/overviewFixtures";
 import css from "./gallery.module.css";
+import { OverviewFixture } from "./OverviewFixture";
 
 // The board's own words (a dev page: they are not product copy and are not in
 // the messages). The parts' words come from `results.parts`, through `strings`.
@@ -35,6 +38,8 @@ const COPY = {
   es: {
     dev: "Página de desarrollo. Datos inventados; no lee la base de datos ni necesita una cuenta.",
     title: "Partes de resultados",
+    overview: "El resumen de una cata",
+    overviewNote: "La parte de arriba de la página de resultados, con catas inventadas: los estados que ninguna cuenta de prueba puede mostrar (un participante ante una cata cerrada, dos catadores, una referencia libre).",
     lead: "Cada parte de la nueva página de resultados, dibujada con datos inventados. Lo que aquí se ve es lo que las pantallas usarán; todavía no está en ninguna.",
     score: "El puntaje con su contexto",
     scoreNote: "El número es tinta. Lo que se dice a su lado depende de cuántos catadores entran: con dos no hay dispersión ni diferencia.",
@@ -93,6 +98,8 @@ const COPY = {
   en: {
     dev: "Development page. Invented data; it reads no database and needs no account.",
     title: "Results parts",
+    overview: "The overview of a cupping",
+    overviewNote: "The top of the results page, with invented cuppings: the states no test account can show (a participant looking at a closed cupping, two cuppers, a free reference).",
     lead: "Every part of the new results page, drawn from invented data. What is seen here is what the screens will use; it is in none of them yet.",
     score: "The score with its context",
     scoreNote: "The number is ink. What is said beside it depends on how many cuppers count: with two there is no spread and no difference.",
@@ -174,16 +181,19 @@ function Card({ title, note, option, children }: { title?: string; note?: string
 }
 
 /** The groups of parts the board can show, in the order of the page. */
-export const GALLERY_SECTIONS = ["wheel", "minis", "compare", "rank", "dots", "score", "narrow"] as const;
+export const GALLERY_SECTIONS = ["overview", "wheel", "minis", "compare", "rank", "dots", "score", "narrow"] as const;
 export type GallerySection = (typeof GALLERY_SECTIONS)[number];
 
 export function ResultsPartsGallery({
   locale,
   strings,
+  overviewStrings,
   only,
 }: {
   locale: FixtureLocale;
   strings: ResultsPartsStrings;
+  /** The overview's words for each invented cupping, by scenario id. */
+  overviewStrings: Record<string, OverviewStrings>;
   /** Show only these groups (`?only=wheel,compare`); everything without it. */
   only?: readonly GallerySection[];
 }) {
@@ -287,6 +297,24 @@ export function ResultsPartsGallery({
       <p className={css.devNote}>{c.dev}</p>
       <h1 className={css.title}>{c.title}</h1>
       <p className={css.lead}>{c.lead}</p>
+
+      {show("overview") ? (
+        <section className={css.section}>
+          <h2 className={css.sectionTitle}>{c.overview}</h2>
+          <p className={css.sectionNote}>{c.overviewNote}</p>
+          {OVERVIEW_SCENARIOS.map((scenario) => (
+            <div key={scenario.id} className={css.scenario} data-scenario={scenario.id}>
+              <p className={css.listTitle}>{scenario.title[locale]}</p>
+              <OverviewFixture
+                scenario={scenario}
+                familyLabels={families}
+                parts={strings}
+                t={overviewStrings[scenario.id]}
+              />
+            </div>
+          ))}
+        </section>
+      ) : null}
 
       {show("wheel") ? (
         <section className={css.section}>

@@ -188,18 +188,20 @@ function MiniWheel({
   familyLabels,
   strings,
   decorative,
+  medium,
 }: {
   counts: WheelCounts;
   n: number;
   familyLabels: FamilyLabels;
   strings: FlavorWheelStrings;
   decorative: boolean;
+  medium: boolean;
 }) {
   const frame = WHEEL_FRAMES.mini;
   const g = wheelGeometry(counts, n, frame);
   return (
     <svg
-      className={styles.mini}
+      className={medium ? styles.medium : styles.mini}
       viewBox={`0 0 ${frame.width} ${frame.height}`}
       role={decorative ? undefined : "img"}
       aria-label={decorative ? undefined : wheelAriaLabel(g, familyLabels, strings)}
@@ -228,6 +230,8 @@ function MiniWheel({
  * - `size="mini"`: the same shape with no words, for a row of small wheels. The
  *   caller writes its caption (`wheelCaptionText`); pass `decorative` when that
  *   caption already says what the drawing shows.
+ * - `size="medium"`: the small wheel a step larger (112 px), for the one coffee
+ *   a tile is about. Same drawing, same rule.
  *
  * It draws; it does not decide. Geometry is `wheelGeometry` (lib/flavorWheel.ts),
  * what is drawn is `wheelShape` (lib/flavorWheelShape.ts, shared with the PDF),
@@ -250,14 +254,21 @@ export function FlavorWheel({
   n: number;
   familyLabels: FamilyLabels;
   strings: FlavorWheelStrings;
-  size?: "full" | "mini";
+  size?: "full" | "mini" | "medium";
   /** Full size only: print the families most people found over the drawing. */
   headline?: boolean;
   /** Mini only: hide the drawing from assistive technology (its caption says it). */
   decorative?: boolean;
 }) {
-  return size === "mini" ? (
-    <MiniWheel counts={counts} n={n} familyLabels={familyLabels} strings={strings} decorative={decorative} />
+  return size === "mini" || size === "medium" ? (
+    <MiniWheel
+      counts={counts}
+      n={n}
+      familyLabels={familyLabels}
+      strings={strings}
+      decorative={decorative}
+      medium={size === "medium"}
+    />
   ) : (
     <FullWheel counts={counts} n={n} familyLabels={familyLabels} strings={strings} headline={headline} />
   );

@@ -66,7 +66,12 @@ import { CoffeePicker, type UsableCoffee } from "@/components/coffees/CoffeePick
 import { asSessionFormat, type SessionFormat } from "@/lib/constants";
 import { calcIndividualScore, hasIndividualScore } from "@/lib/scoring";
 import { ArrowLeft, RefreshCw } from "lucide-react";
-import { ResumenTab } from "./ResumenTab";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { SessionOverview } from "@/components/results/SessionOverview";
+import type { OverviewData } from "@/lib/reports/overview";
+import type { OverviewStrings } from "@/components/results/overviewStrings";
+import type { ResultsPartsStrings } from "@/components/results/partsStrings";
+import type { WheelFamilyId } from "@/lib/flavorWheel";
 import type { SampleResult, ResultsHelp } from "./types";
 
 type MatrixTranslations = {
@@ -166,7 +171,6 @@ export function ResultsClient({
   exclusionNotice = null,
   closeEmails = null,
   currentUserId,
-  participationLabel,
   lastUpdatedLabel,
   participants,
   descriptorFrequency,
@@ -174,9 +178,9 @@ export function ResultsClient({
   cupperAlignment,
   partialSyncNotice,
   knownEvalIds,
+  overview,
   format,
   myAlignment,
-  participation,
   isSoloDescriptors,
   guestSave = null,
   myDraftNotice = null,
@@ -231,7 +235,6 @@ export function ResultsClient({
   // + whether the resend action should show (failed or pending recipients).
   closeEmails?: { line: string; showResend: boolean } | null;
   currentUserId: string;
-  participationLabel?: string | null;
   lastUpdatedLabel?: string | null;
   participants?: ParticipantResult[] | null;
   descriptorFrequency?: SampleBlockFreq[] | null;
@@ -239,13 +242,21 @@ export function ResultsClient({
   cupperAlignment?: CupperAlignmentRow[] | null;
   partialSyncNotice?: string | null;
   knownEvalIds?: string[];
+  /** R2: the overview's counted data (built on the server) and its words. */
+  overview: {
+    data: OverviewData;
+    preliminary: boolean;
+    referencePinned: boolean;
+    familyLabels: Record<WheelFamilyId, string>;
+    parts: ResultsPartsStrings;
+    t: OverviewStrings;
+  };
   // Narrowed session format (mirrors session.format, typed) — feeds the
   // Resumen dashboard's score derivation and ranking gates.
   format?: SessionFormat;
   // Every viewer's own alignment triple (never another cupper's row/name/id).
   myAlignment?: { alignment: number; matches: number; opportunities: number } | null;
   // Group-session submission progress, shown in the Resumen dashboard.
-  participation?: { submitted: number; total: number } | null;
   // True for solo descriptive/combined sessions — the Descriptores tab (and
   // the Resumen highlights card) feed from the current user's own data
   // instead of the anonymous group core.
@@ -847,6 +858,29 @@ export function ResultsClient({
     hasSubmitted: session.samples.some((s) => s.myEvaluation?.status === "submitted"),
   });
 
+  // "Exportar": the one sheet with every export (S1). Beside the title on a session
+  // that is over; in the row of work buttons while the cupping is open, so an open
+  // session's header is one row shorter.
+  const exportSheet = (
+    <ResultsExportSheet
+      sessionId={session.id}
+      locale={locale}
+      actions={exportActions}
+      t={{
+        open: translations.exportOpen,
+        title: translations.exportTitle,
+        close: translations.exportClose,
+        viewForm: translations.viewForm,
+        downloadPdf: translations.downloadPdf,
+        downloadSummary: translations.downloadSummary,
+        downloadFicha: translations.downloadFicha,
+        downloadCsv: translations.downloadCsv,
+        downloadCsvNoNames: translations.downloadCsvNoNames,
+        needsConnection: translations.needsConnection,
+      }}
+    />
+  );
+
   return (
     // S1 (F-01): the page is in normal flow, so the app shell's <main> is the ONE
     // scroll container. The header (title, actions, notices) scrolls away; only
@@ -855,71 +889,62 @@ export function ResultsClient({
     <div className="-mx-4 -mt-4 lg:-mx-6 lg:-mt-6 bg-surface text-on-surface">
       {/* Header — scrolls with the page */}
       <div className="bg-surface">
-        {/* Row 1: title block — no controls */}
-        <div className="px-4 pt-3 pb-1">
-          <div className="font-display text-xl text-primary-container leading-tight">
-            {translations.title}
-          </div>
-          <div className="truncate text-[11px] text-on-surface-variant">
-            {session.name} · {session.date}
-          </div>
+        {/* R2: the page's title is the session (one h1, set by PageHeader), with
+            its facts in one line under it and "Exportar" (the one sheet with every
+            export, S1) beside it. What used to be three rows of pills is that line. */}
+        <div className="px-4 pt-3 pb-2">
+          <PageHeader
+            title={session.name}
+            action={cuppingOpen ? undefined : exportSheet}
+          />
+          <p className="mt-1 text-sm text-on-surface-variant tabular-nums">
+            {[
+              `${overview.t.pageKind} · ${session.date}`,
+              closedOnLabel,
+              canViewGroup ? lastUpdatedLabel : null,
+            ]
+              .filter((part): part is string => typeof part === "string" && part.length > 0)
+              .join(" · ")}
+          </p>
         </div>
 
-        {/* Row 2: actions. "Exportar" opens the one sheet with every export (S1). */}
-        <div className="flex flex-wrap items-center gap-2 px-4 py-2">
-          {/* Admin view: /cup would just bounce back here — hide the loop.
-              A closed session's cupping form is final, so the button never
-              renders once the session is closed (for anyone). */}
-          {!isAdminViewer && cuppingOpen && (
-            <Button
-              size="sm"
-              variant="secondary"
-              icon={<ArrowLeft size={14} aria-hidden />}
-              onClick={() => router.push(`/${locale}/app/sessions/${session.id}/cup`)}
-            >
-              {translations.backToCupping}
-            </Button>
-          )}
-          {/* A closed or expired session never changes its scores (refreshAggregateScores
-              is a no-op there), so the button is only offered while cupping is open.
-              `cuppingOpen` is the server's `!isSessionExpired(session)`. */}
-          <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-          {cuppingOpen && (
-            <Button
-              size="sm"
-              variant={(newSubmissions > 0 || hasGenericUpdates) && !refreshing ? "accent" : "accentOutline"}
-              icon={<RefreshCw size={14} aria-hidden className={refreshing ? "animate-spin" : ""} />}
-              onClick={handleRefreshScores}
-              disabled={refreshing}
-            >
-              {refreshing
-                ? translations.refreshing
-                : newSubmissions > 0
-                  ? translations.refreshNew.replace("{count}", String(newSubmissions))
-                  : hasGenericUpdates
-                    ? translations.refreshNewGeneric
-                    : translations.refresh}
-            </Button>
-          )}
-          <ResultsExportSheet
-            sessionId={session.id}
-            locale={locale}
-            actions={exportActions}
-            t={{
-              open: translations.exportOpen,
-              title: translations.exportTitle,
-              close: translations.exportClose,
-              viewForm: translations.viewForm,
-              downloadPdf: translations.downloadPdf,
-              downloadSummary: translations.downloadSummary,
-              downloadFicha: translations.downloadFicha,
-              downloadCsv: translations.downloadCsv,
-              downloadCsvNoNames: translations.downloadCsvNoNames,
-              needsConnection: translations.needsConnection,
-            }}
-          />
+        {/* The work buttons, only while the cupping is open. Admin view: /cup would
+            just bounce back here, so "Volver a catar" hides. A closed or expired
+            session never changes its scores (refreshAggregateScores is a no-op
+            there), so "Actualizar" is only offered while cupping is open:
+            `cuppingOpen` is the server's `!isSessionExpired(session)`. */}
+        {cuppingOpen && (
+          <div className="flex flex-wrap items-center gap-2 px-4 pb-2">
+            {!isAdminViewer && (
+              <Button
+                size="sm"
+                variant="secondary"
+                icon={<ArrowLeft size={14} aria-hidden />}
+                onClick={() => router.push(`/${locale}/app/sessions/${session.id}/cup`)}
+              >
+                {translations.backToCupping}
+              </Button>
+            )}
+            <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+              <Button
+                size="sm"
+                variant={(newSubmissions > 0 || hasGenericUpdates) && !refreshing ? "accent" : "accentOutline"}
+                icon={<RefreshCw size={14} aria-hidden className={refreshing ? "animate-spin" : ""} />}
+                onClick={handleRefreshScores}
+                disabled={refreshing}
+              >
+                {refreshing
+                  ? translations.refreshing
+                  : newSubmissions > 0
+                    ? translations.refreshNew.replace("{count}", String(newSubmissions))
+                    : hasGenericUpdates
+                      ? translations.refreshNewGeneric
+                      : translations.refresh}
+              </Button>
+              {exportSheet}
+            </div>
           </div>
-        </div>
+        )}
 
         {liveUpdatesDown && (
           <p role="status" className="px-4 pb-2 text-[11px] text-secondary">
@@ -949,18 +974,6 @@ export function ResultsClient({
           </div>
         )}
 
-        {closedOnLabel && (
-          <div className="px-4 pb-2">
-            <span
-              role="status"
-              className="inline-flex rounded-card border border-outline-variant bg-surface-container px-3 py-1 text-[11px] text-on-surface-variant"
-            >
-              {closedOnLabel}
-            </span>
-          </div>
-        )}
-
-        {/* Row 3: participation/freshness meta + main tabs */}
         {updatedAfterCloseLabel && (
           <div className="px-4 pb-2">
             <span
@@ -980,12 +993,6 @@ export function ResultsClient({
           </div>
         )}
 
-        {canViewGroup && (participationLabel || lastUpdatedLabel) && (
-          <div className="flex gap-3 overflow-hidden whitespace-nowrap px-4 pb-2 text-[10px] tabular-nums text-on-surface-variant">
-            {participationLabel && <span>{participationLabel}</span>}
-            {lastUpdatedLabel && <span>{lastUpdatedLabel}</span>}
-          </div>
-        )}
       </div>
 
       {/* Tabs — the one part that stays while the page scrolls (S1). The negative
@@ -1175,7 +1182,7 @@ export function ResultsClient({
           }}
         />
       )}
-      {partialSyncNotice && (
+      {partialSyncNotice && !(effectiveTab === "resumen" && overview.data.who) && (
         <div
           role="status"
           className="mx-4 mt-4 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-sm text-on-surface lg:mx-6"
@@ -1242,29 +1249,27 @@ export function ResultsClient({
         </div>
       ) : effectiveTab === "resumen" ? (
         <div className="p-4 lg:p-6 flex flex-col gap-6">
-          {references.length > 1 && compareSelector}
-          <ResumenTab
+          <SessionOverview
             samples={session.samples}
-            format={format ?? asSessionFormat(session.format)}
-            cupsPerSample={session.cupsPerSample}
-            isGroup={isGroup}
-            canViewGroup={canViewGroup}
-            participation={participation ?? null}
-            myAlignment={myAlignment ?? null}
-            descriptorFrequency={descriptorFrequency ?? null}
-            isSoloDescriptors={isSoloDescriptors ?? false}
+            ctx={{
+              format: format ?? asSessionFormat(session.format),
+              isGroup,
+              canViewGroup,
+              cupsPerSample: session.cupsPerSample,
+            }}
             referenceId={referenceId}
-            locale={locale}
+            data={overview.data}
+            myAlignment={myAlignment ?? null}
+            preliminary={overview.preliminary}
+            referencePinned={overview.referencePinned}
+            compareSelector={compareSelector}
+            familyLabels={overview.familyLabels}
+            parts={overview.parts}
+            t={overview.t}
             onOpenSample={(id) => {
               setTab("resultados");
               setDetail({ sampleId: id, participantId: null });
             }}
-            onOpenDescriptors={(id) => {
-              setTab("descriptores");
-              if (id) setDescSampleId(id);
-            }}
-            t={translations.dashboard}
-            help={translations.help}
           />
         </div>
       ) : (

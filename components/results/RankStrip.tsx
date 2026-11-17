@@ -69,6 +69,7 @@ export function RankStrip({
   strings,
   scoreStrings,
   ariaLabel,
+  onOpen,
 }: {
   items: readonly RankStripItem[];
   /** The reference the page compares against: a dashed line through every row. */
@@ -76,6 +77,8 @@ export function RankStrip({
   strings: RankStripStrings;
   scoreStrings: ScoreContextStrings;
   ariaLabel?: string;
+  /** With it, a coffee's name is a button and the whole row its target. */
+  onOpen?: (id: string) => void;
 }) {
   const axis = scoreAxis();
   const entries = items.map((item) => item.tie);
@@ -126,6 +129,16 @@ export function RankStrip({
                 <span className={styles.label}>{item.label}</span>
                 {item.name ? <span className={styles.coffee}> {item.name}</span> : null}
               </span>
+              {/* The whole row opens the coffee: one button the size of the row,
+                  named by the row's own visible name. */}
+              {onOpen ? (
+                <button
+                  type="button"
+                  className={styles.open}
+                  aria-label={item.name ? `${item.label} ${item.name}` : item.label}
+                  onClick={() => onOpen(item.id)}
+                />
+              ) : null}
               <span className={styles.score}>
                 {item.context.score === null ? strings.none : formatScore(item.context.score)}
               </span>

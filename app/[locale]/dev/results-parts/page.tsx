@@ -1,6 +1,9 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { buildOverviewStrings, type OverviewStrings } from "@/components/results/overviewStrings";
 import { buildResultsPartsStrings } from "@/components/results/partsStrings";
+import { OVERVIEW_SCENARIOS } from "@/lib/dev/overviewFixtures";
+import { referenceCopySuffix, referenceExplanation } from "@/lib/referenceRules";
 import { GALLERY_SECTIONS, ResultsPartsGallery, type GallerySection } from "./ResultsPartsGallery";
 
 // Dev-only review board for the results parts (package R1b): every part drawn
@@ -21,6 +24,32 @@ export default async function ResultsPartsDevPage({
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("results");
+  const tCups = await getTranslations("cupping.cups");
+  // The words of each invented cupping, chosen as the results page chooses them
+  // (the reference's title and explanation depend on the format and the mode).
+  const overviewStrings: Record<string, OverviewStrings> = Object.fromEntries(
+    OVERVIEW_SCENARIOS.map((s) => {
+      const suffix = referenceCopySuffix(referenceExplanation({ mode: s.referenceMode, moduleKey: s.ctx.format }));
+      return [
+        s.id,
+        {
+          ...buildOverviewStrings(t, {
+            referenceTitle: t(`dashboard.anchorTitle${suffix}`),
+            referenceHint: t(`dashboard.anchorHint${suffix}`),
+            notScored: t("dashboard.notScored"),
+            rankHelp: t("dashboard.rankHelp"),
+            communityPending: t("communityPending"),
+            defectTypes: {
+              moldy: tCups("types.moldy"),
+              phenolic: tCups("types.phenolic"),
+              potato: tCups("types.potato"),
+            },
+          }),
+          preliminary: t("overview.preliminary", { button: t("refresh") }),
+        },
+      ];
+    }),
+  );
 
   // `?only=wheel,compare` shows some groups of parts (a whole phone page is
   // taller than one screenshot can hold). Anything that is not a group is ignored.
@@ -32,6 +61,7 @@ export default async function ResultsPartsDevPage({
     <ResultsPartsGallery
       locale={locale === "en" ? "en" : "es"}
       strings={buildResultsPartsStrings(t)}
+      overviewStrings={overviewStrings}
       only={sections}
     />
   );

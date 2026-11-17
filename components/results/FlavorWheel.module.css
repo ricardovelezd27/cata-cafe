@@ -25,6 +25,13 @@
   height: 72px;
   flex: none;
 }
+/* The small wheel a step larger, for the one coffee a tile is about. */
+.medium {
+  display: block;
+  width: var(--wheel-medium, 112px);
+  height: var(--wheel-medium, 112px);
+  flex: none;
+}
 /* Over the full wheel: what most people found, in words and with its count. */
 .head {
   margin: 0 0 10px;

@@ -13,7 +13,11 @@ import { isAffectiveDeclaredPartial } from "@/lib/affectivePartial";
 import { evaluationScoreRule, sampleScoreRule, type ScoreRule } from "@/lib/scoreRule";
 import { AFFECTIVE_ATTRIBUTES, asSessionFormat, type SessionFormat } from "@/lib/constants";
 import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
-import { deriveMyEvaluation, NO_EVALUATION, summarizeMyProgress } from "@/lib/evaluationState";
+import { canShowMyRatings, deriveMyEvaluation, NO_EVALUATION, summarizeMyProgress } from "@/lib/evaluationState";
+import { buildOverviewData } from "@/lib/reports/overview";
+import { wheelFamilyLabels } from "@/lib/flavorWheelLabels";
+import { buildResultsPartsStrings } from "@/components/results/partsStrings";
+import { buildOverviewStrings } from "@/components/results/overviewStrings";
 import { isSessionExpired, viewerMayReadGroupResults } from "@/lib/sessionState";
 import { wasClosedSilently } from "@/lib/repairClose";
 import { resultsUpdatedAfterClose } from "@/lib/exclusionReasons";
@@ -578,6 +582,7 @@ export default async function ResultsPage({
   const tc = await getTranslations("coffee");
   const ta = await getTranslations("actions");
   const tGuestCta = await getTranslations("results.guestCta");
+  const tCups = await getTranslations("cupping.cups");
 
   // Group results must not silently average incomplete data. When fewer cuppers
   // have submitted (synced) than the participant roster, surface how many are
@@ -657,9 +662,6 @@ export default async function ResultsPage({
   // `summary["general"]` entries computeSampleBlockFrequencies now always adds.
   blockLabels.general = tBlocks("general");
 
-  const participation = session.isGroup && canViewGroup
-    ? { submitted: submittedCupperCount, total: totalParticipants }
-    : null;
 
   // The viewer's OWN evaluation state per sample. The `evaluations` include
   // above deliberately has no isDraft filter (a cupper may open results
@@ -683,6 +685,50 @@ export default async function ResultsPage({
     }),
   );
   const myProgress = summarizeMyProgress([...myEvaluationBySample.values()]);
+
+  // R2: the counted part of the overview (the flavour wheel of each coffee, the
+  // defective cups, who cupped). Built HERE, on the server: counts and
+  // aggregates only leave it, never a cupper's key, name or value. The group's
+  // rows are passed only under the page's own gate (`canViewGroup`); otherwise
+  // everything is built from the viewer's own evaluations.
+  const overviewData = buildOverviewData({
+    format,
+    cupsPerSample: session.cupsPerSample,
+    isGroup: session.isGroup,
+    canViewGroup,
+    ownerLens: ownerRead,
+    sampleIds: session.samples.map((s) => s.id),
+    rows:
+      canViewGroup && session.isGroup
+        ? comparisonEvals.map((e) => ({
+            cupperKey: e.cupperId,
+            sampleId: e.sessionSampleId,
+            excluded: excludedUserIds.has(e.cupperId),
+            data: e.data,
+            cups: e.cups,
+          }))
+        : null,
+    own: Object.fromEntries(
+      session.samples.map((s) => {
+        const ev = s.evaluations[0];
+        if (!ev) return [s.id, null];
+        const data =
+          format === "combined" ? ev.combinedData : format === "affective" ? ev.affectiveData : ev.descriptiveData;
+        return [
+          s.id,
+          {
+            data,
+            submitted: !ev.isDraft,
+            showRatings: canShowMyRatings(myEvaluationBySample.get(s.id) ?? NO_EVALUATION),
+            cups: ev.cups,
+          },
+        ];
+      }),
+    ),
+    joined: totalParticipants,
+    sentCuppers: submittedCupperCount,
+    excludedParticipants: excludedUserIds.size,
+  });
   // Banner copy — null once everything is submitted, in the admin read-only
   // view (the "mine" slots hold the owner's rows), or on a closed session
   // (nothing can be finished anymore). Skipped when the viewer has not opened
@@ -878,12 +924,6 @@ export default async function ResultsPage({
         }),
       })
     : null;
-  const participationLabel = session.isGroup && canViewGroup
-    ? tResults("participation", {
-        submitted: submittedCupperCount,
-        total: totalParticipants,
-      })
-    : null;
   const lastUpdatedLabel = lastComputedAt
     ? tResults("lastUpdated", {
         time: lastComputedAt.toLocaleString(locale === "es" ? "es-CO" : "en-US", {
@@ -1074,7 +1114,6 @@ export default async function ResultsPage({
       exclusionNotice={exclusionNoticeLabel}
       closeEmails={closeEmails}
       currentUserId={user.id}
-      participationLabel={participationLabel}
       lastUpdatedLabel={lastUpdatedLabel}
       participants={participantResults}
       descriptorFrequency={descriptorFrequency}
@@ -1082,9 +1121,31 @@ export default async function ResultsPage({
       cupperAlignment={cupperAlignment}
       partialSyncNotice={partialSyncNotice}
       knownEvalIds={knownEvalIds}
+      overview={{
+        data: overviewData,
+        // The organizer's (or the admin lens') view of a group session that is still open.
+        preliminary: session.isGroup && ownerRead && !sessionOver,
+        referencePinned: refExplanation === "pinned",
+        familyLabels: wheelFamilyLabels(localeStr),
+        parts: buildResultsPartsStrings(tResults),
+        t: {
+          ...buildOverviewStrings(tResults, {
+            referenceTitle: tResults(`dashboard.anchorTitle${refCopy}`),
+            referenceHint: tResults(`dashboard.anchorHint${refCopy}`),
+            notScored: tResults("dashboard.notScored"),
+            rankHelp: tResults("dashboard.rankHelp"),
+            communityPending: tResults("communityPending"),
+            defectTypes: {
+              moldy: tCups("types.moldy"),
+              phenolic: tCups("types.phenolic"),
+              potato: tCups("types.potato"),
+            },
+          }),
+          preliminary: tResults("overview.preliminary", { button: tResults("refresh") }),
+        },
+      }}
       format={format}
       myAlignment={myAlignment}
-      participation={participation}
       isSoloDescriptors={isSoloDescriptors}
       guestSave={
         user.is_anonymous
