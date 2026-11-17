@@ -10,6 +10,7 @@ import { sheetSampleIdentity, sheetSamplePrep, sheetSampleRecords } from "@/lib/
 import { profileDisplayName } from "@/lib/accountDeletion/deletedProfile";
 import { PrintClient } from "./PrintClient";
 import { evaluationScoreRule } from "@/lib/scoreRule";
+import { isSessionExpired } from "@/lib/sessionState";
 
 export default async function PrintPage({
   params,
@@ -99,6 +100,8 @@ export default async function PrintPage({
         objective: session.objective,
         cupperName: profileDisplayName(profile ? { id: viewAsId, displayName: profile.displayName } : null, locale),
         ownerView,
+        // A-01: an unsent draft of an open session prints no total (lib/ownTotal.ts).
+        sessionOpen: !isSessionExpired(session),
         samples: orderReferencesFirst(session.samples).map((s) => {
           const ev = s.evaluations[0];
           return {
@@ -109,6 +112,7 @@ export default async function PrintPage({
             isReference: s.referenceRank != null,
             referenceRank: s.referenceRank ?? null,
             scoreRule: evaluationScoreRule(ev?.cups, ev !== undefined),
+            sent: ev?.isDraft === false,
             descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},
             affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
             combined: (ev?.combinedData as Record<string, unknown>) ?? {},

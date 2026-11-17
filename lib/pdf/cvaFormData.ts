@@ -31,6 +31,7 @@ import { EXPRESS_NOTE_KEY } from "@/lib/expressSession";
 import { sanitizePdfText } from "@/lib/pdf/text";
 import { samplePrepVisible, type SamplePrep } from "@/lib/samplePrep";
 import { calcIndividualBreakdown, evaluationCupCounts, isAffectiveComplete } from "@/lib/scoring";
+import { mayShowOwnTotal } from "@/lib/ownTotal";
 import { isAffectiveDeclaredPartial } from "@/lib/affectivePartial";
 import type { ScoreRule } from "@/lib/scoreRule";
 
@@ -100,6 +101,7 @@ export const CVA_TEXT: Record<Locale, Record<string, string>> = {
     none: "—",
     incomplete: "Evaluación incompleta",
     partialDeclared: "evaluación parcial (secciones no evaluadas)",
+    unsent: "Evaluación sin enviar",
     sheetDescriptive: "Hoja descriptiva",
     sheetAffective: "Hoja afectiva",
     // Official-form furniture
@@ -185,6 +187,7 @@ export const CVA_TEXT: Record<Locale, Record<string, string>> = {
     none: "—",
     incomplete: "Incomplete evaluation",
     partialDeclared: "partial evaluation (sections not evaluated)",
+    unsent: "Unsent evaluation",
     sheetDescriptive: "Descriptive sheet",
     sheetAffective: "Affective sheet",
     // Official-form furniture
@@ -726,8 +729,10 @@ export type CvaSampleSheet = {
    *   is the same lie in smaller form).
    * - "empty"    — no finals at all → print "—", no annotation (a blank paper
    *   form is faithful).
+   * - "unsent"   — complete, but an unsent draft of an open session (A-01,
+   *   lib/ownTotal.ts): print "—" and the "not sent" annotation, no Σh line.
    */
-  scoreState: "complete" | "partial" | "empty";
+  scoreState: "complete" | "partial" | "empty" | "unsent";
   /** S10 WP3b: the partial evaluation was DECLARED (sections marked "no evaluado"); labelled differently from an unmarked incomplete one. */
   partialDeclared?: boolean;
   breakdown: { affectiveSum: number; u: number; d: number };
@@ -742,6 +747,12 @@ export type CvaFormInput = {
    * here so no caller can leak per-sample owner data to a participant.
    */
   ownerView: boolean;
+  /**
+   * A-01: the session still takes evaluations (not closed, closing date not
+   * passed). With `sample.sent` it decides, through lib/ownTotal.ts, whether
+   * the sheet may print the total. Absent = open (never a draft's total).
+   */
+  sessionOpen?: boolean;
   format: string; // session.format
   sessionName: string;
   date: string; // pre-formatted string
@@ -760,6 +771,8 @@ export type CvaFormInput = {
     /** Rule the printed evaluation was scored under: "v1" for a stored row with
      *  cups NULL (before 2026-11), so past sheets print unchanged. Absent = v2. */
     scoreRule?: ScoreRule;
+    /** A-01: the printed evaluation was SENT (stored isDraft === false). Absent = not sent. */
+    sent?: boolean;
     descriptive: D;
     affective: D;
     combined: D;
@@ -898,14 +911,20 @@ export function buildCvaFormData(input: CvaFormInput): CvaSampleSheet {
   // "evaluación incompleta" annotation. See CvaSampleSheet.scoreState.
   const scoreSource = format === "descriptive" ? desc : aff;
   let score: number | "—" = "—";
-  let scoreState: "complete" | "partial" | "empty" = "empty";
+  let scoreState: CvaSampleSheet["scoreState"] = "empty";
   let breakdown = { affectiveSum: 0, u: cups.u, d: cups.d };
   if (format !== "descriptive") {
     const filledCount = AFFECTIVE_ATTRIBUTES.filter((attr) => {
       const v = Number(scoreSource[`${attr.id}_final`] ?? scoreSource[attr.id] ?? 0);
       return Number.isFinite(v) && v > 0;
     }).length;
-    if (isAffectiveComplete(scoreSource)) {
+    if (
+      isAffectiveComplete(scoreSource) &&
+      !mayShowOwnTotal({ sent: input.sample.sent === true, sessionOpen: input.sessionOpen })
+    ) {
+      // A-01 / decision 10: no total (nor its Σh · u · d line) before "Enviar".
+      scoreState = "unsent";
+    } else if (isAffectiveComplete(scoreSource)) {
       const b = calcIndividualBreakdown(scoreSource, input.cupsPerSample, { rule: scoreRule });
       score = b.score;
       scoreState = "complete";

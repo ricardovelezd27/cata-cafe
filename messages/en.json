@@ -978,7 +978,7 @@
       "viewDetail": "View detail",
       "inProgress": "In progress",
       "notEvaluated": "Not evaluated",
-      "inProgressLegend": "In progress = your evaluation has not been submitted yet; the score appears once all 8 attributes are rated."
+      "inProgressLegend": "In progress = your evaluation has not been submitted yet; you will see your score when you submit it."
     },
     "detail": {
       "fragrance": "Fragrance",

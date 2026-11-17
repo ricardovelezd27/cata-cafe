@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  canShowMyRatings,
   canShowMyScore,
   deriveMyEvaluation,
   isEvaluationComplete,
@@ -53,13 +54,26 @@ describe("deriveMyEvaluation / canShowMyScore", () => {
     expect(canShowMyScore(my)).toBe(false);
   });
 
-  it("incomplete draft → no score; complete draft → score", () => {
-    const partial = deriveMyEvaluation("combined", { isDraft: true, data: { aroma_af_final: 7 } });
-    expect(partial).toEqual({ status: "draft", complete: false });
+  it("incomplete draft → no score; complete draft of an OPEN session → ratings, never a total (A-01)", () => {
+    const partial = deriveMyEvaluation("combined", { isDraft: true, data: { aroma_af_final: 7 } }, { sessionOpen: true });
+    expect(partial).toEqual({ status: "draft", complete: false, sessionOpen: true });
     expect(canShowMyScore(partial)).toBe(false);
+    expect(canShowMyRatings(partial)).toBe(false);
 
+    const full = deriveMyEvaluation("combined", { isDraft: true, data: allAffective(7) }, { sessionOpen: true });
+    expect(full).toEqual({ status: "draft", complete: true, sessionOpen: true });
+    expect(canShowMyScore(full)).toBe(false);
+    expect(canShowMyRatings(full)).toBe(true);
+  });
+
+  it("a draft built without the session state is read as open: no total (fails closed)", () => {
     const full = deriveMyEvaluation("combined", { isDraft: true, data: allAffective(7) });
     expect(full).toEqual({ status: "draft", complete: true });
+    expect(canShowMyScore(full)).toBe(false);
+  });
+
+  it("complete draft of a session that is over keeps today's behaviour (question pending)", () => {
+    const full = deriveMyEvaluation("combined", { isDraft: true, data: allAffective(7) }, { sessionOpen: false });
     expect(canShowMyScore(full)).toBe(true);
   });
 

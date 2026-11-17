@@ -23,7 +23,7 @@ import {
 import { computeEvaluationDerived, tryComputeEvaluationDerived } from "@/lib/evaluation";
 import { isReferencePinned, pinReferenceAffective } from "@/lib/referenceRules";
 import { stepMissing, type SampleModules } from "@/lib/completeness";
-import { deriveMyEvaluation, isEvaluationComplete, canShowMyScore } from "@/lib/evaluationState";
+import { deriveMyEvaluation, isEvaluationComplete, canShowMyRatings } from "@/lib/evaluationState";
 import { isEvaluationComplete as closeRowComplete } from "@/lib/closeRules";
 
 // S10 WP3b (Kim C4 "no evaluado", A5 "as it cooled"). TODO(kim-validar:C4) TODO(kim-validar:A5)
@@ -316,7 +316,9 @@ describe("finished (completeness, evaluationState, close rules)", () => {
     const partial = marked(all(6), "aroma_af");
     const my = deriveMyEvaluation("affective", { isDraft: true, data: partial });
     expect(my.complete).toBe(true);
-    expect(canShowMyScore(my)).toBe(true); // callers still gate the number on hasIndividualScore
+    // Finished = its ratings read as done (the "Parcial · sin puntaje" label); the number is
+    // gated by hasIndividualScore, and since F2 (A-01) by "sent" too.
+    expect(canShowMyRatings(my)).toBe(true);
     expect(
       closeRowComplete(
         { isDraft: true, cupperId: "u", descriptiveData: {}, affectiveData: partial, combinedData: {} } as never,
