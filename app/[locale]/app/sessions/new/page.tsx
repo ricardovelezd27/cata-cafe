@@ -49,7 +49,6 @@ export default async function NewSessionPage({
     formatAffective: t("formats.affective"),
     formatCombined: t("formats.combined"),
     // coffee section
-    coffees: t("coffees"),
     coffeeName: t("coffeeName"),
     producerRoaster: t("producerRoaster"),
     coffeeVariety: tc("variety"),
@@ -65,8 +64,6 @@ export default async function NewSessionPage({
     coffeeCertifications: tc("certifications"),
     coffeeNotes: tc("newPage.notes"),
     coffeeNotesPh: tc("newPage.notesPh"),
-    addCoffee: t("addCoffee"),
-    removeCoffee: t("removeCoffee"),
     // samples section
     addSample: t("addSample"),
     removeSample: t("removeSample"),
@@ -95,6 +92,10 @@ export default async function NewSessionPage({
     newForm: {
       required: t("newForm.required"),
       optionalSuffix: t("newForm.optionalSuffix"),
+      sectionSession: t("newForm.sectionSession"),
+      sectionGroup: t("newForm.sectionGroup"),
+      coffeeOwn: t("newForm.coffeeOwn"),
+      coffeeSameAs: t.raw("newForm.coffeeSameAs") as string,
       coffeeCard: t("newForm.coffeeCard"),
       sampleChip: t("newForm.sampleChip"),
       samplesTitle: t("newForm.samplesTitle"),

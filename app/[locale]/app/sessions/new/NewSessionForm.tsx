@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useActionFeedback } from "@/components/ui/Toast";
 import { useConnectivity } from "@/hooks/useConnectivity";
 import { isNetworkFailure } from "@/lib/actionResult";
-import { Trash2, X, ChevronDown } from "lucide-react";
+import { X, ChevronDown } from "lucide-react";
 import { PROCESS_TYPES, CERTIFICATIONS, ROAST_LEVELS } from "@/lib/constants";
 import { createSession, createGroupSession } from "@/app/actions/sessions";
 import { startSession } from "@/app/actions/community";
@@ -42,6 +42,22 @@ import { MAX_DATE_INPUT } from "@/lib/safeDate";
 import { WARMUP_EXERCISES, lw, type WarmupId } from "@/lib/warmup/exercises";
 import { fieldErrorId, fieldForErrorCode, fieldInputId, type SessionFormField } from "@/lib/sessionFormErrors";
 import { scrollBehavior } from "@/lib/motion";
+import { FormActionBar, dockedFormClass } from "@/components/ui/FormActionBar";
+import {
+  addSample as addSampleTo,
+  blankCoffee,
+  buildWizardSubmission,
+  linkedEntry,
+  autoSample,
+  ownerOf,
+  removeSample as removeSampleFrom,
+  setSampleCoffee,
+  shareableCoffees,
+  type CoffeeEntry,
+  type CoffeeInput,
+  type SampleEntry,
+  type SampleList,
+} from "./wizardModel";
 
 // Groups v2: session wizard extends NotifyGroupTranslations with the
 // step-1 "link a group" selector copy + the step-2 auto-invite success
@@ -67,44 +83,6 @@ function formatTemplate(template: string, vars: Record<string, string | number>)
   );
 }
 
-// Same field set as the standalone CoffeeForm — wizard coffees land in the
-// same coffees table with the same shape (no wizard-only subset).
-type CoffeeInput = {
-  name: string;
-  producer: string;
-  variety: string;
-  altitude: string;
-  roastLevel: string;
-  country: string;
-  region: string;
-  farm: string;
-  species: string;
-  harvestYear: string;
-  processType: string;
-  certifications: string[];
-  notes: string;
-};
-
-type CoffeeEntry = CoffeeInput & {
-  id: string;
-  existingCoffeeId?: string;
-  /** Origin badge of the linked coffee — display-only, never submitted. */
-  linkedOrigin?: UsableCoffee["origin"];
-};
-
-type SampleEntry = {
-  id: string;
-  label: string;
-  coffeeId: string;
-  /** True while the label is still empty = a random letter is drawn at creation (A4). */
-  auto: boolean;
-  /** A9 optional prep data (owner-only until the sample is revealed). */
-  roastDate?: string;
-  preparationNote?: string;
-  offProtocol?: boolean;
-  offProtocolNote?: string;
-};
-
 type Translations = {
   name: string;
   namePh: string;
@@ -116,8 +94,7 @@ type Translations = {
   formatDescriptive: string;
   formatAffective: string;
   formatCombined: string;
-  // coffee section
-  coffees: string;
+  // coffee fields (of each sample's coffee)
   coffeeName: string;
   producerRoaster: string;
   coffeeVariety: string;
@@ -133,8 +110,6 @@ type Translations = {
   coffeeCertifications: string;
   coffeeNotes: string;
   coffeeNotesPh: string;
-  addCoffee: string;
-  removeCoffee: string;
   // samples section
   addSample: string;
   removeSample: string;
@@ -159,6 +134,13 @@ type Translations = {
   newForm: {
     required: string;
     optionalSuffix: string;
+    /** S7a: the numbered section titles that have no key of their own elsewhere. */
+    sectionSession: string;
+    sectionGroup: string;
+    /** S7a (D-05): a sample row's coffee: its own, or the same as an earlier row's. */
+    coffeeOwn: string;
+    /** Raw ICU string (t.raw()) — contains a literal "{n}" token. */
+    coffeeSameAs: string;
     coffeeCard: string;
     sampleChip: string;
     samplesTitle: string;
@@ -207,62 +189,9 @@ type Translations = {
 
 type WizardStep = "form" | "invite";
 
-/** Stable id for coffees/samples so React keys and card refs survive add/remove. */
-const newId = () => crypto.randomUUID();
-
 /** Cups the wizard proposes for affective and combined sessions (express stays at 1).
  *  TODO(kim-validar:A2): simulated answer; Kim to confirm 2. */
 const DEFAULT_CUPS_PER_SAMPLE = 2;
-
-const EMPTY_COFFEE: CoffeeInput = {
-  name: "",
-  producer: "",
-  variety: "",
-  altitude: "",
-  roastLevel: "",
-  country: "",
-  region: "",
-  farm: "",
-  species: "",
-  harvestYear: "",
-  processType: "",
-  certifications: [],
-  notes: "",
-};
-
-/** A coffee card linked to an existing usable coffee. Linked entries never
- *  submit field data (the server resolves by existingCoffeeId) — the
- *  create-only extras are reset. */
-function linkedEntry(base: CoffeeEntry, picked: UsableCoffee): CoffeeEntry {
-  return {
-    ...base,
-    name: picked.name,
-    producer: picked.producer ?? "",
-    variety: picked.variety ?? "",
-    altitude: picked.altitude ?? "",
-    roastLevel: picked.roastLevel ?? "",
-    country: picked.country ?? "",
-    region: picked.region ?? "",
-    farm: "",
-    species: "",
-    harvestYear: "",
-    processType: picked.processType ?? "",
-    certifications: [],
-    notes: "",
-    existingCoffeeId: picked.id,
-    linkedOrigin: picked.origin,
-  };
-}
-
-/** A fresh sample row. Its label stays EMPTY while `auto` (A4): the server
- *  assigns the letters at random when the session is created, so the wizard
- *  must not show a fixed "Muestra A" next to a coffee. */
-const autoSample = (coffeeId: string): SampleEntry => ({
-  id: newId(),
-  label: "",
-  coffeeId,
-  auto: true,
-});
 
 const inputBase =
   "w-full border border-outline-variant rounded-input px-3.5 py-2.5 text-sm text-on-surface bg-surface-container-lowest focus:border-primary-container transition-colors";
@@ -313,6 +242,29 @@ function FieldLabel({
         </span>
       )}
     </label>
+  );
+}
+
+/** A numbered section of the wizard (S7a, C-08): "1 · La sesión". A step
+ *  carries its number, as on the landing. Green through `.section-title`. */
+function SectionTitle({
+  n,
+  id,
+  className = "",
+  children,
+}: {
+  n: number;
+  id: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <h2 id={id} className={`section-title text-xl ${className}`}>
+      <span className="tabular-nums">{n}</span>
+      <span aria-hidden="true"> · </span>
+      <span className="sr-only">. </span>
+      {children}
+    </h2>
   );
 }
 
@@ -387,12 +339,14 @@ export function NewSessionForm({
   const [warmupId, setWarmupId] = useState<WarmupId>("eyes");
 
   const [coffees, setCoffees] = useState<CoffeeEntry[]>(() => {
-    const blank: CoffeeEntry = { ...EMPTY_COFFEE, id: newId() };
+    // Fixed ids on the first render: the server and the browser render the
+    // same label ids (S7a). Rows added later take random ones.
+    const blank = blankCoffee("initial-coffee");
     return [initialCoffee ? linkedEntry(blank, initialCoffee) : blank];
   });
   const [samples, setSamples] = useState<SampleEntry[]>(() =>
     // N sample chips from the express handoff (default 1); coffees stay required.
-    Array.from({ length: handoff?.sampleCount ?? 1 }, () => autoSample(coffees[0].id)),
+    Array.from({ length: handoff?.sampleCount ?? 1 }, (_, i) => autoSample(coffees[0].id, `initial-sample-${i}`)),
   );
 
   // Reference sample — the SampleEntry.id (never the index) so add/remove/
@@ -610,42 +564,23 @@ export function NewSessionForm({
     );
   };
 
-  const addCoffee = () => {
-    // Adding a coffee also seeds one sample assigned to it (the common 1:1 case
-    // needs zero extra clicks); the sample lives in the flat Muestras list where
-    // its label and coffee can be freely edited afterward.
-    const coffeeId = newId();
-    setCoffees((prev) => [...prev, { ...EMPTY_COFFEE, id: coffeeId }]);
-    setSamples((prev) => [...prev, autoSample(coffeeId)]);
-  };
-
-  const removeCoffee = (id: string) => {
-    if (coffees.length <= 1) return;
-    const nextCoffees = coffees.filter((c) => c.id !== id);
-    // Drop samples that pointed at the removed coffee; never leave the list empty.
-    let nextSamples = samples.filter((s) => s.coffeeId !== id);
-    if (nextSamples.length === 0) {
-      nextSamples = [autoSample(nextCoffees[0].id)];
-    }
-    setCoffees(nextCoffees);
-    setSamples(nextSamples);
-    if (referenceId && !nextSamples.some((s) => s.id === referenceId)) {
-      setReferenceId(null);
-    }
-    if (invalidCoffeeId === id) {
+  // ── The one list of samples (S7a, D-05; rules in ./wizardModel.ts) ─────────
+  const applyList = (next: SampleList) => {
+    setCoffees(next.coffees);
+    setSamples(next.samples);
+    setReferenceId(next.referenceId);
+    if (invalidCoffeeId && !next.coffees.some((c) => c.id === invalidCoffeeId)) {
       setInvalidCoffeeId(null);
       setErrorCode(null);
     }
   };
+  const list: SampleList = { coffees, samples, referenceId };
 
-  const addSample = () => {
-    setSamples((prev) => [...prev, autoSample(coffees[0].id)]);
-  };
-
-  const removeSample = (id: string) => {
-    if (samples.length <= 1) return;
-    setSamples((prev) => prev.filter((s) => s.id !== id));
-    if (referenceId === id) setReferenceId(null);
+  const addSample = () => applyList(addSampleTo(list));
+  const removeSample = (id: string) => applyList(removeSampleFrom(list, id));
+  const chooseSampleCoffee = (id: string, choice: string) => {
+    applyList(setSampleCoffee(list, id, choice));
+    setErrorCode(null);
   };
 
   // Clearing a typed label hands the row back to the random letters.
@@ -655,14 +590,7 @@ export function NewSessionForm({
     );
   };
 
-  const updateSampleCoffee = (id: string, coffeeId: string) => {
-    setSamples((prev) => prev.map((s) => (s.id === id ? { ...s, coffeeId } : s)));
-    setErrorCode(null);
-  };
-
   const sampleWarning = sampleCountWarning(format, samples.length);
-  const coffeeLabel = (coffee: CoffeeEntry, i: number) =>
-    coffee.name.trim() || `${t.newForm.coffeeCard} ${i + 1}`;
   /** Typed name of a coffee card ("" while it is still blank). */
   const coffeeNameOf = (coffeeId: string) =>
     coffees.find((c) => c.id === coffeeId)?.name.trim() ?? "";
@@ -702,30 +630,13 @@ export function NewSessionForm({
     setErrorCode(null);
     if (!validateClient()) return;
 
-    const idxById = new Map(coffees.map((c, i) => [c.id, i]));
-    const coffeePayload = coffees.map((c) => {
-      const { id, linkedOrigin, existingCoffeeId, ...rest } = c;
-      void id;
-      void linkedOrigin;
-      return existingCoffeeId ? { ...rest, existingCoffeeId } : rest;
+    // What is posted is built by one pure function (./wizardModel.ts); the
+    // S7a test compares it with the builder this form had before, field by field.
+    const submission = buildWizardSubmission({
+      name, date, objective, format, cupsPerSample, coffees, samples, referenceId, referenceMode,
+      warmupOn, warmupId, locale, isGroup, closesAt, zone: browserZone, linkedGroupId, notifyGroup,
+      notifyGroupWhen,
     });
-    // An EMPTY label asks for a random letter (A4); a typed one is kept as is.
-    // The A9 prep keys travel only when the owner filled them.
-    const samplePayload = samples.map((s) => ({
-      label: s.auto ? "" : s.label,
-      coffeeIdx: idxById.get(s.coffeeId) ?? 0,
-      ...(s.roastDate ? { roastDate: s.roastDate } : {}),
-      ...(s.preparationNote?.trim() ? { preparationNote: s.preparationNote } : {}),
-      ...(s.offProtocol
-        ? {
-            offProtocol: true,
-            ...(s.offProtocolNote?.trim() ? { offProtocolNote: s.offProtocolNote } : {}),
-          }
-        : {}),
-    }));
-    const referenceIdx = referenceId
-      ? ((idx) => (idx === -1 ? null : idx))(samples.findIndex((s) => s.id === referenceId))
-      : null;
 
     try {
       window.localStorage.setItem(LAST_FORMAT_KEY, format);
@@ -737,40 +648,11 @@ export function NewSessionForm({
       // A network drop / opaque server failure must never unmount the form:
       // every field stays in state and the strip shows copy (S8-10 T1).
       try {
-      if (!isGroup) {
-        const result = await createSession({
-          name,
-          date,
-          objective: objective || undefined,
-          format,
-          cupsPerSample,
-          coffees: coffeePayload,
-          samples: samplePayload,
-          referenceIdx,
-          warmupExerciseId: warmupOn ? warmupId : null,
-          referenceMode: referenceIdx === null ? DEFAULT_REFERENCE_MODE : referenceMode,
-          locale,
-        });
+      if (submission.kind === "solo") {
+        const result = await createSession(submission.input);
         if (result) showError(result.error);
       } else {
-        const result = await createGroupSession({
-          name,
-          date,
-          objective: objective || undefined,
-          format,
-          cupsPerSample,
-          coffees: coffeePayload,
-          samples: samplePayload,
-          referenceIdx,
-          warmupExerciseId: warmupOn ? warmupId : null,
-          referenceMode: referenceIdx === null ? DEFAULT_REFERENCE_MODE : referenceMode,
-          locale,
-          closesAt: closesAt || undefined,
-          closesAtZone: closesAt ? browserZone() : undefined,
-          groupId: linkedGroupId || undefined,
-          notifyGroup,
-          notifyGroupWhen,
-        });
+        const result = await createGroupSession(submission.input);
         if (result.ok) {
           clearDraft();
           setSessionId(result.sessionId);
@@ -964,10 +846,271 @@ export function NewSessionForm({
   }
 
   // ── Step 1: Session form ─────────────────────────────────────────────────────
+  // S7a (C-08, D-05): four numbered sections, ONE list of samples (each with
+  // its coffee), and the one submit in the docked action bar.
+
+  /** The fields of a coffee card: the linked coffee's summary, or the form. */
+  const renderCoffee = (coffee: CoffeeEntry) =>
+    coffee.existingCoffeeId ? (
+      <div className="space-y-2">
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">
+          {t.picker.linked}
+        </p>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-semibold text-sm text-on-surface">{coffee.name}</span>
+          {coffee.linkedOrigin && (
+            <span
+              className={`rounded-pill border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${
+                originBadgeCls[coffee.linkedOrigin]
+              }`}
+            >
+              {originBadgeLabel(coffee.linkedOrigin, t)}
+            </span>
+          )}
+        </div>
+        {[coffee.country, coffee.region, coffee.variety, coffee.altitude]
+          .filter(Boolean)
+          .join(" · ") && (
+          <p className="text-xs text-on-surface-variant">
+            {[coffee.country, coffee.region, coffee.variety, coffee.altitude]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
+        )}
+        <button
+          type="button"
+          onClick={() => unlinkCoffee(coffee.id)}
+          className="min-h-[44px] rounded-pill border border-outline-variant px-3 py-1.5 text-xs font-medium text-on-surface hover:bg-surface-container transition-colors"
+        >
+          {t.picker.unlink}
+        </button>
+      </div>
+    ) : (
+      <div className="space-y-3">
+        {/* Name is the only required field (2026-09); these stay
+            always-visible (not tucked into "more details") since
+            they're still the fields people fill in most often. */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="col-span-2">
+            <FieldLabel htmlFor={`${fid}-${coffee.id}-name`} required requiredText={t.newForm.required}>
+              {t.coffeeName}
+            </FieldLabel>
+            <input
+              id={`${fid}-${coffee.id}-name`}
+              className={inputCls}
+              value={coffee.name}
+              onChange={(e) => updateCoffee(coffee.id, "name", e.target.value)}
+              required
+              placeholder={t.coffeeName}
+            />
+          </div>
+
+          <div>
+            <FieldLabel htmlFor={`${fid}-${coffee.id}-country`} optionalText={t.newForm.optionalSuffix}>
+              {t.coffeeCountry}
+            </FieldLabel>
+            <input
+              id={`${fid}-${coffee.id}-country`}
+              list="cata-coffee-countries"
+              className={inputCls}
+              value={coffee.country}
+              onChange={(e) => updateCoffee(coffee.id, "country", e.target.value)}
+              placeholder={t.coffeeCountry}
+            />
+          </div>
+          <div>
+            <FieldLabel htmlFor={`${fid}-${coffee.id}-variety`} optionalText={t.newForm.optionalSuffix}>
+              {t.coffeeVariety}
+            </FieldLabel>
+            <input
+              id={`${fid}-${coffee.id}-variety`}
+              className={inputCls}
+              value={coffee.variety}
+              onChange={(e) => updateCoffee(coffee.id, "variety", e.target.value)}
+              placeholder={t.coffeeVariety}
+            />
+          </div>
+
+          <div>
+            <FieldLabel htmlFor={`${fid}-${coffee.id}-altitude`} optionalText={t.newForm.optionalSuffix}>
+              {t.coffeeAltitude}
+            </FieldLabel>
+            <div className="relative">
+              <input
+                id={`${fid}-${coffee.id}-altitude`}
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={6000}
+                className={inputCls + " pr-14"}
+                value={coffee.altitude}
+                onChange={(e) => updateCoffee(coffee.id, "altitude", e.target.value)}
+                placeholder="1800"
+              />
+              <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-on-surface-variant pointer-events-none">
+                msnm
+              </span>
+            </div>
+          </div>
+          <div>
+            <FieldLabel htmlFor={`${fid}-${coffee.id}-roastLevel`} optionalText={t.newForm.optionalSuffix}>
+              {t.coffeeRoastLevel}
+            </FieldLabel>
+            <select
+              id={`${fid}-${coffee.id}-roastLevel`}
+              className={inputCls + " cursor-pointer"}
+              value={coffee.roastLevel}
+              onChange={(e) => updateCoffee(coffee.id, "roastLevel", e.target.value)}
+            >
+              <option value="">—</option>
+              {ROAST_LEVELS.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Optional fields — collapsed accordion keeps the card light */}
+        <details className="group rounded-input border border-outline-variant bg-surface-container-low/50">
+          <summary className="flex cursor-pointer select-none items-center justify-between px-3.5 py-2.5 text-xs font-semibold uppercase tracking-widest text-on-surface-variant [&::-webkit-details-marker]:hidden">
+            {t.newForm.moreDetails}
+            <ChevronDown
+              size={14}
+              className="transition-transform group-open:rotate-180"
+            />
+          </summary>
+          <div className="grid grid-cols-2 gap-3 px-3.5 pb-3.5">
+            <div>
+              <FieldLabel htmlFor={`${fid}-${coffee.id}-region`} optionalText={t.newForm.optionalSuffix}>
+                {t.coffeeRegion}
+              </FieldLabel>
+              <input
+                id={`${fid}-${coffee.id}-region`}
+                className={inputCls}
+                value={coffee.region}
+                onChange={(e) => updateCoffee(coffee.id, "region", e.target.value)}
+                placeholder={t.coffeeRegion}
+              />
+            </div>
+            <div>
+              <FieldLabel htmlFor={`${fid}-${coffee.id}-farm`} optionalText={t.newForm.optionalSuffix}>
+                {t.coffeeFarm}
+              </FieldLabel>
+              <input
+                id={`${fid}-${coffee.id}-farm`}
+                className={inputCls}
+                value={coffee.farm}
+                onChange={(e) => updateCoffee(coffee.id, "farm", e.target.value)}
+                placeholder={t.coffeeFarm}
+              />
+            </div>
+            <div>
+              <FieldLabel htmlFor={`${fid}-${coffee.id}-producer`} optionalText={t.newForm.optionalSuffix}>
+                {t.producerRoaster}
+              </FieldLabel>
+              <input
+                id={`${fid}-${coffee.id}-producer`}
+                className={inputCls}
+                value={coffee.producer}
+                onChange={(e) => updateCoffee(coffee.id, "producer", e.target.value)}
+                placeholder={t.producerRoaster}
+              />
+            </div>
+            <div>
+              <FieldLabel htmlFor={`${fid}-${coffee.id}-species`} optionalText={t.newForm.optionalSuffix}>
+                {t.coffeeSpecies}
+              </FieldLabel>
+              <input
+                id={`${fid}-${coffee.id}-species`}
+                className={inputCls}
+                value={coffee.species}
+                onChange={(e) => updateCoffee(coffee.id, "species", e.target.value)}
+                placeholder={t.coffeeSpecies}
+              />
+            </div>
+            <div>
+              <FieldLabel htmlFor={`${fid}-${coffee.id}-harvestYear`} optionalText={t.newForm.optionalSuffix}>
+                {t.coffeeHarvest}
+              </FieldLabel>
+              <input
+                id={`${fid}-${coffee.id}-harvestYear`}
+                className={inputCls}
+                value={coffee.harvestYear}
+                onChange={(e) => updateCoffee(coffee.id, "harvestYear", e.target.value)}
+                placeholder={t.coffeeHarvestPh}
+              />
+            </div>
+            <div>
+              <FieldLabel htmlFor={`${fid}-${coffee.id}-processType`} optionalText={t.newForm.optionalSuffix}>
+                {t.coffeeProcess}
+              </FieldLabel>
+              <select
+                id={`${fid}-${coffee.id}-processType`}
+                className={inputCls + " cursor-pointer"}
+                value={coffee.processType}
+                onChange={(e) => updateCoffee(coffee.id, "processType", e.target.value)}
+              >
+                <option value="">—</option>
+                {PROCESS_TYPES.map((pt) => (
+                  <option key={pt} value={pt}>
+                    {pt}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="col-span-2">
+              <FieldLabel optionalText={t.newForm.optionalSuffix}>
+                {t.coffeeCertifications}
+              </FieldLabel>
+              {/* Chips paint 30 px, 15 px apart in height: each chip's 44 px
+                  hit area (HIT_Y44) meets the next row's at the midpoint. */}
+              <div className="flex flex-wrap gap-x-1.5 gap-y-[15px]">
+                {CERTIFICATIONS.map((cert) => {
+                  const active = coffee.certifications.includes(cert);
+                  return (
+                    <button
+                      key={cert}
+                      type="button"
+                      onClick={() => toggleCoffeeCertification(coffee.id, cert)}
+                      aria-pressed={active}
+                      className={
+                        active
+                          ? `${HIT_Y44} min-h-[30px] rounded-pill bg-primary-container px-3 py-1 text-xs font-semibold text-on-primary transition-colors`
+                          : `${HIT_Y44} min-h-[30px] rounded-pill border border-outline-variant px-3 py-1 text-xs font-medium text-on-surface transition-colors hover:bg-surface-container`
+                      }
+                    >
+                      {cert}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="col-span-2">
+              <FieldLabel htmlFor={`${fid}-${coffee.id}-notes`} optionalText={t.newForm.optionalSuffix}>
+                {t.coffeeNotes}
+              </FieldLabel>
+              <textarea
+                id={`${fid}-${coffee.id}-notes`}
+                className={inputBase + " min-h-[64px]"}
+                value={coffee.notes}
+                onChange={(e) => updateCoffee(coffee.id, "notes", e.target.value)}
+                placeholder={t.coffeeNotesPh}
+              />
+            </div>
+          </div>
+        </details>
+      </div>
+    );
+
   return (
-    <form onSubmit={onSubmit} className="space-y-10">
-      {/* 1. Session basics */}
-      <div className="space-y-5">
+    <form onSubmit={onSubmit} className={`${dockedFormClass} space-y-8 md:space-y-10`}>
+      {/* 1. The session */}
+      <section aria-labelledby={`${fid}-sec-session`} className="space-y-5">
+        <SectionTitle n={1} id={`${fid}-sec-session`}>
+          {t.newForm.sectionSession}
+        </SectionTitle>
         <div>
           <FieldLabel htmlFor={fieldInputId("name")}>{t.name}</FieldLabel>
           <input
@@ -1039,13 +1182,13 @@ export function NewSessionForm({
             placeholder={t.objectivePh}
           />
         </div>
-      </div>
+      </section>
 
-      <hr className="border-t border-outline-variant" />
-
-      {/* 2. Format */}
-      <div>
-        <FieldLabel>{t.format}</FieldLabel>
+      {/* 2. Format (and the optional warm-up) */}
+      <section aria-labelledby={`${fid}-sec-format`}>
+        <SectionTitle n={2} id={`${fid}-sec-format`} className="mb-3 md:mb-4">
+          {t.format}
+        </SectionTitle>
         <div role="radiogroup" aria-label={t.format} className="flex flex-wrap gap-2">
           {FORMAT_CHOICES.map((v, i, all) => (
             <button
@@ -1114,355 +1257,22 @@ export function NewSessionForm({
             </div>
           )}
         </div>
-      </div>
+      </section>
 
-      <hr className="border-t border-outline-variant" />
-
-      {/* 3. Cafés a evaluar — unified coffee + sample cards */}
-      <div className="space-y-4">
-        <FieldLabel>{t.coffees}</FieldLabel>
+      {/* 3. Samples: ONE list, each sample with its coffee (D-05) */}
+      <section aria-labelledby={`${fid}-sec-samples`} className="space-y-4">
+        <div>
+          <SectionTitle n={3} id={`${fid}-sec-samples`} className="mb-1">
+            {t.newForm.samplesTitle}
+          </SectionTitle>
+          <p className="text-xs text-on-surface-variant">{t.newForm.samplesHelper}</p>
+        </div>
 
         <datalist id="cata-coffee-countries">
           {countries.map((c) => (
             <option key={c} value={c} />
           ))}
         </datalist>
-
-        <div className="space-y-4">
-          {coffees.map((coffee, i) => {
-            const invalid = invalidCoffeeId === coffee.id;
-
-            return (
-              <div
-                key={coffee.id}
-                ref={(el) => {
-                  cardRefs.current[coffee.id] = el;
-                }}
-                role="group"
-                aria-label={`${t.newForm.coffeeCard} ${i + 1}`}
-                className={
-                  "bg-surface-container-lowest border rounded-card shadow-card p-5 space-y-4 " +
-                  (invalid ? "border-error" : "border-outline-variant")
-                }
-              >
-                <div className="flex items-center gap-2">
-                  <span className="bg-surface-container rounded-pill px-3 py-1 text-xs font-semibold tracking-wide uppercase text-on-surface">
-                    {t.newForm.coffeeCard} {i + 1}
-                  </span>
-                  <div className="flex-1" />
-                  {usableCoffees.length > 0 && !coffee.existingCoffeeId && (
-                    <button
-                      type="button"
-                      onClick={() => setPickerFor(coffee.id)}
-                      className="min-h-[44px] rounded-pill border border-primary-container px-3 py-1 text-xs font-medium text-primary-container hover:bg-primary-fixed transition-colors"
-                    >
-                      {t.picker.useExisting}
-                    </button>
-                  )}
-                  {coffees.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeCoffee(coffee.id)}
-                      aria-label={t.removeCoffee}
-                      className="p-1 text-on-surface-variant hover:text-error transition-colors"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  )}
-                </div>
-
-                {coffee.existingCoffeeId ? (
-                  <div className="space-y-2">
-                    <p className="text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">
-                      {t.picker.linked}
-                    </p>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold text-sm text-on-surface">{coffee.name}</span>
-                      {coffee.linkedOrigin && (
-                        <span
-                          className={`rounded-pill border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${
-                            originBadgeCls[coffee.linkedOrigin]
-                          }`}
-                        >
-                          {originBadgeLabel(coffee.linkedOrigin, t)}
-                        </span>
-                      )}
-                    </div>
-                    {[coffee.country, coffee.region, coffee.variety, coffee.altitude]
-                      .filter(Boolean)
-                      .join(" · ") && (
-                      <p className="text-xs text-on-surface-variant">
-                        {[coffee.country, coffee.region, coffee.variety, coffee.altitude]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </p>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => unlinkCoffee(coffee.id)}
-                      className="min-h-[44px] rounded-pill border border-outline-variant px-3 py-1.5 text-xs font-medium text-on-surface hover:bg-surface-container transition-colors"
-                    >
-                      {t.picker.unlink}
-                    </button>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {/* Name is the only required field (2026-09); these stay
-                        always-visible (not tucked into "more details") since
-                        they're still the fields people fill in most often. */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="col-span-2">
-                        <FieldLabel htmlFor={`${fid}-${coffee.id}-name`} required requiredText={t.newForm.required}>
-                          {t.coffeeName}
-                        </FieldLabel>
-                        <input
-                          id={`${fid}-${coffee.id}-name`}
-                          className={inputCls}
-                          value={coffee.name}
-                          onChange={(e) => updateCoffee(coffee.id, "name", e.target.value)}
-                          required
-                          placeholder={t.coffeeName}
-                        />
-                      </div>
-
-                      <div>
-                        <FieldLabel htmlFor={`${fid}-${coffee.id}-country`} optionalText={t.newForm.optionalSuffix}>
-                          {t.coffeeCountry}
-                        </FieldLabel>
-                        <input
-                          id={`${fid}-${coffee.id}-country`}
-                          list="cata-coffee-countries"
-                          className={inputCls}
-                          value={coffee.country}
-                          onChange={(e) => updateCoffee(coffee.id, "country", e.target.value)}
-                          placeholder={t.coffeeCountry}
-                        />
-                      </div>
-                      <div>
-                        <FieldLabel htmlFor={`${fid}-${coffee.id}-variety`} optionalText={t.newForm.optionalSuffix}>
-                          {t.coffeeVariety}
-                        </FieldLabel>
-                        <input
-                          id={`${fid}-${coffee.id}-variety`}
-                          className={inputCls}
-                          value={coffee.variety}
-                          onChange={(e) => updateCoffee(coffee.id, "variety", e.target.value)}
-                          placeholder={t.coffeeVariety}
-                        />
-                      </div>
-
-                      <div>
-                        <FieldLabel htmlFor={`${fid}-${coffee.id}-altitude`} optionalText={t.newForm.optionalSuffix}>
-                          {t.coffeeAltitude}
-                        </FieldLabel>
-                        <div className="relative">
-                          <input
-                            id={`${fid}-${coffee.id}-altitude`}
-                            type="number"
-                            inputMode="numeric"
-                            min={1}
-                            max={6000}
-                            className={inputCls + " pr-14"}
-                            value={coffee.altitude}
-                            onChange={(e) => updateCoffee(coffee.id, "altitude", e.target.value)}
-                            placeholder="1800"
-                          />
-                          <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-on-surface-variant pointer-events-none">
-                            msnm
-                          </span>
-                        </div>
-                      </div>
-                      <div>
-                        <FieldLabel htmlFor={`${fid}-${coffee.id}-roastLevel`} optionalText={t.newForm.optionalSuffix}>
-                          {t.coffeeRoastLevel}
-                        </FieldLabel>
-                        <select
-                          id={`${fid}-${coffee.id}-roastLevel`}
-                          className={inputCls + " cursor-pointer"}
-                          value={coffee.roastLevel}
-                          onChange={(e) => updateCoffee(coffee.id, "roastLevel", e.target.value)}
-                        >
-                          <option value="">—</option>
-                          {ROAST_LEVELS.map((r) => (
-                            <option key={r} value={r}>
-                              {r}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* Optional fields — collapsed accordion keeps the card light */}
-                    <details className="group rounded-input border border-outline-variant bg-surface-container-low/50">
-                      <summary className="flex cursor-pointer select-none items-center justify-between px-3.5 py-2.5 text-xs font-semibold uppercase tracking-widest text-on-surface-variant [&::-webkit-details-marker]:hidden">
-                        {t.newForm.moreDetails}
-                        <ChevronDown
-                          size={14}
-                          className="transition-transform group-open:rotate-180"
-                        />
-                      </summary>
-                      <div className="grid grid-cols-2 gap-3 px-3.5 pb-3.5">
-                        <div>
-                          <FieldLabel htmlFor={`${fid}-${coffee.id}-region`} optionalText={t.newForm.optionalSuffix}>
-                            {t.coffeeRegion}
-                          </FieldLabel>
-                          <input
-                            id={`${fid}-${coffee.id}-region`}
-                            className={inputCls}
-                            value={coffee.region}
-                            onChange={(e) => updateCoffee(coffee.id, "region", e.target.value)}
-                            placeholder={t.coffeeRegion}
-                          />
-                        </div>
-                        <div>
-                          <FieldLabel htmlFor={`${fid}-${coffee.id}-farm`} optionalText={t.newForm.optionalSuffix}>
-                            {t.coffeeFarm}
-                          </FieldLabel>
-                          <input
-                            id={`${fid}-${coffee.id}-farm`}
-                            className={inputCls}
-                            value={coffee.farm}
-                            onChange={(e) => updateCoffee(coffee.id, "farm", e.target.value)}
-                            placeholder={t.coffeeFarm}
-                          />
-                        </div>
-                        <div>
-                          <FieldLabel htmlFor={`${fid}-${coffee.id}-producer`} optionalText={t.newForm.optionalSuffix}>
-                            {t.producerRoaster}
-                          </FieldLabel>
-                          <input
-                            id={`${fid}-${coffee.id}-producer`}
-                            className={inputCls}
-                            value={coffee.producer}
-                            onChange={(e) => updateCoffee(coffee.id, "producer", e.target.value)}
-                            placeholder={t.producerRoaster}
-                          />
-                        </div>
-                        <div>
-                          <FieldLabel htmlFor={`${fid}-${coffee.id}-species`} optionalText={t.newForm.optionalSuffix}>
-                            {t.coffeeSpecies}
-                          </FieldLabel>
-                          <input
-                            id={`${fid}-${coffee.id}-species`}
-                            className={inputCls}
-                            value={coffee.species}
-                            onChange={(e) => updateCoffee(coffee.id, "species", e.target.value)}
-                            placeholder={t.coffeeSpecies}
-                          />
-                        </div>
-                        <div>
-                          <FieldLabel htmlFor={`${fid}-${coffee.id}-harvestYear`} optionalText={t.newForm.optionalSuffix}>
-                            {t.coffeeHarvest}
-                          </FieldLabel>
-                          <input
-                            id={`${fid}-${coffee.id}-harvestYear`}
-                            className={inputCls}
-                            value={coffee.harvestYear}
-                            onChange={(e) => updateCoffee(coffee.id, "harvestYear", e.target.value)}
-                            placeholder={t.coffeeHarvestPh}
-                          />
-                        </div>
-                        <div>
-                          <FieldLabel htmlFor={`${fid}-${coffee.id}-processType`} optionalText={t.newForm.optionalSuffix}>
-                            {t.coffeeProcess}
-                          </FieldLabel>
-                          <select
-                            id={`${fid}-${coffee.id}-processType`}
-                            className={inputCls + " cursor-pointer"}
-                            value={coffee.processType}
-                            onChange={(e) => updateCoffee(coffee.id, "processType", e.target.value)}
-                          >
-                            <option value="">—</option>
-                            {PROCESS_TYPES.map((pt) => (
-                              <option key={pt} value={pt}>
-                                {pt}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="col-span-2">
-                          <FieldLabel optionalText={t.newForm.optionalSuffix}>
-                            {t.coffeeCertifications}
-                          </FieldLabel>
-                          {/* Chips paint 30 px, 15 px apart in height: each chip's 44 px
-                              hit area (HIT_Y44) meets the next row's at the midpoint. */}
-                          <div className="flex flex-wrap gap-x-1.5 gap-y-[15px]">
-                            {CERTIFICATIONS.map((cert) => {
-                              const active = coffee.certifications.includes(cert);
-                              return (
-                                <button
-                                  key={cert}
-                                  type="button"
-                                  onClick={() => toggleCoffeeCertification(coffee.id, cert)}
-                                  aria-pressed={active}
-                                  className={
-                                    active
-                                      ? `${HIT_Y44} min-h-[30px] rounded-pill bg-primary-container px-3 py-1 text-xs font-semibold text-on-primary transition-colors`
-                                      : `${HIT_Y44} min-h-[30px] rounded-pill border border-outline-variant px-3 py-1 text-xs font-medium text-on-surface transition-colors hover:bg-surface-container`
-                                  }
-                                >
-                                  {cert}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                        <div className="col-span-2">
-                          <FieldLabel htmlFor={`${fid}-${coffee.id}-notes`} optionalText={t.newForm.optionalSuffix}>
-                            {t.coffeeNotes}
-                          </FieldLabel>
-                          <textarea
-                            id={`${fid}-${coffee.id}-notes`}
-                            className={inputBase + " min-h-[64px]"}
-                            value={coffee.notes}
-                            onChange={(e) => updateCoffee(coffee.id, "notes", e.target.value)}
-                            placeholder={t.coffeeNotesPh}
-                          />
-                        </div>
-                      </div>
-                    </details>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        <CoffeePicker
-          open={pickerFor !== null}
-          onOpenChange={(o) => !o && setPickerFor(null)}
-          coffees={usableCoffees}
-          onSelect={(picked) => {
-            if (pickerFor) applyExistingCoffee(pickerFor, picked);
-          }}
-          translations={{
-            title: t.picker.title,
-            searchPlaceholder: t.picker.searchPlaceholder,
-            mine: t.picker.mine,
-            shared: t.picker.shared,
-            public: t.picker.public,
-            empty: t.picker.empty,
-            close: t.picker.close,
-          }}
-        />
-
-        <button
-          type="button"
-          onClick={addCoffee}
-          className="min-h-[44px] border border-primary-container text-primary-container rounded-pill px-5 py-2.5 text-sm font-medium hover:bg-primary-fixed transition-colors"
-        >
-          + {t.addCoffee}
-        </button>
-      </div>
-
-      <hr className="border-t border-outline-variant" />
-
-      {/* 4. Muestras — flat list: each sample has an editable label + coffee assignment */}
-      <div className="space-y-4">
-        <div>
-          <FieldLabel>{t.newForm.samplesTitle}</FieldLabel>
-          <p className="text-xs text-on-surface-variant">{t.newForm.samplesHelper}</p>
-        </div>
 
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
@@ -1530,75 +1340,145 @@ export function NewSessionForm({
 
         <p className="text-xs text-on-surface-variant">{t.newForm.samplesBlindHelper}</p>
 
-        <div className="space-y-2">
-          {samples.map((s, si) => (
-            <div key={s.id} className="flex flex-wrap items-center gap-2 min-w-0">
-              {/* 44px touch target around a 16px radio (mobile hit area). */}
-              <label className="flex min-h-[44px] min-w-[44px] shrink-0 cursor-pointer items-center justify-center -my-1">
-                <input
-                  type="radio"
-                  name="reference"
-                  checked={referenceId === s.id}
-                  onChange={() => setReferenceId(s.id)}
-                  // An auto row has no label yet (the letter is drawn at
-                  // creation): name it by its coffee, else by its row number.
-                  aria-label={t.newForm.referenceMark.replace(
-                    "{label}",
-                    s.label.trim() ||
-                      coffeeNameOf(s.coffeeId) ||
-                      `${t.newForm.sampleChip} ${si + 1}`,
-                  )}
-                  className="h-4 w-4 accent-secondary cursor-pointer"
-                />
-              </label>
-              <input
-                value={s.label}
-                onChange={(e) => updateSampleLabel(s.id, e.target.value)}
-                aria-label={t.sampleLabel}
-                placeholder={t.newForm.sampleLabelAuto}
-                className={inputCls + " flex-1 min-w-[8rem]"}
-              />
-              {coffees.length > 1 && (
-                <select
-                  value={s.coffeeId}
-                  onChange={(e) => updateSampleCoffee(s.id, e.target.value)}
-                  aria-label={t.sampleCoffee}
-                  className={inputCls + " flex-1 min-w-[8rem] cursor-pointer"}
-                >
-                  {coffees.map((c, ci) => (
-                    <option key={c.id} value={c.id}>
-                      {coffeeLabel(c, ci)}
-                    </option>
-                  ))}
-                </select>
-              )}
-              {samples.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => removeSample(s.id)}
-                  aria-label={t.removeSample}
-                  className="p-1 text-on-surface-variant hover:text-error transition-colors"
-                >
-                  <X size={16} />
-                </button>
-              )}
-              <SamplePrepFields
-                idPrefix={`prep-${s.id}`}
-                className="basis-full"
-                value={prepToForm({
-                  roastDate: s.roastDate || null,
-                  preparationNote: s.preparationNote || null,
-                  offProtocol: s.offProtocol === true,
-                  offProtocolNote: s.offProtocolNote || null,
-                })}
-                onChange={(patch) =>
-                  setSamples((prev) => prev.map((x) => (x.id === s.id ? { ...x, ...patch } : x)))
+        <div className="space-y-4">
+          {samples.map((s, si) => {
+            const coffee = coffees.find((c) => c.id === s.coffeeId);
+            // A coffee card is shown under the first sample that uses it.
+            const owns = !!coffee && ownerOf(samples, coffee.id) === s.id;
+            const invalid = owns && invalidCoffeeId === coffee.id;
+            const number = si + 1;
+            const sampleName = `${t.newForm.sampleChip} ${number}`;
+            const shareable = si > 0 ? shareableCoffees({ samples, coffees }, si) : [];
+            return (
+              <div
+                key={s.id}
+                ref={
+                  owns
+                    ? (el) => {
+                        cardRefs.current[coffee.id] = el;
+                      }
+                    : undefined
                 }
-                translations={t.newForm.samplePrep}
-              />
-            </div>
-          ))}
+                role="group"
+                aria-label={sampleName}
+                className={
+                  "bg-surface-container-lowest border rounded-card shadow-card p-5 space-y-4 " +
+                  (invalid ? "border-error" : "border-outline-variant")
+                }
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="bg-surface-container rounded-pill px-3 py-1 text-xs font-semibold tracking-wide uppercase text-on-surface">
+                    {sampleName}
+                  </span>
+                  {/* The reference mark: a 44 px row around a 16 px radio. */}
+                  <label className="flex min-h-[44px] cursor-pointer items-center gap-2 px-2 text-xs font-medium text-on-surface">
+                    <input
+                      type="radio"
+                      name="reference"
+                      checked={referenceId === s.id}
+                      onChange={() => setReferenceId(s.id)}
+                      // An auto row has no label yet (the letter is drawn at
+                      // creation): name it by its coffee, else by its row number.
+                      aria-label={t.newForm.referenceMark.replace(
+                        "{label}",
+                        s.label.trim() || coffeeNameOf(s.coffeeId) || sampleName,
+                      )}
+                      className="h-4 w-4 accent-secondary cursor-pointer"
+                    />
+                    <span aria-hidden="true">{t.newForm.referenceBadge}</span>
+                  </label>
+                  <div className="flex-1" />
+                  {owns && usableCoffees.length > 0 && !coffee.existingCoffeeId && (
+                    <button
+                      type="button"
+                      onClick={() => setPickerFor(coffee.id)}
+                      className="min-h-[44px] rounded-pill border border-primary-container px-3 py-1 text-xs font-medium text-primary-container hover:bg-primary-fixed transition-colors"
+                    >
+                      {t.picker.useExisting}
+                    </button>
+                  )}
+                  {samples.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeSample(s.id)}
+                      aria-label={`${t.removeSample} ${sampleName.toLowerCase()}`}
+                      className="inline-flex h-[44px] w-[44px] items-center justify-center rounded-pill text-on-surface-variant hover:text-error transition-colors"
+                    >
+                      <X size={16} aria-hidden />
+                    </button>
+                  )}
+                </div>
+
+                <div>
+                  <FieldLabel htmlFor={`${fid}-${s.id}-label`} optionalText={t.newForm.optionalSuffix}>
+                    {t.sampleLabel}
+                  </FieldLabel>
+                  <input
+                    id={`${fid}-${s.id}-label`}
+                    value={s.label}
+                    onChange={(e) => updateSampleLabel(s.id, e.target.value)}
+                    placeholder={t.newForm.sampleLabelAuto}
+                    className={inputCls}
+                  />
+                </div>
+
+                {shareable.length > 0 && (
+                  <div>
+                    <FieldLabel htmlFor={`${fid}-${s.id}-coffee`}>{t.sampleCoffee}</FieldLabel>
+                    <select
+                      id={`${fid}-${s.id}-coffee`}
+                      value={owns ? "own" : s.coffeeId}
+                      onChange={(e) => chooseSampleCoffee(s.id, e.target.value)}
+                      className={inputCls + " cursor-pointer"}
+                    >
+                      <option value="own">{t.newForm.coffeeOwn}</option>
+                      {shareable.map((o) => (
+                        <option key={o.coffeeId} value={o.coffeeId}>
+                          {t.newForm.coffeeSameAs.replace("{n}", String(o.sampleNumber))}
+                          {o.name ? ` · ${o.name}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {owns && renderCoffee(coffee)}
+
+                <SamplePrepFields
+                  idPrefix={`prep-${s.id}`}
+                  value={prepToForm({
+                    roastDate: s.roastDate || null,
+                    preparationNote: s.preparationNote || null,
+                    offProtocol: s.offProtocol === true,
+                    offProtocolNote: s.offProtocolNote || null,
+                  })}
+                  onChange={(patch) =>
+                    setSamples((prev) => prev.map((x) => (x.id === s.id ? { ...x, ...patch } : x)))
+                  }
+                  translations={t.newForm.samplePrep}
+                />
+              </div>
+            );
+          })}
         </div>
+
+        <CoffeePicker
+          open={pickerFor !== null}
+          onOpenChange={(o) => !o && setPickerFor(null)}
+          coffees={usableCoffees}
+          onSelect={(picked) => {
+            if (pickerFor) applyExistingCoffee(pickerFor, picked);
+          }}
+          translations={{
+            title: t.picker.title,
+            searchPlaceholder: t.picker.searchPlaceholder,
+            mine: t.picker.mine,
+            shared: t.picker.shared,
+            public: t.picker.public,
+            empty: t.picker.empty,
+            close: t.picker.close,
+          }}
+        />
 
         {sampleWarning && (
           <p role="status" className="text-xs font-medium text-secondary">
@@ -1613,12 +1493,13 @@ export function NewSessionForm({
         >
           + {t.addSample}
         </button>
-      </div>
+      </section>
 
-      <hr className="border-t border-outline-variant" />
-
-      {/* 5. Group session */}
-      <div className="space-y-4">
+      {/* 4. Group session */}
+      <section aria-labelledby={`${fid}-sec-group`} className="space-y-4">
+        <SectionTitle n={4} id={`${fid}-sec-group`}>
+          {t.newForm.sectionGroup}
+        </SectionTitle>
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -1734,32 +1615,33 @@ export function NewSessionForm({
             )}
           </div>
         )}
-      </div>
+      </section>
 
-      <hr className="border-t border-outline-variant" />
-
-      {/* Error strip + submit */}
-      <div className="space-y-4">
-        {stripText && (
-          <div className="bg-error-container text-on-error-container rounded-card px-4 py-3 text-sm">
-            {stripText}
-          </div>
-        )}
-
-        {!online && t.newForm.errors.offline && (
-          <p role="status" className="text-center text-sm text-error">
-            {t.newForm.errors.offline}
-          </p>
-        )}
-
+      {/* The one submit, docked (C-08), with the form's own error line. */}
+      <FormActionBar
+        status={
+          <>
+            {stripText && (
+              <div className="bg-error-container text-on-error-container rounded-card px-4 py-3 text-sm">
+                {stripText}
+              </div>
+            )}
+            {!online && t.newForm.errors.offline && (
+              <p role="status" className="text-center text-sm text-error">
+                {t.newForm.errors.offline}
+              </p>
+            )}
+          </>
+        }
+      >
         <button
           type="submit"
           disabled={pending || !online}
-          className="w-full bg-primary-container text-on-primary rounded-pill py-3.5 font-medium hover:bg-primary transition-colors disabled:opacity-50"
+          className="bg-primary-container text-on-primary rounded-pill px-6 py-3.5 font-medium hover:bg-primary transition-colors disabled:opacity-50"
         >
           {isGroup ? t.newForm.startGroup : t.start}
         </button>
-      </div>
+      </FormActionBar>
     </form>
   );
 }

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { createCoffee, updateCoffee } from "@/app/actions/coffees";
 import { PROCESS_TYPES, CERTIFICATIONS, ROAST_LEVELS } from "@/lib/constants";
 import { radioKeyDown } from "@/components/radioKeys";
+import { FormActionBar, dockedFormClass } from "@/components/ui/FormActionBar";
 
 type Visibility = "private" | "shared" | "public";
 
@@ -233,7 +234,7 @@ export function CoffeeForm({
   const resolvedSubmittingLabel = submittingLabel ?? t.creating;
 
   return (
-    <form onSubmit={onSubmit} className="space-y-6">
+    <form onSubmit={onSubmit} className={`${dockedFormClass} space-y-6`}>
       <datalist id="cata-coffee-form-countries">
         {countries.map((c) => (
           <option key={c} value={c} />
@@ -460,31 +461,33 @@ export function CoffeeForm({
         </div>
       )}
 
-      {/* Error + submit */}
-      <div className="space-y-4">
-        {errorText && (
-          <div className="bg-error-container text-on-error-container rounded-card px-4 py-3 text-sm">
-            {errorText}
-            {errorCode === "conflict" && t.conflictReload && (
-              <button
-                type="button"
-                onClick={() => window.location.reload()}
-                className="mt-2 block min-h-[44px] rounded-input border border-on-error-container px-3 text-sm font-semibold"
-              >
-                {t.conflictReload}
-              </button>
-            )}
-          </div>
-        )}
-
+      {/* The one submit, docked (S7a, C-08), with the form's own error line. */}
+      <FormActionBar
+        status={
+          errorText && (
+            <div className="bg-error-container text-on-error-container rounded-card px-4 py-3 text-sm">
+              {errorText}
+              {errorCode === "conflict" && t.conflictReload && (
+                <button
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  className="mt-2 block min-h-[44px] rounded-input border border-on-error-container px-3 text-sm font-semibold"
+                >
+                  {t.conflictReload}
+                </button>
+              )}
+            </div>
+          )
+        }
+      >
         <button
           type="submit"
           disabled={pending}
-          className="w-full bg-primary-container text-on-primary rounded-pill py-3.5 font-semibold hover:bg-primary transition-colors disabled:opacity-50"
+          className="bg-primary-container text-on-primary rounded-pill px-6 py-3.5 font-semibold hover:bg-primary transition-colors disabled:opacity-50"
         >
           {pending ? resolvedSubmittingLabel : resolvedSubmitLabel}
         </button>
-      </div>
+      </FormActionBar>
     </form>
   );
 }
