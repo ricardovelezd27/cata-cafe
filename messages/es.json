@@ -1337,6 +1337,33 @@
       "referenceScore": "{score}",
       "referenceCompared": "Las diferencias (Δ) se calculan contra esta.",
       "preliminary": "Resultados preliminares: solo tú los ves. Se actualizan al pulsar «{button}»."
+    },
+    "cards": {
+      "title": "Café por café",
+      "note": "Cada café con su puntaje y lo que se encontró en él. Abre uno para ver tu evaluación completa.",
+      "noteAffective": "Cada café con su puntaje y su calidad, atributo por atributo. Abre uno para ver tu evaluación completa.",
+      "noteDescriptive": "Cada café con lo que se encontró en él. Abre uno para ver tu evaluación completa.",
+      "rowLabel": "Los cafés de la cata",
+      "outsideRanking": "Fuera del ranking",
+      "viewDetail": "Ver detalle",
+      "viewDetailOf": "Ver detalle: {label}",
+      "mostChosen": "Lo más elegido",
+      "youMarked": "Lo que marcaste",
+      "tooFew": "El sabor del grupo se muestra a partir de 3 catadores incluidos.",
+      "qualityGroup": "Calidad, de 1 a 9 · promedio del grupo",
+      "qualityMine": "Calidad, de 1 a 9 · tus valores",
+      "qualityTitle": "Calidad, atributo por atributo",
+      "stepsLabel": "Ir a un café",
+      "step": "Café {n} de {total}: {label}",
+      "compareLabel": "Cómo ver el sabor",
+      "compareEach": "Cada café",
+      "compare": "Comparar",
+      "comparePick": "Cafés que se comparan",
+      "compareHint": "Elige dos o tres cafés. Cada uno lleva su letra en el dibujo; las cifras están en la tabla.",
+      "compareNeedTwo": "Elige al menos dos cafés para compararlos.",
+      "tabPanel": "Panel",
+      "groupTitle": "El grupo en este café",
+      "yourDelta": "Tu puntaje frente a la referencia: {delta}"
     }
   },
   "community": {

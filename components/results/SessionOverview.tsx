@@ -1,15 +1,19 @@
 "use client";
 
-import { useId, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { ScoreWithContext, formatScore, formatSigned } from "@/components/ui/ScoreWithContext";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { fillPattern } from "@/lib/fillPattern";
 import { countedFamilies, type WheelFamilyId } from "@/lib/flavorWheel";
-import { overviewView, type OverviewData, type OverviewSample } from "@/lib/reports/overview";
+import { compareOptions, type CardSample } from "@/lib/reports/coffeeCards";
+import { overviewView, type OverviewData } from "@/lib/reports/overview";
 import type { RankContext } from "@/lib/reports/ranking";
 import { countBar } from "@/lib/resultsScales";
 import { scoreContext } from "@/lib/scoreContext";
+import type { CardsStrings } from "./cardsStrings";
 import { CountedList } from "./CountedList";
 import { FlavorWheel, WheelCaption } from "./FlavorWheel";
+import { OverviewCompare } from "./OverviewCompare";
 import type { OverviewStrings } from "./overviewStrings";
 import type { ResultsPartsStrings } from "./partsStrings";
 import { RankStrip } from "./RankStrip";
@@ -17,7 +21,7 @@ import { captionParts, wheelCaptionText } from "./wheelCaption";
 import styles from "./SessionOverview.module.css";
 
 /** What the overview reads of a sample. The results route's `SampleResult` satisfies it. */
-export type OverviewSampleProps = OverviewSample & {
+export type OverviewSampleProps = CardSample & {
   revealed: boolean;
   coffee: { name: string } | null;
 };
@@ -53,6 +57,7 @@ export function SessionOverview<S extends OverviewSampleProps>({
   preliminary,
   referencePinned,
   compareSelector,
+  compare,
   familyLabels,
   parts,
   t,
@@ -72,6 +77,17 @@ export function SessionOverview<S extends OverviewSampleProps>({
   referencePinned: boolean;
   /** "Comparar con", when the session has several references. */
   compareSelector?: ReactNode;
+  /** "Cada café | Comparar" of the flavour tile. `closed` is the session's own
+   *  state: nothing is compared before the close. `ground` is what lies under
+   *  the territories (rings by default; one prop, the owner's to confirm). */
+  compare?: {
+    closed: boolean;
+    ground?: "rings" | "families";
+    t: Pick<
+      CardsStrings,
+      "compareLabel" | "compareEach" | "compare" | "comparePick" | "compareHint" | "compareNeedTwo"
+    >;
+  };
   familyLabels: Record<WheelFamilyId, string>;
   parts: ResultsPartsStrings;
   t: OverviewStrings;
@@ -79,6 +95,17 @@ export function SessionOverview<S extends OverviewSampleProps>({
 }) {
   const view = overviewView({ samples, referenceId, ctx, data });
   const nameOf = (s: S) => (s.revealed && s.coffee ? s.coffee.name : null);
+  const [wheelMode, setWheelMode] = useState<"each" | "compare">("each");
+  // the coffees "Comparar" may draw, in the order of the ranking; null = no switch
+  const toCompare = compare
+    ? compareOptions({
+        closed: compare.closed,
+        samples,
+        order: [...view.entries.map((e) => e.sample.id), ...view.references.map((r) => r.sample.id)],
+        data,
+      })
+    : null;
+  const comparing = toCompare !== null && wheelMode === "compare";
   const openButton = (s: S, className: string) => (
     <button type="button" className={className} onClick={() => onOpenSample(s.id)}>
       <span className={styles.sampleLabel}>{s.label}</span>
@@ -177,7 +204,9 @@ export function SessionOverview<S extends OverviewSampleProps>({
                     <button
                       type="button"
                       className={styles.cover}
-                      aria-label={nameOf(entry.sample) ? `${entry.sample.label} ${nameOf(entry.sample)}` : entry.sample.label}
+                      aria-label={
+                        nameOf(entry.sample) ? `${entry.sample.label} ${nameOf(entry.sample)}` : entry.sample.label
+                      }
                       onClick={() => onOpenSample(entry.sample.id)}
                     />
                   </div>
@@ -212,7 +241,9 @@ export function SessionOverview<S extends OverviewSampleProps>({
                   tie: e.tie,
                 }))}
                 reference={
-                  view.referenceLine ? { label: view.referenceLine.sample.label, score: view.referenceLine.score } : null
+                  view.referenceLine
+                    ? { label: view.referenceLine.sample.label, score: view.referenceLine.score }
+                    : null
                 }
                 strings={parts.rank}
                 scoreStrings={parts.score}
@@ -241,43 +272,77 @@ export function SessionOverview<S extends OverviewSampleProps>({
               <p className={styles.context}>{t.wheelsEmpty}</p>
             ) : (
               <>
-                <p className={styles.context}>{view.scope === "group" ? t.wheelsNote : t.wheelsNoteOwn}</p>
-                <ul className={styles.wheels}>
-                  {view.wheels.items.map((item) => (
-                    <li key={item.sample.id}>
-                      <button type="button" className={styles.wheelButton} onClick={() => onOpenSample(item.sample.id)}>
-                        {item.status === "ok" ? (
-                          <FlavorWheel
-                            counts={item.wheel.rollup}
-                            n={item.wheel.n}
-                            familyLabels={familyLabels}
-                            strings={parts.wheel}
-                            size="mini"
-                            decorative
-                          />
-                        ) : (
-                          <span className={styles.wheelHole} aria-hidden="true" />
-                        )}
-                        <span className={styles.wheelLabel}>
-                          <span className={styles.sampleLabel}>{item.sample.label}</span>
-                          {nameOf(item.sample) ? <span className={styles.wheelCoffee}>{nameOf(item.sample)}</span> : null}
-                        </span>
-                        <span className={styles.wheelLine}>
-                          {item.status === "ok" ? (
-                            view.scope === "own" ? (
-                              // the reader's own marks: the families, with no "1 de 1"
-                              captionParts(wheelCaptionText(item.headline, familyLabels, parts.caption)).names
+                {toCompare && compare ? (
+                  <SegmentedControl
+                    className={styles.wheelSwitch}
+                    items={[
+                      { id: "each", label: compare.t.compareEach },
+                      { id: "compare", label: compare.t.compare },
+                    ]}
+                    value={comparing ? "compare" : "each"}
+                    onChange={(id) => setWheelMode(id === "compare" ? "compare" : "each")}
+                    ariaLabel={compare.t.compareLabel}
+                  />
+                ) : null}
+                {comparing && toCompare && compare ? (
+                  <OverviewCompare
+                    options={toCompare}
+                    names={Object.fromEntries(
+                      samples.map((s) => [s.id, nameOf(s) ? `${s.label} ${nameOf(s)}` : s.label]),
+                    )}
+                    short={Object.fromEntries(samples.map((s) => [s.id, nameOf(s) ?? s.label]))}
+                    familyLabels={familyLabels}
+                    ground={compare.ground}
+                    strings={parts.compare}
+                    t={compare.t}
+                  />
+                ) : (
+                  <>
+                    <p className={styles.context}>{view.scope === "group" ? t.wheelsNote : t.wheelsNoteOwn}</p>
+                    <ul className={styles.wheels}>
+                      {view.wheels.items.map((item) => (
+                        <li key={item.sample.id}>
+                          <button
+                            type="button"
+                            className={styles.wheelButton}
+                            onClick={() => onOpenSample(item.sample.id)}
+                          >
+                            {item.status === "ok" ? (
+                              <FlavorWheel
+                                counts={item.wheel.rollup}
+                                n={item.wheel.n}
+                                familyLabels={familyLabels}
+                                strings={parts.wheel}
+                                size="mini"
+                                decorative
+                              />
                             ) : (
-                              <WheelCaption text={wheelCaptionText(item.headline, familyLabels, parts.caption)} />
-                            )
-                          ) : (
-                            t.wheelTooFew
-                          )}
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+                              <span className={styles.wheelHole} aria-hidden="true" />
+                            )}
+                            <span className={styles.wheelLabel}>
+                              <span className={styles.sampleLabel}>{item.sample.label}</span>
+                              {nameOf(item.sample) ? (
+                                <span className={styles.wheelCoffee}>{nameOf(item.sample)}</span>
+                              ) : null}
+                            </span>
+                            <span className={styles.wheelLine}>
+                              {item.status === "ok" ? (
+                                view.scope === "own" ? (
+                                  // the reader's own marks: the families, with no "1 de 1"
+                                  captionParts(wheelCaptionText(item.headline, familyLabels, parts.caption)).names
+                                ) : (
+                                  <WheelCaption text={wheelCaptionText(item.headline, familyLabels, parts.caption)} />
+                                )
+                              ) : (
+                                t.wheelTooFew
+                              )}
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
               </>
             )}
           </Tile>
@@ -318,7 +383,9 @@ export function SessionOverview<S extends OverviewSampleProps>({
         {view.references.map((ref, i) => (
           <Tile
             key={ref.sample.id}
-            title={view.references.length > 1 ? `${t.referenceTitle} ${ref.sample.referenceRank ?? i + 1}` : t.referenceTitle}
+            title={
+              view.references.length > 1 ? `${t.referenceTitle} ${ref.sample.referenceRank ?? i + 1}` : t.referenceTitle
+            }
             area={styles.aSmall}
           >
             <p className={styles.firstName}>{openButton(ref.sample, styles.openInline)}</p>

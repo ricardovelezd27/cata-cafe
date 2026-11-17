@@ -215,6 +215,82 @@
   border-radius: 50%;
 }
 
+/* "Cada café | Comparar": the tile's one switch, then the chips of the coffees. */
+.wheelSwitch {
+  width: 100%;
+  max-width: 320px;
+  align-self: flex-start;
+  margin: 4px 0;
+}
+.compare {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 10px;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+/* A coffee to compare: its letter (the one drawn on its territory) and its
+   name. Chosen = a filled letter and a darker outline, so the state is not
+   carried by colour alone. */
+.pick {
+  appearance: none;
+  display: inline-flex;
+  min-height: 44px;
+  max-width: 100%;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0 14px 0 8px;
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-container-lowest);
+  color: var(--color-on-surface-variant);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.2;
+  text-align: left;
+  cursor: pointer;
+}
+.pick[aria-pressed="true"] {
+  border-color: var(--color-on-surface);
+  color: var(--color-on-surface);
+  font-weight: 600;
+}
+/* Three are chosen: the others cannot be added. Said by a dashed outline, not
+   by fading the name (it must stay readable). */
+.pick[aria-disabled="true"] {
+  border-style: dashed;
+  cursor: default;
+}
+.pickTag {
+  display: inline-flex;
+  width: 26px;
+  height: 26px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  font-size: 12.25px;
+  font-weight: 600;
+  line-height: 1;
+}
+.pick[aria-pressed="true"] .pickTag {
+  background: var(--color-on-surface);
+  border-color: var(--color-on-surface);
+  color: var(--color-surface-container-lowest);
+}
+.pickName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ── The reader against the panel ─────────────────────────────────────────── */
 .alignment {
   display: flex;

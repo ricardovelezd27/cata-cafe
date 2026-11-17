@@ -18,6 +18,7 @@ import { buildOverviewData } from "@/lib/reports/overview";
 import { wheelFamilyLabels } from "@/lib/flavorWheelLabels";
 import { buildResultsPartsStrings } from "@/components/results/partsStrings";
 import { buildOverviewStrings } from "@/components/results/overviewStrings";
+import { buildCardsStrings } from "@/components/results/cardsStrings";
 import { isSessionExpired, viewerMayReadGroupResults } from "@/lib/sessionState";
 import { wasClosedSilently } from "@/lib/repairClose";
 import { resultsUpdatedAfterClose } from "@/lib/exclusionReasons";
@@ -1143,6 +1144,19 @@ export default async function ResultsPage({
           }),
           preliminary: tResults("overview.preliminary", { button: tResults("refresh") }),
         },
+        // R2, step 2: the words of the coffee cards and of "Comparar".
+        cards: buildCardsStrings(tResults, {
+          inProgress: tResults("table.inProgress"),
+          notEvaluated: tResults("table.notEvaluated"),
+          inProgressLegend: tResults("table.inProgressLegend"),
+          partialLabel: tResults("partial.label"),
+          reveal: tg("reveal"),
+          revealed: tg("revealed"),
+          referenceBadge: tResults("referenceBadge"),
+          attributes: Object.fromEntries(
+            AFFECTIVE_ATTRIBUTES.map((a) => [a.id, tAttr(a.id as Parameters<typeof tAttr>[0])]),
+          ),
+        }),
       }}
       format={format}
       myAlignment={myAlignment}
@@ -1378,38 +1392,18 @@ export default async function ResultsPage({
         // Template — the live count is substituted client-side.
         refreshNew: tResults("refreshNew", { count: "{count}" }),
         refreshNewGeneric: tResults("refreshNewGeneric"),
-        radarMine: tResults("mine"),
-        radarCommunity: tResults("community"),
-        deltaAttribute: tResults("deltaAttribute"),
-        radar: {
-          score: tResults("radar.score"),
-          reveal: tResults("radar.reveal"),
-          communityScore: tResults("radar.communityScore"),
-          // {n}/{total} are substituted client-side.
-          includedLine: tResults.raw("radar.includedLine") as string,
-          noAffective: tResults("radar.noAffective"),
-          requiresAffective: tResults("radar.requiresAffective"),
-          // S10 WP3b: partial evaluations ({n} substituted client-side).
-          partialLabel: tResults("partial.label"),
-          includesOne: tResults.raw("partial.includesOne") as string,
-          includesMany: tResults.raw("partial.includesMany") as string,
-          axisNotEvaluated: tResults("partial.axisNotEvaluated"),
-        },
-        flavorProfiles: tResults("flavorProfiles"),
         referenceBadge: tResults("referenceBadge"),
         // `{n}` is an ICU arg — fetched raw and replaced client-side.
         referenceN: tResults.raw("referenceN") as string,
         compareWith: tResults("compareWith"),
-        deltaVsReference: tResults("deltaVsReference"),
-        deltaVsReferenceAria: tResults("deltaVsReferenceAria"),
-        referenceLegend: tResults("referenceLegend"),
-        tabResumen: tResults("tabs.resumen"),
         tabResultados: tResults("tabs.resultados"),
         tabDescriptores: tResults("tabs.descriptores"),
-        viewTable: tResults("views.table"),
-        viewChart: tResults("views.chart"),
-        communityPending: tResults("communityPending"),
         ownerSection: tResults("matrix.ownerSection"),
+        // S10 WP3b: `{n}` is filled in the browser.
+        partial: {
+          includesOne: tResults.raw("partial.includesOne") as string,
+          includesMany: tResults.raw("partial.includesMany") as string,
+        },
         liveUpdatesDown: tResults("liveUpdatesDown"),
         myDraftCta: tResults("myDraftCta"),
         closeEmailsResend: tResults("closeEmails.resend"),
@@ -1465,55 +1459,6 @@ export default async function ResultsPage({
         save: ta("save"),
         saving: ta("saving"),
         cancel: ta("cancel"),
-        dashboard: {
-          statSamples: tResults("dashboard.statSamples"),
-          statParticipation: tResults("dashboard.statParticipation"),
-          statAvg: tResults("dashboard.statAvg"),
-          statBest: tResults("dashboard.statBest"),
-          statAvgMine: tResults("dashboard.statAvgMine"),
-          statAvgCommunity: tResults("dashboard.statAvgCommunity"),
-          ranking: tResults("dashboard.ranking"),
-          notScored: tResults("dashboard.notScored"),
-          performance: tResults("dashboard.performance"),
-          myAvg: tResults("dashboard.myAvg"),
-          communityAvg: tResults("dashboard.communityAvg"),
-          alignmentLabel: tResults("dashboard.alignmentLabel"),
-          alignmentNote: tResults("dashboard.alignmentNote"),
-          highlights: tResults("dashboard.highlights"),
-          soloTopDescriptors: tResults("dashboard.soloTopDescriptors"),
-          viewInDescriptors: tResults("dashboard.viewInDescriptors"),
-          communityPending: tResults("communityPending"),
-          sdAria: tResults("sdAria"),
-          referenceBadge: tResults("referenceBadge"),
-          deltaVsReference: tResults("deltaVsReference"),
-          deltaVsReferenceAria: tResults("deltaVsReferenceAria"),
-          anchorTitle: tResults(`dashboard.anchorTitle${refCopy}`),
-          anchorHint: tResults(`dashboard.anchorHint${refCopy}`),
-          // Templates / ICU args: fetched raw, filled client-side.
-          includedOf: tResults.raw("dashboard.includedOf") as string,
-          rankIndicative: tResults("dashboard.rankIndicative"),
-          rankNoClearGap: tResults("dashboard.rankNoClearGap"),
-          scoreLegend: tCommon("scoreLegend"),
-          basisMine: tResults("dashboard.basisMine"),
-          fewNote: tResults("dashboard.fewNote"),
-          rankHelp: tResults("dashboard.rankHelp"),
-        },
-        table: {
-          sample: tResults("table.sample"),
-          descriptiveSection: tResults("table.descriptiveSection"),
-          affectiveSection: tResults("table.affectiveSection"),
-          cvaScore: tResults("table.cvaScore"),
-          communityShort: tResults("table.communityShort"),
-          legendMine: tResults("table.legendMine"),
-          legendCommunity: tResults("table.legendCommunity"),
-          viewDetail: tResults("table.viewDetail"),
-          reveal: tg("reveal"),
-          revealed: tg("revealed"),
-          inProgress: tResults("table.inProgress"),
-          notEvaluated: tResults("table.notEvaluated"),
-          inProgressLegend: tResults("table.inProgressLegend"),
-          partialLabel: tResults("partial.label"),
-        },
         detail: {
           prep: {
             roastDate: tResults("samplePrep.roastDate"),

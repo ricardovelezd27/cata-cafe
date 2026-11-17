@@ -30,6 +30,8 @@ export type FixtureSample = {
     submittedCount: number;
     totalSubmitted: number;
     totalCups: number;
+    /** The group's average per quality attribute, by the attribute's own label. */
+    attrAverages: Record<string, number>;
   } | null;
   myEvaluation: MyEvaluation;
   referenceRank: number | null;
@@ -45,6 +47,8 @@ export type OverviewScenario = {
   myAlignment: { matches: number; opportunities: number } | null;
   preliminary: boolean;
   referencePinned: boolean;
+  /** The session is closed: "Comparar" exists only then. */
+  closed: boolean;
   /** The session's reference mode (the words of the reference tile depend on it). */
   referenceMode: "anchor" | "free";
   /** The secret strings a participant's payload must never contain. */
@@ -81,6 +85,8 @@ type Plan = {
   excluded?: number[];
   joined?: number;
   preliminary?: boolean;
+  /** False for a cupping that is still open (default: closed). */
+  closed?: boolean;
   myAlignment?: { matches: number; opportunities: number } | null;
   samples: SamplePlan[];
 };
@@ -174,6 +180,7 @@ function build(plan: Plan): OverviewScenario {
             submittedCount: agg.submitted,
             totalSubmitted: sent.length,
             totalCups: agg.totalCups,
+            attrAverages: agg.attrAverages,
           }
         : null,
       myEvaluation: mine
@@ -215,6 +222,7 @@ function build(plan: Plan): OverviewScenario {
     myAlignment: plan.myAlignment ?? null,
     preliminary: plan.preliminary ?? false,
     referencePinned: plan.samples.some((s) => s.reference === "anchor") && plan.format !== "descriptive",
+    closed: plan.closed ?? true,
     referenceMode: plan.samples.some((s) => s.reference === "free") ? "free" : "anchor",
     secrets: [
       ...Array.from({ length: plan.cuppers }, (_, c) => cupperKey(c)),
@@ -305,6 +313,7 @@ const OPEN: Plan = {
   cups: 2,
   viewer: 0,
   viewerDrafts: [2],
+  closed: false,
   cuppers: 4,
   samples: [
     { label: "Muestra A", levels: [7, 8, 7, 7], picks: [[FR, FL], [FR], [FL], [FR]] },
