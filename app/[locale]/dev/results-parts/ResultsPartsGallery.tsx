@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { CountedList } from "@/components/results/CountedList";
 import { FlavorCompare, type CompareCoffee } from "@/components/results/FlavorCompare";
-import { FlavorWheel } from "@/components/results/FlavorWheel";
+import { FlavorWheel, WheelCaption } from "@/components/results/FlavorWheel";
 import type { ResultsPartsStrings } from "@/components/results/partsStrings";
 import { RankStrip } from "@/components/results/RankStrip";
 import { wheelCaptionText } from "@/components/results/wheelCaption";
@@ -58,18 +58,19 @@ const COPY = {
     mineOnly: "Solo tus valores",
     mineOnlyNote: "Cuando el valor del grupo no se puede mostrar.",
     wheel: "La rueda contada",
-    wheelNote: "Un anillo por persona y un pétalo por familia, tan largo como las personas que la encontraron. El número va junto al anillo y la lista de abajo repite cada cifra.",
+    wheelNote: "Cada familia tiene su sector en un tono pálido (el sector entero es «todos») y, encima, un pétalo tan largo como las personas que la encontraron. Dentro no hay anillos: el número va junto al anillo exterior, el total de catadores debajo y la lista repite cada cifra.",
     families: "Familias",
     descriptors: "Descriptores",
     panel: (n: number) => `Panel de ${n}`,
     leader: "Un sabor claro",
+    little: "Un panel que coincidió poco",
     two: "Dos familias al frente",
     unanimous: "Una familia unánime",
-    twelve: "Con doce, los anillos son cuartos del panel",
+    twelve: "Con doce: cuentas de dos cifras",
     nobody: "Nadie eligió un sabor",
     empty: "Nadie lo cató",
     minis: "La fila de ruedas pequeñas",
-    minisNote: "La forma sola, con su letra y lo más encontrado escrito debajo.",
+    minisNote: "La misma rueda sin palabras: los nueve sectores pálidos, los pétalos y el anillo exterior. Su letra y lo más encontrado van escritos debajo.",
     compare: "La comparación",
     compareNote: "Sin números en el dibujo: la tabla de abajo es la lectura exacta. Cada café lleva su letra sobre su propio borde y un estilo de línea distinto.",
     aloneTwo: "Dos cafés, solos",
@@ -78,15 +79,13 @@ const COPY = {
     overTwo: "Sobre los pétalos: otros dos (paneles de 7, 6 y 4)",
     hard: "Caso difícil: tres paneles planos o pequeños",
     mixed: "Paneles de 7 y 12 en una misma escala de personas",
-    flat: "Un panel que coincidió poco: tres opciones",
-    flatNote: "La misma cuenta y la misma escala en las tres; cambia el titular y el fondo. Arriba el café en que el panel coincidió poco, abajo el mismo trato para un café con un sabor claro.",
-    optionA: "Opción A · como hoy",
-    optionANote: "La rueda y sus números, sin titular.",
-    optionB: "Opción B · con titular",
-    optionBNote: "Una línea encima dice lo más encontrado, con su cifra.",
-    optionC: "Opción C · con titular y fondo de familias",
-    optionCNote: "Además, el sector entero de cada familia en un tono pálido: se ven las nueve y cuánto falta para todos.",
-    minisTracks: "Las ruedas pequeñas, con el fondo de la opción C",
+    choice: "Una decisión abierta: el fondo de la comparación",
+    choiceNote: "La rueda de un café ya no lleva anillos por dentro porque cada pétalo tiene su número al lado. La comparación no imprime números en el dibujo, así que hay dos caminos. Está construida la A.",
+    choiceRings: "A · con un anillo por persona (recomendada)",
+    choiceRingsNote: "El borde de cada territorio corre sobre el anillo de su cuenta: el anillo es la única escala del dibujo.",
+    choiceFamilies: "B · como la rueda: sectores pálidos, sin anillos",
+    choiceFamiliesNote: "Igual que la rueda de un café. La altura de un territorio solo se lee en la tabla.",
+    compareRest: "Los demás casos, con el fondo A",
     narrow: "En una columna de 288 px",
     narrowNote: "El ancho del contenido en un teléfono de 320 px. El texto pinta al mismo tamaño; lo que se achica es la rueda.",
     bar: "Una barra contada, sola",
@@ -117,18 +116,19 @@ const COPY = {
     mineOnly: "Your values only",
     mineOnlyNote: "When the group's value may not be shown.",
     wheel: "The counted wheel",
-    wheelNote: "A ring per person and a petal per family, as long as the people who found it. The number sits beside the ring and the list under it repeats every figure.",
+    wheelNote: "Each family has its sector in a pale tint (the whole sector is everyone) and, over it, a petal as long as the people who found it. No rings inside: the number sits beside the outer ring, the panel's size under the wheel, and the list repeats every figure.",
     families: "Families",
     descriptors: "Descriptors",
     panel: (n: number) => `Panel of ${n}`,
     leader: "One clear flavour",
+    little: "A panel that agreed on little",
     two: "Two families lead",
     unanimous: "One family unanimous",
-    twelve: "With twelve, the rings are quarters of the panel",
+    twelve: "With twelve: two-digit counts",
     nobody: "Nobody picked a flavour",
     empty: "Nobody cupped it",
     minis: "The row of small wheels",
-    minisNote: "The shape alone, with its letter and the most found family written under it.",
+    minisNote: "The same wheel with no words: the nine pale sectors, the petals and the outer ring. Its letter and the most found family are written under it.",
     compare: "The comparison",
     compareNote: "No numbers on the drawing: the table under it is the exact reading. Each coffee carries its letter on its own edge and its own line style.",
     aloneTwo: "Two coffees, alone",
@@ -137,15 +137,13 @@ const COPY = {
     overTwo: "Over the petals: two others (panels of 7, 6 and 4)",
     hard: "Hard case: three flat or small panels",
     mixed: "Panels of 7 and 12 on one scale of people",
-    flat: "A panel that agreed on little: three options",
-    flatNote: "The same count and the same scale in all three; the headline and the ground change. Above, the coffee the panel agreed little on; below, the same treatment for a coffee with one clear flavour.",
-    optionA: "Option A · as today",
-    optionANote: "The wheel and its numbers, no headline.",
-    optionB: "Option B · with a headline",
-    optionBNote: "One line above says what most people found, with its figure.",
-    optionC: "Option C · headline and family ground",
-    optionCNote: "Also, each family's whole sector in a pale tint: all nine are seen, and how far each is from everyone.",
-    minisTracks: "The small wheels, with the ground of option C",
+    choice: "One open choice: the ground of the comparison",
+    choiceNote: "A coffee's wheel no longer has rings inside because every petal has its number beside it. The comparison prints no numbers on the drawing, so there are two ways. A is the one built.",
+    choiceRings: "A · a ring per person (recommended)",
+    choiceRingsNote: "Each territory's edge runs on the ring of its count: the ring is the only scale on the drawing.",
+    choiceFamilies: "B · as the wheel: pale sectors, no rings",
+    choiceFamiliesNote: "The same as a coffee's wheel. How far a territory reaches is read in the table only.",
+    compareRest: "The other cases, on ground A",
     narrow: "In a 288 px column",
     narrowNote: "The width of the content on a 320 px phone. Text paints at the same size; what shrinks is the wheel.",
     bar: "One counted bar, alone",
@@ -176,7 +174,7 @@ function Card({ title, note, option, children }: { title?: string; note?: string
 }
 
 /** The groups of parts the board can show, in the order of the page. */
-export const GALLERY_SECTIONS = ["wheel", "options", "minis", "compare", "rank", "dots", "score", "narrow"] as const;
+export const GALLERY_SECTIONS = ["wheel", "minis", "compare", "rank", "dots", "score", "narrow"] as const;
 export type GallerySection = (typeof GALLERY_SECTIONS)[number];
 
 export function ResultsPartsGallery({
@@ -205,18 +203,16 @@ export function ResultsPartsGallery({
     n: WHEEL_FIXTURES[name].n,
   });
   const captionOf = (name: WheelFixtureName) =>
-    wheelCaptionText(wheelHeadline(WHEEL_FIXTURES[name].rollup, WHEEL_FIXTURES[name].n), families, strings);
-  const wheel = (name: WheelFixtureName, caption?: ReactNode, tracks = false) => (
+    wheelCaptionText(wheelHeadline(WHEEL_FIXTURES[name].rollup, WHEEL_FIXTURES[name].n), families, strings.caption);
+  const wheel = (name: WheelFixtureName) => (
     <FlavorWheel
       counts={WHEEL_FIXTURES[name].rollup}
       n={WHEEL_FIXTURES[name].n}
       familyLabels={families}
       strings={strings.wheel}
-      caption={caption}
-      tracks={tracks}
     />
   );
-  const mini = (name: WheelFixtureName, tracks = false) => (
+  const mini = (name: WheelFixtureName) => (
     <FlavorWheel
       counts={WHEEL_FIXTURES[name].rollup}
       n={WHEEL_FIXTURES[name].n}
@@ -224,18 +220,19 @@ export function ResultsPartsGallery({
       strings={strings.wheel}
       size="mini"
       decorative
-      tracks={tracks}
     />
   );
-  const miniRow = (tracks: boolean) => (
+  const miniRow = (
     <ul className={css.minis}>
-      {(["ambar", "niebla", "musgo", "cedro", "doce"] as const).map((name) => (
+      {(["ambar", "niebla", "musgo", "cedro", "tres", "doce", "nadie"] as const).map((name) => (
         <li key={name} className={css.miniItem}>
-          {mini(name, tracks)}
+          {mini(name)}
           <span>
             <span className={css.miniTag}>{COFFEE[name].tag}</span> {COFFEE[name].name}
           </span>
-          <span className={css.miniLine}>{captionOf(name)}</span>
+          <span className={css.miniLine}>
+            <WheelCaption text={captionOf(name)} />
+          </span>
         </li>
       ))}
     </ul>
@@ -257,11 +254,26 @@ export function ResultsPartsGallery({
       ariaLabel={c.descriptors}
     />
   );
-  const cuppersLine = (name: WheelFixtureName) => fillPattern(strings.caption.cuppers, { n: WHEEL_FIXTURES[name].n });
-  const headline = (name: WheelFixtureName) => (
-    <div>
-      <p className={css.eyebrow}>{strings.caption.mostFoundLabel}</p>
-      <p className={css.headline}>{captionOf(name)}</p>
+  const compare = (
+    set: { base?: WheelFixtureName; others: WheelFixtureName[] },
+    ground: "rings" | "families" = "rings",
+  ) => (
+    <FlavorCompare
+      base={set.base ? coffee(set.base) : null}
+      others={set.others.map(coffee)}
+      familyLabels={families}
+      strings={strings.compare}
+      ground={ground}
+    />
+  );
+  const choice = (set: { base?: WheelFixtureName; others: WheelFixtureName[] }) => (
+    <div className={css.grid}>
+      <Card option={c.choiceRings} note={c.choiceRingsNote}>
+        {compare(set, "rings")}
+      </Card>
+      <Card option={c.choiceFamilies} note={c.choiceFamiliesNote}>
+        {compare(set, "families")}
+      </Card>
     </div>
   );
 
@@ -269,31 +281,6 @@ export function ResultsPartsGallery({
     const f = ranks.find((r) => r.id === id) ?? ranks[0];
     return <RankStrip items={f.rows} reference={f.reference} strings={strings.rank} scoreStrings={strings.score} ariaLabel={c.rank} />;
   };
-
-  const flatOptions = (name: WheelFixtureName) => (
-    <div className={css.gridThree}>
-      <Card option={c.optionA} note={c.optionANote}>
-        <div className={css.stack}>
-          {wheel(name, cuppersLine(name))}
-          {familyList(name)}
-        </div>
-      </Card>
-      <Card option={c.optionB} note={c.optionBNote}>
-        {headline(name)}
-        <div className={css.stack}>
-          {wheel(name, cuppersLine(name))}
-          {familyList(name)}
-        </div>
-      </Card>
-      <Card option={c.optionC} note={c.optionCNote}>
-        {headline(name)}
-        <div className={css.stack}>
-          {wheel(name, cuppersLine(name), true)}
-          {familyList(name)}
-        </div>
-      </Card>
-    </div>
-  );
 
   return (
     <main className={css.page}>
@@ -308,7 +295,7 @@ export function ResultsPartsGallery({
           <div className={css.grid}>
             <Card title={c.leader} note={c.panel(7)}>
               <div className={css.stack}>
-                {wheel("ambar", cuppersLine("ambar"))}
+                {wheel("ambar")}
                 <div>
                   <p className={css.listTitle}>{c.families}</p>
                   {familyList("ambar")}
@@ -319,41 +306,35 @@ export function ResultsPartsGallery({
                 </div>
               </div>
             </Card>
+            <Card title={c.little} note={c.panel(7)}>
+              <div className={css.stack}>
+                {wheel("niebla")}
+                <div>
+                  <p className={css.listTitle}>{c.families}</p>
+                  {familyList("niebla")}
+                </div>
+              </div>
+            </Card>
             <Card title={c.two} note={c.panel(7)}>
               <div className={css.stack}>
-                {wheel("musgo", cuppersLine("musgo"))}
+                {wheel("musgo")}
                 {familyList("musgo")}
               </div>
             </Card>
             <Card title={c.unanimous} note={c.panel(6)}>
               <div className={css.stack}>
-                {wheel("cedro", cuppersLine("cedro"))}
+                {wheel("cedro")}
                 {familyList("cedro")}
               </div>
             </Card>
-            <Card title={c.panel(3)}>{wheel("tres", cuppersLine("tres"))}</Card>
+            <Card title={c.panel(3)}>{wheel("tres")}</Card>
             <Card title={c.twelve} note={c.panel(12)}>
-              {wheel("doce", cuppersLine("doce"))}
+              {wheel("doce")}
             </Card>
             <Card title={c.nobody} note={c.panel(7)}>
-              <div className={css.stack}>
-                {wheel("nadie", cuppersLine("nadie"))}
-                {familyList("nadie")}
-              </div>
+              {wheel("nadie")}
             </Card>
             <Card title={c.empty}>{wheel("vacio")}</Card>
-          </div>
-        </section>
-      ) : null}
-
-      {show("options") ? (
-        <section className={css.section}>
-          <h2 className={css.sectionTitle}>{c.flat}</h2>
-          <p className={css.sectionNote}>{c.flatNote}</p>
-          {flatOptions("niebla")}
-          {flatOptions("ambar")}
-          <div className={css.gridWide}>
-            <Card title={c.minisTracks}>{miniRow(true)}</Card>
           </div>
         </section>
       ) : null}
@@ -363,47 +344,26 @@ export function ResultsPartsGallery({
           <h2 className={css.sectionTitle}>{c.minis}</h2>
           <p className={css.sectionNote}>{c.minisNote}</p>
           <div className={css.gridWide}>
-            <Card>{miniRow(false)}</Card>
+            <Card>{miniRow}</Card>
           </div>
         </section>
       ) : null}
 
       {show("compare") ? (
         <section className={css.section}>
-          <h2 className={css.sectionTitle}>{c.compare}</h2>
+          <h2 className={css.sectionTitle}>{c.choice}</h2>
+          <p className={css.sectionNote}>{c.choiceNote}</p>
+          {choice({ others: ["ambar", "musgo"] })}
+          {choice({ base: "ambar", others: ["cedro"] })}
+
+          <h2 className={`${css.sectionTitle} ${css.sectionTitleNext}`}>{c.compare}</h2>
           <p className={css.sectionNote}>{c.compareNote}</p>
+          <p className={css.listTitle}>{c.compareRest}</p>
           <div className={css.grid}>
-            <Card title={c.aloneTwo}>
-              <FlavorCompare others={[coffee("ambar"), coffee("musgo")]} familyLabels={families} strings={strings.compare} />
-            </Card>
-            <Card title={c.aloneThree}>
-              <FlavorCompare
-                others={[coffee("ambar"), coffee("musgo"), coffee("cedro")]}
-                familyLabels={families}
-                strings={strings.compare}
-              />
-            </Card>
-            <Card title={c.overOne}>
-              <FlavorCompare base={coffee("ambar")} others={[coffee("cedro")]} familyLabels={families} strings={strings.compare} />
-            </Card>
-            <Card title={c.overTwo}>
-              <FlavorCompare
-                base={coffee("ambar")}
-                others={[coffee("cedro"), coffee("cuatro")]}
-                familyLabels={families}
-                strings={strings.compare}
-              />
-            </Card>
-            <Card title={c.hard}>
-              <FlavorCompare
-                others={[coffee("niebla"), coffee("tres"), coffee("cuatro")]}
-                familyLabels={families}
-                strings={strings.compare}
-              />
-            </Card>
-            <Card title={c.mixed}>
-              <FlavorCompare others={[coffee("ambar"), coffee("doce")]} familyLabels={families} strings={strings.compare} />
-            </Card>
+            <Card title={c.aloneThree}>{compare({ others: ["ambar", "musgo", "cedro"] })}</Card>
+            <Card title={c.overTwo}>{compare({ base: "ambar", others: ["cedro", "cuatro"] })}</Card>
+            <Card title={c.hard}>{compare({ others: ["niebla", "tres", "cuatro"] })}</Card>
+            <Card title={c.mixed}>{compare({ others: ["ambar", "doce"] })}</Card>
           </div>
         </section>
       ) : null}
@@ -472,16 +432,10 @@ export function ResultsPartsGallery({
           <h2 className={css.sectionTitle}>{c.narrow}</h2>
           <p className={css.sectionNote}>{c.narrowNote}</p>
           <div className={css.narrowRow} data-narrow-row="">
-            <div className={css.narrow}>{wheel("ambar", cuppersLine("ambar"))}</div>
-            <div className={css.narrow}>{wheel("doce", cuppersLine("doce"))}</div>
-            <div className={css.narrow}>
-              <FlavorCompare
-                base={coffee("ambar")}
-                others={[coffee("cedro"), coffee("cuatro")]}
-                familyLabels={families}
-                strings={strings.compare}
-              />
-            </div>
+            <div className={css.narrow}>{wheel("ambar")}</div>
+            <div className={css.narrow}>{wheel("musgo")}</div>
+            <div className={css.narrow}>{wheel("doce")}</div>
+            <div className={css.narrow}>{compare({ base: "ambar", others: ["cedro", "cuatro"] })}</div>
             <div className={css.narrow}>{descriptorList("ambar")}</div>
             <div className={css.narrow}>{rankOf("panel")}</div>
             <div className={css.narrow}>

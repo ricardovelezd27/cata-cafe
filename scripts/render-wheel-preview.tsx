@@ -148,7 +148,7 @@ const doc = (
       <CoffeeBlock name="Muestra H · Cedro (honey), 6 catadores" people={CEDRO} locale="es" />
     </Sheet>
 
-    <Sheet title="3. Paneles de 3 y de 12" note="Con tres catadores hay tres anillos; con doce, los anillos son cuartos del panel (3, 6, 9 y 12). Ruedas a 250 pt: los nombres largos parten en dos líneas.">
+    <Sheet title="3. Paneles de 3 y de 12" note="Sin anillos por dentro: cada pétalo se lee contra su sector pálido (el sector entero es todo el panel) y por su número. Con doce las cuentas tienen dos cifras. Ruedas a 250 pt: los nombres largos parten en dos líneas.">
       <View style={{ flexDirection: "row" }}>
         <View style={{ width: 262 }}>
           <Heading>3 catadores</Heading>
@@ -165,7 +165,7 @@ const doc = (
       <CoffeeBlock name="El panel de 12, con su lista" people={DOCE} locale="es" />
     </Sheet>
 
-    <Sheet title="4. Nadie describió el café · la rueda pequeña" note="Arriba, un café sin descriptores: el suelo de anillos y los nueve nombres, sin pétalos. Abajo, cinco ruedas pequeñas en fila, como en las tarjetas.">
+    <Sheet title="4. Nadie describió el café · la rueda pequeña" note="Arriba, un café sin descriptores: los nueve sectores pálidos y los nueve nombres, sin pétalos. Abajo, cinco ruedas pequeñas en fila, como en las tarjetas: la misma rueda sin palabras.">
       <CoffeeBlock name="Muestra X · sin descriptores" people={NADIE} locale="es" />
       <Heading>El sabor de cada café</Heading>
       <View style={{ flexDirection: "row", marginTop: 6 }}>
@@ -233,7 +233,33 @@ const doc = (
       </View>
     </Sheet>
 
-    <Sheet title="8. In English" note="The same drawings with English labels. Invented data.">
+    <Sheet title="8. La comparación: el fondo, una decisión abierta" note="Izquierda (A, la construida y recomendada): un anillo por persona, la única escala de un dibujo que no imprime números. Derecha (B): como la rueda de un café, sectores pálidos y sin anillos.">
+      <View style={{ flexDirection: "row" }}>
+        <View style={{ width: 262 }}>
+          <Heading>A · Dos cafés, con anillos</Heading>
+          <PdfFlavorCompare others={[coffee("G", "Ámbar (natural)", AMBAR), coffee("D", "Musgo (lavado)", MUSGO)]} familyLabels={ES} ofWord="de" width={250} />
+        </View>
+        <View style={{ width: 262 }}>
+          <Heading>B · Dos cafés, como la rueda</Heading>
+          <PdfFlavorCompare others={[coffee("G", "Ámbar (natural)", AMBAR), coffee("D", "Musgo (lavado)", MUSGO)]} familyLabels={ES} ofWord="de" width={250} ground="families" />
+        </View>
+      </View>
+    </Sheet>
+
+    <Sheet title="9. La misma decisión, sobre los pétalos de un café" note="Izquierda (A): los anillos cuentan personas, así que paneles de tamaños distintos comparten una escala honesta. Derecha (B): el sector entero sería «todos», pero aquí la escala es la del panel más grande, no la de cada café.">
+      <View style={{ flexDirection: "row" }}>
+        <View style={{ width: 262 }}>
+          <Heading>A · Sobre los pétalos, con anillos</Heading>
+          <PdfFlavorCompare base={coffee("G", "Ámbar (natural)", AMBAR)} others={[coffee("H", "Cedro (honey)", CEDRO)]} familyLabels={ES} ofWord="de" width={250} />
+        </View>
+        <View style={{ width: 262 }}>
+          <Heading>B · Sobre los pétalos, como la rueda</Heading>
+          <PdfFlavorCompare base={coffee("G", "Ámbar (natural)", AMBAR)} others={[coffee("H", "Cedro (honey)", CEDRO)]} familyLabels={ES} ofWord="de" width={250} ground="families" />
+        </View>
+      </View>
+    </Sheet>
+
+    <Sheet title="10. In English" note="The same drawings with English labels. Invented data.">
       <CoffeeBlock name="Sample G · Amber (natural)" people={AMBAR} locale="en" marked={[BLACKBERRY, HONEY]} />
       <View style={{ flexDirection: "row" }}>
         <View style={{ width: 262 }}>

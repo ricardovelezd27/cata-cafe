@@ -12,8 +12,9 @@ import {
   type WheelCounts,
 } from "@/lib/flavorWheel";
 import { fitWheelLabels } from "@/lib/flavorWheelLayout";
+import { familyGrounds } from "@/lib/flavorWheelShape";
 import { familyToneClass } from "@/components/ui/familyTone";
-import { WheelLabels, type FamilyLabels } from "./FlavorWheel";
+import { WheelGrounds, WheelLabels, type FamilyLabels } from "./FlavorWheel";
 import styles from "./FlavorWheel.module.css";
 
 /** One coffee of a comparison. `tag` is the letter drawn on its territory;
@@ -49,17 +50,27 @@ const TAG_TEXT_PX = 12.25;
  * exact reading and the text equivalent), the centre stays the colour of the
  * paper, each coffee's letter sits on its own edge inside the outer ring, and
  * the coffees are told apart by line style and by letter, never by colour alone.
+ *
+ * `ground`: what lies under the territories.
+ * - "rings" (the default): a ring per person. The one-coffee wheel lost its
+ *   rings in package R1d because a count is printed beside every petal; here no
+ *   count is printed, so the rings are the only scale on the drawing: a
+ *   territory's edge runs ON the ring of its count.
+ * - "families": as the one-coffee wheel, the nine tinted sectors and the outer
+ *   ring alone. Kept so the owner can compare the two; not the recommendation.
  */
 export function FlavorCompare({
   base = null,
   others,
   familyLabels,
   strings,
+  ground = "rings",
 }: {
   base?: CompareCoffee | null;
   others: readonly CompareCoffee[];
   familyLabels: FamilyLabels;
   strings: FlavorCompareStrings;
+  ground?: "rings" | "families";
 }) {
   const { ref, width } = useElementWidth();
   const frame = WHEEL_FRAMES.compare;
@@ -108,15 +119,18 @@ export function FlavorCompare({
           focusable="false"
         >
           <g aria-hidden="true">
-            {g.rings.map((ring) => (
-              <circle
-                key={ring.people}
-                className={ring.outer ? styles.ringOuter : styles.ring}
-                cx={frame.cx}
-                cy={frame.cy}
-                r={ring.radius}
-              />
-            ))}
+            {ground === "families" ? <WheelGrounds grounds={familyGrounds(frame, g.n)} /> : null}
+            {g.rings
+              .filter((ring) => ring.outer || ground === "rings")
+              .map((ring) => (
+                <circle
+                  key={ring.people}
+                  className={ring.outer ? styles.ringOuter : styles.ring}
+                  cx={frame.cx}
+                  cy={frame.cy}
+                  r={ring.radius}
+                />
+              ))}
             {g.petals.map((p) =>
               p.d === null ? null : (
                 <path key={p.family} className={`${styles.petal} ${familyToneClass(p.family)}`} d={p.d} />

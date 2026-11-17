@@ -1290,7 +1290,8 @@
       "mostFoundMany": "{k} families · {count} of {n} each",
       "mostFoundLabel": "Most found",
       "and": " and ",
-      "cuppers": "{n} cuppers"
+      "cuppers": "{n} cuppers",
+      "cuppersOne": "1 cupper"
     }
   },
   "community": {

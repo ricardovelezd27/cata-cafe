@@ -4,6 +4,7 @@
 // the SSR fallbacks in components/results/chartColors.ts.
 
 import { L1_GROUP_COLOR } from "../constants";
+import { WHEEL_GROUND_SHARE } from "../flavorWheelShape";
 
 export const PDF_PALETTE = {
   // Mirrors components/results/chartColors.ts FALLBACK.
@@ -62,3 +63,32 @@ export const PDF_FLAVOR_FAMILY_COLORS = {
 
 /** A colour per flavour family id (the nine of `WHEEL_FAMILY_ORDER`). */
 export type PdfFlavorFamilyColors = Record<keyof typeof PDF_FLAVOR_FAMILY_COLORS, string>;
+
+// ── The pale ground of a family (package R1d) ────────────────────────────────
+// A counted wheel paints each family's whole sector in a pale tint of its
+// colour, under the petal. THE one place the PDF computes that tint: the page
+// paints the family's tone at `WHEEL_GROUND_SHARE` opacity over its paper, and
+// this mixes the same share over white, so the page and the paper show one
+// wheel. Opaque on purpose (a transparent fill prints differently from one
+// printer to the next). Nine values are derived below, none is typed.
+
+/** `share` of a colour over white paper. A colour this cannot read (anything
+ *  but six or three hex digits) gives white: no ground rather than a wrong one. */
+export function pdfPaleTint(color: string, share: number = WHEEL_GROUND_SHARE): string {
+  const hex = color.trim().replace(/^#/, "");
+  const full = hex.length === 3 ? hex.replace(/./g, (c) => c + c) : hex;
+  if (!/^[0-9a-fA-F]{6}$/.test(full)) return PDF_PALETTE.white;
+  const s = Math.min(1, Math.max(0, share));
+  const channel = (at: number) => {
+    const value = parseInt(full.slice(at, at + 2), 16);
+    return Math.round(value * s + 255 * (1 - s))
+      .toString(16)
+      .padStart(2, "0");
+  };
+  return `#${channel(0)}${channel(2)}${channel(4)}`;
+}
+
+/** The ground of each family: the pale version of `PDF_FLAVOR_FAMILY_COLORS`. */
+export const PDF_FLAVOR_FAMILY_GROUNDS = Object.fromEntries(
+  Object.entries(PDF_FLAVOR_FAMILY_COLORS).map(([family, color]) => [family, pdfPaleTint(color)]),
+) as PdfFlavorFamilyColors;

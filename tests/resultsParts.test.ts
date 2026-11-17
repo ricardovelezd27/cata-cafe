@@ -202,21 +202,21 @@ describe("wheelHeadline and its caption", () => {
   it("names the family most people found, with its count and its n", () => {
     const h = wheelHeadline(WHEEL_FIXTURES.ambar.rollup, WHEEL_FIXTURES.ambar.n);
     expect(h).toEqual({ n: 7, count: 7, families: ["fruity"], found: 6 });
-    expect(wheelCaptionText(h, wheelFamilyLabels("es"), stringsOf("es"))).toBe("Frutal · 7 de 7");
+    expect(wheelCaptionText(h, wheelFamilyLabels("es"), stringsOf("es").caption)).toBe("Frutal · 7 de 7");
   });
   it("lists every family tied at the top, in the wheel's order, and counts them when they are many", () => {
     const h = wheelHeadline(WHEEL_FIXTURES.niebla.rollup, WHEEL_FIXTURES.niebla.n);
     expect(h?.count).toBe(2);
     expect(h?.families).toEqual(["floral", "fruity", "green_veg", "nutty_cocoa", "sweet"]);
-    expect(wheelCaptionText(h, wheelFamilyLabels("es"), stringsOf("es"))).toBe("5 familias · 2 de 7 cada una");
+    expect(wheelCaptionText(h, wheelFamilyLabels("es"), stringsOf("es").caption)).toBe("5 familias · 2 de 7 cada una");
     const two = wheelHeadline(WHEEL_FIXTURES.musgo.rollup, WHEEL_FIXTURES.musgo.n);
-    expect(wheelCaptionText(two, wheelFamilyLabels("es"), stringsOf("es"))).toBe("Verde/Vegetal y Tostado · 5 de 7 cada una");
-    expect(wheelCaptionText(two, wheelFamilyLabels("en"), stringsOf("en"))).toBe("Green/Vegetative and Roasted · 5 of 7 each");
+    expect(wheelCaptionText(two, wheelFamilyLabels("es"), stringsOf("es").caption)).toBe("Verde/Vegetal y Tostado · 5 de 7 cada una");
+    expect(wheelCaptionText(two, wheelFamilyLabels("en"), stringsOf("en").caption)).toBe("Green/Vegetative and Roasted · 5 of 7 each");
   });
   it("is null when nobody picked a flavour, and the caption says so", () => {
     expect(wheelHeadline(WHEEL_FIXTURES.nadie.rollup, 7)).toBeNull();
     expect(wheelHeadline(WHEEL_FIXTURES.vacio.rollup, 0)).toBeNull();
-    expect(wheelCaptionText(null, wheelFamilyLabels("es"), stringsOf("es"))).toBe("Nadie eligió un sabor.");
+    expect(wheelCaptionText(null, wheelFamilyLabels("es"), stringsOf("es").caption)).toBe("Nadie eligió un sabor.");
   });
   it("judges nothing: no threshold, the same sentence for a clear panel and a flat one", () => {
     const src = read("lib", "flavorWheelLayout.ts");
@@ -228,16 +228,16 @@ describe("wheelHeadline and its caption", () => {
 });
 
 describe("FlavorWheel", () => {
-  it("renders every fixture, full and small, with and without the family ground, in both languages", () => {
+  it("renders every fixture, full and small, with and without its headline, in both languages", () => {
     for (const locale of LOCALES) {
       const s = stringsOf(locale);
       const f = wheelFamilyLabels(locale);
       for (const name of NAMES) {
         const p = WHEEL_FIXTURES[name];
         for (const size of ["full", "mini"] as const) {
-          for (const tracks of [false, true]) {
+          for (const headline of [true, false]) {
             const markup = html(
-              createElement(FlavorWheel, { counts: p.rollup, n: p.n, familyLabels: f, strings: s.wheel, size, tracks }),
+              createElement(FlavorWheel, { counts: p.rollup, n: p.n, familyLabels: f, strings: s.wheel, size, headline }),
             );
             expect(markup).toContain("<svg");
           }
@@ -265,14 +265,15 @@ describe("FlavorWheel", () => {
     }
   });
 
-  it("draws one petal per family somebody found, and the small one has no words", () => {
+  it("draws a ground per family and one petal per family somebody found, and the small one has no words", () => {
     const s = stringsOf("es");
     const f = wheelFamilyLabels("es");
     for (const name of NAMES) {
       const p = WHEEL_FIXTURES[name];
       const found = familyCounts(p.rollup, p.n).filter((c) => c > 0).length;
       const mini = html(createElement(FlavorWheel, { counts: p.rollup, n: p.n, familyLabels: f, strings: s.wheel, size: "mini" }));
-      expect((mini.match(/<path/g) ?? []).length, name).toBe(found);
+      expect((mini.match(/<path class="[^"]*_petal_/g) ?? []).length, name).toBe(found);
+      expect((mini.match(/<path class="[^"]*_ground_/g) ?? []).length, name).toBe(p.n > 0 ? WHEEL_FAMILY_ORDER.length : 0);
       expect(svgTexts(mini)).toEqual([]);
       const decorative = html(
         createElement(FlavorWheel, { counts: p.rollup, n: p.n, familyLabels: f, strings: s.wheel, size: "mini", decorative: true }),
@@ -590,7 +591,7 @@ describe("the parts hold no colour, threshold or geometry of their own", () => {
         const [, selector, body] = rule;
         // only fill / background of a mark; never `color:` (text)
         expect(body, `${file} ${selector}`).not.toMatch(/(^|[;\s])color\s*:\s*var\(--family-tone\)/);
-        expect(/\.(dot|fill|petal|track|familyDot)\b/.test(selector), `${file} ${selector}`).toBe(true);
+        expect(/\.(dot|fill|petal|ground|familyDot)\b/.test(selector), `${file} ${selector}`).toBe(true);
       }
     }
   });
@@ -611,7 +612,7 @@ describe("the parts hold no colour, threshold or geometry of their own", () => {
     for (const file of partFiles().filter((f) => /\.tsx?$/.test(f))) {
       const src = read(...file.split("/"));
       expect(src, file).not.toMatch(/Math\.(cos|sin|tan|atan2?|PI)\b/);
-      expect(src, file).not.toMatch(/PETAL_HALF_DEG|PLATEAU_HALF_DEG|JOIN_PULL_DEG|SECTOR_DEG/);
+      expect(src, file).not.toMatch(/PETAL_HALF_DEG|PLATEAU_HALF_DEG|JOIN_PULL_DEG|SECTOR_DEG|petalPath|petalTipPath/);
     }
   });
 

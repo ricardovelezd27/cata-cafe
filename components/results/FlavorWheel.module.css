@@ -25,6 +25,33 @@
   height: 72px;
   flex: none;
 }
+/* Over the full wheel: what most people found, in words and with its count. */
+.head {
+  margin: 0 0 10px;
+}
+.eyebrow {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-on-surface-variant);
+}
+.headline {
+  margin: 2px 0 0;
+  font-family: var(--font-display);
+  font-size: 21px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--color-on-surface);
+  font-variant-numeric: lining-nums;
+  text-wrap: balance;
+  overflow-wrap: break-word;
+}
+/* "5 de 7 cada una": never broken in two. */
+.tally { white-space: nowrap; }
 .caption {
   margin: 8px 0 0;
   font-family: var(--font-ui);
@@ -34,10 +61,11 @@
   text-align: center;
 }
 
-/* The quiet ground: a ring per person. */
+/* The wheel draws ONE circle, its outer ring. The ring per person (.ring) is
+   the scale of the comparison drawing only. */
 .ring,
 .ringOuter,
-.cut,
+.tip,
 .territory,
 .under,
 .tagRing {
@@ -48,12 +76,16 @@
 .ringOuter { stroke: var(--color-outline); stroke-width: 1.25; }
 /* A petal: the family's tone, as long as the people who found it. */
 .petal { fill: var(--family-tone); }
-/* Optional ground: each family's whole sector in a pale tint of its tone, so
-   all nine families are seen and the solid part reads as "this many of all". */
-.track { fill: var(--family-tone); fill-opacity: 0.18; }
-/* The same rings again, in the colour of the paper and only over the petals:
-   they cut each petal into one step per person, so a count can be read off it. */
-.cut { stroke: var(--color-surface-container-lowest); stroke-width: 1.25; }
+/* The ground: each family's whole sector ("everyone") in a pale tint of its
+   tone, so all nine families are seen and a petal reads as "this many of all".
+   The share is WHEEL_GROUND_SHARE (lib/flavorWheelShape.ts; the PDF mixes the
+   same share over white, and a test keeps them equal). Opacity, not color-mix():
+   a browser that does not know color-mix() would paint the sector black. */
+.ground { fill: var(--family-tone); fill-opacity: 0.18; }
+/* Where a petal ends: a line in the colour of the paper between the tone and
+   its tint, so the end of a petal is never two shades of one colour to tell
+   apart (the tone against the paper is 3 : 1 or more for all nine families). */
+.tip { stroke: var(--color-surface-container-lowest); stroke-width: 1.5; }
 
 /* The words: ink. A family nobody found is quieter, never coloured. */
 /* Lining figures: the display face's default figures are old-style, and an
