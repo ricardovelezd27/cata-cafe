@@ -10,7 +10,9 @@
  *             a screen whose token is missing is skipped with a message, never guessed.
  *   state     optional label for the file name (e.g. "closed-group-combined-resumen")
  *   settle    ms to wait after load (default 1800)
- *   steps     optional list: {click: selector} {wait: ms} {scrollTo: y} {press: key} {hover: selector} {eval: js}
+ *   steps     optional list: {waitFor: selector} {click: selector} {wait: ms} {scrollTo: y} {press: key}
+ *             {hover: selector} {eval: js}; waitFor, click and hover wait for a visible match (see lib/steps.mjs)
+ *             and take an optional "timeout" in ms
  *   devices   optional subset of the run's devices
  *   langs     optional subset of the run's languages
  *   fullPage  false = take only the first fold
@@ -22,10 +24,13 @@
  *   evalFile  the name of a file in evals/ (its content is such an expression)
  */
 
+import { MAX_STEP_TIMEOUT_MS, STEP_OPTION_KEYS } from "./steps.mjs";
+
 const ID = /^[a-z0-9][a-z0-9-]*$/;
 const TOKEN = /\{\{([A-Za-z][A-Za-z0-9]*)\}\}/g;
 const TOKEN_VALUE = /^[A-Za-z0-9_-]{1,64}$/;
-const STEP_KEYS = ["click", "wait", "scrollTo", "press", "hover", "eval"];
+const STEP_KEYS = ["waitFor", "click", "wait", "scrollTo", "press", "hover", "eval"];
+const TIMED_STEPS = ["waitFor", "click", "hover"];
 
 /**
  * @param {unknown} plan
@@ -55,8 +60,19 @@ export function validatePlan(plan) {
     if (s.eval !== undefined && s.evalFile !== undefined) problems.push(`${at} has both eval and evalFile.`);
     for (const [j, step] of (s.steps ?? []).entries()) {
       const keys = Object.keys(step ?? {});
-      if (keys.length !== 1 || !STEP_KEYS.includes(keys[0])) {
+      const actions = keys.filter((k) => !STEP_OPTION_KEYS.includes(k));
+      if (actions.length !== 1 || !STEP_KEYS.includes(actions[0])) {
         problems.push(`${at}.steps[${j}] must have exactly one of ${STEP_KEYS.join(", ")}.`);
+        continue;
+      }
+      if (TIMED_STEPS.includes(actions[0]) && (typeof step[actions[0]] !== "string" || !step[actions[0]].trim())) {
+        problems.push(`${at}.steps[${j}].${actions[0]} must be a selector (a non-empty string).`);
+      }
+      if ("timeout" in step) {
+        if (!TIMED_STEPS.includes(actions[0])) problems.push(`${at}.steps[${j}]: "timeout" goes only with ${TIMED_STEPS.join(", ")}.`);
+        else if (typeof step.timeout !== "number" || !(step.timeout >= 100) || step.timeout > MAX_STEP_TIMEOUT_MS) {
+          problems.push(`${at}.steps[${j}].timeout must be a number of ms from 100 to ${MAX_STEP_TIMEOUT_MS}.`);
+        }
       }
     }
   });

@@ -79,7 +79,9 @@ node scripts/ux-capture/compare.mjs scripts/ux-capture/out/before scripts/ux-cap
 ```
 
 That is the whole of it. Defaults: devices `small,tablet,desktop` (375x667, 768x1024, 1440x900) and languages
-`es,en`, so a full run is every screen of the plan at three widths in two languages. For one area, narrow it:
+`es,en`, so a full run is every screen of the plan at three widths in two languages. Two more devices on request:
+`tiny` (320x568, the narrowest phone that still matters: ask for it whenever a package says "at 320") and `phone` (390x844, the audit's phone):
+`--devices tiny,small,desktop`. For one area, narrow it:
 
 ```bash
 node scripts/ux-capture/capture.mjs --plan owner=master@cata.test --only app,app-sessions-express --devices small,desktop --langs es --out scripts/ux-capture/out/before
@@ -91,7 +93,8 @@ node scripts/ux-capture/capture.mjs --plan owner=master@cata.test --only app,app
   single screenshot differs. Every image is compared pixel by pixel; the report says how many pixels differ and the box around them.
 - **A package that changes one rule everywhere** (a size, a colour): read the measures side by side. The report lists every
   count that changed per capture (text under 12 px, targets under 44 / 24, contrast failures, `h1`, primary buttons in the first fold,
-  legacy classes) and every heading whose size, weight or colour changed. The full measures are in `<out>/<plan>/measure/*.json`
+  legacy classes) and every heading whose size, weight or colour changed. Two counts exist in two readings each (see "What the
+  measure counts" below): the one that decides, and the old one under an `OwnBox` / `Css` name, so a run from before 2026-11-17 still compares. The full measures are in `<out>/<plan>/measure/*.json`
   and the summary of a run in `<out>/summary.md`.
 - **A redesign of a screen**: open the two PNGs of that screen at the three widths in both languages, and read the measures.
 - Two runs are comparable only with the **same plans, devices, languages and `local.json`**. Content that moves by itself (a "hace 3 min",
@@ -129,6 +132,25 @@ controls through the same code and fails if the set it reports is not exactly th
 (and runs the fixtures through Chrome when it is installed). Older captures counted names from text, `aria-label`, `title` and
 `placeholder` only, and so over-reported: do not compare their `unnamedControls` with these.
 
+### What the measure counts: hit areas, painted text and primary buttons
+
+- **Targets under 44 / 24 px (`targetsUnder44`, `targetsUnder24`) are measured by what a tap reaches**, not by the element's own box. The
+  app gives some small controls a 44 px hit area through a transparent `::before` (`components/ui/hitArea.ts`: `HIT_44`, `HIT_Y44`; the
+  rating bubbles; the cup page's docked buttons). The tool reads `getComputedStyle(el, "::before")` / `"::after"` and counts the pseudo-element
+  when it is `position: absolute | fixed`, has content, is displayed and takes pointer events (`pointer-events` is not `none`); its box is the
+  union with the control's. A checkbox or radio **inside** its `<label>` counts as the label's box (a `label[for]` somewhere else does not: it is
+  its own target). Each control that gained area is listed in `targetsWithHitArea` (own size, reached size, and `via`: `before`, `after` or
+  `label`). The own box alone is kept under `targetsUnder44OwnBox` / `targetsUnder44OwnBoxCount` / `targetsUnder24OwnBoxCount`: those are
+  exactly the numbers older runs recorded under the plain names (the summary and `compare.mjs` read an old run's plain number as its `OwnBox` one).
+  Not handled: a hit area clipped by an `overflow: hidden` ancestor, and a pseudo-element placed inside a transformed ancestor other than the control.
+- **Text under 12 px (`layout.under12`, `textSizes`) is the PAINTED size**: the CSS size times the scale the element is drawn with. For HTML that
+  is the bounding box against the layout box (`offsetWidth` / `offsetHeight`; a quarter turn is not a scale), for SVG text it is the length of the
+  y axis of `getScreenCTM()`. A text inside a drawing that is scaled down (the results drawings) is counted at the size you see. The CSS-size
+  readings stay under `textSizesCss` and `layout.under12Css` (`textUnder12Css` in the summary). The contrast check still uses the CSS size.
+- **Primary buttons (`primaries`, `primariesInFold`)**: a filled button is a `button`, a link or `[role=button]` (or a submit input) whose OWN
+  painted background is the primary fill (the value of `--color-primary-container`, read from the page; `primaryFill` in the measure).
+  A class name does not count, and the app shell's navigation (anything inside a `<nav>` or `[role=navigation]`, so the active tab of the phone's bottom bar) is left out.
+
 ## The plans
 
 `plans/<name>.json`, one per role. Pass one with the test address it needs (`--plan owner=master@cata.test`); `visitor` signs in as nobody.
@@ -142,6 +164,15 @@ controls through the same code and fails if the set it reports is not exactly th
 
 A screen is `{ id, path, state?, settle?, steps?, devices?, langs?, fullPage?, phase?, eval?, evalFile? }`; the format and every field
 are documented at the top of `lib/plan.mjs`. `path` has no locale prefix; the tool adds `/es` or `/en`. Add a screen by adding a line.
+
+**Steps** run after the page has hydrated and settled, in order: `{ "waitFor": "<selector>" }`, `{ "click": "<selector>" }`,
+`{ "hover": "<selector>" }`, `{ "wait": ms }`, `{ "scrollTo": y }`, `{ "press": "Escape" }`, `{ "eval": "<js>" }`. `waitFor`, `click` and `hover`
+wait until the first element that matches is **visible** (default 8 s, `"timeout": ms` from 100 to 60000 next to them), so a plan can wait for a control
+before it clicks it; on a cold dev server a click used to run before the page's tabs existed. A step that finds nothing fails that capture with
+a message that names the step, the selector and what it saw (`nothing matches the selector`, or `N elements match but the first one stayed hidden`).
+**A dialog or sheet**: open it with steps, then the screenshot is taken, e.g. `"steps": [{ "waitFor": "button[aria-haspopup=dialog]" }, { "click": "button[aria-haspopup=dialog]" }, { "waitFor": "[role=dialog]" }]`;
+the measure and the image are of the screen with the dialog open (the image is of the whole page, the dialog sits over it). Writes stay aborted, so
+open it, look at it, do not submit it.
 The Insights **Users** and **Access** pages are not in any plan on purpose: they show real people.
 
 ## Names: ids and the name-replacement list stay out of the repository
@@ -195,13 +226,38 @@ This is still production data: ask the owner before you use it for a new package
 node scripts/ux-capture/capture.mjs --self-test
 ```
 
-Opens the public login page of the running server and proves three things; it exits 0 only if all three hold:
-1. **Writes are aborted:** a POST, PUT, PATCH and DELETE to `/api/health` from the page never leave the browser.
+Opens the public login page of the running server and proves what follows; it exits 0 only if every part holds:
+1. **Writes are aborted:** a POST, PUT, PATCH and DELETE to `/api/health` from the page never leave the browser. The check is that **every write the
+   test tried was blocked and none reached the server**, not that two counts are equal: the page can add blocked writes of its own (the Next dev overlay
+   posts to `/__nextjs_original-stack-frames`), and those are listed by method and path ("N other writes by the page itself also blocked") without failing the test.
 2. **Sockets:** the dev server's hot-reload socket is let through, and three others are closed without opening: another host
    (`wss://...invalid`, as Realtime would be), the same host with another path, and the same host on another port.
 3. **The page hydrates:** React's client code ran (a fiber key on a DOM node). The self-test fails if it did not.
+4. **Accessible names:** 18 fixture controls are read from Chrome; exactly the expected seven are reported as unnamed.
+5. **The measure:** a fixture page holds the hit-area cases (a plain control, `HIT_44`, `HIT_Y44`, a `transform`-centred and an `::after` hit area,
+   a hit area smaller than 44, one with `pointer-events: none`, a checkbox inside its label, a radio with a label elsewhere), scaled HTML and SVG
+   text (painted vs CSS size), a rotated text, and primary buttons (a painted fill, a link, one inside a `nav`, one that only has the class name). The
+   counts and the lists must match the expected ones, own box and reached size side by side.
+6. **Steps:** a `waitFor` and a bare `click` on controls that appear after 700 ms land, and the two refusals (nothing matches, stays hidden) have their clear messages.
 
 No account is used.
 
 Other checks: `npx.cmd vitest run tests/uxCaptureGuard.test.ts` (the host guard, the methods, the addresses, the paths, and a scan of the committed
-files for ids and addresses that must not be there).
+files for ids and addresses that must not be there), `tests/uxCaptureGeometry.test.ts` (the pure geometry) and `tests/uxCaptureMeasure.test.ts`
+(the write check, steps, devices, the summary, and the fixtures through Chrome when it is installed).
+
+## Things that go wrong
+
+- **A freshly started dev server reloads pages for a while.** The first requests compile routes, and the page reloads under the tool:
+  you see `FAILED ... Cannot find context with specified id` or `controls changed while reading names`, a console line with a changed
+  `primInFold`, or a measure that differs between two runs of the same code. Run a warm-up pass first, as many times as it takes to stop
+  failing (the pages must be stable for two runs in a row), and only then the real one:
+  `node scripts/ux-capture/capture.mjs --plan <the plans> --no-shots --out scripts/ux-capture/out/warm`.
+- **A page that never settles is a stale `.next/dev`.** If the warm-up still fails after a few passes (the dev server prints "Compiled in 2ms"
+  and a new `GET` for the same page, again and again), stop the server, delete `.next/dev`, start it again and warm it up again.
+- **`next dev` rewrites a block of `AGENTS.md`** in the worktree. `git status` shows it as modified: restore it (`git checkout -- AGENTS.md`)
+  and never commit it.
+- **"Realtime-down" on pages that listen to Realtime** (the cup page, the waiting room, the results page of a live session): the tool closes
+  every WebSocket except the dev server's own, so Supabase Realtime never connects and the app can show its notice that live updates are off.
+  That is the tool, not the app; the measure and the image are of the page without live updates.
+- **Opening a dialog or a sheet**: see "Steps" above (`waitFor`, `click`, `waitFor` the dialog, then the capture).

@@ -1,3 +1,5 @@
+import { GEOMETRY_SOURCE } from "./geometry.mjs";
+
 /**
  * Functions that run INSIDE the page (`page.evaluate(fn)`). Each one is serialised with its own
  * source, so it must not use anything from this module's scope: helpers are declared inside it.
@@ -7,8 +9,11 @@
  * (m-eval-page.js) measured: docked parts, sideways scrollers, clipped labels, text under 12 px.
  */
 
-/** Everything the audit read from one screen. Returns plain JSON. */
-export function measure() {
+/**
+ * Everything the audit read from one screen. Returns plain JSON.
+ * @param {ReturnType<typeof import("./geometry.mjs").geometryKit>} g the pure geometry (lib/geometry.mjs); `runMeasure` passes it in.
+ */
+export function measure(g) {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
   const vis = (el) => {
@@ -65,6 +70,23 @@ export function measure() {
     return b;
   };
   const hex = (c) => "#" + [c.r, c.g, c.b].map((v) => Math.round(v).toString(16).padStart(2, "0")).join("");
+  // The app's primary fill, read from its token (the browser turns any colour syntax into rgb()); the hex is the fallback.
+  const primaryFill = (() => {
+    try {
+      const v = getComputedStyle(document.documentElement).getPropertyValue("--color-primary-container").trim();
+      if (v) {
+        const probe = document.createElement("i");
+        probe.style.color = v;
+        document.body.appendChild(probe);
+        const c = parse(getComputedStyle(probe).color);
+        probe.remove();
+        if (c && c.a === 1) return hex(c);
+      }
+    } catch {
+      /* the fallback below */
+    }
+    return "#2c4c3b";
+  })();
 
   // headings: painted size, weight, family and colour
   const headings = [...document.querySelectorAll("h1,h2,h3,h4,[role=heading]")].filter(vis).map((h) => {
@@ -91,38 +113,100 @@ export function measure() {
       'a[href],button,input:not([type=hidden]),select,textarea,[role=button],[role=tab],[role=switch],[role=checkbox],[role=radio],[tabindex]:not([tabindex="-1"])',
     ),
   ].filter(vis);
+  // The box a tap can reach: the element's own box, plus a positioned ::before / ::after that takes pointer events
+  // (components/ui/hitArea.ts), plus the label of a checkbox or radio. Read from Chrome's computed style; the maths is
+  // lib/geometry.mjs.
+  const boxOf = (r) => ({ l: r.left, t: r.top, r: r.right, b: r.bottom });
+  const extraBoxes = (el, r) => {
+    const out = [];
+    const own = getComputedStyle(el);
+    for (const which of ["::before", "::after"]) {
+      const ps = getComputedStyle(el, which);
+      if (!ps.content || ps.content === "none" || ps.content === "normal") continue;
+      if (ps.display === "none" || ps.visibility === "hidden" || ps.pointerEvents === "none") continue;
+      if (ps.position !== "absolute" && ps.position !== "fixed") continue;
+      let cb;
+      if (ps.position === "fixed") cb = { l: 0, t: 0, r: vw, b: vh };
+      else {
+        const holder = own.position !== "static" || own.transform !== "none" ? el : el.offsetParent || document.documentElement;
+        const hr = holder.getBoundingClientRect();
+        const hs = getComputedStyle(holder);
+        const bw = (side) => parseFloat(hs["border" + side + "Width"]) || 0;
+        cb = { l: hr.left + bw("Left"), t: hr.top + bw("Top"), r: hr.right - bw("Right"), b: hr.bottom - bw("Bottom") };
+      }
+      const box = g.pseudoBox({
+        cb,
+        fallback: { l: r.left, t: r.top },
+        style: { left: ps.left, right: ps.right, top: ps.top, bottom: ps.bottom, width: ps.width, height: ps.height, translate: ps.translate, transform: ps.transform, transformOrigin: ps.transformOrigin },
+      });
+      if (box) out.push({ via: which.slice(2), box });
+    }
+    if (el.tagName === "INPUT" && (el.type === "checkbox" || el.type === "radio")) {
+      // only a label that WRAPS the control is one with it: a label elsewhere (label[for]) is its own target
+      for (const lab of el.labels || []) {
+        if (lab.contains(el) && vis(lab)) {
+          out.push({ via: "label", box: boxOf(lab.getBoundingClientRect()) });
+          break;
+        }
+      }
+    }
+    return out;
+  };
   const targets = inter.map((el) => {
     const r = el.getBoundingClientRect();
     const cs = getComputedStyle(el);
-    const cls = el.getAttribute("class") || "";
     const bg = parse(cs.backgroundColor);
-    const byClass = /\bbg-primary-container\b/.test(cls) && !/hover:bg-primary-container/.test(cls.replace(/\bbg-primary-container\b/, ""));
-    const byColour = bg && hex(bg) === "#2c4c3b" && bg.a === 1;
+    // What is PAINTED on the element itself decides: its own opaque background is the primary fill. A class name
+    // does not (the phone's bottom bar draws its active tab's bar with a ::before), and the app shell's navigation
+    // is not a call to action.
+    const primary = Boolean(bg && bg.a === 1 && hex(bg) === primaryFill && !el.closest("nav,[role=navigation]"));
+    const extras = extraBoxes(el, r);
+    const eff = g.effectiveSize(boxOf(r), extras.map((x) => x.box));
+    const grewBy = extras.filter((x) => x.box.l < r.left - 0.5 || x.box.t < r.top - 0.5 || x.box.r > r.right + 0.5 || x.box.b > r.bottom + 0.5).map((x) => x.via);
     return {
       tag: el.tagName.toLowerCase(),
       role: el.getAttribute("role") || "",
+      type: el.getAttribute("type") || "",
       name: name(el).slice(0, 60),
       w: Math.round(r.width),
       h: Math.round(r.height),
+      effW: eff.w,
+      effH: eff.h,
+      via: grewBy.join("+"),
       x: Math.round(r.left),
       y: y(el),
       inFold: r.top >= 0 && r.bottom <= vh,
-      primary: Boolean(byClass || byColour),
+      primary,
       disabled: el.disabled || el.getAttribute("aria-disabled") === "true",
       fontPx: +parseFloat(cs.fontSize).toFixed(1),
       sel: sel(el),
       inlineInText: el.tagName === "A" && cs.display === "inline",
     };
   });
-  const small = targets.filter((t) => !t.inlineInText && (t.w < 44 || t.h < 44));
-  const tiny = targets.filter((t) => !t.inlineInText && (t.w < 24 || t.h < 24));
-  const primaries = targets.filter((t) => t.primary && !t.disabled && (t.tag === "button" || t.tag === "a" || t.role === "button"));
+  const countable = targets.filter((t) => !t.inlineInText);
+  // Own box = what this tool counted before 2026-11-17 (kept, under new names, so older runs still compare).
+  const smallOwn = countable.filter((t) => t.w < 44 || t.h < 44);
+  const tinyOwn = countable.filter((t) => t.w < 24 || t.h < 24);
+  // Effective = what a tap reaches.
+  const small = countable.filter((t) => t.effW < 44 || t.effH < 44);
+  const tiny = countable.filter((t) => t.effW < 24 || t.effH < 24);
+  const isButtonLike = (t) => t.tag === "button" || t.tag === "a" || t.role === "button" || (t.tag === "input" && (t.type === "submit" || t.type === "button"));
+  const primaries = targets.filter((t) => t.primary && !t.disabled && isButtonLike(t));
 
   // text: painted sizes, contrast against the real background, numbers without tabular-nums
   const sizes = {};
+  const sizesCss = {};
   const lowContrast = [];
   const nonTabular = [];
   const under12 = [];
+  const under12Css = [];
+  // Painted size = the CSS size x the scale the element is drawn with (a transformed ancestor, a scaled SVG).
+  const SVG_NS = "http://www.w3.org/2000/svg";
+  const scaleOf = (el) => {
+    if (el.namespaceURI === SVG_NS && typeof el.getScreenCTM === "function") return g.svgScale(el.getScreenCTM());
+    const r = el.getBoundingClientRect();
+    return g.paintedScale({ layoutW: el.offsetWidth, layoutH: el.offsetHeight, rectW: r.width, rectH: r.height });
+  };
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   const seen = new Set();
   let node;
@@ -136,10 +220,13 @@ export function measure() {
     if (el.closest("script,style,noscript,[aria-hidden=true] svg")) continue;
     const cs = getComputedStyle(el);
     const px = parseFloat(cs.fontSize);
+    const painted = px * scaleOf(el);
     textCount++;
-    const key = px.toFixed(2);
+    const key = painted.toFixed(2);
     sizes[key] = (sizes[key] || 0) + 1;
-    if (px < 12) under12.push(px.toFixed(1) + ":" + s.slice(0, 22));
+    sizesCss[px.toFixed(2)] = (sizesCss[px.toFixed(2)] || 0) + 1;
+    if (painted < 12) under12.push(painted.toFixed(1) + ":" + s.slice(0, 22));
+    if (px < 12) under12Css.push(px.toFixed(1) + ":" + s.slice(0, 22));
     const fg0 = parse(cs.color);
     const bg = bgOf(el);
     if (fg0 && bg) {
@@ -278,15 +365,24 @@ export function measure() {
     headings,
     h1Count: headings.filter((h) => h.tag === "h1").length,
     textSizes: sizes,
+    textSizesCss: sizesCss,
     textNodes: textCount,
     words: bodyText ? bodyText.split(" ").length : 0,
     wordsBeforeFirstPrimary,
     primaries: primaries.map((p) => ({ name: p.name, y: p.y, inFold: p.inFold, w: p.w, h: p.h, sel: p.sel })),
+    primaryFill,
     primariesInFold: primaries.filter((p) => p.inFold).length,
     targetsTotal: targets.length,
-    targetsUnder44: small.map((t) => ({ name: t.name, w: t.w, h: t.h, tag: t.tag, role: t.role, y: t.y, sel: t.sel })).slice(0, 80),
+    // the size a tap reaches (own box + hit-area pseudo-element + checkbox/radio label)
+    targetsUnder44: small.map((t) => ({ name: t.name, w: t.effW, h: t.effH, ownW: t.w, ownH: t.h, via: t.via, tag: t.tag, role: t.role, y: t.y, sel: t.sel })).slice(0, 80),
     targetsUnder44Count: small.length,
     targetsUnder24Count: tiny.length,
+    // the element's own box alone (the numbers before 2026-11-17)
+    targetsUnder44OwnBox: smallOwn.map((t) => ({ name: t.name, w: t.w, h: t.h, tag: t.tag, role: t.role, y: t.y, sel: t.sel })).slice(0, 80),
+    targetsUnder44OwnBoxCount: smallOwn.length,
+    targetsUnder24OwnBoxCount: tinyOwn.length,
+    // controls whose hit area is bigger than their box, and through what (before | after | label)
+    targetsWithHitArea: countable.filter((t) => t.via).map((t) => ({ name: t.name, ownW: t.w, ownH: t.h, w: t.effW, h: t.effH, via: t.via, sel: t.sel })).slice(0, 80),
     lowContrast: lowContrast.slice(0, 60),
     lowContrastCount: lowContrast.length,
     nonTabular: nonTabular.slice(0, 40),
@@ -320,8 +416,13 @@ export function measure() {
       .map((i) => (i.currentSrc || "").slice(-60))
       .slice(0, 10),
     toasts: [...document.querySelectorAll("[role=status],[role=alert]")].filter(vis).map(txt).filter(Boolean).slice(0, 8),
-    layout: { fixed, hScrollers, clipped, under12: under12.slice(0, 40), under12Count: under12.length },
+    layout: { fixed, hScrollers, clipped, under12: under12.slice(0, 40), under12Count: under12.length, under12Css: under12Css.slice(0, 40), under12CssCount: under12Css.length },
   };
+}
+
+/** Runs `measure` in the page with the geometry kit (lib/geometry.mjs) passed in. */
+export function runMeasure(page) {
+  return page.evaluate(`(${measure.toString()})(${GEOMETRY_SOURCE})`);
 }
 
 /**
