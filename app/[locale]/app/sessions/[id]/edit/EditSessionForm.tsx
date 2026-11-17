@@ -18,6 +18,7 @@ import { useActionFeedback } from "@/components/ui/Toast";
 import { browserZone, dateInZone, LAST_CLOSING_DAY } from "@/lib/closeRules";
 import { MAX_DATE_INPUT } from "@/lib/safeDate";
 import { planRemoveActive, referenceExplanation, shouldPinReference, type ReferenceMode } from "@/lib/referenceRules";
+import { radioKeyDown } from "@/components/radioKeys";
 
 export type EditSessionFormTranslations = {
   name: string;
@@ -477,16 +478,25 @@ export function EditSessionForm({
       <div className={cardCls}>
         <div>
           <label className={labelCls}>{t.format}</label>
-          <div className="flex flex-wrap gap-2">
-            {FORMAT_OPTIONS.map((opt) => (
+          <div role="radiogroup" aria-label={t.format} className="flex flex-wrap gap-2">
+            {FORMAT_OPTIONS.map((opt, i) => (
               <button
                 key={opt}
                 type="button"
+                role="radio"
+                aria-checked={format === opt}
+                tabIndex={format === opt ? 0 : -1}
                 disabled={locked}
                 onClick={() => {
                   setFormat(opt);
                   clearSaved();
                 }}
+                onKeyDown={(e) =>
+                  radioKeyDown(e, i, FORMAT_OPTIONS.length, (n) => {
+                    setFormat(FORMAT_OPTIONS[n]);
+                    clearSaved();
+                  })
+                }
                 className={
                   format === opt
                     ? "rounded-pill bg-primary-container px-5 py-2.5 text-sm font-medium text-on-primary disabled:cursor-not-allowed disabled:opacity-50"

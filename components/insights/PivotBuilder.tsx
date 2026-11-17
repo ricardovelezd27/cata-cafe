@@ -566,6 +566,7 @@ export function PivotBuilder({ locale, t, loadedConfig, loadKey, onConfigChange 
               <button
                 type="button"
                 onClick={() => setHeatmap((h) => !h)}
+                aria-pressed={heatmap}
                 className={`px-3 py-1 rounded-pill text-xs font-semibold border transition-colors ${
                   heatmap
                     ? "bg-[#3D5A3E] text-white border-[#3D5A3E]"

@@ -8,12 +8,10 @@
 // lib/platform underneath), ButtonLink for the plain CSV, a router push for the
 // print page.
 //
-// Focus goes back to "Exportar" when the sheet closes. The kit's dialog is
-// opened here without a Radix Dialog.Trigger, so Radix has no trigger to give
-// focus back to (it would land on <body>); the sheet does it itself, once the
-// dialog has left the DOM (after its exit animation and focus trap).
+// Focus goes back to "Exportar" when the sheet closes: the kit's dialog
+// (ResponsiveDialog) returns focus to the element that opened it (N3).
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Download, FileDown, Printer } from "lucide-react";
 import { Button, ButtonLink } from "@/components/ui";
@@ -47,28 +45,6 @@ export function ResultsExportSheet({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const buttonBox = useRef<HTMLSpanElement>(null);
-  const wasOpen = useRef(false);
-
-  useEffect(() => {
-    if (open) {
-      wasOpen.current = true;
-      return;
-    }
-    if (!wasOpen.current) return;
-    wasOpen.current = false;
-    let frames = 0;
-    let id = 0;
-    const giveFocusBack = () => {
-      if (document.querySelector('[role="dialog"]') && frames++ < 90) {
-        id = requestAnimationFrame(giveFocusBack);
-        return;
-      }
-      buttonBox.current?.querySelector("button")?.focus();
-    };
-    id = requestAnimationFrame(giveFocusBack);
-    return () => cancelAnimationFrame(id);
-  }, [open]);
 
   if (actions.length === 0) return null;
 
@@ -167,7 +143,6 @@ export function ResultsExportSheet({
 
   return (
     <>
-      <span ref={buttonBox} className="contents">
       <Button
         size="sm"
         variant="secondary"
@@ -177,7 +152,6 @@ export function ResultsExportSheet({
       >
         {t.open}
       </Button>
-      </span>
       <ResponsiveDialog open={open} onOpenChange={setOpen} title={t.title} closeLabel={t.close}>
         <ul className="flex flex-col gap-2 pb-2">
           {actions.map((id) => (

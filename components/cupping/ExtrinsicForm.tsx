@@ -63,6 +63,7 @@ function PillButton({ active, onClick, children }: PillButtonProps) {
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={active}
       className={`px-3 py-1.5 rounded-pill border text-xs font-medium transition-colors ${
         active
           ? "bg-green-dark text-white border-green-dark"
