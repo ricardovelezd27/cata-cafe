@@ -1309,6 +1309,9 @@ export default async function ResultsPage({
         downloadCsv: tResults("downloadCsv"),
         downloadCsvNoNames: tResults("downloadCsvNoNames"),
         needsConnection: tResults("needsConnection"),
+        exportOpen: tResults("exportOpen"),
+        exportTitle: tResults("exportTitle"),
+        exportClose: tCommon("close"),
         refresh: tResults("refresh"),
         refreshing: tResults("refreshing"),
         // Template — the live count is substituted client-side.
