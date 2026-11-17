@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createCoffee, updateCoffee } from "@/app/actions/coffees";
 import { PROCESS_TYPES, CERTIFICATIONS, ROAST_LEVELS } from "@/lib/constants";
@@ -63,12 +63,18 @@ const inputCls =
 function FieldLabel({
   children,
   required,
+  htmlFor,
+  id,
 }: {
   children: React.ReactNode;
   required?: boolean;
+  /** N1: the id of the control this label names. */
+  htmlFor?: string;
+  /** N1: set when a group of buttons is named by this text (aria-labelledby). */
+  id?: string;
 }) {
   return (
-    <label className="block text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant mb-1.5">
+    <label htmlFor={htmlFor} id={id} className="block text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant mb-1.5">
       {children}
       {required && (
         <span className="text-error" aria-hidden="true">
@@ -109,6 +115,10 @@ export function CoffeeForm({
   const router = useRouter();
   const [pending, start] = useTransition();
   const isEdit = mode === "edit";
+  // N1: every control is named by its visible label. useId keeps the ids unique
+  // if the form is ever rendered twice on one page.
+  const uid = useId();
+  const fid = (field: string) => `${uid}-${field}`;
 
   const [name, setName] = useState(initialValues?.name ?? "");
   const [country, setCountry] = useState(initialValues?.country ?? "");
@@ -231,8 +241,9 @@ export function CoffeeForm({
       {/* Basic info */}
       <div className="bg-surface-container-lowest border border-outline-variant rounded-card p-5 space-y-4">
         <div>
-          <FieldLabel required>{t.name}</FieldLabel>
+          <FieldLabel required htmlFor={fid("name")}>{t.name}</FieldLabel>
           <input
+            id={fid("name")}
             className={inputCls}
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -243,8 +254,9 @@ export function CoffeeForm({
 
         <div className="grid sm:grid-cols-2 gap-4">
           <div>
-            <FieldLabel>{t.country}</FieldLabel>
+            <FieldLabel htmlFor={fid("country")}>{t.country}</FieldLabel>
             <input
+              id={fid("country")}
               list="cata-coffee-form-countries"
               className={inputCls}
               value={country}
@@ -253,8 +265,9 @@ export function CoffeeForm({
             />
           </div>
           <div>
-            <FieldLabel>{t.region}</FieldLabel>
+            <FieldLabel htmlFor={fid("region")}>{t.region}</FieldLabel>
             <input
+              id={fid("region")}
               className={inputCls}
               value={region}
               onChange={(e) => setRegion(e.target.value)}
@@ -262,8 +275,9 @@ export function CoffeeForm({
             />
           </div>
           <div>
-            <FieldLabel>{t.farm}</FieldLabel>
+            <FieldLabel htmlFor={fid("farm")}>{t.farm}</FieldLabel>
             <input
+              id={fid("farm")}
               className={inputCls}
               value={farm}
               onChange={(e) => setFarm(e.target.value)}
@@ -271,8 +285,9 @@ export function CoffeeForm({
             />
           </div>
           <div>
-            <FieldLabel>{t.producer}</FieldLabel>
+            <FieldLabel htmlFor={fid("producer")}>{t.producer}</FieldLabel>
             <input
+              id={fid("producer")}
               className={inputCls}
               value={producer}
               onChange={(e) => setProducer(e.target.value)}
@@ -280,8 +295,9 @@ export function CoffeeForm({
             />
           </div>
           <div>
-            <FieldLabel>{t.species}</FieldLabel>
+            <FieldLabel htmlFor={fid("species")}>{t.species}</FieldLabel>
             <input
+              id={fid("species")}
               className={inputCls}
               value={species}
               onChange={(e) => setSpecies(e.target.value)}
@@ -289,8 +305,9 @@ export function CoffeeForm({
             />
           </div>
           <div>
-            <FieldLabel>{t.variety}</FieldLabel>
+            <FieldLabel htmlFor={fid("variety")}>{t.variety}</FieldLabel>
             <input
+              id={fid("variety")}
               className={inputCls}
               value={variety}
               onChange={(e) => setVariety(e.target.value)}
@@ -298,8 +315,9 @@ export function CoffeeForm({
             />
           </div>
           <div>
-            <FieldLabel>{t.harvest}</FieldLabel>
+            <FieldLabel htmlFor={fid("harvest")}>{t.harvest}</FieldLabel>
             <input
+              id={fid("harvest")}
               className={inputCls}
               value={harvestYear}
               onChange={(e) => setHarvestYear(e.target.value)}
@@ -307,8 +325,9 @@ export function CoffeeForm({
             />
           </div>
           <div>
-            <FieldLabel>{t.process}</FieldLabel>
+            <FieldLabel htmlFor={fid("process")}>{t.process}</FieldLabel>
             <select
+              id={fid("process")}
               className={inputCls + " cursor-pointer"}
               value={processType}
               onChange={(e) => setProcessType(e.target.value)}
@@ -322,8 +341,9 @@ export function CoffeeForm({
             </select>
           </div>
           <div>
-            <FieldLabel>{t.altitude}</FieldLabel>
+            <FieldLabel htmlFor={fid("altitude")}>{t.altitude}</FieldLabel>
             <input
+              id={fid("altitude")}
               type="number"
               inputMode="numeric"
               min={0}
@@ -335,8 +355,9 @@ export function CoffeeForm({
             />
           </div>
           <div>
-            <FieldLabel>{t.roastLevel}</FieldLabel>
+            <FieldLabel htmlFor={fid("roastLevel")}>{t.roastLevel}</FieldLabel>
             <select
+              id={fid("roastLevel")}
               className={inputCls + " cursor-pointer"}
               value={roastLevel}
               onChange={(e) => setRoastLevel(e.target.value)}
@@ -354,8 +375,8 @@ export function CoffeeForm({
 
       {/* Certifications */}
       <div className="bg-surface-container-lowest border border-outline-variant rounded-card p-5 space-y-3">
-        <FieldLabel>{t.certifications}</FieldLabel>
-        <div className="flex flex-wrap gap-2">
+        <FieldLabel id={fid("certifications")}>{t.certifications}</FieldLabel>
+        <div role="group" aria-labelledby={fid("certifications")} className="flex flex-wrap gap-2">
           {CERTIFICATIONS.map((c) => {
             const active = certifications.includes(c);
             return (
@@ -378,8 +399,9 @@ export function CoffeeForm({
 
       {/* Notes */}
       <div className="bg-surface-container-lowest border border-outline-variant rounded-card p-5 space-y-1.5">
-        <FieldLabel>{t.notes}</FieldLabel>
+        <FieldLabel htmlFor={fid("notes")}>{t.notes}</FieldLabel>
         <textarea
+          id={fid("notes")}
           className={inputCls + " min-h-[88px]"}
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
@@ -390,8 +412,8 @@ export function CoffeeForm({
       {/* Visibility — create only; edit has its own toggle on the detail page */}
       {!isEdit && (
         <div className="bg-surface-container-lowest border border-outline-variant rounded-card p-5 space-y-3">
-          <FieldLabel>{t.visibilityLabel}</FieldLabel>
-          <div className="grid sm:grid-cols-3 gap-3">
+          <FieldLabel id={fid("visibility")}>{t.visibilityLabel}</FieldLabel>
+          <div role="group" aria-labelledby={fid("visibility")} className="grid sm:grid-cols-3 gap-3">
             {visibilityOptions.map((opt) => {
               const active = visibility === opt.value;
               return (

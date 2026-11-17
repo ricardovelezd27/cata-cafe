@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { SamplePrepFields, type SamplePrepTranslations } from "@/components/cupping/SamplePrepFields";
 import { prepToForm, type SamplePrepForm } from "@/lib/samplePrep";
 
@@ -58,6 +58,9 @@ export function EditSampleMetadataForm({
   translations: EditSampleMetadataFormTranslations;
 }) {
   const [data, setData] = useState(initialData);
+  // N1: each input is named by its visible label (unique ids if the editor is
+  // ever rendered twice on one page).
+  const uid = useId();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -96,8 +99,9 @@ export function EditSampleMetadataForm({
       <div className="grid grid-cols-2 gap-3">
         {fields.map(({ key, label }) => (
           <div key={key} className={key === "name" || key === "label" ? "col-span-2" : undefined}>
-            <label className={labelCls}>{label}</label>
+            <label htmlFor={`${uid}-${key}`} className={labelCls}>{label}</label>
             <input
+              id={`${uid}-${key}`}
               className={inputCls}
               value={data[key]}
               onChange={set(key)}
@@ -107,7 +111,7 @@ export function EditSampleMetadataForm({
       </div>
       {t.prep && (
         <SamplePrepFields
-          idPrefix="edit-sample-prep"
+          idPrefix={`${uid}-prep`}
           value={{ ...prepToForm(null), ...data } as SamplePrepForm}
           onChange={(patch) => setData((prev) => ({ ...prev, ...patch }))}
           translations={t.prep}
