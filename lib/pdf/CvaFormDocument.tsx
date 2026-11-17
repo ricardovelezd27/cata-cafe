@@ -233,8 +233,12 @@ const s = StyleSheet.create({
   cupNum: { fontSize: 4.5, color: SOFT, marginBottom: 0.5 },
   cupBox: { width: 9, height: 9, border: `0.6pt solid ${INK}`, borderRadius: 0.5 },
 
-  scoreValue: { fontSize: 15, fontFamily: SANS, fontWeight: 700 },
-  scoreFormula: { fontSize: 4.5, color: SOFT, fontStyle: "italic", marginTop: 0.5 },
+  // Each carries its OWN line height: inherited from the page it resolved to the
+  // page's 7 pt line (about 8.4 pt), too short for a 15 pt value, which then ran
+  // down onto the note under it ("—" striking "Evaluación sin enviar", "88.75"
+  // over its Σh line). Sized here, the value's box holds its glyphs.
+  scoreValue: { fontSize: 15, fontFamily: SANS, fontWeight: 700, lineHeight: 1.15 },
+  scoreFormula: { fontSize: 4.5, color: SOFT, fontStyle: "italic", marginTop: 1, lineHeight: 1.3 },
 
   // ── Part banners / meta ──
   partBanner: {
@@ -1083,8 +1087,6 @@ export type CvaDocumentProps = {
   locale: Locale;
   /** The sheet shows at least one UNSENT (draft) evaluation: stamp it "Borrador". */
   draft?: boolean;
-  /** A-01: the session still takes evaluations; with each sample's `sent` it decides whether a total prints (lib/ownTotal.ts). Absent = open. */
-  sessionOpen?: boolean;
   /** Defaults to the server clock at render time. */
   generatedAt?: Date;
   samples: {
@@ -1098,7 +1100,7 @@ export type CvaDocumentProps = {
     referenceRank?: number | null;
     /** "v1" = stored before the 2026-11 rule (lib/scoreRule.ts). */
     scoreRule?: ScoreRule;
-    /** A-01: the evaluation was sent (stored isDraft === false). Absent = not sent. */
+    /** A-01: the evaluation was sent (stored isDraft === false); only then is a total printed (lib/ownTotal.ts). Absent = not sent. */
     sent?: boolean;
     descriptive: Record<string, unknown>;
     affective: Record<string, unknown>;
@@ -1137,7 +1139,6 @@ export function CvaFormDocument(props: CvaDocumentProps) {
       sample,
       locale: props.locale,
       ownerView: props.ownerView,
-      sessionOpen: props.sessionOpen,
     };
     return buildCvaFormData(input);
   });

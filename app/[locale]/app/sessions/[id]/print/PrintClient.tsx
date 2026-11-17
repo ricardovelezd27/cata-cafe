@@ -1169,8 +1169,6 @@ export function PrintClient({
     objective?: string | null;
     cupperName: string;
     ownerView: boolean;
-    /** A-01: the session still takes evaluations (lib/ownTotal.ts). */
-    sessionOpen: boolean;
     samples: SampleData[];
   };
   inviteUrl?: string | null;
@@ -1199,7 +1197,6 @@ export function PrintClient({
       sample,
       locale: loc,
       ownerView: session.ownerView,
-      sessionOpen: session.sessionOpen,
     })
   );
 

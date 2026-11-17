@@ -23,10 +23,6 @@ export type MyEvaluation = {
   // Every scored field the format requires is present — the score is real,
   // not a 5-filled placeholder. Always false for `none`.
   complete: boolean;
-  // The session still takes evaluations (not closed, closing date not passed).
-  // Only read by canShowMyScore (A-01, lib/ownTotal.ts); absent = open, so an
-  // unsent draft built without it never shows a total.
-  sessionOpen?: boolean;
 };
 
 export const NO_EVALUATION: MyEvaluation = { status: "none", complete: false };
@@ -61,13 +57,11 @@ export function isEvaluationComplete(
 export function deriveMyEvaluation(
   format: SessionFormat,
   ev: { isDraft: boolean; data: Record<string, unknown> } | null | undefined,
-  opts?: { sessionOpen: boolean },
 ): MyEvaluation {
   if (!ev) return NO_EVALUATION;
   return {
     status: ev.isDraft ? "draft" : "submitted",
     complete: isEvaluationComplete(format, ev.data),
-    ...(opts ? { sessionOpen: opts.sessionOpen } : {}),
   };
 }
 
@@ -85,13 +79,13 @@ export function canShowMyRatings(my: MyEvaluation): boolean {
 /**
  * Whether a results surface may print the viewer's own TOTAL (and its
  * arithmetic line) for this row. A-01 / decision 10: only for a SENT
- * evaluation while the session is open (lib/ownTotal.ts, the one rule); a
- * complete draft shows its ratings and the "En curso" chip, never a total.
+ * evaluation (lib/ownTotal.ts, the one rule), whatever the session's state; a
+ * complete draft shows its ratings and its state chip, never a total.
  */
 export function canShowMyScore(my: MyEvaluation): boolean {
   return (
     canShowMyRatings(my) &&
-    mayShowOwnTotal({ sent: my.status === "submitted", sessionOpen: my.sessionOpen })
+    mayShowOwnTotal({ sent: my.status === "submitted" })
   );
 }
 

@@ -17,7 +17,6 @@ import { slug, dateSlug } from "@/lib/pdf/filename";
 import { pdfFailureResponse } from "@/lib/pdf/routeFailure";
 import { pdfDisposition } from "@/lib/pdf/disposition";
 import { evaluationScoreRule } from "@/lib/scoreRule";
-import { isSessionExpired } from "@/lib/sessionState";
 import { CvaFormDocument, type CvaDocumentProps } from "@/lib/pdf/CvaFormDocument";
 
 export const runtime = "nodejs";
@@ -99,8 +98,6 @@ export async function GET(
   const props: CvaDocumentProps = {
     draft: hasDraft,
     ownerView,
-    // A-01: an unsent draft of an open session prints no total (lib/ownTotal.ts).
-    sessionOpen: !isSessionExpired(session),
     sessionName: session.name,
     date: dateStr,
     cupperName: profileDisplayName(profile ? { id: viewAsId, displayName: profile.displayName } : null, locale),
@@ -117,7 +114,7 @@ export async function GET(
         isReference: sample.referenceRank != null,
         referenceRank: sample.referenceRank ?? null,
         scoreRule: evaluationScoreRule(ev?.cups, ev !== undefined),
-        sent: ev?.isDraft === false,
+        sent: ev?.isDraft === false, // A-01: an unsent draft prints no total (lib/ownTotal.ts)
         descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},
         affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
         combined: (ev?.combinedData as Record<string, unknown>) ?? {},
