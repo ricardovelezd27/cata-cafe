@@ -449,24 +449,29 @@ describe("nothing that identifies a person", () => {
       for (const name of names) expect(json).not.toContain(name);
       expect(json).not.toMatch(/Nombre|Apellido|persona\d|ejemplo\.test|cupper-|nota de|escrito por/);
 
-      // shape: known keys only, and every counted id is a wheel node
+      // shape: known keys only, and every counted id is a wheel node. The walk
+      // visits a few thousand values per run: it COLLECTS what is wrong and the
+      // run asserts once (one `expect` per value made this test take 4 s and
+      // time out under load; the checks and the 150 runs are the same).
+      const wrong: string[] = [];
       const walk = (v: unknown, parent?: string) => {
         if (Array.isArray(v)) v.forEach((x) => walk(x, parent));
         else if (v && typeof v === "object") {
           for (const [k, x] of Object.entries(v)) {
             if (parent === "direct" || parent === "rollup" || parent === "counts") {
-              expect(NODE_IDS.has(k)).toBe(true);
-              expect(typeof x).toBe("number");
+              if (!NODE_IDS.has(k)) wrong.push(`${parent}: "${k}" is not a wheel node`);
+              if (typeof x !== "number") wrong.push(`${parent}.${k}: ${typeof x}, not a number`);
             } else {
-              expect(ALLOWED_KEYS.has(k), k).toBe(true);
+              if (!ALLOWED_KEYS.has(k)) wrong.push(`key "${k}" is not allowed`);
               walk(x, k);
             }
           }
         } else if (typeof v === "string" && parent === "mine") {
-          expect(NODE_IDS.has(v)).toBe(true);
+          if (!NODE_IDS.has(v)) wrong.push(`mine: "${v}" is not a wheel node`);
         }
       };
       walk(outputs);
+      expect(wrong, `run ${run}`).toEqual([]);
     }
   });
 
