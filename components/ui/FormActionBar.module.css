@@ -1,0 +1,84 @@
+/* The docked action bar of a long form (S7a, C-08). The CanvasFooter recipe for
+   a form: sticky at the bottom of the page's scroll, opaque, a hairline on top.
+   The breakpoint is the app shell's (`lg`, 64rem): under it the phone's tab bar
+   is fixed at the bottom and the bar docks on top of it.
+
+   The page's scroll is the shell's <main> (`p-4 lg:p-6 pb-20 lg:pb-6`). A
+   sticky offset is measured from INSIDE that padding, not from the screen's
+   edge (measured: with `bottom: 0` the bar stopped 70 px above a phone's
+   bottom edge and 21 px above a desktop's). So the offsets below take the
+   padding back: on a phone the bar's bottom meets the tab bar's top, on a
+   desktop it meets the window's bottom edge. */
+
+.bar {
+  position: sticky;
+  /* tab bar + home indicator, less the shell's 5rem (pb-20) bottom padding */
+  bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) - 5rem);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /* Bleeds to the padding of the shell's <main> (p-4) so the hairline runs to
+     the edges of the scroll area. */
+  margin: 24px -1rem 0;
+  /* At the end of the scroll the bar rests under the last field: the shell's
+     70 px bottom padding clears a 60 px tab bar, and this margin clears the
+     home indicator on top of it. */
+  margin-bottom: env(safe-area-inset-bottom, 0px);
+  padding: 10px 1rem;
+  background: var(--color-surface-container-lowest);
+  border-top: 1px solid var(--color-outline-variant);
+}
+
+@media (min-width: 64rem) {
+  .bar {
+    /* the shell's lg:pb-6 bottom padding, taken back */
+    bottom: -1.5rem;
+    margin: 32px -1.5rem 0;
+    padding: 12px 1.5rem;
+  }
+}
+
+/* The form's own line (an error, saved, offline). Empty = takes no room. */
+.status:empty {
+  display: none;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+/* Phones: the submit is the width of the bar (the thumb's target). From md
+   (48rem) it keeps its own width, at the end of the row. */
+.actions > * {
+  flex: 1 1 auto;
+}
+
+@media (min-width: 48rem) {
+  .actions {
+    justify-content: flex-end;
+  }
+  .actions > * {
+    flex: 0 0 auto;
+    min-width: 240px;
+  }
+}
+
+/* A control that takes focus is never left under the bar (WCAG 2.4.11; the
+   technique of C43). The page's scroll container reserves the bar's room
+   (about 70 px, more with a status line) and the tab bar's at its bottom, so
+   Tab and a field error's focus scroll a control clear of both. A scroll
+   margin on the controls does not do it: a browser does not scroll a control
+   that is already inside the scroll area, even when it sits under the bar. */
+:global(main):has(.form) {
+  scroll-padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 112px);
+}
+
+@media (min-width: 64rem) {
+  :global(main):has(.form) {
+    scroll-padding-bottom: 112px;
+  }
+}

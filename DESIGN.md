@@ -531,7 +531,7 @@ The warm-up player (`components/warmup/WarmupPlayer.tsx`) is the first screen of
 ### Glass and grain on paper
 
 - Glass on paper stays what it was: overlays and side panels only (`bg-surface-container-lowest/80` with `backdrop-blur-xl`), never a card in the page flow. The stage's `.surface-glass` is not used on a cream ground: there is nothing behind it to show.
-- **(rule) A docked bar over a form does not blur.** The cupping footer, a form's sticky action bar and any bar fixed over content the person is filling in are opaque (`surface-container-lowest`), with a hairline (`outline-variant`) on the edge that meets the content. A blurred form behind a bar is still the form, half legible, moving under the controls.
+- **(rule) A docked bar over a form does not blur.** The cupping footer, a form's sticky action bar and any bar fixed over content the person is filling in are opaque (`surface-container-lowest`), with a hairline (`outline-variant`) on the edge that meets the content. A blurred form behind a bar is still the form, half legible, moving under the controls. A long form's one submit sits in `FormActionBar` (`components/ui/FormActionBar.tsx`, S7a): sticky at the bottom of the page's scroll, above the phone's tab bar, the form's own error or pending line above the button, and the page's scroll reserving its room so a focused field is never left under it.
 - Grain exists only on a photo of a real session (`.surface-photo`, through `PhotoSlot`). No textured cards, no noise backgrounds.
 
 ### Drawings in the app

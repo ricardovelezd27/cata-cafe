@@ -19,6 +19,7 @@ import { browserZone, dateInZone, LAST_CLOSING_DAY } from "@/lib/closeRules";
 import { MAX_DATE_INPUT } from "@/lib/safeDate";
 import { planRemoveActive, referenceExplanation, shouldPinReference, type ReferenceMode } from "@/lib/referenceRules";
 import { radioKeyDown } from "@/components/radioKeys";
+import { FormActionBar, dockedFormClass } from "@/components/ui/FormActionBar";
 
 export type EditSessionFormTranslations = {
   name: string;
@@ -425,7 +426,7 @@ export function EditSessionForm({
     : null;
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={handleSubmit} className={dockedFormClass}>
       {/* A closed session is read-only: ONE disabled fieldset covers every
           control (S8-10 T6, F-sesiones-9) instead of per-field flags. */}
       <fieldset disabled={closed} className="m-0 min-w-0 space-y-6 border-0 p-0">
@@ -852,19 +853,24 @@ export function EditSessionForm({
         error={t.error}
       />
 
-      {/* f. Save bar */}
-      <div className="flex flex-wrap items-center gap-4">
+      {/* f. Save bar: the one submit, docked (S7a, C-08), with the form's own line. */}
+      <FormActionBar
+        status={
+          <>
+            {saved && <p className="text-sm text-primary-container">{t.saved}</p>}
+            {errorText && <p className="text-sm text-error">{errorText}</p>}
+            {closed && !errorText && <p className="text-sm text-on-surface-variant">{closedText}</p>}
+          </>
+        }
+      >
         <button
           type="submit"
           disabled={savePending || closed}
-          className="rounded-pill bg-primary-container px-6 py-3 text-sm font-medium text-on-primary transition-colors hover:bg-primary disabled:opacity-50"
+          className="min-h-[44px] rounded-pill bg-primary-container px-6 py-3 text-sm font-medium text-on-primary transition-colors hover:bg-primary disabled:opacity-50"
         >
           {savePending ? t.saving : t.save}
         </button>
-        {saved && <p className="text-sm text-primary-container">{t.saved}</p>}
-        {errorText && <p className="text-sm text-error">{errorText}</p>}
-        {closed && !errorText && <p className="text-sm text-on-surface-variant">{closedText}</p>}
-      </div>
+      </FormActionBar>
       </fieldset>
     </form>
   );
