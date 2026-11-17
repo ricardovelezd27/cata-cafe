@@ -111,7 +111,7 @@ export function GroupNameControls({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-start gap-2 min-w-0">
           <div className="min-w-0">
-            <h1 className="font-display text-3xl text-primary-container font-semibold truncate">{name}</h1>
+            <h1 className="page-title text-3xl truncate">{name}</h1>
             <p className="text-sm text-on-surface-variant mt-1">{description || t.noDescription}</p>
           </div>
           <button

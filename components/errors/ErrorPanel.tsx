@@ -41,7 +41,7 @@ export function ErrorPanel({
       <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-pill bg-error-container text-error">
         <AlertTriangle size={22} aria-hidden />
       </div>
-      <h1 className="font-display text-2xl text-on-surface">{title}</h1>
+      <h1 className="page-title text-2xl">{title}</h1>
       <p className="mx-auto mt-2 max-w-sm text-sm text-on-surface-variant">{body}</p>
 
       <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">

@@ -36,7 +36,7 @@ export function GroupActivityFeed({
 }) {
   return (
     <div className="space-y-3">
-      <h2 className="font-display text-xl text-primary-container">{title}</h2>
+      <h2 className="section-title text-xl">{title}</h2>
       <div className="bg-surface-container-lowest rounded-card border border-outline-variant shadow-card p-5">
         {events.length === 0 ? (
           <p className="text-sm text-on-surface-variant">{emptyText}</p>

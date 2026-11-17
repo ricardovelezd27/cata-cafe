@@ -88,7 +88,7 @@ export function WarmupExerciseRoute({
       {canSaveReflections && (
         <section aria-labelledby="warmup-reflections" className="space-y-3 pt-4">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 id="warmup-reflections" className="font-display text-xl text-on-surface">
+            <h2 id="warmup-reflections" className="text-xl">
               {reflectionStrings.title}
             </h2>
             <p className="text-sm text-on-surface-variant">{reflectionStrings.private}</p>

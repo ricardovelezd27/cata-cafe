@@ -180,7 +180,7 @@ export function ChatPanel({ locale, t }: ChatPanelProps) {
     <div className="flex flex-col gap-3 pb-8">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h2 className="font-serif text-xl text-green-dark">{t.title}</h2>
+          <h2 className="section-title text-xl">{t.title}</h2>
           <p className="text-sm text-brown-mid mt-0.5">{t.subtitle}</p>
         </div>
         <div className="flex items-center gap-3 shrink-0">
@@ -217,7 +217,7 @@ export function ChatPanel({ locale, t }: ChatPanelProps) {
           {messages.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center gap-3 px-6">
               <MessageCircle size={28} className="text-brown-mid/50" />
-              <h3 className="text-sm font-semibold text-brown-dark">{t.emptyTitle}</h3>
+              <h3 className="text-sm">{t.emptyTitle}</h3>
               <p className="text-xs text-brown-mid max-w-sm">{t.emptyHint}</p>
               <div className="flex flex-col gap-2 w-full max-w-sm mt-1">
                 {t.examples.map((example, i) => (

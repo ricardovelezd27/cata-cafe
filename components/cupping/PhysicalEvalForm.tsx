@@ -85,7 +85,7 @@ export function PhysicalEvalForm({
   return (
     <div>
       <div className="flex items-center gap-2 mb-1">
-        <h2 className="font-display text-lg text-brown-dark">Evaluación física</h2>
+        <h2 className="text-lg">Evaluación física</h2>
         <BetaBadge />
       </div>
       <div className="text-xs text-brown-mid mb-3">

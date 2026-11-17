@@ -67,7 +67,7 @@ export function AiSummaryPanel({ locale, target, translations: t }: AiSummaryPan
         </div>
       ) : content ? (
         <div className="flex flex-col gap-3">
-          <h3 className="text-base font-semibold text-brown-dark leading-snug">
+          <h3 className="text-base leading-snug">
             {content.headline}
           </h3>
           <div className="flex flex-col gap-2 text-sm text-brown-dark leading-relaxed">

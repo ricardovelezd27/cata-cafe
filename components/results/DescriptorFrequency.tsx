@@ -184,7 +184,7 @@ export function DescriptorFrequency({
               className="rounded-card border border-outline-variant bg-surface-container-lowest p-4 flex flex-col"
             >
               <div className="flex items-baseline justify-between gap-2 mb-3">
-                <h3 className="font-display text-lg font-medium text-primary-container truncate">
+                <h3 className="text-lg truncate">
                   {sample.label}
                 </h3>
                 {sample.totalEvaluators > 0 && (

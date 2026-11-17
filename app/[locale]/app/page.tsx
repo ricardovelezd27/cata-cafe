@@ -179,7 +179,7 @@ export default async function Dashboard({
       {/* Header */}
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="font-display text-3xl text-primary-container leading-tight">
+          <h1 className="page-title text-3xl leading-tight">
             {t("welcome", { name: profile?.displayName ?? "" })}
           </h1>
           <p className="text-sm text-on-surface-variant mt-1">{t("subtitle")}</p>
@@ -306,7 +306,7 @@ export default async function Dashboard({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Recent sessions */}
           <section className="space-y-3">
-            <h2 className="font-display text-xl text-primary-container">{t("recent")}</h2>
+            <h2 className="section-title text-xl">{t("recent")}</h2>
             <ul className="space-y-2">
               {recentSessions.map((s) => (
                 <li key={s.id}>
@@ -355,7 +355,7 @@ export default async function Dashboard({
 
           {/* Top coffees */}
           <section className="space-y-3">
-            <h2 className="font-display text-xl text-primary-container">{t("bestCoffees")}</h2>
+            <h2 className="section-title text-xl">{t("bestCoffees")}</h2>
             {topCoffeeGroups.length === 0 ? (
               <p className="text-sm text-on-surface-variant">{t("noBestCoffees")}</p>
             ) : (
@@ -401,7 +401,7 @@ export default async function Dashboard({
       {/* Activity feed */}
       {hasData && (
         <section className="space-y-3">
-          <h2 className="font-display text-xl text-primary-container">{t("activityFeed")}</h2>
+          <h2 className="section-title text-xl">{t("activityFeed")}</h2>
           {recentActivity.length === 0 ? (
             <p className="text-sm text-on-surface-variant">{t("noActivity")}</p>
           ) : (

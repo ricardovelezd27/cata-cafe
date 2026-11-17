@@ -114,7 +114,7 @@ export default async function GroupsPage({
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl text-primary-container font-semibold">{t("title")}</h1>
+          <h1 className="page-title text-3xl">{t("title")}</h1>
           <p className="text-sm text-on-surface-variant mt-1">{t("subtitle")}</p>
         </div>
         <CreateGroupDialog
@@ -156,7 +156,7 @@ export default async function GroupsPage({
       {/* Groups where I'm a member (not owner) */}
       {memberGroups.length > 0 && (
         <div className="space-y-4">
-          <h2 className="font-display text-xl text-primary-container">{t("memberGroupsTitle")}</h2>
+          <h2 className="section-title text-xl">{t("memberGroupsTitle")}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {memberGroups.map((g) => (
               <Link
@@ -188,7 +188,7 @@ export default async function GroupsPage({
 
       {/* Co-cuppers */}
       <div className="space-y-4">
-        <h2 className="font-display text-xl text-primary-container">{t("coCuppersTitle")}</h2>
+        <h2 className="section-title text-xl">{t("coCuppersTitle")}</h2>
         {cuppers.length === 0 ? (
           <p className="text-sm text-on-surface-variant">{t("noCoCuppers")}</p>
         ) : (

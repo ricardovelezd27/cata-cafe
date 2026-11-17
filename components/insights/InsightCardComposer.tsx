@@ -333,7 +333,7 @@ export function InsightCardComposer({ locale, config, citationLines, t }: Insigh
 
               <div className="flex-1 flex flex-col justify-center gap-6 min-h-0">
                 <h1
-                  className="font-display text-brown-dark leading-tight"
+                  className="leading-tight"
                   style={{
                     fontSize: headlineSize,
                     display: "-webkit-box",

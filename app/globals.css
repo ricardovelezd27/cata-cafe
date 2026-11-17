@@ -311,7 +311,48 @@ html, body {
   text-rendering: optimizeLegibility;
 }
 
-h1, h2, h3, h4, .font-serif {
+/* B-01 (package T2): a heading with no class paints the card heading's
+   defaults (Display, 500, ink, no margin). In the base layer, so every
+   colour, weight, family or tracking class written on a heading wins over
+   it (DESIGN.md, "Base element styles live in @layer base"). Page and
+   section titles are green by their own component (PageHeader; the paper
+   section heading), never by this rule. Pinned by tests/headings.test.ts. */
+@layer base {
+  h1, h2, h3, h4, .font-serif {
+    font-family: var(--font-display);
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    color: var(--color-on-surface);
+    margin: 0;
+  }
+}
+
+/* The two green titles of paper (DESIGN.md, decision 2 of the 2026-11-15
+   audit: page and section titles are `primary-container`; everything else is
+   ink). Their colour is written HERE and nowhere else: `PageHeader` and every
+   hand-written page title use `.page-title`; a section's title uses
+   `.section-title` (the recipe the paper SectionHeading of package P2 takes
+   over). Size stays on the element (the type scale is package T4). In the
+   components layer, so a utility on the element still wins. */
+@layer components {
+  .page-title,
+  .section-title {
+    font-family: var(--font-display);
+    color: var(--color-primary-container);
+  }
+}
+
+/* The landing paints exactly as it did before T2. Until T2 the heading rule
+   above was unlayered, so on the landing it cancelled the margin and tracking
+   classes written on its headings and serif text (a heading's `mb-*` / `mt-*`,
+   the wordmark's `tracking-tight`, the offer numeral's `tracking-[-0.04em]`).
+   The landing has its own stage rules and its own tests, so T2 leaves it as it
+   was: this is the old rule, unlayered, with the same selectors and the same
+   specificity, limited to the page that paints `.stage-ground`. Whether those
+   classes should apply is the landing's decision (listed in the T2 pull
+   request); removing this block is how it would let them. */
+:where(:root:has(.stage-ground)) :is(h1, h2, h3, h4),
+:where(:root:has(.stage-ground)) .font-serif {
   font-family: var(--font-display);
   font-weight: 500;
   letter-spacing: -0.01em;
@@ -319,9 +360,11 @@ h1, h2, h3, h4, .font-serif {
   margin: 0;
 }
 
-/* The unlayered heading rule above outranks Tailwind's @layer utilities.
-   Re-declare the light-on-dark color utilities (landing dark sections)
-   unlayered and after it so they win. */
+/* Light-on-dark colour utilities of the landing's dark sections, declared
+   unlayered. They were written when the heading rule above was unlayered and
+   cancelled every colour class on a heading; since T2 the heading rule is in
+   the base layer and the utilities win on their own. Kept unchanged so the
+   landing paints exactly as before; removing them is a cleanup for later. */
 .text-surface { color: var(--color-surface); }
 .text-primary { color: var(--color-primary); }
 .text-primary-fixed { color: var(--color-primary-fixed); }

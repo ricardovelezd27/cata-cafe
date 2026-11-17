@@ -11,7 +11,7 @@ export default function RootNotFound() {
     <main className="flex flex-1 items-center justify-center px-6 py-16">
       <div className="w-full max-w-md space-y-6 rounded-card border border-outline-variant bg-surface-container p-6 text-center">
         <div>
-          <h1 className="text-xl font-semibold text-on-surface">Página no encontrada</h1>
+          <h1 className="page-title text-xl">Página no encontrada</h1>
           <p className="mt-2 text-sm text-on-surface-variant">
             El enlace puede estar mal escrito o el contenido ya no existe.
           </p>
@@ -20,7 +20,7 @@ export default function RootNotFound() {
           </Link>
         </div>
         <div className="border-t border-outline-variant pt-4">
-          <h2 className="text-xl font-semibold text-on-surface">Page not found</h2>
+          <h2 className="page-title text-xl">Page not found</h2>
           <p className="mt-2 text-sm text-on-surface-variant">
             The link may be mistyped, or the content no longer exists.
           </p>

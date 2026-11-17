@@ -147,7 +147,7 @@ export function EmailSentState({
   return (
     <div className={`space-y-4 ${s.text}`}>
       <div role="status" className="space-y-1">
-        <h2 ref={headingRef} tabIndex={-1} className="text-base font-semibold outline-none">
+        <h2 ref={headingRef} tabIndex={-1} className="text-base outline-none">
           {labels.title}
         </h2>
         <p className={`text-sm ${s.muted}`}>{labels.body.replace("{email}", email)}</p>

@@ -50,7 +50,8 @@ export const dynamic = "force-dynamic";
 // owner settings) so a coffee "profile" reads like a user profile.
 const GRID_2COL = "grid gap-6 lg:grid-cols-[minmax(320px,380px)_1fr]";
 const CARD = "rounded-card border border-outline-variant bg-surface-container-lowest p-6 shadow-card";
-const SUB_H3 = "text-xs font-semibold uppercase tracking-wide text-on-surface-variant";
+// Uppercase label headings (DESIGN.md "Uppercase label": UI font, 600, on-surface-variant).
+const SUB_H3 = "font-sans text-xs font-semibold uppercase tracking-wide text-on-surface-variant";
 const LIST_ROW =
   "flex items-center justify-between gap-3 rounded-card border border-outline-variant bg-surface px-4 py-2.5";
 const FIELD_LABEL = "text-xs text-on-surface-variant font-semibold uppercase tracking-wide mb-0.5";
@@ -263,7 +264,7 @@ export default async function CoffeeProfilePage({
             </div>
 
             <div className="mt-3">
-              <h1 className="font-display text-2xl text-on-surface">{coffee.name}</h1>
+              <h1 className="page-title text-2xl">{coffee.name}</h1>
               {coffee.code && (
                 <span className="mt-1 inline-block rounded-pill border border-outline-variant bg-surface-container px-2.5 py-0.5 font-mono text-xs text-on-surface-variant">
                   {formatCoffeeCode(coffee.code)}
@@ -349,7 +350,7 @@ export default async function CoffeeProfilePage({
               <>
                 {Object.keys(aggregate.attrAverages).length > 0 && (
                   <div>
-                    <h3 className="mb-3 font-display text-lg text-primary-container">
+                    <h3 className="mb-3 text-lg">
                       {t("attrAveragesTitle")}
                     </h3>
                     <div className="flex flex-col gap-3">
@@ -379,7 +380,7 @@ export default async function CoffeeProfilePage({
                 )}
                 {aggregate.allDescriptive.length > 0 && (
                   <div className="border-t border-outline-variant/50 pt-4">
-                    <h3 className="mb-2 font-display text-lg text-primary-container">
+                    <h3 className="mb-2 text-lg">
                       {t("flavorsTitle")}
                     </h3>
                     <FlavorCloud
@@ -395,7 +396,7 @@ export default async function CoffeeProfilePage({
           </div>
 
           <div className={`space-y-6 ${CARD}`}>
-            <h2 className="font-display text-xl text-primary-container">{t("activityTitle")}</h2>
+            <h2 className="section-title text-xl">{t("activityTitle")}</h2>
 
             {showResults && (
               <section>
@@ -534,7 +535,7 @@ export default async function CoffeeProfilePage({
         {/* Ficha técnica */}
         <section>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h2 className="font-display text-xl text-primary-container">{t("detailsTitle")}</h2>
+            <h2 className="section-title text-xl">{t("detailsTitle")}</h2>
             <ReportLink
               href={`/api/coffees/${coffee.id}/ficha?locale=${locale}&inline=1`}
               filename={`ficha-${coffee.id}.pdf`}
@@ -578,7 +579,7 @@ export default async function CoffeeProfilePage({
         {/* Visibility & sharing (owner only) — the "Cuenta" slot of the user profile */}
         {isOwner && (
           <section>
-            <h2 className="mb-3 font-display text-xl text-primary-container">
+            <h2 className="section-title mb-3 text-xl">
               {t("visibilityTitle")}
             </h2>
             <div className="space-y-4 rounded-card border border-outline-variant bg-surface-container-lowest p-5">

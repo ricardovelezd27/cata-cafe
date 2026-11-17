@@ -69,7 +69,7 @@ export default async function ClaimPage({
     return (
       <main className="flex flex-1 items-center justify-center px-6 py-16">
         <div className={card}>
-          <h1 className="font-display text-2xl text-primary-container">{t("errorTitle")}</h1>
+          <h1 className="page-title text-2xl">{t("errorTitle")}</h1>
           <p className="text-sm text-on-surface-variant">
             {error === "expired" ? t("errorExpired") : error === "already" ? t("errorAlready") : t("errorInvalid")}
           </p>

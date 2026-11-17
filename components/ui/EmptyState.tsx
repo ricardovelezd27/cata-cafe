@@ -20,7 +20,7 @@ export function EmptyState({
           {icon}
         </div>
       )}
-      <h3 className="font-display text-xl text-on-surface">{title}</h3>
+      <h3 className="text-xl">{title}</h3>
       {body && <p className="mx-auto mt-1 max-w-sm text-sm text-on-surface-variant">{body}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>

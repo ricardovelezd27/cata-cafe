@@ -156,7 +156,7 @@ export function PostCloseNotesOwnerList({
   items.sort((a, b) => a.who.localeCompare(b.who) || a.sample.localeCompare(b.sample));
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="font-display text-xl text-primary-container">{t.ownerTitle}</h2>
+      <h2 className="section-title text-xl">{t.ownerTitle}</h2>
       <p className="font-sans text-sm text-on-surface-variant">{t.ownerIntro}</p>
       <ul className="flex flex-col gap-2">
         {items.map((i) => (

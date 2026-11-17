@@ -32,7 +32,7 @@ export default async function InsightsAccessPage({
     <div className="flex flex-col gap-4 pb-8">
       <p className="text-sm text-brown-mid">{t("lead")}</p>
       <div className="rounded-card border border-outline-variant bg-surface-container-lowest p-4">
-        <h2 className="font-display text-base text-on-surface">{t("digestTitle")}</h2>
+        <h2 className="text-base">{t("digestTitle")}</h2>
         <p className="mt-1 text-sm text-on-surface-variant">
           {!lastDigest
             ? t("digestNone")
