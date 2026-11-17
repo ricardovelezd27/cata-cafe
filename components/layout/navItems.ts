@@ -17,7 +17,7 @@ export interface NavItem {
   /** Renders a visual divider ABOVE this item in the Sidebar — separates the
    *  personal group (Inicio, Perfil) from the work group (Sesiones, Cafés, Grupos). */
   startsGroup?: boolean;
-  /** BottomNav has room for five tabs; this item is reached on phones from the
+  /** BottomNav has five tabs at most; this item is reached on phones from the
    *  dashboard card and the Sesiones page link. */
   hideOnMobile?: boolean;
 }
@@ -57,7 +57,8 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/app/groups", icon: Users, i18nKey: "groups" },
 ];
 
-/** Appended conditionally when the current user has analytics access (see showInsights). */
+/** Appended to the Sidebar when the current user has analytics access (see
+ *  showInsights). Never a BottomNav tab: on phones it is an entry of Perfil. */
 export const INSIGHTS_ITEM: NavItem = {
   href: "/app/insights",
   icon: BarChart3,

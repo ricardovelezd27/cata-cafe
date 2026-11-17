@@ -1,5 +1,7 @@
 "use client";
 
+import { HIT_Y44 } from "./hitArea";
+
 export function SegmentedControl({
   items,
   value,
@@ -28,7 +30,9 @@ export function SegmentedControl({
             role="tab"
             aria-selected={active}
             onClick={() => onChange(item.id)}
-            className={`flex-1 rounded-pill px-3 py-1.5 text-sm font-medium transition-colors ${
+            // The segment keeps its size inside the 44 px track; its hit area is the
+            // track's full 44 px height (HIT_Y44), never wider than the segment.
+            className={`${HIT_Y44} flex-1 rounded-pill px-3 py-1.5 text-sm font-medium transition-colors ${
               active
                 ? "bg-surface-container-lowest text-on-surface shadow-card"
                 : "text-on-surface-variant hover:text-on-surface"

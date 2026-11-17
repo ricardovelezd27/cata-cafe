@@ -27,6 +27,7 @@
 .spacer { flex: 1; }
 
 .button {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -40,6 +41,17 @@
   transition: background-color var(--transition-fast),
               color var(--transition-fast),
               border-color var(--transition-fast);
+}
+
+/* The docked footer keeps its height (the cupping screen's chrome budget):
+   the 43 px button gets a 44 px tall hit area instead of growing. */
+.button::before {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  top: 50%;
+  height: 44px;
+  transform: translateY(-50%);
 }
 
 .button:focus-visible {

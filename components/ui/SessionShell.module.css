@@ -190,6 +190,14 @@
   .canvasInner { padding: 12px 16px 0; }
 }
 
+/* F-02: under 352 px wide nine 34 px rating bubbles fit one row only if the
+   page's side margin gives way (16 px at 352 px, 0 at 320 px); the bubble row
+   then spans 314 px. Above 352 px nothing changes. The form's own layout on
+   phones belongs to package S5 of the audit's plan. */
+@media (max-width: 351.98px) {
+  .canvasInner { padding-inline: clamp(0px, calc((100vw - 320px) / 2), 16px); }
+}
+
 .mobileHeader {
   display: none;
 }
@@ -226,6 +234,21 @@
     border: 1px solid var(--color-brown-light);
     color: var(--color-brown-dark);
     cursor: pointer;
+  }
+  /* The docked header stays 50 px: the 36 px buttons get a 44 px hit area. */
+  .hamburger,
+  .detailsToggle {
+    position: relative;
+  }
+  .hamburger::before,
+  .detailsToggle::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
   }
   .detailsToggle svg {
     transition: transform var(--transition-fast);

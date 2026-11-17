@@ -32,6 +32,7 @@ import {
   type WizardHandoff,
 } from "@/lib/sessionDefaults";
 import { Select } from "@/components/ui/Select";
+import { HIT_Y44 } from "@/components/ui/hitArea";
 import { sampleCountWarning, type SampleCountWarning } from "@/lib/sampleCount";
 import { DEFAULT_NOTIFY_WHEN, type NotifyWhen } from "@/lib/groupNotify";
 import { DEFAULT_REFERENCE_MODE, referenceExplanation, type ReferenceMode } from "@/lib/referenceRules";
@@ -1073,17 +1074,24 @@ export function NewSessionForm({
               aria-checked={warmupOn}
               aria-labelledby={`${fid}-warmup`}
               onClick={() => setWarmupOn((v) => !v)}
-              className={
-                "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors " +
-                (warmupOn ? "bg-primary-container" : "bg-outline-variant")
-              }
+              // A 44 px box around the 39 x 21 track (F-03); the negative margin
+              // keeps the row as it was.
+              className="-my-[10px] -ml-[3px] inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center"
             >
               <span
+                aria-hidden
                 className={
-                  "inline-block h-5 w-5 transform rounded-full bg-surface-container-lowest shadow-card transition-transform " +
-                  (warmupOn ? "translate-x-5" : "translate-x-0.5")
+                  "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors " +
+                  (warmupOn ? "bg-primary-container" : "bg-outline-variant")
                 }
-              />
+              >
+                <span
+                  className={
+                    "inline-block h-5 w-5 transform rounded-full bg-surface-container-lowest shadow-card transition-transform " +
+                    (warmupOn ? "translate-x-5" : "translate-x-0.5")
+                  }
+                />
+              </span>
             </button>
             <span id={`${fid}-warmup`} className="text-sm text-on-surface font-medium">{t.warmup.toggle}</span>
           </div>
@@ -1144,7 +1152,7 @@ export function NewSessionForm({
                     <button
                       type="button"
                       onClick={() => setPickerFor(coffee.id)}
-                      className="rounded-pill border border-primary-container px-3 py-1 text-xs font-medium text-primary-container hover:bg-primary-fixed transition-colors"
+                      className="min-h-[44px] rounded-pill border border-primary-container px-3 py-1 text-xs font-medium text-primary-container hover:bg-primary-fixed transition-colors"
                     >
                       {t.picker.useExisting}
                     </button>
@@ -1190,7 +1198,7 @@ export function NewSessionForm({
                     <button
                       type="button"
                       onClick={() => unlinkCoffee(coffee.id)}
-                      className="rounded-pill border border-outline-variant px-3 py-1.5 text-xs font-medium text-on-surface hover:bg-surface-container transition-colors"
+                      className="min-h-[44px] rounded-pill border border-outline-variant px-3 py-1.5 text-xs font-medium text-on-surface hover:bg-surface-container transition-colors"
                     >
                       {t.picker.unlink}
                     </button>
@@ -1374,7 +1382,9 @@ export function NewSessionForm({
                           <FieldLabel optionalText={t.newForm.optionalSuffix}>
                             {t.coffeeCertifications}
                           </FieldLabel>
-                          <div className="flex flex-wrap gap-1.5">
+                          {/* Chips paint 30 px, 15 px apart in height: each chip's 44 px
+                              hit area (HIT_Y44) meets the next row's at the midpoint. */}
+                          <div className="flex flex-wrap gap-x-1.5 gap-y-[15px]">
                             {CERTIFICATIONS.map((cert) => {
                               const active = coffee.certifications.includes(cert);
                               return (
@@ -1384,8 +1394,8 @@ export function NewSessionForm({
                                   onClick={() => toggleCoffeeCertification(coffee.id, cert)}
                                   className={
                                     active
-                                      ? "rounded-pill bg-primary-container px-3 py-1 text-xs font-semibold text-on-primary transition-colors"
-                                      : "rounded-pill border border-outline-variant px-3 py-1 text-xs font-medium text-on-surface transition-colors hover:bg-surface-container"
+                                      ? `${HIT_Y44} min-h-[30px] rounded-pill bg-primary-container px-3 py-1 text-xs font-semibold text-on-primary transition-colors`
+                                      : `${HIT_Y44} min-h-[30px] rounded-pill border border-outline-variant px-3 py-1 text-xs font-medium text-on-surface transition-colors hover:bg-surface-container`
                                   }
                                 >
                                   {cert}
@@ -1521,7 +1531,7 @@ export function NewSessionForm({
           {samples.map((s, si) => (
             <div key={s.id} className="flex flex-wrap items-center gap-2 min-w-0">
               {/* 44px touch target around a 16px radio (mobile hit area). */}
-              <label className="flex h-11 w-9 shrink-0 cursor-pointer items-center justify-center -my-1">
+              <label className="flex min-h-[44px] min-w-[44px] shrink-0 cursor-pointer items-center justify-center -my-1">
                 <input
                   type="radio"
                   name="reference"
@@ -1613,17 +1623,24 @@ export function NewSessionForm({
             aria-checked={isGroup}
             aria-labelledby={`${fid}-group`}
             onClick={() => setIsGroup((v) => !v)}
-            className={
-              "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors " +
-              (isGroup ? "bg-primary-container" : "bg-outline-variant")
-            }
+            // A 44 px box around the 39 x 21 track (F-03); the negative margin
+            // keeps the row as it was.
+            className="-my-[10px] -ml-[3px] inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center"
           >
             <span
+              aria-hidden
               className={
-                "inline-block h-5 w-5 transform rounded-full bg-surface-container-lowest shadow-card transition-transform " +
-                (isGroup ? "translate-x-5" : "translate-x-0.5")
+                "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors " +
+                (isGroup ? "bg-primary-container" : "bg-outline-variant")
               }
-            />
+            >
+              <span
+                className={
+                  "inline-block h-5 w-5 transform rounded-full bg-surface-container-lowest shadow-card transition-transform " +
+                  (isGroup ? "translate-x-5" : "translate-x-0.5")
+                }
+              />
+            </span>
           </button>
           <span id={`${fid}-group`} className="text-sm text-on-surface font-medium">{t.groupToggle}</span>
         </div>
@@ -1669,7 +1686,7 @@ export function NewSessionForm({
             </div>
 
             {linkedGroupId && (
-              <label className="flex items-center gap-2.5 text-sm text-on-surface cursor-pointer">
+              <label className="flex min-h-[44px] items-center gap-2.5 text-sm text-on-surface cursor-pointer">
                 <input
                   type="checkbox"
                   checked={notifyGroup}

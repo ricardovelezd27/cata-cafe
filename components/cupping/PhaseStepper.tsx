@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { scrollBehavior } from "@/lib/motion";
+import { HIT_Y44 } from "@/components/ui/hitArea";
 
 interface PhaseStepperProps<T extends string> {
   phases: readonly T[];
@@ -68,6 +69,10 @@ export function PhaseStepper<T extends string>({
             key={phase}
             ref={isActive ? activeRef : null}
             onClick={() => onSelect(phase)}
+            // Compact (the phone's docked stepper) keeps its 40 px so the chrome
+            // does not grow; its hit area is 44 px tall, inside the scroller's
+            // 2 px padding. The full stepper paints 44 px itself.
+            className={compact ? HIT_Y44 : undefined}
             style={{
               flexShrink: 0,
               display: "flex",

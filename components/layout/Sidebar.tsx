@@ -45,7 +45,7 @@ export default function Sidebar({
               <GuestGateLink
                 href={`/${locale}${href}`}
                 aria-current={active ? "page" : undefined}
-                className={`flex items-center gap-3 px-5 py-2.5 text-sm transition-colors ${
+                className={`flex min-h-[44px] items-center gap-3 px-5 py-2.5 text-sm transition-colors ${
                   active
                     ? "border-l-[3px] border-primary-container bg-primary-fixed text-primary-container font-semibold pl-[17px]"
                     : "border-l-[3px] border-transparent text-on-surface hover:bg-surface-container-high pl-[17px]"
@@ -62,7 +62,7 @@ export default function Sidebar({
       <div className="border-t border-outline-variant py-3 px-5 flex flex-col gap-1">
         <LocaleSwitchLink
           locale={locale}
-          className="flex items-center gap-3 py-2 text-sm text-on-surface-variant hover:text-on-surface transition-colors"
+          className="flex min-h-[44px] items-center gap-3 py-2 text-sm text-on-surface-variant hover:text-on-surface transition-colors"
         >
           <Languages size={18} strokeWidth={1.8} />
           {otherLocale.toUpperCase()}
@@ -70,7 +70,7 @@ export default function Sidebar({
         <SignOutButton
           mode="switchAccount"
           locale={locale}
-          className="flex items-center gap-3 py-2 text-sm text-on-surface-variant hover:text-on-surface transition-colors w-full text-left"
+          className="flex min-h-[44px] items-center gap-3 py-2 text-sm text-on-surface-variant hover:text-on-surface transition-colors w-full text-left"
         >
           <UserCog size={18} strokeWidth={1.8} />
           {translations.nav.switchAccount}
@@ -78,7 +78,7 @@ export default function Sidebar({
         <SignOutButton
           mode="signOut"
           locale={locale}
-          className="flex items-center gap-3 py-2 text-sm text-on-surface-variant hover:text-error transition-colors w-full text-left"
+          className="flex min-h-[44px] items-center gap-3 py-2 text-sm text-on-surface-variant hover:text-error transition-colors w-full text-left"
         >
           <LogOut size={18} strokeWidth={1.8} />
           {translations.nav.logout}

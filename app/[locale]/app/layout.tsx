@@ -184,7 +184,6 @@ export default async function AppLayout({
         <BottomNav
           locale={locale}
           className="lg:hidden"
-          showInsights={showInsights}
           translations={translations}
         />
       </div>

@@ -52,6 +52,7 @@ import { SampleKey, type SampleKeyTranslations } from "@/components/cupping/Samp
 import type { SamplePrepTranslations } from "@/components/cupping/SamplePrepFields";
 import { prepFromForm, prepToForm, type SamplePrep } from "@/lib/samplePrep";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { TextAction } from "@/components/ui/TextAction";
 import Link from "next/link";
 import { planFinish, soloCloseAsIsOffer } from "@/lib/closeRules";
 import { CoffeePicker, type UsableCoffee } from "@/components/coffees/CoffeePicker";
@@ -2288,13 +2289,13 @@ export function CupClient({
   };
 
   const editSampleButton = isOwner ? (
-    <button
-      type="button"
+    <TextAction
+      tone="none"
       onClick={() => setEditingSample(true)}
-      className="shrink-0 inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-wide text-brown-mid hover:text-green-dark"
+      className="-my-[15px] font-mono text-[10px] uppercase tracking-wide text-brown-mid hover:text-green-dark"
     >
       ✎ {translations.editSample}
-    </button>
+    </TextAction>
   ) : null;
 
   const isLastSampleInStep = sampleIdx >= samples.length - 1;
@@ -2715,13 +2716,13 @@ export function CupClient({
     ) : undefined;
 
   const exitLink = (
-    <button
-      type="button"
+    <TextAction
+      tone="none"
       onClick={() => router.push(`/${locale}/app/sessions`)}
-      className="inline-flex items-center gap-2 font-sans text-sm text-brown-mid hover:text-green-dark transition-colors focus-visible:outline-2 focus-visible:outline-green-dark focus-visible:outline-offset-2 rounded-sm"
+      className="-my-[13px] !justify-start gap-2 font-sans text-sm text-brown-mid hover:text-green-dark transition-colors focus-visible:outline-2 focus-visible:outline-green-dark focus-visible:outline-offset-2 rounded-sm"
     >
       <span aria-hidden>←</span> {translations.exitToSessions}
-    </button>
+    </TextAction>
   );
 
   // S10 WP7 (Kim F1): the discreet warm-up entry lives under the exit link.

@@ -133,7 +133,7 @@ export function GroupEmailComposer({
 
       {sessions.length > 0 && (
         <div className="space-y-2">
-          <label className="flex items-center gap-2 text-sm text-on-surface">
+          <label className="flex min-h-[44px] items-center gap-2 text-sm text-on-surface">
             <input
               type="checkbox"
               checked={includeInvite}

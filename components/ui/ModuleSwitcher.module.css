@@ -3,6 +3,7 @@
   display: flex;
   align-items: center;
   width: 100%;
+  min-height: 44px; /* painted, DESIGN.md "Accessibility" */
   gap: 10px;
   padding: 10px 16px 10px 20px;
   text-align: left;

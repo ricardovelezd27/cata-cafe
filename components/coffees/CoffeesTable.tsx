@@ -11,6 +11,7 @@ import {
   Badge,
   ScorePill,
   EmptyState,
+  TextActionLink,
 } from "@/components/ui";
 import { DuplicateButton } from "@/components/DuplicateButton";
 import { DeleteCoffeeButton, type DeleteCoffeeTranslations } from "@/components/coffees/DeleteCoffeeButton";
@@ -183,7 +184,7 @@ export default function CoffeesTable({
             <span className="inline-flex items-center gap-2">
               <Link
                 href={`/${locale}/app/coffees/${row.id}`}
-                className="font-semibold text-on-surface hover:text-primary-container"
+                className="inline-block min-h-[24px] font-semibold text-on-surface hover:text-primary-container"
               >
                 {row.name}
               </Link>
@@ -367,7 +368,7 @@ export default function CoffeesTable({
             <Link
               href={`/${locale}/app/coffees/${row.id}/edit`}
               aria-label={t.editLabel}
-              className="inline-flex rounded-sm p-1.5 text-on-surface-variant transition-colors hover:text-primary-container"
+              className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-sm p-1.5 text-on-surface-variant transition-colors hover:text-primary-container"
             >
               <Pencil size={16} />
             </Link>
@@ -432,7 +433,7 @@ export default function CoffeesTable({
                 <span className="inline-flex flex-wrap items-center gap-2">
                   <Link
                     href={`/${locale}/app/coffees/${row.id}`}
-                    className="font-semibold leading-tight text-on-surface hover:text-primary-container"
+                    className="inline-block min-h-[24px] font-semibold leading-tight text-on-surface hover:text-primary-container"
                   >
                     {row.name}
                   </Link>
@@ -466,12 +467,9 @@ export default function CoffeesTable({
             )}
             <div className="flex items-center justify-between pt-1">
               <ScorePill score={latest?.individualScore ?? null} />
-              <Link
-                href={`/${locale}/app/coffees/${row.id}`}
-                className="text-xs font-semibold text-primary-container hover:underline"
-              >
+              <TextActionLink href={`/${locale}/app/coffees/${row.id}`} className="-my-[15px]">
                 {t.view}
-              </Link>
+              </TextActionLink>
             </div>
           </div>
         );

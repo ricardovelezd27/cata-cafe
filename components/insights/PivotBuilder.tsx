@@ -635,7 +635,7 @@ export function PivotBuilder({ locale, t, loadedConfig, loadKey, onConfigChange 
               {filteredDialogValues.map((v) => (
                 <label
                   key={v.key}
-                  className="flex items-center gap-2 text-sm text-brown-dark py-1 px-1 rounded-input hover:bg-cream cursor-pointer"
+                  className="flex min-h-[44px] items-center gap-2 text-sm text-brown-dark py-1 px-1 rounded-input hover:bg-cream cursor-pointer"
                 >
                   <input
                     type="checkbox"

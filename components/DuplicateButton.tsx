@@ -78,7 +78,7 @@ export function DuplicateButton({
           disabled={pending}
           aria-label={label}
           title={failed ? errorText : label}
-          className={`inline-flex min-h-[40px] min-w-[40px] items-center justify-center rounded-sm p-1.5 transition-colors disabled:opacity-40 ${
+          className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-sm p-1.5 transition-colors disabled:opacity-40 ${
             failed
               ? "text-error"
               : "text-on-surface-variant hover:text-primary-container"
@@ -102,7 +102,7 @@ export function DuplicateButton({
         type="button"
         onClick={handleClick}
         disabled={pending}
-        className="inline-flex items-center gap-1.5 rounded-pill border border-outline-variant px-4 py-2 text-sm font-semibold text-on-surface transition-colors hover:bg-surface-container disabled:opacity-50"
+        className="inline-flex min-h-[44px] items-center gap-1.5 rounded-pill border border-outline-variant px-4 py-2 text-sm font-semibold text-on-surface transition-colors hover:bg-surface-container disabled:opacity-50"
       >
         <Copy size={15} />
         {label}

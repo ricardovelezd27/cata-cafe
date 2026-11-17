@@ -226,7 +226,7 @@ export function CoffeeShareManager({
         body={
           <div className="space-y-3">
             <p>{t.revokeBody.replace("{name}", askRevoke?.displayName ?? "")}</p>
-            <label className="flex cursor-pointer items-start gap-2 text-sm text-on-surface">
+            <label className="flex min-h-[44px] cursor-pointer items-center gap-2 text-sm text-on-surface">
               <input
                 type="checkbox"
                 checked={alsoRotate}
