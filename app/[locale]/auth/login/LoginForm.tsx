@@ -6,6 +6,7 @@ import { rememberSignInStarted } from "@/lib/identityChange";
 import type { AuthErrorKey } from "@/lib/authErrors";
 import { useInAppBrowser } from "@/hooks/useInAppBrowser";
 import { EmailSentState, type EmailSentLabels } from "@/components/auth/EmailSentState";
+import { GoogleMark } from "@/components/auth/GoogleMark";
 
 export function LoginForm({
   emailLabel,
@@ -115,7 +116,7 @@ export function LoginForm({
   return (
     <div className="space-y-4">
       {inApp ? (
-        <div className="rounded-card border border-[#D4C5A9] bg-surface-container-lowest p-3 text-sm text-on-surface space-y-2">
+        <div className="rounded-card border border-outline-variant bg-surface-container-lowest p-3 text-sm text-on-surface space-y-2">
           <p>{inAppLabels.hint}</p>
           <button
             type="button"
@@ -130,22 +131,17 @@ export function LoginForm({
         type="button"
         onClick={onGoogleClick}
         disabled={isPending}
-        className="min-h-[44px] w-full flex items-center justify-center gap-3 py-2.5 rounded-pill border border-[#D4C5A9] bg-surface-container-lowest text-on-surface font-semibold text-sm hover:bg-[#F5F0E8] transition disabled:opacity-50"
+        className="min-h-[44px] w-full flex items-center justify-center gap-3 py-2.5 rounded-pill border border-outline-variant bg-surface-container-lowest text-on-surface font-semibold text-sm hover:bg-surface-container transition disabled:opacity-50"
       >
-        <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
-          <path fill="#4285F4" d="M44.5 20H24v8.5h11.8C34.7 33.9 30.1 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z"/>
-          <path fill="#34A853" d="M6.3 14.7l7 5.1C15.1 16.1 19.2 13 24 13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 16.3 2 9.7 7.4 6.3 14.7z"/>
-          <path fill="#FBBC05" d="M24 46c5.9 0 10.9-2 14.5-5.4l-6.7-5.5C29.8 36.8 27 38 24 38c-6.1 0-10.7-3.1-11.8-7.5l-7 5.4C8.6 42.3 15.7 46 24 46z"/>
-          <path fill="#EA4335" d="M44.5 20H24v8.5h11.8c-.6 2.9-2.3 5.3-4.7 6.9l6.7 5.5C41.8 37.4 45 31.2 45 24c0-1.3-.2-2.7-.5-4z"/>
-        </svg>
+        <GoogleMark />
         {googleLabel}
       </button>
       )}
 
       <div className="flex items-center gap-3">
-        <div className="flex-1 h-px bg-[#D4C5A9]" />
+        <div className="flex-1 h-px bg-outline-variant" />
         <span className="text-xs text-on-surface-variant">{orLabel}</span>
-        <div className="flex-1 h-px bg-[#D4C5A9]" />
+        <div className="flex-1 h-px bg-outline-variant" />
       </div>
 
       <form onSubmit={onSubmit} className="space-y-3">
@@ -168,7 +164,7 @@ export function LoginForm({
             autoFocus={autoFocusEmail}
             aria-describedby={error ? "login-error" : undefined}
             aria-invalid={error ? true : undefined}
-            className="min-h-[44px] mt-1 w-full px-3 py-2 border border-[#D4C5A9] rounded-input text-sm bg-surface-container-lowest text-on-surface focus:border-primary-container"
+            className="min-h-[44px] mt-1 w-full px-3 py-2 border border-outline-variant rounded-input text-sm bg-surface-container-lowest text-on-surface focus:border-primary-container"
           />
         </label>
         <button

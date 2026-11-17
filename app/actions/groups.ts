@@ -208,13 +208,13 @@ function buildGroupInviteHtml(args: {
     ? `<p>${escapeHtml(args.description).replace(/\n/g, "<br>")}</p>`
     : "";
   return `
-    <div style="font-family: Arial, Helvetica, sans-serif; color:#2b241d; line-height:1.5;">
-      <h2 style="color:#3D5A3E; margin:0 0 8px;">Café Sensible</h2>
+    <div style="font-family: Arial, Helvetica, sans-serif; color:#1f1b19; line-height:1.5;">
+      <h2 style="color:#2c4c3b; margin:0 0 8px;">Café Sensible</h2>
       <p>${text.greeting}</p>
       <p>${introHtml}</p>
       ${descriptionHtml}
-      <p style="margin:24px 0;"><a href="${args.ctaUrl}" style="background:#3D5A3E; color:#ffffff; padding:10px 20px; border-radius:6px; text-decoration:none; font-weight:600; display:inline-block;">${text.cta}</a></p>
-      <p style="color:#7a7168; font-size:13px;">${text.footer}</p>
+      <p style="margin:24px 0;"><a href="${args.ctaUrl}" style="background:#2c4c3b; color:#ffffff; padding:10px 20px; border-radius:6px; text-decoration:none; font-weight:600; display:inline-block;">${text.cta}</a></p>
+      <p style="color:#424843; font-size:13px;">${text.footer}</p>
     </div>`;
 }
 
@@ -676,12 +676,12 @@ function buildGroupEmailHtml(args: {
   const ctaUrl = args.inviteUrl ?? `${args.origin}/${args.locale}/app`;
   const ctaLabel = args.inviteUrl ? text.inviteLabel : text.openAppLabel;
   return `
-    <div style="font-family: Arial, Helvetica, sans-serif; color:#2b241d; line-height:1.5;">
-      <h2 style="color:#3D5A3E; margin:0 0 8px;">Café Sensible</h2>
+    <div style="font-family: Arial, Helvetica, sans-serif; color:#1f1b19; line-height:1.5;">
+      <h2 style="color:#2c4c3b; margin:0 0 8px;">Café Sensible</h2>
       <p>${text.greeting}</p>
       <p>${messageHtml}</p>
-      <p style="margin:24px 0;"><a href="${ctaUrl}" style="background:#3D5A3E; color:#ffffff; padding:10px 20px; border-radius:6px; text-decoration:none; font-weight:600; display:inline-block;">${ctaLabel}</a></p>
-      <p style="color:#7a7168; font-size:13px;">${text.footer}</p>
+      <p style="margin:24px 0;"><a href="${ctaUrl}" style="background:#2c4c3b; color:#ffffff; padding:10px 20px; border-radius:6px; text-decoration:none; font-weight:600; display:inline-block;">${ctaLabel}</a></p>
+      <p style="color:#424843; font-size:13px;">${text.footer}</p>
     </div>`;
 }
 
@@ -880,12 +880,12 @@ function buildGroupSessionInviteHtml(args: {
 }): string {
   const text = GROUP_SESSION_INVITE_TEXT[args.locale];
   return `
-    <div style="font-family: Arial, Helvetica, sans-serif; color:#2b241d; line-height:1.5;">
-      <h2 style="color:#3D5A3E; margin:0 0 8px;">Café Sensible</h2>
+    <div style="font-family: Arial, Helvetica, sans-serif; color:#1f1b19; line-height:1.5;">
+      <h2 style="color:#2c4c3b; margin:0 0 8px;">Café Sensible</h2>
       <p>${text.greeting}</p>
       <p>${escapeHtml(text.intro(args.sessionName))}</p>
-      <p style="margin:24px 0;"><a href="${args.ctaUrl}" style="background:#3D5A3E; color:#ffffff; padding:10px 20px; border-radius:6px; text-decoration:none; font-weight:600; display:inline-block;">${text.cta}</a></p>
-      <p style="color:#7a7168; font-size:13px;">${text.footer}</p>
+      <p style="margin:24px 0;"><a href="${args.ctaUrl}" style="background:#2c4c3b; color:#ffffff; padding:10px 20px; border-radius:6px; text-decoration:none; font-weight:600; display:inline-block;">${text.cta}</a></p>
+      <p style="color:#424843; font-size:13px;">${text.footer}</p>
     </div>`;
 }
 

@@ -41,7 +41,7 @@ export default async function JoinCoffeePage({
   if (!isValid) {
     return (
       <main className="flex flex-1 items-center justify-center px-6 py-16">
-        <div className="w-full max-w-md bg-[#FDFBF7] border border-outline-variant rounded-card p-8 text-center space-y-4">
+        <div className="w-full max-w-md bg-surface-container-lowest border border-outline-variant rounded-card p-8 text-center space-y-4">
           <p className="text-lg font-semibold text-error">{t("share.invalidToken")}</p>
           <div className="flex flex-col gap-2 text-sm">
             <Link href={`/${locale}/app`} className="flex min-h-[44px] items-center justify-center text-on-surface-variant underline hover:text-primary-container">
@@ -65,7 +65,7 @@ export default async function JoinCoffeePage({
     const loginHref = `/${locale}/auth/login?next=${encodeURIComponent(`/${locale}/join/coffee/${token}`)}`;
     return (
       <main className="flex flex-1 items-center justify-center px-6 py-16">
-        <div className="w-full max-w-md bg-[#FDFBF7] border border-outline-variant rounded-card p-8 space-y-6">
+        <div className="w-full max-w-md bg-surface-container-lowest border border-outline-variant rounded-card p-8 space-y-6">
           <div>
             <h1 className="page-title text-2xl">
               {invite.coffee.name}
@@ -87,7 +87,7 @@ export default async function JoinCoffeePage({
 
   return (
     <main className="flex flex-1 items-center justify-center px-6 py-16">
-      <div className="w-full max-w-md bg-[#FDFBF7] border border-outline-variant rounded-card p-8 space-y-6">
+      <div className="w-full max-w-md bg-surface-container-lowest border border-outline-variant rounded-card p-8 space-y-6">
         <div>
           <h1 className="page-title text-2xl">
             {invite.coffee.name}

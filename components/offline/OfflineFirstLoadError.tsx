@@ -16,7 +16,7 @@ export function OfflineFirstLoadError({
   return (
     <div
       className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 px-6 text-center"
-      style={{ background: "#FDFBF7" }}
+      style={{ background: "var(--color-surface)" }}
     >
       <div className="flex h-16 w-16 items-center justify-center rounded-full bg-error/10 text-error">
         <WifiOff size={30} aria-hidden />

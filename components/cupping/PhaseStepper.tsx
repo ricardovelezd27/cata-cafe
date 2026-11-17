@@ -59,9 +59,9 @@ export function PhaseStepper<T extends string>({
 
         const statusDot =
           status === "complete"
-            ? { symbol: "✓", color: isLight ? (isActive ? "#3D5A3E" : "#6B8F71") : (isActive ? "#3D5A3E" : "#B4C8A8") }
+            ? { symbol: "✓", color: isLight ? (isActive ? "var(--color-primary-container)" : "var(--color-primary-muted)") : (isActive ? "var(--color-primary-container)" : "var(--color-primary-fixed-dim)") }
             : status === "partial"
-            ? { symbol: "●", color: "#C17817" }
+            ? { symbol: "●", color: "var(--color-secondary)" }
             : { symbol: "○", color: "transparent" };
 
         return (
@@ -84,13 +84,13 @@ export function PhaseStepper<T extends string>({
               fontSize: 11,
               fontWeight: isActive ? 700 : 400,
               background: isLight
-                ? (isActive ? "#FFFFFF" : "transparent")
+                ? (isActive ? "var(--color-surface-container-lowest)" : "transparent")
                 : (isActive ? "rgba(255,255,255,0.92)" : "transparent"),
               color: isLight
-                ? (isActive ? "#3D5A3E" : "#8B7355")
-                : (isActive ? "#3D5A3E" : "rgba(255,255,255,0.72)"),
+                ? (isActive ? "var(--color-primary-container)" : "var(--color-on-surface-variant)")
+                : (isActive ? "var(--color-primary-container)" : "rgba(255,255,255,0.72)"),
               border: isLight
-                ? (isActive ? "1px solid #3D5A3E" : "1px solid #E8E0D0")
+                ? (isActive ? "1px solid var(--color-primary-container)" : "1px solid var(--color-outline-variant)")
                 : (isActive ? "1px solid rgba(255,255,255,0.5)" : "1px solid transparent"),
               cursor: "pointer",
               fontFamily: "inherit",

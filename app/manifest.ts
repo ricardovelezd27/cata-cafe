@@ -8,8 +8,8 @@ export default function manifest(): MetadataRoute.Manifest {
       "Plataforma profesional de catación de café bajo la metodología SCA CVA.",
     start_url: "/",
     display: "standalone",
-    background_color: "#FDFBF7",
-    theme_color: "#3D5A3E",
+    background_color: "#fff8f6", // --color-surface (tests/hexScan.test.ts)
+    theme_color: "#2c4c3b", // --color-primary-container
     icons: [
       {
         src: "/icons/icon-192.png",
