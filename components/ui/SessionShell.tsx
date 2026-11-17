@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
-import { ChevronDown, Menu } from "lucide-react";
+import { useState, type MouseEvent, type ReactNode } from "react";
+import * as Dialog from "@radix-ui/react-dialog";
+import { ChevronDown, Menu, X } from "lucide-react";
 import { useCoverShell } from "@/hooks/useShellLayer";
 import styles from "./SessionShell.module.css";
 
@@ -41,8 +42,13 @@ interface SessionShellProps {
    *  the last write only landed in local (IndexedDB) storage — it has not
    *  reached the server yet. */
   saveStatus?: "idle" | "saving" | "saved" | "pending";
-  /** Label shown next to the dot only when saveStatus === "pending". */
+  /** Label shown in the header's flow only when saveStatus === "pending". */
   savePendingLabel?: string;
+  /** D-12: the drawer's names (translated by the page). */
+  navLabels?: { open: string; title: string };
+  /** J-04: the phone's way out, in the header row (the page's guarded exit). */
+  onMobileExit?: () => void;
+  mobileExitLabel?: string;
 }
 
 export function SessionShell({
@@ -61,6 +67,9 @@ export function SessionShell({
   collapsed = false,
   saveStatus = "idle",
   savePendingLabel,
+  navLabels,
+  onMobileExit,
+  mobileExitLabel,
 }: SessionShellProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -69,99 +78,125 @@ export function SessionShell({
   // store). Focusability only: no saving, guard or realtime code is involved.
   useCoverShell();
 
+  const navTitle = navLabels?.title ?? "Navegación de la sesión";
+
+  const sidebarContent = (
+    <>
+      <div className={styles.identity}>{identity}</div>
+
+      <div className={styles.navStack}>
+        {primaryNav && <div className={styles.primaryNavSlot}>{primaryNav}</div>}
+        {secondaryNav}
+      </div>
+
+      <div className={styles.spacer} />
+
+      {ownerControls && <div className={styles.ownerSlot}>{ownerControls}</div>}
+
+      <div className={styles.exit}>{exitLink}</div>
+    </>
+  );
+
+  // D-12: picking an item in the drawer closes it, AFTER the item's own handler ran (bubble
+  // phase: closing in the capture phase unmounts the item before its onClick is reached).
+  // A field or a select does not close it; nothing here saves or navigates.
+  const closeOnPick = (e: MouseEvent<HTMLDivElement>) => {
+    const target = e.target as Element | null;
+    if (target?.closest("button, a")) setDrawerOpen(false);
+  };
+
   return (
-    <div className={`${styles.root} ${collapsed ? styles.collapsed : ""}`}>
-      {/* Mobile-only backdrop */}
-      <div
-        className={`${styles.backdrop ?? ""} ${drawerOpen ? styles.open : ""}`}
-        onClick={() => setDrawerOpen(false)}
-        aria-hidden
-      />
+    <Dialog.Root open={drawerOpen} onOpenChange={setDrawerOpen}>
+      <div className={`${styles.root} ${collapsed ? styles.collapsed : ""}`}>
+        {/* Sidebar: always there from 641 px; on a phone it is the drawer below. */}
+        <aside className={styles.sidebar} aria-label={navTitle}>
+          {sidebarContent}
+        </aside>
 
-      {/* Sidebar */}
-      <aside
-        className={`${styles.sidebar} ${drawerOpen ? styles.open : ""}`}
-        aria-label="Session navigation"
-      >
-        <div className={styles.identity}>{identity}</div>
-
-        <div className={styles.navStack}>
-          {primaryNav && (
-            <div className={styles.primaryNavSlot}>{primaryNav}</div>
+        {/* Main column */}
+        <div className={styles.main}>
+          {saveStatus !== "idle" && (
+            <div
+              className={`${styles.saveIndicator} ${
+                saveStatus === "saved" ? styles.saveIndicatorSaved : ""
+              } ${saveStatus === "pending" ? styles.saveIndicatorPending : ""}`}
+              aria-hidden
+            />
           )}
-          {secondaryNav}
-        </div>
-
-        <div className={styles.spacer} />
-
-        {ownerControls && (
-          <div className={styles.ownerSlot}>{ownerControls}</div>
-        )}
-
-        <div className={styles.exit}>{exitLink}</div>
-      </aside>
-
-      {/* Main column */}
-      <div className={styles.main}>
-        {saveStatus !== "idle" && (
-          <div
-            className={`${styles.saveIndicator} ${
-              saveStatus === "saved" ? styles.saveIndicatorSaved : ""
-            } ${saveStatus === "pending" ? styles.saveIndicatorPending : ""}`}
-            aria-hidden
-          />
-        )}
-        {saveStatus === "pending" && savePendingLabel && (
-          <div className={styles.savePendingLabel} role="status" aria-live="polite">
-            {savePendingLabel}
-          </div>
-        )}
-        {/* Mobile-only header with hamburger */}
-        <div className={styles.mobileHeader}>
-          <button
-            type="button"
-            className={styles.hamburger}
-            onClick={() => setDrawerOpen((v) => !v)}
-            aria-label="Open navigation"
-            aria-expanded={drawerOpen}
-          >
-            <Menu size={18} aria-hidden />
-          </button>
-          {mobileBar ? (
-            <div className={styles.mobileBarSlot}>{mobileBar}</div>
-          ) : (
-            mobileTitle && (
-              <span
-                className="font-display text-base text-on-surface truncate"
-                style={{ flex: 1, minWidth: 0 }}
+          {/* Mobile-only header with hamburger */}
+          <div className={styles.mobileHeader}>
+            <Dialog.Trigger asChild>
+              <button
+                type="button"
+                className={styles.hamburger}
+                aria-label={navLabels?.open ?? "Abrir navegación"}
               >
-                {mobileTitle}
-              </span>
-            )
+                <Menu size={18} aria-hidden />
+              </button>
+            </Dialog.Trigger>
+            {mobileBar ? (
+              <div className={styles.mobileBarSlot}>{mobileBar}</div>
+            ) : (
+              mobileTitle && (
+                <span
+                  className="font-display text-base text-on-surface truncate"
+                  style={{ flex: 1, minWidth: 0 }}
+                >
+                  {mobileTitle}
+                </span>
+              )
+            )}
+            {mobileBar && mobileDetails && (
+              <button
+                type="button"
+                className={`${styles.detailsToggle} ${detailsOpen ? styles.detailsToggleOpen : ""}`}
+                onClick={() => setDetailsOpen((v) => !v)}
+                aria-label={mobileDetailsLabel ?? "Session details"}
+                aria-expanded={detailsOpen}
+              >
+                <ChevronDown size={16} aria-hidden />
+              </button>
+            )}
+            {onMobileExit && (
+              <button
+                type="button"
+                data-cup-exit
+                className={styles.exitButton}
+                onClick={onMobileExit}
+                aria-label={mobileExitLabel}
+              >
+                <X size={18} aria-hidden />
+              </button>
+            )}
+          </div>
+          {mobileBar && mobileDetails && detailsOpen && (
+            <div className={styles.mobileDetails}>{mobileDetails}</div>
           )}
-          {mobileBar && mobileDetails && (
-            <button
-              type="button"
-              className={`${styles.detailsToggle} ${detailsOpen ? styles.detailsToggleOpen : ""}`}
-              onClick={() => setDetailsOpen((v) => !v)}
-              aria-label={mobileDetailsLabel ?? "Session details"}
-              aria-expanded={detailsOpen}
-            >
-              <ChevronDown size={16} aria-hidden />
-            </button>
+          {/* A-08: the pending state sits in the flow of the header, never over the tabs. */}
+          {saveStatus === "pending" && savePendingLabel && (
+            <div className={styles.savePendingLabel} role="status" aria-live="polite">
+              {savePendingLabel}
+            </div>
           )}
-        </div>
-        {mobileBar && mobileDetails && detailsOpen && (
-          <div className={styles.mobileDetails}>{mobileDetails}</div>
-        )}
 
-        {topBar && <div className={styles.topBar}>{topBar}</div>}
+          {topBar && <div className={styles.topBar}>{topBar}</div>}
 
-        <div className={styles.canvas} data-session-canvas>
-          <div className={styles.canvasInner}>{children}</div>
-          {footer}
+          <div className={styles.canvas} data-session-canvas>
+            <div className={styles.canvasInner}>{children}</div>
+            {footer}
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* D-12: on a phone the sidebar is a real dialog: Escape and a tap outside close it,
+          focus stays inside while open and goes back to the menu button. */}
+      <Dialog.Portal>
+        <Dialog.Overlay className={styles.drawerOverlay} />
+        <Dialog.Content className={styles.drawer} aria-describedby={undefined} onClick={closeOnPick}>
+          <Dialog.Title className="sr-only">{navTitle}</Dialog.Title>
+          {sidebarContent}
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }

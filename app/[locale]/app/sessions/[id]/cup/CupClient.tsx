@@ -58,6 +58,7 @@ import { planFinish, soloCloseAsIsOffer } from "@/lib/closeRules";
 import { CoffeePicker, type UsableCoffee } from "@/components/coffees/CoffeePicker";
 import { canPickExistingCoffee } from "@/lib/cupCoffeePick";
 import { resumeCallbackRefreshes } from "@/lib/cupResume";
+import { cupExitHref, exitDecision, moduleAction, shouldShowClosedNotice, type CupExitTarget } from "@/lib/cupExit";
 import { isEvaluationComplete as isEvaluationCompleteForScore } from "@/lib/evaluationState";
 import { DeadlineBanner, type DeadlineBannerTranslations } from "@/components/session/DeadlineBanner";
 import {
@@ -387,6 +388,10 @@ export function CupClient({
     phaseTitle: string;
     cuppingModule: string;
     exitToSessions: string;
+    /** S5a (D-12, J-04): the drawer's names and the close notice. Optional for cached prop blobs. */
+    openNav?: string;
+    navTitle?: string;
+    sessionClosedNotice?: string;
     invite: string;
     generating: string;
     copy: string;
@@ -944,6 +949,12 @@ export function CupClient({
   const [submitBlocked, setSubmitBlocked] = useState(false);
   const [submitError, setSubmitError] = useState(false);
   const [leaveGuardOpen, setLeaveGuardOpen] = useState(false);
+  // S5a (J-04): where a confirmed leave goes, and whether the exit found device-only work.
+  // Display and navigation only; the back trap below keeps opening the guard as before.
+  const [leaveGuardPending, setLeaveGuardPending] = useState(false);
+  const leaveTargetRef = useRef<CupExitTarget>("sessions");
+  const closedNoticeShownRef = useRef(false);
+  const closedNoticeRef = useRef<() => void>(() => {});
   // IndexedDB has proven unreliable (quota, Safari private mode, …) — the
   // OfflineBanner surfaces this so the cupper knows local drafts aren't safe.
   // S10 WP8b: the OfflineBanner notice sits at the top of the scroll area; toast
@@ -1372,6 +1383,8 @@ export function CupClient({
           // S10 WP4b: the owner announced (or cancelled) the close.
           const announced = closingAtFromRow(row);
           if (announced !== undefined) setClosingAtMs(announced);
+          // S5a (J-04): display only. Say "La sesión se cerró" before the existing redirect.
+          if (shouldShowClosedNotice(row, { isOwner, alreadyShown: closedNoticeShownRef.current })) closedNoticeRef.current();
           // Any session-row change (sample add/rename/remove touch updatedAt;
           // start/close/reference) → re-fetch the server page; the reconcile
           // effect above merges the fresh samples without losing drafts.
@@ -1595,7 +1608,7 @@ export function CupClient({
     // so the cupper understands leaving won't lose data but won't push it
     // to the server either. Falls back to the built-in copy when a
     // pre-upgrade rehydrated prop blob lacks the key.
-    body: hasPending
+    body: hasPending || leaveGuardPending
       ? (leaveGuardBase.bodyPending ?? leaveGuardFallback.bodyPending)
       : leaveGuardBase.body,
   };
@@ -1603,8 +1616,48 @@ export function CupClient({
   const handleLeaveConfirm = async () => {
     setLeaveGuardOpen(false);
     await flushPendingRef.current();
-    router.push(`/${locale}/app/sessions`);
+    const target = leaveTargetRef.current;
+    leaveTargetRef.current = "sessions";
+    setLeaveGuardPending(false);
+    router.push(cupExitHref(locale, session.id, target));
   };
+
+  const handleLeaveCancel = () => {
+    setLeaveGuardOpen(false);
+    leaveTargetRef.current = "sessions";
+    setLeaveGuardPending(false);
+  };
+
+  // S5a (J-04): every way out (the exit link, the phone's exit, "Resultados") runs the
+  // guard's existing flush, then leaves at once or asks first. Nothing here writes.
+  const requestLeave = async (target: CupExitTarget) => {
+    const flushed = await flushPendingRef.current();
+    const localPending = await countLocalPending();
+    const decision = exitDecision({
+      flushed,
+      hasPending,
+      localPending,
+      sessionClosed: sessionClosed || closedNoticeShownRef.current,
+    });
+    if (decision === "leave") {
+      router.push(cupExitHref(locale, session.id, target));
+      return;
+    }
+    leaveTargetRef.current = target;
+    setLeaveGuardPending(true);
+    setLeaveGuardOpen(true);
+  };
+
+  // The close notice's text, kept fresh for the realtime handler (its deps do not change).
+  useEffect(() => {
+    closedNoticeRef.current = () => {
+      closedNoticeShownRef.current = true;
+      feedback.notifyWarning(
+        translations.sessionClosedNotice ??
+          (locale === "en" ? "The session was closed." : "La sesión se cerró."),
+      );
+    };
+  });
 
   const scheduleLocalSave = (
     sampleId: string,
@@ -2440,16 +2493,16 @@ export function CupClient({
   ];
 
   const handleModuleSelect = async (key: string) => {
-    if (key === "results") {
-      // Submit always goes through the notes stage; from inside it, the tap
-      // is the submit itself.
-      if (notesStage) await handleGoToResults();
-      else await openNotesStage();
+    // S5a (C-02): "Resultados" is a way out, never a submit. The footer's button is the
+    // one submit (notes stage, then handleGoToResults, unchanged).
+    const action = moduleAction(key);
+    if (action.kind === "leave") {
+      await requestLeave(action.target);
       return;
     }
-    if (key !== "cupping" && key !== "extrinsic" && key !== "physical") return;
+    if (action.kind !== "tab") return;
     if (notesStage) await closeNotesStage();
-    setActiveTab(key);
+    setActiveTab(action.tab);
     scrollCanvasToTop();
   };
 
@@ -2718,7 +2771,7 @@ export function CupClient({
   const exitLink = (
     <TextAction
       tone="none"
-      onClick={() => router.push(`/${locale}/app/sessions`)}
+      onClick={() => void requestLeave("sessions")}
       className="-my-[13px] !justify-start gap-2 font-sans text-sm text-on-surface-variant hover:text-primary-container transition-colors focus-visible:outline-2 focus-visible:outline-primary-container focus-visible:outline-offset-2 rounded-sm"
     >
       <span aria-hidden>←</span> {translations.exitToSessions}
@@ -2893,6 +2946,9 @@ export function CupClient({
       collapsed={keyboardOpen}
       saveStatus={saveStatus}
       savePendingLabel={translations.savedLocally}
+      navLabels={translations.openNav && translations.navTitle ? { open: translations.openNav, title: translations.navTitle } : undefined}
+      onMobileExit={() => void requestLeave("sessions")}
+      mobileExitLabel={translations.exitToSessions}
     >
       <OfflineBanner
         online={online}
@@ -3325,7 +3381,7 @@ export function CupClient({
         title={leaveGuardCopy.title}
         body={leaveGuardCopy.body}
         items={[]}
-        onCancel={() => setLeaveGuardOpen(false)}
+        onCancel={handleLeaveCancel}
         onConfirm={() => void handleLeaveConfirm()}
         translations={{
           review: leaveGuardCopy.stay,
