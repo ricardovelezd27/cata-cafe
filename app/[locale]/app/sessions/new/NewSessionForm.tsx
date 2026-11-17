@@ -259,7 +259,7 @@ function SectionTitle({
   children: React.ReactNode;
 }) {
   return (
-    <h2 id={id} className={`section-title text-xl ${className}`}>
+    <h2 id={id} className={`section-title text-2xl ${className}`}>
       <span className="tabular-nums">{n}</span>
       <span aria-hidden="true"> · </span>
       <span className="sr-only">. </span>
