@@ -30,15 +30,15 @@
 }
 
 .legendDotNonUniform {
-  background: var(--color-amber);
+  background: var(--color-secondary);
 }
 
 .legendDotDefective {
-  background: var(--color-red-defect);
+  background: var(--color-error);
 }
 
-.legendItem.nonUniform { color: var(--color-amber); }
-.legendItem.defective  { color: var(--color-red-defect); }
+.legendItem.nonUniform { color: var(--color-secondary); }
+.legendItem.defective  { color: var(--color-error); }
 
 .row {
   display: flex;
@@ -52,14 +52,14 @@
   font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--color-brown-mid);
+  color: var(--color-on-surface-variant);
   display: flex;
   align-items: baseline;
   gap: 6px;
 }
 
-.rowLabel.nonUniform { color: var(--color-amber); }
-.rowLabel.defective  { color: var(--color-red-defect); }
+.rowLabel.nonUniform { color: var(--color-secondary); }
+.rowLabel.defective  { color: var(--color-error); }
 
 .rowHint {
   font-family: var(--font-ui);
@@ -67,7 +67,7 @@
   font-weight: 400;
   letter-spacing: 0;
   text-transform: none;
-  color: var(--color-brown-mid);
+  color: var(--color-on-surface-variant);
   opacity: 0.75;
 }
 
@@ -90,40 +90,40 @@
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
-  border: 2px solid var(--color-brown-light);
+  border: 2px solid var(--color-outline-variant);
   background: transparent;
-  color: var(--color-brown-mid);
+  color: var(--color-on-surface-variant);
   transition: background-color var(--transition-fast),
               color var(--transition-fast),
               border-color var(--transition-fast);
 }
 
 .cup:hover:not(:disabled) {
-  background: color-mix(in oklch, var(--color-cream) 60%, transparent);
+  background: color-mix(in oklch, var(--color-surface-container) 60%, transparent);
 }
 
 .cup:focus-visible {
-  outline: 2px solid var(--color-green-dark);
+  outline: 2px solid var(--color-primary-container);
   outline-offset: 2px;
 }
 
 .cup.isNonUniform {
-  background: var(--color-amber);
-  border-color: var(--color-amber);
-  color: var(--color-white);
+  background: var(--color-secondary);
+  border-color: var(--color-secondary);
+  color: var(--color-surface-container-lowest);
 }
 
 .cup.isDefective {
-  background: var(--color-red-defect);
-  border-color: var(--color-red-defect);
-  color: var(--color-white);
+  background: var(--color-error);
+  border-color: var(--color-error);
+  color: var(--color-surface-container-lowest);
 }
 
 .note {
   font-family: var(--font-ui);
   font-size: 11px;
   font-style: italic;
-  color: var(--color-amber);
+  color: var(--color-secondary);
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -142,21 +142,21 @@
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
-  border: 1.5px solid var(--color-brown-light);
+  border: 1.5px solid var(--color-outline-variant);
   background: transparent;
-  color: var(--color-brown-dark);
+  color: var(--color-on-surface);
   transition: background-color var(--transition-fast),
               color var(--transition-fast),
               border-color var(--transition-fast);
 }
 
 .defectPill:hover:not(.active) {
-  background: var(--color-cream);
+  background: var(--color-surface-container);
 }
 
 .defectPill.active {
-  background: var(--color-red-defect);
-  border-color: var(--color-red-defect);
-  color: var(--color-white);
+  background: var(--color-error);
+  border-color: var(--color-error);
+  color: var(--color-surface-container-lowest);
   font-weight: 600;
 }

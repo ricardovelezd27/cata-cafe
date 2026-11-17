@@ -350,12 +350,12 @@ export function WaitingRoomClient({
           <h1 className="page-title text-3xl">
             {translations.title}
           </h1>
-          <p className="text-lg font-medium text-brown-dark">{sessionName}</p>
-          <p className="text-sm text-brown-mid leading-relaxed">
+          <p className="text-lg font-medium text-on-surface">{sessionName}</p>
+          <p className="text-sm text-on-surface-variant leading-relaxed">
             {translations.description}
           </p>
           {isAsync && (
-            <p className="text-sm text-brown-mid leading-relaxed">
+            <p className="text-sm text-on-surface-variant leading-relaxed">
               {translations.asyncDetail}
             </p>
           )}
@@ -371,12 +371,12 @@ export function WaitingRoomClient({
 
         {!isAsync && (
           <div className="flex items-center justify-center gap-2">
-            <span className="text-sm text-brown-mid">{translations.waiting}</span>
+            <span className="text-sm text-on-surface-variant">{translations.waiting}</span>
             <span className="flex gap-1">
               {[0, 1, 2].map((i) => (
                 <span
                   key={i}
-                  className="inline-block w-1.5 h-1.5 rounded-full bg-green-dark/60 animate-bounce"
+                  className="inline-block w-1.5 h-1.5 rounded-full bg-primary-container/60 animate-bounce"
                   style={{ animationDelay: `${i * 0.2}s` }}
                 />
               ))}
@@ -385,7 +385,7 @@ export function WaitingRoomClient({
         )}
 
         {!isAsync && connectionLost && (
-          <p role="status" className="text-xs text-amber-warm">
+          <p role="status" className="text-xs text-secondary">
             {translations.connectionLost}
           </p>
         )}
@@ -399,7 +399,7 @@ export function WaitingRoomClient({
           <div className="space-y-2">
             <button
               onClick={goToCup}
-              className="w-full rounded-xl py-3 px-6 text-sm font-semibold text-white"
+              className="w-full rounded-pill py-3 px-6 text-sm font-semibold text-white"
               style={{
                 background: "linear-gradient(135deg, #3D5A3E 0%, #2A4430 100%)",
                 border: "none",
@@ -415,7 +415,7 @@ export function WaitingRoomClient({
 
         <Link
           href={`/${locale}/app/sessions`}
-          className="inline-block text-sm text-brown-mid underline hover:text-green-dark transition-colors"
+          className="inline-block text-sm text-on-surface-variant underline hover:text-primary-container transition-colors"
         >
           {translations.backToSessions}
         </Link>

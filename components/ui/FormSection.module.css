@@ -1,6 +1,6 @@
 .section {
-  background: var(--color-white);
-  border: 1px solid var(--color-brown-light);
+  background: var(--color-surface-container-lowest);
+  border: 1px solid var(--color-outline-variant);
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-card);
   padding: 20px;
@@ -29,19 +29,19 @@
   font-weight: 600;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--color-brown-mid);
+  color: var(--color-on-surface-variant);
 }
 
 .titleAccent {
-  color: var(--color-green-dark);
+  color: var(--color-primary-container);
 }
 
 .titleFlagged {
-  color: var(--color-red-defect);
+  color: var(--color-error);
 }
 
 .flagMark {
-  color: var(--color-red-defect);
+  color: var(--color-error);
 }
 
 .chevron {
@@ -50,7 +50,7 @@
   justify-content: center;
   width: 20px;
   height: 20px;
-  color: var(--color-brown-mid);
+  color: var(--color-on-surface-variant);
   transition: transform var(--transition-fast);
 }
 
@@ -62,7 +62,7 @@
   font-family: var(--font-display);
   font-size: 18px;
   font-weight: 500;
-  color: var(--color-brown-dark);
+  color: var(--color-on-surface);
   margin-top: 2px;
   line-height: 1.25;
 }

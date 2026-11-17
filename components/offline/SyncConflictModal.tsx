@@ -46,7 +46,7 @@ export function SyncConflictModal({
       closeLabel={t.conflictKeep}
     >
       <div className="space-y-5">
-        <p className="font-sans text-sm text-brown-dark">
+        <p className="font-sans text-sm text-on-surface">
           {t.conflictBody.replace("{sample}", conflict.sampleLabel)}
         </p>
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
@@ -54,7 +54,7 @@ export function SyncConflictModal({
             type="button"
             disabled={busy}
             onClick={() => resolve(false)}
-            className="px-4 py-2 rounded-md border border-brown-light font-sans text-sm text-brown-dark hover:bg-cream disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2"
+            className="px-4 py-2 rounded-pill border border-outline-variant font-sans text-sm text-on-surface hover:bg-surface-container disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2"
           >
             {t.conflictKeep}
           </button>
@@ -62,7 +62,7 @@ export function SyncConflictModal({
             type="button"
             disabled={busy}
             onClick={() => resolve(true)}
-            className="px-4 py-2 rounded-md bg-green-dark font-sans text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2"
+            className="px-4 py-2 rounded-pill bg-primary-container font-sans text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2"
           >
             {t.conflictReplace}
           </button>

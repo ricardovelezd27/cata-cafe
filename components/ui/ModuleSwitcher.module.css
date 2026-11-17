@@ -10,7 +10,7 @@
   font-family: var(--font-ui);
   font-size: 14px;
   font-weight: 500;
-  color: var(--color-brown-dark);
+  color: var(--color-on-surface);
   background: transparent;
   border: none;
   cursor: pointer;
@@ -26,27 +26,27 @@
   transform: translateY(-50%);
   width: 3px;
   height: 22px;
-  background: var(--color-green-dark);
+  background: var(--color-primary-container);
   border-radius: 0 2px 2px 0;
   opacity: 0;
   transition: opacity var(--transition-fast);
 }
 
 .row:hover:not(.active):not(:disabled) {
-  background: color-mix(in oklch, var(--color-cream) 60%, transparent);
+  background: color-mix(in oklch, var(--color-surface-container) 60%, transparent);
 }
 
 .row:focus-visible {
-  outline: 2px solid var(--color-green-dark);
+  outline: 2px solid var(--color-primary-container);
   outline-offset: -2px;
 }
 
 .row:disabled { cursor: default; opacity: 0.6; }
 
 .active {
-  color: var(--color-green-dark);
+  color: var(--color-primary-container);
   font-weight: 600;
-  background: color-mix(in oklch, var(--color-green-light) 18%, transparent);
+  background: color-mix(in oklch, var(--color-primary-fixed-dim) 18%, transparent);
 }
 
 .active::before { opacity: 1; }
@@ -58,10 +58,10 @@
   width: 18px;
   height: 18px;
   flex-shrink: 0;
-  color: var(--color-brown-mid);
+  color: var(--color-on-surface-variant);
 }
 
-.active .icon { color: var(--color-green-dark); }
+.active .icon { color: var(--color-primary-container); }
 
 .label {
   flex: 1;
@@ -74,7 +74,7 @@
 .chevron {
   font-family: var(--font-mono);
   font-size: 12px;
-  color: var(--color-brown-mid);
+  color: var(--color-on-surface-variant);
   flex-shrink: 0;
 }
 
@@ -86,5 +86,5 @@
   font-weight: 600;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--color-brown-mid);
+  color: var(--color-on-surface-variant);
 }

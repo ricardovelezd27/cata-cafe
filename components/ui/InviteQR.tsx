@@ -71,7 +71,7 @@ export function InviteQR({ url, size = 176, labels }: InviteQRProps) {
       {/* White quiet-zone wrapper — also the exact node captured for copy/download */}
       <div
         ref={wrapRef}
-        className="inline-flex bg-white p-4 rounded-card border border-brown-light"
+        className="inline-flex bg-surface-container-lowest p-4 rounded-card border border-outline-variant"
       >
         <QRCodeSVG
           value={url}
@@ -86,7 +86,7 @@ export function InviteQR({ url, size = 176, labels }: InviteQRProps) {
         <button
           type="button"
           onClick={handleCopyImage}
-          className="inline-flex items-center gap-1.5 rounded-pill border border-green-mid px-3.5 py-2 text-xs font-semibold text-green-dark hover:bg-green-light/25 transition-colors"
+          className="inline-flex items-center gap-1.5 rounded-pill border border-primary-muted px-3.5 py-2 text-xs font-semibold text-primary-container hover:bg-primary-fixed-dim/25 transition-colors"
         >
           {copied ? <Check size={13} aria-hidden /> : <Copy size={13} aria-hidden />}
           {copied ? labels.copied : labels.copyImage}
@@ -94,7 +94,7 @@ export function InviteQR({ url, size = 176, labels }: InviteQRProps) {
         <button
           type="button"
           onClick={handleDownload}
-          className="inline-flex items-center gap-1.5 rounded-pill border border-brown-light px-3.5 py-2 text-xs font-semibold text-brown-dark hover:bg-cream transition-colors"
+          className="inline-flex items-center gap-1.5 rounded-pill border border-outline-variant px-3.5 py-2 text-xs font-semibold text-on-surface hover:bg-surface-container transition-colors"
         >
           <Download size={13} aria-hidden />
           {labels.download}

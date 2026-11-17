@@ -2202,7 +2202,7 @@ export function CupClient({
     </Badge>
   ) : referenceSample && translations.compareHint ? (
     <span
-      className="min-w-0 truncate font-sans text-[11px] text-brown-mid"
+      className="min-w-0 truncate font-sans text-[11px] text-on-surface-variant"
       title={translations.compareHint.replace("{label}", referenceSample.label)}
     >
       {translations.compareHint.replace("{label}", referenceSample.label)}
@@ -2292,7 +2292,7 @@ export function CupClient({
     <TextAction
       tone="none"
       onClick={() => setEditingSample(true)}
-      className="-my-[15px] font-mono text-[10px] uppercase tracking-wide text-brown-mid hover:text-green-dark"
+      className="-my-[15px] font-mono text-[10px] uppercase tracking-wide text-on-surface-variant hover:text-primary-container"
     >
       ✎ {translations.editSample}
     </TextAction>
@@ -2509,20 +2509,20 @@ export function CupClient({
     : translations.submittedOf;
   const identity = (
     <>
-      <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-brown-mid">
+      <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-on-surface-variant">
         {translations.formatLabel}
         {isGroup ? ` · ${isOwner ? translations.masterRole : translations.participantRole}` : ""}
       </div>
-      <div className="font-display text-xl leading-tight text-green-dark truncate">
+      <div className="font-display text-xl leading-tight text-primary-container truncate">
         {session.name}
       </div>
       {isGroup && isOwner && (
-        <div className="font-mono text-[11px] text-brown-mid mt-0.5">
+        <div className="font-mono text-[11px] text-on-surface-variant mt-0.5">
           {ownerSubmittedText}
         </div>
       )}
       {referenceSample && (
-        <div className="font-mono text-[11px] text-brown-mid mt-0.5 truncate">
+        <div className="font-mono text-[11px] text-on-surface-variant mt-0.5 truncate">
           {multiRef ? referenceSummary : `${referenceBadgeLabel}: ${referenceSample.label}`}
         </div>
       )}
@@ -2550,10 +2550,10 @@ export function CupClient({
   // phases. On phones (<sm) the same tabs live in the hamburger row instead
   // (`phoneBar` below) so the chrome above the form stays ≤110px (CP-C1).
   const mobileSampleBar = (
-    <div className="hidden sm:block lg:hidden border-t border-brown-light bg-bg">
+    <div className="hidden sm:block lg:hidden border-t border-outline-variant bg-surface">
       <div className="flex items-center gap-3 px-4 py-1.5">
         <div className="min-w-0 flex-1">{sampleTabsBar}</div>
-        <span className="shrink-0 font-mono text-[10px] text-brown-mid tabular-nums">
+        <span className="shrink-0 font-mono text-[10px] text-on-surface-variant tabular-nums">
           {sampleIdx + 1}/{samples.length}
         </span>
         {editSampleButton}
@@ -2586,29 +2586,29 @@ export function CupClient({
           onSelect={handleSampleSelect}
         />
       </div>
-      <span className="shrink-0 font-mono text-[10px] text-brown-mid tabular-nums">
+      <span className="shrink-0 font-mono text-[10px] text-on-surface-variant tabular-nums">
         {sampleIdx + 1}/{samples.length}
       </span>
     </div>
   );
   const phoneDetails = (
     <>
-      <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-brown-mid">
+      <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-on-surface-variant">
         {translations.formatLabel}
         {isGroup ? ` · ${isOwner ? translations.masterRole : translations.participantRole}` : ""}
       </div>
-      <div className="font-display text-lg leading-tight text-green-dark truncate">
+      <div className="font-display text-lg leading-tight text-primary-container truncate">
         {session.name}
       </div>
       {activeTab !== "cupping" && (
-        <div className="font-sans text-sm text-brown-dark">
+        <div className="font-sans text-sm text-on-surface">
           {activeTab === "physical" ? translations.physical : translations.extrinsic}
           {" · "}
           {translations.sample} {current.label}
         </div>
       )}
       {isGroup && isOwner && (
-        <div className="font-mono text-[11px] text-brown-mid">{ownerSubmittedText}</div>
+        <div className="font-mono text-[11px] text-on-surface-variant">{ownerSubmittedText}</div>
       )}
       {referenceContext && <div className="flex items-center">{referenceContext}</div>}
       {editSampleButton && <div className="flex items-center pt-1">{editSampleButton}</div>}
@@ -2719,7 +2719,7 @@ export function CupClient({
     <TextAction
       tone="none"
       onClick={() => router.push(`/${locale}/app/sessions`)}
-      className="-my-[13px] !justify-start gap-2 font-sans text-sm text-brown-mid hover:text-green-dark transition-colors focus-visible:outline-2 focus-visible:outline-green-dark focus-visible:outline-offset-2 rounded-sm"
+      className="-my-[13px] !justify-start gap-2 font-sans text-sm text-on-surface-variant hover:text-primary-container transition-colors focus-visible:outline-2 focus-visible:outline-primary-container focus-visible:outline-offset-2 rounded-sm"
     >
       <span aria-hidden>←</span> {translations.exitToSessions}
     </TextAction>
@@ -2763,14 +2763,14 @@ export function CupClient({
   // samples are all on screen). Desktop keeps the clock column for continuity.
   const notesTopBar = (
     <div className="flex items-center gap-3 px-4 py-2 sm:px-6">
-      <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-brown-mid">
+      <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-on-surface-variant">
         {expressNotesCopy.title}
       </span>
-      <span className="text-brown-light">·</span>
-      <span className="font-display text-base text-brown-dark truncate">
+      <span className="text-outline-variant">·</span>
+      <span className="font-display text-base text-on-surface truncate">
         {session.name}
       </span>
-      <span className="ml-auto shrink-0 font-mono text-[10px] text-brown-mid tabular-nums">
+      <span className="ml-auto shrink-0 font-mono text-[10px] text-on-surface-variant tabular-nums">
         {samples.length} {translations.samplesHeader.toLowerCase()}
       </span>
     </div>
@@ -2792,26 +2792,26 @@ export function CupClient({
               variant="light"
               align="start"
             />
-            <div className="border-t border-brown-light pt-1.5 flex items-center gap-3">
+            <div className="border-t border-outline-variant pt-1.5 flex items-center gap-3">
               <div className="min-w-0 flex-1">{sampleTabsBar}</div>
               {referenceContext}
               {editSampleButton}
             </div>
           </div>
           <div className="flex flex-col items-end justify-center gap-0.5 text-right shrink-0 pt-0.5">
-            <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-brown-mid">
+            <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-on-surface-variant">
               {new Intl.DateTimeFormat(locale, { weekday: "short", day: "numeric", month: "short", year: "numeric" }).format(new Date(session.date))}
             </span>
-            <span className="font-mono text-xl font-semibold tabular-nums text-green-dark leading-none">
+            <span className="font-mono text-xl font-semibold tabular-nums text-primary-container leading-none">
               {clockTime}
             </span>
             {isGroup && (
-              <span className="font-mono text-[11px] text-brown-mid mt-0.5">
+              <span className="font-mono text-[11px] text-on-surface-variant mt-0.5">
                 {participantCount} {participantCount === 1 ? "participante" : "participantes"}
               </span>
             )}
             {userCountry && (
-              <span className="font-mono text-[11px] text-brown-mid">
+              <span className="font-mono text-[11px] text-on-surface-variant">
                 {userCountry}
               </span>
             )}
@@ -2829,20 +2829,20 @@ export function CupClient({
     ) : (
       <>
         {/* Desktop: horizontal sample tabs */}
-        <div className="hidden lg:block px-6 py-1.5 border-b border-brown-light">
+        <div className="hidden lg:block px-6 py-1.5 border-b border-outline-variant">
           {sampleTabsBar}
         </div>
         {/* Tablet: horizontal sample bar (phones: hamburger row) */}
         {mobileSampleBar}
         <div className="hidden sm:flex items-center gap-3 px-6 py-3">
-          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-brown-mid">
+          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-on-surface-variant">
             {activeTab === "physical"
               ? translations.physical
               : translations.extrinsic}
           </span>
           <BetaBadge />
-          <span className="text-brown-light">·</span>
-          <span className="font-display text-base text-brown-dark">
+          <span className="text-outline-variant">·</span>
+          <span className="font-display text-base text-on-surface">
             {translations.sample} {current.label}
           </span>
           {referenceContext}
@@ -3007,7 +3007,7 @@ export function CupClient({
               here instead. Group owners use MasterControls. */}
           {!isGroup && !sessionClosed && (
             <label className="mb-4 block">
-              <span className="mb-1 block font-mono text-[10px] uppercase tracking-[0.18em] text-brown-mid">
+              <span className="mb-1 block font-mono text-[10px] uppercase tracking-[0.18em] text-on-surface-variant">
                 {translations.referenceSelect ?? "Muestra de referencia"}
               </span>
               {referenceSummary && (
@@ -3101,7 +3101,7 @@ export function CupClient({
         <div
           role="status"
           aria-live="polite"
-          className="flex items-start gap-2 px-4 py-2 mb-3 rounded-md border border-amber-warm/40 bg-amber-warm/10 font-sans text-sm text-amber-warm"
+          className="flex items-start gap-2 px-4 py-2 mb-3 rounded-card border border-secondary/40 bg-secondary/10 font-sans text-sm text-secondary"
         >
           <span className="flex-1">
             {online
@@ -3135,7 +3135,7 @@ export function CupClient({
         <div
           role="alert"
           aria-live="assertive"
-          className="flex items-start gap-2 px-4 py-2 mb-3 rounded-md border border-red-defect/40 bg-red-defect/10 font-sans text-sm text-red-defect"
+          className="flex items-start gap-2 px-4 py-2 mb-3 rounded-card border border-error/40 bg-error/10 font-sans text-sm text-error"
         >
           <span className="flex-1">{translations.submitFailed}</span>
           <button
@@ -3179,7 +3179,7 @@ export function CupClient({
         <div
           role="alert"
           aria-live="assertive"
-          className="flex items-start gap-2 px-4 py-2 mb-3 rounded-md border border-red-defect/40 bg-red-defect/10 font-sans text-sm text-red-defect"
+          className="flex items-start gap-2 px-4 py-2 mb-3 rounded-card border border-error/40 bg-error/10 font-sans text-sm text-error"
         >
           <span className="flex-1">{translations.startSessionError}</span>
           <button

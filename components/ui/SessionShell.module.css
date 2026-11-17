@@ -7,8 +7,8 @@
   height: 100dvh;
   z-index: 40;
   display: flex;
-  background: var(--color-bg);
-  color: var(--color-brown-dark);
+  background: var(--color-surface);
+  color: var(--color-on-surface);
 }
 
 .sidebar {
@@ -16,8 +16,8 @@
   flex-direction: column;
   width: 256px;
   flex-shrink: 0;
-  background: var(--color-cream);
-  border-right: 1px solid var(--color-brown-light);
+  background: var(--color-surface-container);
+  border-right: 1px solid var(--color-outline-variant);
   min-height: 0;
 }
 
@@ -42,7 +42,7 @@
     position: absolute;
     inset: 0;
     z-index: 10;
-    background: color-mix(in oklch, var(--color-brown-dark) 30%, transparent);
+    background: color-mix(in oklch, var(--color-on-surface) 30%, transparent);
     opacity: 0;
     pointer-events: none;
     transition: opacity var(--transition-med);
@@ -52,7 +52,7 @@
 
 .identity {
   padding: 20px 20px 16px;
-  border-bottom: 1px solid var(--color-brown-light);
+  border-bottom: 1px solid var(--color-outline-variant);
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -81,11 +81,11 @@
 
 .exit {
   padding: 14px 20px;
-  border-top: 1px solid var(--color-brown-light);
+  border-top: 1px solid var(--color-outline-variant);
   font-family: var(--font-ui);
   font-size: 13px;
-  color: var(--color-brown-mid);
-  background: color-mix(in oklch, var(--color-cream) 70%, var(--color-bg));
+  color: var(--color-on-surface-variant);
+  background: color-mix(in oklch, var(--color-surface-container) 70%, var(--color-surface));
 }
 
 .main {
@@ -104,13 +104,13 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--color-amber);
+  background: var(--color-secondary);
   animation: savePulse 1.2s ease-in-out infinite;
   pointer-events: none;
 }
 
 .saveIndicatorSaved {
-  background: var(--color-green-dark);
+  background: var(--color-primary-container);
   animation: none;
 }
 
@@ -148,8 +148,8 @@
 
 .topBar {
   flex-shrink: 0;
-  border-bottom: 1px solid var(--color-brown-light);
-  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-outline-variant);
+  background: var(--color-surface);
 }
 
 .canvas {
@@ -214,8 +214,8 @@
     align-items: center;
     gap: 8px;
     padding: 5px 8px 5px 10px;
-    border-bottom: 1px solid var(--color-brown-light);
-    background: var(--color-bg);
+    border-bottom: 1px solid var(--color-outline-variant);
+    background: var(--color-surface);
   }
   .mobileBarSlot {
     flex: 1;
@@ -231,8 +231,8 @@
     height: 36px;
     border-radius: var(--radius-sm);
     background: transparent;
-    border: 1px solid var(--color-brown-light);
-    color: var(--color-brown-dark);
+    border: 1px solid var(--color-outline-variant);
+    color: var(--color-on-surface);
     cursor: pointer;
   }
   /* The docked header stays 50 px: the 36 px buttons get a 44 px hit area. */
@@ -261,8 +261,8 @@
     flex-direction: column;
     gap: 6px;
     padding: 10px 14px 12px;
-    border-bottom: 1px solid var(--color-brown-light);
-    background: var(--color-cream);
+    border-bottom: 1px solid var(--color-outline-variant);
+    background: var(--color-surface-container);
   }
   /* Keyboard up: only the stepper (topBar) and sample row collapse; the compact
      header row with the hamburger stays reachable. */

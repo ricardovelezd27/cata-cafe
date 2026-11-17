@@ -10,7 +10,7 @@
   font-family: var(--font-ui);
   font-size: 14px;
   font-weight: 500;
-  color: var(--color-brown-dark);
+  color: var(--color-on-surface);
   background: transparent;
   border: none;
   cursor: pointer;
@@ -26,25 +26,25 @@
   transform: translateY(-50%);
   width: 3px;
   height: 24px;
-  background: var(--color-green-dark);
+  background: var(--color-primary-container);
   border-radius: 0 2px 2px 0;
   opacity: 0;
   transition: opacity var(--transition-fast);
 }
 
 .row:hover:not(.active) {
-  background: color-mix(in oklch, var(--color-cream) 60%, transparent);
+  background: color-mix(in oklch, var(--color-surface-container) 60%, transparent);
 }
 
 .row:focus-visible {
-  outline: 2px solid var(--color-green-dark);
+  outline: 2px solid var(--color-primary-container);
   outline-offset: -2px;
 }
 
 .active {
-  color: var(--color-green-dark);
+  color: var(--color-primary-container);
   font-weight: 600;
-  background: color-mix(in oklch, var(--color-green-light) 18%, transparent);
+  background: color-mix(in oklch, var(--color-primary-fixed-dim) 18%, transparent);
 }
 
 .active::before { opacity: 1; }
@@ -64,7 +64,7 @@
   width: 14px;
   height: 14px;
   font-size: 9px;
-  color: var(--color-green-mid);
+  color: var(--color-primary-muted);
   flex-shrink: 0;
 }
 
@@ -72,13 +72,13 @@
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-size: 10px;
-  color: var(--color-brown-mid);
+  color: var(--color-on-surface-variant);
   font-weight: 600;
   width: 14px;
   flex-shrink: 0;
 }
 
-.active .position { color: var(--color-green-dark); }
+.active .position { color: var(--color-primary-container); }
 
 .header {
   padding: 0 20px 6px;
@@ -88,7 +88,7 @@
   font-weight: 600;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--color-brown-mid);
+  color: var(--color-on-surface-variant);
 }
 
 /* ── Horizontal variant (desktop top row) ───────────────────── */
@@ -138,7 +138,7 @@
   font-family: var(--font-ui);
   font-size: 14px;
   font-weight: 500;
-  color: var(--color-brown-dark);
+  color: var(--color-on-surface);
   background: transparent;
   border: none;
   border-bottom: 2px solid transparent;
@@ -160,21 +160,21 @@
 }
 
 .rowH:hover:not(.activeH) {
-  background: color-mix(in oklch, var(--color-cream) 60%, transparent);
+  background: color-mix(in oklch, var(--color-surface-container) 60%, transparent);
 }
 
 .rowH:focus-visible {
-  outline: 2px solid var(--color-green-dark);
+  outline: 2px solid var(--color-primary-container);
   outline-offset: -2px;
 }
 
 .activeH {
-  color: var(--color-green-dark);
+  color: var(--color-primary-container);
   font-weight: 600;
-  border-bottom-color: var(--color-green-dark);
+  border-bottom-color: var(--color-primary-container);
 }
 
-.activeH .position { color: var(--color-green-dark); }
+.activeH .position { color: var(--color-primary-container); }
 
 /* "Referencia" pill — the owner-chosen control sample, visible to everyone. */
 .reference {

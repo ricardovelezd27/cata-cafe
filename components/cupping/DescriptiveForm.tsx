@@ -43,7 +43,7 @@ const mouthfeelCATAOptions: CATAOption[] = MOUTHFEEL_CATA.map((o) => ({
 const mainTasteOptions: CATAOption[] = MAIN_TASTES.map((t) => ({
   id: t.id,
   label: t.label,
-  color: "var(--color-amber)",
+  color: "var(--color-secondary)",
 }));
 
 export function DescriptiveForm({
@@ -142,7 +142,7 @@ export function DescriptiveForm({
         {renderBlock("sabor", "Sabor", null)}
         {renderBlock("sabor_residual", "Sabor Residual (Regusto)", null)}
         <FormSection title="Gustos Predominantes" accent flagged={isFlagged("gustos")}>
-          <div className="text-[11px] text-brown-mid mb-2">
+          <div className="text-[11px] text-on-surface-variant mb-2">
             Selecciona hasta 2 sabores principales
           </div>
           <CATAPills

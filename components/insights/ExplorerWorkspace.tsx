@@ -51,7 +51,7 @@ interface ExplorerWorkspaceProps {
 }
 
 const inputClass =
-  "w-full rounded-input border border-[#E8E0D0] bg-white px-3 py-2 text-sm text-brown-dark focus:border-[#3D5A3E]";
+  "w-full rounded-input border border-[#E8E0D0] bg-surface-container-lowest px-3 py-2 text-sm text-on-surface focus:border-[#3D5A3E]";
 
 type Mode = "simple" | "pivot";
 
@@ -149,12 +149,12 @@ export function ExplorerWorkspace({
   return (
     <div className="flex flex-col gap-5 pb-8">
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="inline-flex rounded-pill border border-[#E8E0D0] bg-cream p-1">
+        <div className="inline-flex rounded-pill border border-[#E8E0D0] bg-surface-container p-1">
           <button
             type="button"
             onClick={() => setMode("simple")}
             className={`px-4 py-1.5 rounded-pill text-sm font-semibold transition-colors ${
-              mode === "simple" ? "bg-[#3D5A3E] text-white" : "text-brown-mid hover:text-brown-dark"
+              mode === "simple" ? "bg-[#3D5A3E] text-white" : "text-on-surface-variant hover:text-on-surface"
             }`}
           >
             {t.mode.simple}
@@ -163,7 +163,7 @@ export function ExplorerWorkspace({
             type="button"
             onClick={() => setMode("pivot")}
             className={`px-4 py-1.5 rounded-pill text-sm font-semibold transition-colors ${
-              mode === "pivot" ? "bg-[#3D5A3E] text-white" : "text-brown-mid hover:text-brown-dark"
+              mode === "pivot" ? "bg-[#3D5A3E] text-white" : "text-on-surface-variant hover:text-on-surface"
             }`}
           >
             {t.mode.pivot}
@@ -212,18 +212,18 @@ export function ExplorerWorkspace({
       )}
 
       {/* Saved insights */}
-      <div className="bg-white rounded-card border border-[#E8E0D0] shadow-card p-5">
+      <div className="bg-surface-container-lowest rounded-card border border-[#E8E0D0] shadow-card p-5">
         <h2 className="font-sans text-xs font-semibold text-on-surface-variant uppercase tracking-wide mb-3">
           {t.savedTitle}
         </h2>
         {saved.length === 0 ? (
-          <p className="text-sm text-brown-mid">{t.savedEmpty}</p>
+          <p className="text-sm text-on-surface-variant">{t.savedEmpty}</p>
         ) : (
           <ul className="divide-y divide-[#F5F0E6]">
             {saved.map((item) => (
               <li key={item.id} className="flex items-center gap-3 py-2.5">
-                <span className="flex-1 text-sm text-brown-dark truncate">{item.name}</span>
-                <span className="text-xs text-brown-mid hidden sm:block">
+                <span className="flex-1 text-sm text-on-surface truncate">{item.name}</span>
+                <span className="text-xs text-on-surface-variant hidden sm:block">
                   {new Date(item.createdAt).toLocaleDateString(locale)}
                 </span>
                 <button
@@ -238,7 +238,7 @@ export function ExplorerWorkspace({
                   <button
                     type="button"
                     onClick={() => handleDelete(item.id)}
-                    className="flex items-center gap-1 text-xs text-brown-mid hover:text-red-defect"
+                    className="flex items-center gap-1 text-xs text-on-surface-variant hover:text-error"
                     aria-label={t.delete}
                   >
                     <Trash2 size={14} />
@@ -253,7 +253,7 @@ export function ExplorerWorkspace({
       <ResponsiveDialog open={saveOpen} onOpenChange={setSaveOpen} title={t.save} closeLabel={t.close}>
         <div className="flex flex-col gap-3 p-1">
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-semibold text-brown-mid uppercase tracking-wide">
+            <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
               {t.saveName}
             </span>
             <input

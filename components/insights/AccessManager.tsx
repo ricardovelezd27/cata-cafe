@@ -55,12 +55,12 @@ export function AccessManager({ users: initialUsers, t }: AccessManagerProps) {
   }
 
   return (
-    <div className="bg-white rounded-card border border-[#E8E0D0] shadow-card">
+    <div className="bg-surface-container-lowest rounded-card border border-[#E8E0D0] shadow-card">
       <div className="p-4 border-b border-[#F5F0E6]">
         <label className="relative block max-w-sm">
           <Search
             size={16}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-brown-mid"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant"
             aria-hidden
           />
           <input
@@ -68,20 +68,20 @@ export function AccessManager({ users: initialUsers, t }: AccessManagerProps) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t.search}
-            className="w-full rounded-input border border-[#E8E0D0] bg-white pl-9 pr-3 py-2 text-sm text-brown-dark focus:border-[#3D5A3E]"
+            className="w-full rounded-input border border-[#E8E0D0] bg-surface-container-lowest pl-9 pr-3 py-2 text-sm text-on-surface focus:border-[#3D5A3E]"
           />
         </label>
       </div>
 
       {filtered.length === 0 ? (
-        <p className="p-6 text-sm text-brown-mid text-center">{t.empty}</p>
+        <p className="p-6 text-sm text-on-surface-variant text-center">{t.empty}</p>
       ) : (
         <ul className="divide-y divide-[#F5F0E6]">
           {filtered.map((user) => (
             <li key={user.userId} className="flex items-center gap-3 px-4 py-3">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-brown-dark truncate">
+                  <span className="text-sm font-semibold text-on-surface truncate">
                     {user.displayName}
                   </span>
                   {user.isSuperAdmin && (
@@ -91,12 +91,12 @@ export function AccessManager({ users: initialUsers, t }: AccessManagerProps) {
                     </span>
                   )}
                 </div>
-                <span className="block text-xs text-brown-mid truncate">
+                <span className="block text-xs text-on-surface-variant truncate">
                   {user.email ?? t.emailUnavailable}
                   {user.country ? ` · ${user.country}` : ""}
                 </span>
                 {errorId === user.userId && (
-                  <span className="block text-xs text-red-defect mt-0.5">
+                  <span className="block text-xs text-error mt-0.5">
                     {t.toggleError}
                   </span>
                 )}
@@ -105,7 +105,7 @@ export function AccessManager({ users: initialUsers, t }: AccessManagerProps) {
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 {/* H-07: on phones the text is visually hidden, not removed, so
                     the switch inside this label keeps its name. */}
-                <span className="text-xs text-brown-mid max-sm:sr-only">
+                <span className="text-xs text-on-surface-variant max-sm:sr-only">
                   {t.accessLabel}
                 </span>
                 <button
@@ -127,7 +127,7 @@ export function AccessManager({ users: initialUsers, t }: AccessManagerProps) {
                     }`}
                   >
                     <span
-                      className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                      className={`absolute top-0.5 w-5 h-5 rounded-full bg-surface-container-lowest shadow transition-transform ${
                         user.isSuperAdmin || user.analyticsAccess
                           ? "translate-x-[18px]"
                           : "translate-x-0.5"

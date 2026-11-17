@@ -107,17 +107,17 @@ export function OfflineBanner({
   if (!tone) return null;
 
   const palette: Record<string, string> = {
-    offline: "bg-red-defect/10 text-red-defect border-red-defect/30",
-    info: "bg-amber-warm/10 text-amber-warm border-amber-warm/30",
-    success: "bg-green-dark/10 text-green-dark border-green-dark/30",
-    warn: "bg-amber-warm/10 text-amber-warm border-amber-warm/40",
+    offline: "bg-error/10 text-error border-error/30",
+    info: "bg-secondary/10 text-secondary border-secondary/30",
+    success: "bg-primary-container/10 text-primary-container border-primary-container/30",
+    warn: "bg-secondary/10 text-secondary border-secondary/40",
   };
 
   return (
     <div
       role="status"
       aria-live="polite"
-      className={`flex items-center gap-2 px-4 py-2 mb-3 rounded-md border font-sans text-sm ${palette[tone]}`}
+      className={`flex items-center gap-2 px-4 py-2 mb-3 rounded-card border font-sans text-sm ${palette[tone]}`}
     >
       {icon}
       <span className="flex-1">{message}</span>

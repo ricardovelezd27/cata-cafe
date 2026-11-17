@@ -285,7 +285,7 @@ export default async function Dashboard({
                       key={g.coffeeId}
                       className="flex items-center gap-3 bg-surface-container-lowest border border-outline-variant rounded-card px-4 py-3"
                     >
-                      <span className="font-display text-2xl text-green-mid w-6 text-center shrink-0">
+                      <span className="font-display text-2xl text-primary-muted w-6 text-center shrink-0">
                         {i + 1}
                       </span>
                       <div className="flex-1 min-w-0">
@@ -379,7 +379,7 @@ export default async function Dashboard({
                   key={i}
                   className="flex items-center gap-3 py-2 border-b border-[#F0EDE6] last:border-0"
                 >
-                  <span className="text-green-mid shrink-0">
+                  <span className="text-primary-muted shrink-0">
                     <Clock size={14} />
                   </span>
                   <span className="text-sm text-on-surface flex-1">

@@ -59,9 +59,9 @@ export function AiSummaryPanel({ locale, target, translations: t }: AiSummaryPan
   const errored = result != null && !result.ok && !result.skipped;
 
   return (
-    <div className="bg-cream rounded-card border border-[#E8E0D0] shadow-card p-5">
+    <div className="bg-surface-container rounded-card border border-[#E8E0D0] shadow-card p-5">
       {isPending ? (
-        <div className="flex items-center gap-2 text-sm text-brown-mid animate-pulse">
+        <div className="flex items-center gap-2 text-sm text-on-surface-variant animate-pulse">
           <Sparkles size={16} />
           {t.generating}
         </div>
@@ -70,7 +70,7 @@ export function AiSummaryPanel({ locale, target, translations: t }: AiSummaryPan
           <h3 className="text-base leading-snug">
             {content.headline}
           </h3>
-          <div className="flex flex-col gap-2 text-sm text-brown-dark leading-relaxed">
+          <div className="flex flex-col gap-2 text-sm text-on-surface leading-relaxed">
             {content.body
               .split(/\n+/)
               .map((p) => p.trim())
@@ -80,14 +80,14 @@ export function AiSummaryPanel({ locale, target, translations: t }: AiSummaryPan
               ))}
           </div>
           {content.highlights.length > 0 && (
-            <ul className="list-disc pl-5 flex flex-col gap-1 text-sm text-brown-dark">
+            <ul className="list-disc pl-5 flex flex-col gap-1 text-sm text-on-surface">
               {content.highlights.map((h, i) => (
                 <li key={i}>{h}</li>
               ))}
             </ul>
           )}
           <div className="flex items-center justify-between gap-3 pt-3 mt-1 border-t border-[#E8E0D0]">
-            <span className="text-[11px] text-brown-mid/70">
+            <span className="text-[11px] text-on-surface-variant/70">
               {t.disclaimer}
               {result?.ok ? ` · ${result.model}` : ""}
             </span>
@@ -102,10 +102,10 @@ export function AiSummaryPanel({ locale, target, translations: t }: AiSummaryPan
           </div>
         </div>
       ) : skipped ? (
-        <p className="text-sm text-brown-mid">{t.notConfigured}</p>
+        <p className="text-sm text-on-surface-variant">{t.notConfigured}</p>
       ) : errored ? (
         <div className="flex items-center justify-between gap-3">
-          <span className="text-sm text-red-defect">{t.error}</span>
+          <span className="text-sm text-error">{t.error}</span>
           <button
             type="button"
             onClick={() => generate(false)}

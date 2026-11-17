@@ -181,11 +181,11 @@ export function ChatPanel({ locale, t }: ChatPanelProps) {
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h2 className="section-title text-xl">{t.title}</h2>
-          <p className="text-sm text-brown-mid mt-0.5">{t.subtitle}</p>
+          <p className="text-sm text-on-surface-variant mt-0.5">{t.subtitle}</p>
         </div>
         <div className="flex items-center gap-3 shrink-0">
           {usage && (
-            <span className="text-xs text-brown-mid tabular-nums whitespace-nowrap">
+            <span className="text-xs text-on-surface-variant tabular-nums whitespace-nowrap">
               {formatTemplate(t.remainingTemplate, {
                 remaining: usage.remaining,
                 limit: usage.limit,
@@ -197,7 +197,7 @@ export function ChatPanel({ locale, t }: ChatPanelProps) {
               type="button"
               onClick={clear}
               disabled={pending}
-              className="flex items-center gap-1 text-xs text-brown-mid hover:text-red-defect disabled:opacity-50"
+              className="flex items-center gap-1 text-xs text-on-surface-variant hover:text-error disabled:opacity-50"
             >
               <Trash2 size={13} />
               {t.clear}
@@ -207,25 +207,25 @@ export function ChatPanel({ locale, t }: ChatPanelProps) {
       </div>
 
       {usage && usage.remaining <= 0 && (
-        <div className="rounded-card border border-amber-warm/40 bg-amber-warm/10 px-4 py-2.5 text-sm text-brown-dark">
+        <div className="rounded-card border border-secondary/40 bg-secondary/10 px-4 py-2.5 text-sm text-on-surface">
           {formatTemplate(t.limitReachedTemplate, { limit: usage.limit })}
         </div>
       )}
 
-      <div className="bg-white rounded-card border border-[#E8E0D0] shadow-card flex flex-col h-[60vh] min-h-[420px]">
+      <div className="bg-surface-container-lowest rounded-card border border-[#E8E0D0] shadow-card flex flex-col h-[60vh] min-h-[420px]">
         <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3">
           {messages.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center gap-3 px-6">
-              <MessageCircle size={28} className="text-brown-mid/50" />
+              <MessageCircle size={28} className="text-on-surface-variant/50" />
               <h3 className="text-sm">{t.emptyTitle}</h3>
-              <p className="text-xs text-brown-mid max-w-sm">{t.emptyHint}</p>
+              <p className="text-xs text-on-surface-variant max-w-sm">{t.emptyHint}</p>
               <div className="flex flex-col gap-2 w-full max-w-sm mt-1">
                 {t.examples.map((example, i) => (
                   <button
                     key={i}
                     type="button"
                     onClick={() => void handleSend(example)}
-                    className="rounded-pill border border-[#E8E0D0] bg-cream px-3 py-2 text-xs text-brown-dark hover:border-[#3D5A3E] hover:text-[#3D5A3E] transition-colors text-left"
+                    className="rounded-pill border border-[#E8E0D0] bg-surface-container px-3 py-2 text-xs text-on-surface hover:border-[#3D5A3E] hover:text-[#3D5A3E] transition-colors text-left"
                   >
                     {example}
                   </button>
@@ -255,7 +255,7 @@ export function ChatPanel({ locale, t }: ChatPanelProps) {
 
           {pending && (
             <div className="flex justify-start">
-              <div className="bg-white rounded-card border border-[#E8E0D0] px-4 py-3 flex items-center gap-2 text-sm text-brown-mid">
+              <div className="bg-surface-container-lowest rounded-card border border-[#E8E0D0] px-4 py-3 flex items-center gap-2 text-sm text-on-surface-variant">
                 <Loader2 size={14} className="animate-spin" />
                 {t.thinking}
               </div>
@@ -275,7 +275,7 @@ export function ChatPanel({ locale, t }: ChatPanelProps) {
               placeholder={t.placeholder}
               disabled={pending || limitReached}
               rows={1}
-              className="flex-1 resize-none rounded-input border border-[#D4C5A9] bg-white px-3 py-2 text-sm text-brown-dark focus:border-green-dark disabled:opacity-60 disabled:bg-cream"
+              className="flex-1 resize-none rounded-input border border-[#D4C5A9] bg-surface-container-lowest px-3 py-2 text-sm text-on-surface focus:border-primary-container disabled:opacity-60 disabled:bg-surface-container"
               style={{ maxHeight: MAX_TEXTAREA_HEIGHT }}
             />
             <button
@@ -288,7 +288,7 @@ export function ChatPanel({ locale, t }: ChatPanelProps) {
               <Send size={16} />
             </button>
           </div>
-          <p className="text-[11px] text-brown-mid/70">{t.disclaimer}</p>
+          <p className="text-[11px] text-on-surface-variant/70">{t.disclaimer}</p>
         </div>
       </div>
     </div>

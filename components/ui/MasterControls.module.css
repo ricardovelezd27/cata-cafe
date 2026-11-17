@@ -2,8 +2,8 @@
   margin: 0 12px;
   padding: 14px;
   border-radius: var(--radius-sm);
-  background: color-mix(in oklch, var(--color-green-light) 14%, var(--color-cream));
-  border: 1px solid color-mix(in oklch, var(--color-green-mid) 25%, var(--color-brown-light));
+  background: color-mix(in oklch, var(--color-primary-fixed-dim) 14%, var(--color-surface-container));
+  border: 1px solid color-mix(in oklch, var(--color-primary-muted) 25%, var(--color-outline-variant));
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -23,14 +23,14 @@
   font-weight: 600;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--color-green-dark);
+  color: var(--color-primary-container);
 }
 
 .count {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-size: 11px;
-  color: var(--color-brown-dark);
+  color: var(--color-on-surface);
 }
 
 .row { display: flex; flex-direction: column; gap: 8px; }
@@ -54,7 +54,7 @@
 }
 
 .button:focus-visible {
-  outline: 2px solid var(--color-green-dark);
+  outline: 2px solid var(--color-primary-container);
   outline-offset: 2px;
 }
 
@@ -70,22 +70,22 @@
 
 .invite {
   background: transparent;
-  color: var(--color-green-dark);
-  border-color: var(--color-green-mid);
+  color: var(--color-primary-container);
+  border-color: var(--color-primary-muted);
 }
 
 .invite:hover:not(:disabled) {
-  background: color-mix(in oklch, var(--color-green-light) 25%, transparent);
+  background: color-mix(in oklch, var(--color-primary-fixed-dim) 25%, transparent);
 }
 
 .close {
   background: transparent;
-  color: var(--color-red-defect);
-  border-color: color-mix(in oklch, var(--color-red-defect) 40%, var(--color-brown-light));
+  color: var(--color-error);
+  border-color: color-mix(in oklch, var(--color-error) 40%, var(--color-outline-variant));
 }
 
 .close:hover:not(:disabled) {
-  background: color-mix(in oklch, var(--color-red-defect) 8%, transparent);
+  background: color-mix(in oklch, var(--color-error) 8%, transparent);
 }
 
 .button:disabled { cursor: default; opacity: 0.5; }
@@ -113,9 +113,9 @@
   min-width: 0;
   font-family: var(--font-mono);
   font-size: 11px;
-  color: var(--color-brown-dark);
-  background: var(--color-white);
-  border: 1px solid var(--color-brown-light);
+  color: var(--color-on-surface);
+  background: var(--color-surface-container-lowest);
+  border: 1px solid var(--color-outline-variant);
   border-radius: var(--radius-sm);
   padding: 5px 8px;
   overflow: hidden;
@@ -139,24 +139,24 @@
 }
 
 .copyBtn {
-  background: var(--color-green-mid);
-  color: var(--color-white);
+  background: var(--color-primary-muted);
+  color: var(--color-surface-container-lowest);
 }
 
-.copyBtn.copied { background: var(--color-green-dark); }
+.copyBtn.copied { background: var(--color-primary-container); }
 
 .copyBtn:hover:not(.copied) {
-  background: color-mix(in oklch, var(--color-green-mid) 85%, black);
+  background: color-mix(in oklch, var(--color-primary-muted) 85%, black);
 }
 
 .resetBtn {
   background: transparent;
-  color: var(--color-brown-mid);
-  border-color: var(--color-brown-light);
+  color: var(--color-on-surface-variant);
+  border-color: var(--color-outline-variant);
 }
 
 .resetBtn:hover {
-  background: color-mix(in oklch, var(--color-cream) 50%, transparent);
+  background: color-mix(in oklch, var(--color-surface-container) 50%, transparent);
 }
 
 /* Realtime channel not SUBSCRIBED — the submitted count may be stale. Muted,
@@ -183,7 +183,7 @@
   font-weight: 600;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--color-brown-mid);
+  color: var(--color-on-surface-variant);
 }
 
 .referenceField:has(select:disabled) { opacity: 0.5; }

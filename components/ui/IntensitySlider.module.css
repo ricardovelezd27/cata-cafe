@@ -1,17 +1,17 @@
 .root { position: relative; width: 100%; padding: 4px 0 8px; }
 .head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 16px; }
-.label { font-family: var(--font-ui); font-size: 13px; font-weight: 500; color: var(--color-brown-dark); letter-spacing: 0.01em; }
-.valueDisplay { font-family: var(--font-display); font-size: 24px; font-weight: 600; color: var(--color-green-dark); line-height: 1; }
-.valueDisplay em { font-family: var(--font-ui); font-size: 13px; font-style: italic; color: var(--color-brown-mid); font-weight: 400; }
+.label { font-family: var(--font-ui); font-size: 13px; font-weight: 500; color: var(--color-on-surface); letter-spacing: 0.01em; }
+.valueDisplay { font-family: var(--font-display); font-size: 24px; font-weight: 600; color: var(--color-primary-container); line-height: 1; }
+.valueDisplay em { font-family: var(--font-ui); font-size: 13px; font-style: italic; color: var(--color-on-surface-variant); font-weight: 400; }
 .num { font-variant-numeric: tabular-nums; }
-.cap { font-family: var(--font-mono); font-size: 10px; color: var(--color-brown-mid); margin-left: 4px; letter-spacing: 0.14em; font-weight: 500; }
-.track { position: relative; height: 8px; background: var(--color-cream); border: 1px solid var(--color-brown-light); border-radius: var(--radius-pill); cursor: pointer; touch-action: pan-y; }
+.cap { font-family: var(--font-mono); font-size: 10px; color: var(--color-on-surface-variant); margin-left: 4px; letter-spacing: 0.14em; font-weight: 500; }
+.track { position: relative; height: 8px; background: var(--color-surface-container); border: 1px solid var(--color-outline-variant); border-radius: var(--radius-pill); cursor: pointer; touch-action: pan-y; }
 /* Expand the touch target to ~44px without affecting layout. */
 .track::before { content: ""; position: absolute; inset: -18px 0; }
 .locked .track { cursor: default; }
-.fill { position: absolute; top: -1px; left: -1px; height: 8px; background: var(--color-green-mid); border: 1px solid var(--color-green-dark); border-radius: var(--radius-pill); transition: width var(--transition-fast); }
-.thumb { position: absolute; top: 50%; width: 22px; height: 22px; background: var(--color-bg); border: 2px solid var(--color-green-dark); border-radius: 50%; transform: translate(-50%, -50%); box-shadow: var(--shadow-card); transition: left var(--transition-fast); pointer-events: none; }
-.thumb::after { content: ""; position: absolute; inset: 4px; background: var(--color-green-dark); border-radius: 50%; }
+.fill { position: absolute; top: -1px; left: -1px; height: 8px; background: var(--color-primary-muted); border: 1px solid var(--color-primary-container); border-radius: var(--radius-pill); transition: width var(--transition-fast); }
+.thumb { position: absolute; top: 50%; width: 22px; height: 22px; background: var(--color-surface); border: 2px solid var(--color-primary-container); border-radius: 50%; transform: translate(-50%, -50%); box-shadow: var(--shadow-card); transition: left var(--transition-fast); pointer-events: none; }
+.thumb::after { content: ""; position: absolute; inset: 4px; background: var(--color-primary-container); border-radius: 50%; }
 /* Kept for keyboard focus & accessibility only. Pointer/touch are handled on
    .track so the native range can't snap-to-touch on first contact. */
 .input { position: absolute; inset: -10px 0; width: 100%; height: calc(100% + 20px); opacity: 0; margin: 0; padding: 0; pointer-events: none; touch-action: none; }
@@ -19,15 +19,15 @@
    so the focus indicator is drawn on what is seen, the thumb: the app's one
    indicator, a 2 px primary-container outline 2 px away. */
 .track:has(.input:focus-visible) .thumb { outline: 2px solid var(--color-primary-container); outline-offset: 2px; }
-.empty .thumb { background: var(--color-cream); border-color: var(--color-brown-light); box-shadow: none; }
-.empty .thumb::after { background: var(--color-brown-light); }
-.locked .thumb { background: var(--color-green-dark); }
-.locked .thumb::after { background: var(--color-bg); inset: 6px; }
-.locked .fill { background: var(--color-green-dark); border-color: var(--color-green-dark); }
+.empty .thumb { background: var(--color-surface-container); border-color: var(--color-outline-variant); box-shadow: none; }
+.empty .thumb::after { background: var(--color-outline-variant); }
+.locked .thumb { background: var(--color-primary-container); }
+.locked .thumb::after { background: var(--color-surface); inset: 6px; }
+.locked .fill { background: var(--color-primary-container); border-color: var(--color-primary-container); }
 .locked .input { pointer-events: none; }
 .ticks { position: relative; margin-top: 14px; display: flex; justify-content: space-between; }
 .tick { flex: 1; min-width: 0; }
-.tickNum { font-family: var(--font-mono); font-size: 11px; font-weight: 500; color: var(--color-brown-mid); display: block; }
+.tickNum { font-family: var(--font-mono); font-size: 11px; font-weight: 500; color: var(--color-on-surface-variant); display: block; }
 @media (max-width: 480px) {
   .valueDisplay { font-size: 18px; }
   .tickNum { font-size: 10px; }

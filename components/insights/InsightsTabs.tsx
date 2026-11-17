@@ -47,7 +47,7 @@ export function InsightsTabs({ locale, isSuperAdmin, isAiAdmin, labels }: Insigh
             className={`px-4 py-2.5 text-sm whitespace-nowrap border-b-2 -mb-px transition-colors ${
               active
                 ? "border-[#3D5A3E] text-[#3D5A3E] font-semibold"
-                : "border-transparent text-brown-mid hover:text-brown-dark"
+                : "border-transparent text-on-surface-variant hover:text-on-surface"
             }`}
           >
             {label}

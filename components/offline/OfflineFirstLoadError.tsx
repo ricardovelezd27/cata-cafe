@@ -18,16 +18,16 @@ export function OfflineFirstLoadError({
       className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 px-6 text-center"
       style={{ background: "#FDFBF7" }}
     >
-      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-defect/10 text-red-defect">
+      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-error/10 text-error">
         <WifiOff size={30} aria-hidden />
       </div>
-      <p className="max-w-md font-display text-xl leading-snug text-brown-dark">
+      <p className="max-w-md font-display text-xl leading-snug text-on-surface">
         {title}
       </p>
       <button
         type="button"
         onClick={onRetry}
-        className="px-6 py-2.5 rounded-md bg-green-dark font-sans text-sm font-semibold text-white hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2"
+        className="px-6 py-2.5 rounded-pill bg-primary-container font-sans text-sm font-semibold text-white hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2"
       >
         {retryLabel}
       </button>
