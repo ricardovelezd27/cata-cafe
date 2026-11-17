@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { requireAppUser } from "@/lib/auth";
+import { UserPlus, Users } from "lucide-react";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { prisma } from "@/lib/prisma";
 import { getCoCupperCandidates } from "@/lib/coCuppers";
@@ -127,7 +129,7 @@ export default async function GroupsPage({
       {/* My groups */}
       <div className="space-y-4">
         {groups.length === 0 ? (
-          <p className="text-sm text-on-surface-variant">{t("empty")}</p>
+          <EmptyState icon={<Users size={20} aria-hidden />} title={t("empty")} body={t("emptyBody")} />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {groups.map((g) => (
@@ -190,7 +192,7 @@ export default async function GroupsPage({
       <div className="space-y-4">
         <h2 className="section-title text-xl">{t("coCuppersTitle")}</h2>
         {cuppers.length === 0 ? (
-          <p className="text-sm text-on-surface-variant">{t("noCoCuppers")}</p>
+          <EmptyState icon={<UserPlus size={20} aria-hidden />} title={t("noCoCuppers")} />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {cuppers.map((c) => (

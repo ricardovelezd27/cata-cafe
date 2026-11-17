@@ -11,6 +11,7 @@ import { claimGroupMembershipsByEmail } from "@/lib/groupMembership";
 import { sessionHref } from "@/lib/sessionRouting";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusPill } from "@/components/ui/Badge";
 import { GroupNameControls } from "@/components/groups/GroupNameControls";
 import { GroupActivityFeed, type GroupActivityEvent } from "@/components/groups/GroupActivityFeed";
@@ -160,7 +161,7 @@ export default async function GroupDetailPage({
     <div className="space-y-3">
       <h2 className="section-title text-2xl">{t("sessionsTitle")}</h2>
       {groupSessions.length === 0 ? (
-        <p className="text-sm text-on-surface-variant">{t("noSessions")}</p>
+        <EmptyState icon={<Clipboard size={20} aria-hidden />} title={t("noSessions")} />
       ) : (
         <ul className="grid gap-2">
           {groupSessions.map((s) => {

@@ -64,6 +64,7 @@ export default async function CoffeesPage({
     sharedWithMe: t("sharedWithMe"),
     adminOwnerPrefix: t("adminOwnerPrefix"),
     noData: t("noData"),
+    noDataBody: t("noDataBody"),
     // Generic table controls — shared common.* strings, not coffee-scoped.
     searchPlaceholder: tc("searchPlaceholder"),
     // Raw template — DataTable interpolates {from}/{to}/{total} client-side.

@@ -1372,7 +1372,7 @@
     "colSessions": "Sessions",
     "colLastScore": "Last score",
     "colLastDate": "Last tasting",
-    "noData": "No coffees registered. Create your first session to get started.",
+    "noData": "No coffees yet.",
     "showing": "Showing {from}–{to} of {total} coffees",
     "view": "View →",
     "listPublic": "Public",
@@ -1563,7 +1563,10 @@
       "unlink": "Unlink"
     },
     "tasteThis": "Taste this coffee",
-    "needsConnection": "Needs a connection"
+    "needsConnection": "Needs a connection",
+    "scoreDetails": "How was it calculated?",
+    "historyEmptyBody": "Use “Taste this coffee”, above.",
+    "noDataBody": "Create the first one with “Create coffee”, above."
   },
   "offline": {
     "bannerOffline": "You're offline. Your evaluations are being saved locally.",
@@ -2186,7 +2189,7 @@
       "cancelNamed": "Cancel editing {name}",
       "nameLabelNamed": "Display name of {name}"
     },
-    "empty": "You don't have any groups yet. Create one to reuse your cupper roster across sessions.",
+    "empty": "You don't have any groups yet.",
     "coCuppersTitle": "People you've cupped with",
     "noCoCuppers": "You haven't cupped with anyone else yet — invite by email.",
     "sessionOne": "session",
@@ -2271,7 +2274,8 @@
     "emailLabel": "Email",
     "quickAddNamed": "Add {name} to the group",
     "addToGroupNamed": "Add to group: {name}",
-    "removeRowNamed": "Remove row {n}"
+    "removeRowNamed": "Remove row {n}",
+    "emptyBody": "Create one with “Create group”, above, to reuse your cupper list in every session."
   },
   "guestGate": {
     "title": "Finish creating your account",
