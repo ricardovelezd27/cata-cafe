@@ -128,27 +128,9 @@
 }
 .miniLine { color: var(--color-on-surface-variant); }
 
-/* The headline of a wheel (the options for a flat panel). */
-.eyebrow {
-  margin: 0;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--color-on-surface-variant);
-}
-.headline {
-  margin: 2px 0 10px;
-  font-family: var(--font-display);
-  font-size: 21px;
-  font-weight: 500;
-  line-height: 1.2;
-  color: var(--color-on-surface);
-  font-variant-numeric: lining-nums;
-  text-wrap: balance;
-}
+.sectionTitleNext { margin-top: 32px; }
+.listTitle + .grid { margin-top: 4px; }
 
-/* A column as wide as the content of a 320 px phone (320 - 2 x 16). */
 .narrowRow {
   display: flex;
   flex-wrap: wrap;

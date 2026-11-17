@@ -1,26 +1,25 @@
 "use client";
 
-import { useId, type ReactNode } from "react";
 import { useElementWidth } from "@/hooks/useElementWidth";
 import { fillPattern } from "@/lib/fillPattern";
 import {
-  WHEEL_FAMILY_ORDER,
   WHEEL_FRAMES,
-  petalPath,
   wheelGeometry,
   type WheelCounts,
   type WheelFamilyId,
   type WheelFrame,
   type WheelGeometry,
 } from "@/lib/flavorWheel";
-import { fitWheelLabels, type WheelLabelLayout } from "@/lib/flavorWheelLayout";
+import { fitWheelLabels, wheelHeadline, type WheelLabelLayout } from "@/lib/flavorWheelLayout";
+import { wheelShape, type WheelShape, type WheelShapePart } from "@/lib/flavorWheelShape";
 import { familyToneClass } from "@/components/ui/familyTone";
+import { captionParts, wheelCaptionText, type WheelCaptionStrings } from "./wheelCaption";
 import styles from "./FlavorWheel.module.css";
 
 /** The nine family names, already in the reader's language. */
 export type FamilyLabels = Record<WheelFamilyId, string>;
 
-export type FlavorWheelStrings = {
+export type FlavorWheelStrings = WheelCaptionStrings & {
   /** "Rueda de sabores de {n} catadores. {list}." */
   aria: string;
   /** One family of that list: "{family} {count}" */
@@ -77,24 +76,56 @@ export function WheelLabels({ layout, muted }: { layout: WheelLabelLayout; muted
   );
 }
 
-/** The optional ground: every family's whole sector (the petal of "everyone"),
- *  in a pale tint of its tone. Nothing is drawn when nobody cupped the coffee. */
-function FamilyTracks({ frame, n }: { frame: WheelFrame; n: number }) {
+/** A no-break space: the mark stays with the last name, never alone on a line. */
+const NBSP = String.fromCharCode(160);
+
+/**
+ * A wheel's caption (`wheelCaptionText`) set so that it wraps well: the names
+ * may wrap, the tally ("5 de 7 cada una") stays on one line. The full wheel
+ * uses it for its headline; a page uses it under a small wheel.
+ */
+export function WheelCaption({ text }: { text: string }) {
+  const { names, tally } = captionParts(text);
+  if (tally === null) return <>{names}</>;
   return (
     <>
-      {WHEEL_FAMILY_ORDER.map((family, index) => {
-        const d = petalPath(frame, index, n, n);
-        return d === null ? null : (
-          <path key={family} className={`${styles.track} ${familyToneClass(family)}`} d={d} />
-        );
-      })}
+      {names}
+      {`${NBSP}· `}
+      <span className={styles.tally}>{tally}</span>
     </>
   );
 }
 
-/** An id that is safe inside `url(#...)`. */
-function useSvgId(prefix: string): string {
-  return `${prefix}${useId().replace(/[^A-Za-z0-9_-]/g, "")}`;
+/** The pale ground of a wheel: each family's whole sector, in a tint of its tone. */
+export function WheelGrounds({ grounds }: { grounds: readonly WheelShapePart[] }) {
+  return (
+    <>
+      {grounds.map((part) => (
+        <path key={part.family} className={`${styles.ground} ${familyToneClass(part.family)}`} d={part.d} />
+      ))}
+    </>
+  );
+}
+
+/**
+ * The ONE drawing rule of a wheel, small or large (`wheelShape`,
+ * lib/flavorWheelShape.ts): the nine grounds, the petals, a paper-coloured line
+ * closing each petal, and the outer ring. No ring per person, no line across a
+ * petal. The large wheel adds only the words around this.
+ */
+function WheelMarks({ shape, frame }: { shape: WheelShape; frame: WheelFrame }) {
+  return (
+    <>
+      <WheelGrounds grounds={shape.grounds} />
+      {shape.petals.map((part) => (
+        <path key={part.family} className={`${styles.petal} ${familyToneClass(part.family)}`} d={part.d} />
+      ))}
+      {shape.tips.map((part) => (
+        <path key={part.family} className={styles.tip} d={part.d} />
+      ))}
+      <circle className={styles.ringOuter} cx={frame.cx} cy={frame.cy} r={shape.ring} />
+    </>
+  );
 }
 
 function FullWheel({
@@ -102,18 +133,15 @@ function FullWheel({
   n,
   familyLabels,
   strings,
-  caption,
-  tracks,
+  headline,
 }: {
   counts: WheelCounts;
   n: number;
   familyLabels: FamilyLabels;
   strings: FlavorWheelStrings;
-  caption?: ReactNode;
-  tracks: boolean;
+  headline: boolean;
 }) {
   const { ref, width } = useElementWidth();
-  const clipId = useSvgId("wheel-petals-");
   const frame = WHEEL_FRAMES.full;
   const g = wheelGeometry(counts, n, frame);
   const layout = fitWheelLabels({
@@ -122,9 +150,16 @@ function FullWheel({
     texts: g.petals.map((p) => ({ name: familyLabels[p.family] ?? p.family, number: String(p.count) })),
   });
   const vb = layout.viewBox;
-  const drawn = g.petals.filter((p) => p.d !== null);
   return (
     <figure className={styles.figure}>
+      {headline ? (
+        <div className={styles.head}>
+          <p className={styles.eyebrow}>{strings.mostFoundLabel}</p>
+          <p className={styles.headline}>
+            <WheelCaption text={wheelCaptionText(wheelHeadline(counts, n), familyLabels, strings)} />
+          </p>
+        </div>
+      ) : null}
       <div ref={ref} className={styles.frame}>
         <svg
           className={styles.svg}
@@ -134,37 +169,15 @@ function FullWheel({
           focusable="false"
         >
           <g aria-hidden="true">
-            <clipPath id={clipId}>
-              {drawn.map((p) => (
-                <path key={p.family} d={p.d as string} />
-              ))}
-            </clipPath>
-            {tracks ? <FamilyTracks frame={frame} n={g.n} /> : null}
-            {g.rings.map((ring) => (
-              <circle
-                key={ring.people}
-                className={ring.outer ? styles.ringOuter : styles.ring}
-                cx={frame.cx}
-                cy={frame.cy}
-                r={ring.radius}
-              />
-            ))}
-            {drawn.map((p) => (
-              <path key={p.family} className={`${styles.petal} ${familyToneClass(p.family)}`} d={p.d as string} />
-            ))}
-            {/* the rings again, over the petals only: one step per person */}
-            <g clipPath={`url(#${clipId})`}>
-              {g.rings
-                .filter((ring) => !ring.outer)
-                .map((ring) => (
-                  <circle key={ring.people} className={styles.cut} cx={frame.cx} cy={frame.cy} r={ring.radius} />
-                ))}
-            </g>
+            <WheelMarks shape={wheelShape(g)} frame={frame} />
             <WheelLabels layout={layout} muted={g.petals.map((p) => p.count === 0)} />
           </g>
         </svg>
       </div>
-      {caption ? <figcaption className={styles.caption}>{caption}</figcaption> : null}
+      {/* with no ring per person, the panel's size is what a petal is "of": always printed */}
+      <figcaption className={styles.caption}>
+        {g.n === 1 ? strings.cuppersOne : fillPattern(strings.cuppers, { n: g.n })}
+      </figcaption>
     </figure>
   );
 }
@@ -175,14 +188,12 @@ function MiniWheel({
   familyLabels,
   strings,
   decorative,
-  tracks,
 }: {
   counts: WheelCounts;
   n: number;
   familyLabels: FamilyLabels;
   strings: FlavorWheelStrings;
   decorative: boolean;
-  tracks: boolean;
 }) {
   const frame = WHEEL_FRAMES.mini;
   const g = wheelGeometry(counts, n, frame);
@@ -195,37 +206,34 @@ function MiniWheel({
       aria-hidden={decorative ? "true" : undefined}
       focusable="false"
     >
-      {tracks ? <FamilyTracks frame={frame} n={g.n} /> : null}
-      {g.petals.map((p) =>
-        p.d === null ? null : (
-          <path key={p.family} className={`${styles.petal} ${familyToneClass(p.family)}`} d={p.d} />
-        ),
-      )}
-      {g.rings
-        .filter((ring) => ring.outer)
-        .map((ring) => (
-          <circle key={ring.people} className={styles.ringOuter} cx={frame.cx} cy={frame.cy} r={ring.radius} />
-        ))}
+      <WheelMarks shape={wheelShape(g)} frame={frame} />
     </svg>
   );
 }
 
 /**
- * One coffee's counted flavour wheel. A ring per person, a petal per family as
- * long as the number of PEOPLE who found it, and beside each family its count
- * (a numeral on the ring, like a clock face) and its name.
+ * One coffee's counted flavour wheel. Each family owns a sector, painted in a
+ * pale tint of its tone: the whole sector is "everyone". Over it, a petal in the
+ * family's tone, as long as the number of PEOPLE who found it. One outer ring
+ * and nothing inside it (the owner's choice, package R1d): a petal is read
+ * against its own ground and by the count printed beside it.
  *
  * - `size="full"`: the wheel sizes itself to its column, from 320 px up; the
  *   words always paint at the same size, so on a narrow column the wheel is
- *   smaller, never the text. Give it the counted list under it (`CountedList`).
- * - `size="mini"`: the shape only (petals and the outer ring), for a row of
- *   small wheels. The caller writes its caption ("G · Frutal 7"); pass
- *   `decorative` when that caption already says what the drawing shows.
+ *   smaller, never the text. It prints, itself, what the drawing needs to be
+ *   read: over it the families most people found ("Lo más encontrado", then
+ *   "Frutal · 6 de 7"; `headline={false}` when the card around it already says
+ *   so), beside each family its count and its name, and under it the size of
+ *   the panel. Give it the counted list under it (`CountedList`).
+ * - `size="mini"`: the same shape with no words, for a row of small wheels. The
+ *   caller writes its caption (`wheelCaptionText`); pass `decorative` when that
+ *   caption already says what the drawing shows.
  *
  * It draws; it does not decide. Geometry is `wheelGeometry` (lib/flavorWheel.ts),
+ * what is drawn is `wheelShape` (lib/flavorWheelShape.ts, shared with the PDF),
  * the labels are `fitWheelLabels` (lib/flavorWheelLayout.ts), and whether a
  * reader may see a wheel at all is `buildWheelData` (lib/reports/wheelData.ts).
- * The family tone paints petals only; every word is ink.
+ * The family tone paints petals and grounds only; every word is ink.
  */
 export function FlavorWheel({
   counts,
@@ -233,9 +241,8 @@ export function FlavorWheel({
   familyLabels,
   strings,
   size = "full",
-  caption,
+  headline = true,
   decorative = false,
-  tracks = false,
 }: {
   /** People per wheel node id: the `rollup` of `countWheelPeople` / `WheelData`. */
   counts: WheelCounts;
@@ -244,32 +251,14 @@ export function FlavorWheel({
   familyLabels: FamilyLabels;
   strings: FlavorWheelStrings;
   size?: "full" | "mini";
-  /** Full size only: a line under the drawing. */
-  caption?: ReactNode;
+  /** Full size only: print the families most people found over the drawing. */
+  headline?: boolean;
   /** Mini only: hide the drawing from assistive technology (its caption says it). */
   decorative?: boolean;
-  /** Draw each family's whole sector in a pale tint of its tone, under the
-   *  petals: all nine families are seen, and a petal reads as "this many of
-   *  everyone". Off by default (an option put to the owner in package R1b). */
-  tracks?: boolean;
 }) {
   return size === "mini" ? (
-    <MiniWheel
-      counts={counts}
-      n={n}
-      familyLabels={familyLabels}
-      strings={strings}
-      decorative={decorative}
-      tracks={tracks}
-    />
+    <MiniWheel counts={counts} n={n} familyLabels={familyLabels} strings={strings} decorative={decorative} />
   ) : (
-    <FullWheel
-      counts={counts}
-      n={n}
-      familyLabels={familyLabels}
-      strings={strings}
-      caption={caption}
-      tracks={tracks}
-    />
+    <FullWheel counts={counts} n={n} familyLabels={familyLabels} strings={strings} headline={headline} />
   );
 }

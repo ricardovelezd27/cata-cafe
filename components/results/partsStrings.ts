@@ -13,6 +13,7 @@ import type { CountedListStrings } from "./CountedList";
 import type { FlavorCompareStrings } from "./FlavorCompare";
 import type { FlavorWheelStrings } from "./FlavorWheel";
 import type { RankStripStrings } from "./RankStrip";
+import type { WheelCaptionStrings } from "./wheelCaption";
 
 export type ResultsPartsStrings = {
   counted: CountedListStrings;
@@ -21,21 +22,9 @@ export type ResultsPartsStrings = {
   dotPlot: DotPlotStrings;
   score: ScoreContextStrings;
   rank: RankStripStrings;
-  /** Captions a page builds around a wheel. */
-  caption: {
-    /** "{families} · {count} de {n}" */
-    mostFound: string;
-    /** "{families} · {count} de {n} cada una" (two or three families tied at the top) */
-    mostFoundEach: string;
-    /** "{k} familias · {count} de {n} cada una" (more than three tied: too many to name) */
-    mostFoundMany: string;
-    /** The small label over that line: "Lo más encontrado" */
-    mostFoundLabel: string;
-    /** Joins the last two names of a list: " y " */
-    and: string;
-    /** "{n} catadores" */
-    cuppers: string;
-  };
+  /** The line a page writes beside a SMALL wheel (`wheelCaptionText`); the full
+   *  wheel prints its own from the same words, carried in `wheel`. */
+  caption: WheelCaptionStrings;
 };
 
 /** The translator of the `results` namespace (`getTranslations("results")`). */
@@ -81,15 +70,26 @@ export const RESULTS_PARTS_KEYS = [
   "mostFoundLabel",
   "and",
   "cuppers",
+  "cuppersOne",
 ] as const;
 
 export type ResultsPartsKey = (typeof RESULTS_PARTS_KEYS)[number];
 
 export function buildResultsPartsStrings(t: RawTranslator): ResultsPartsStrings {
   const s = (key: ResultsPartsKey): string => String(t.raw(`parts.${key}`));
+  const caption: WheelCaptionStrings = {
+    mostFound: s("mostFound"),
+    mostFoundEach: s("mostFoundEach"),
+    mostFoundMany: s("mostFoundMany"),
+    mostFoundLabel: s("mostFoundLabel"),
+    and: s("and"),
+    cuppers: s("cuppers"),
+    cuppersOne: s("cuppersOne"),
+    nobody: s("nobody"),
+  };
   return {
     counted: { countOf: s("countOf"), chosenByYou: s("chosenByYou"), nobody: s("nobody") },
-    wheel: { aria: s("wheelAria"), ariaItem: s("wheelAriaItem"), ariaNobody: s("wheelAriaNobody") },
+    wheel: { aria: s("wheelAria"), ariaItem: s("wheelAriaItem"), ariaNobody: s("wheelAriaNobody"), ...caption },
     compare: {
       aria: s("compareAria"),
       ariaCoffee: s("compareAriaCoffee"),
@@ -128,13 +128,6 @@ export function buildResultsPartsStrings(t: RawTranslator): ResultsPartsStrings 
       offScale: s("offScale"),
       none: s("none"),
     },
-    caption: {
-      mostFound: s("mostFound"),
-      mostFoundEach: s("mostFoundEach"),
-      mostFoundMany: s("mostFoundMany"),
-      mostFoundLabel: s("mostFoundLabel"),
-      and: s("and"),
-      cuppers: s("cuppers"),
-    },
+    caption,
   };
 }

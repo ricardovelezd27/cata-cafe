@@ -1288,7 +1288,8 @@
       "mostFoundMany": "{k} familias · {count} de {n} cada una",
       "mostFoundLabel": "Lo más encontrado",
       "and": " y ",
-      "cuppers": "{n} catadores"
+      "cuppers": "{n} catadores",
+      "cuppersOne": "1 catador"
     }
   },
   "community": {

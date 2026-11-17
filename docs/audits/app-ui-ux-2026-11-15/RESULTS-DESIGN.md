@@ -166,6 +166,15 @@ coffee, two coffees compared, and the whole cupping. All count **people**, with 
 family written beside it), a full one on the sheet, and C's counted list always under the full one.
 It is the drawing cuppers already know, it is the eye-catching one, and it counts.
 
+> **Owner's decision, 2026-11-17 (package R1d), which replaces "a ring per person" for the wheel of
+> one coffee.** The wheel, small and large, has a pale ground per family (each family's whole sector
+> in a tint of its tone: the whole sector is everyone) and **no ring inside it**; the large wheel is
+> the mirror of the small one, with the words around it. A petal is read against its own ground and
+> by the count printed beside it, so the count, the headline over the wheel ("Lo más encontrado") and
+> the size of the panel under it are part of the drawing. What a wheel draws is one list,
+> `wheelShape` (`lib/flavorWheelShape.ts`), used by the page and the PDF. The comparison drawing
+> prints no counts, so it keeps a ring per person as its scale (open: see the R1d pull request).
+
 What was taken from the map you sent, and what was not: the quiet ground of rings, the small legend
 that teaches the reading as three plain questions ("¿Hacia dónde se estira?", "¿Dónde se quedan
 cortos todos?", "¿Dónde coinciden dos cafés?"), and, in B, the overlapping translucent territories.

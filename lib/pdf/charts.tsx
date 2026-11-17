@@ -17,7 +17,13 @@
 import type { ComponentType, ReactNode } from "react";
 import { Svg, Rect, Line, Polyline, Polygon, Circle, Path, Text, View } from "@react-pdf/renderer";
 import { SANS, SERIF } from "./fonts";
-import { PDF_FLAVOR_FAMILY_COLORS, PDF_PALETTE, type PdfFlavorFamilyColors, type ScoreBand } from "./palette";
+import {
+  PDF_FLAVOR_FAMILY_COLORS,
+  PDF_PALETTE,
+  pdfPaleTint,
+  type PdfFlavorFamilyColors,
+  type ScoreBand,
+} from "./palette";
 import { sanitizePdfText } from "./text";
 import { formatSignedDelta } from "../referenceDelta";
 import { anchorForAngle, percentOf, radarPoint, radarPolygonPoints } from "./chartMath";
@@ -37,6 +43,7 @@ import {
   type WheelPetal,
   type WheelRing,
 } from "../flavorWheel";
+import { familyGrounds, wheelShape, type WheelShape, type WheelShapePart } from "../flavorWheelShape";
 
 export { percentOf, radarPoint, radarPolygonPoints } from "./chartMath";
 
@@ -559,6 +566,10 @@ export function PdfDeltaChip({ delta, digits = 2 }: { delta: number | null; digi
 //     its coffee's letter on its own edge;
 //   - family colours come from ONE prop (`colors`, default
 //     PDF_FLAVOR_FAMILY_COLORS in ./palette); everything else uses PDF_PALETTE;
+//   - a wheel draws what the page draws (package R1d): the list of
+//     `wheelShape` (lib/flavorWheelShape.ts), i.e. nine pale grounds, the
+//     petals, a paper line closing each petal and ONE outer ring. No ring per
+//     person inside a wheel; the pale colour is `pdfPaleTint` (./palette);
 //   - every word is the caller's (family names, the "de" word, coffee names):
 //     this file holds no Spanish or English;
 //   - no chart text is drawn under 7 pt.
@@ -603,6 +614,37 @@ function ringElements(rings: readonly WheelRing[], frame: WheelFrame, k: number)
       fill="none"
     />
   ));
+}
+
+/** The pale ground: each family's whole sector, in the pale version of its colour. */
+function groundElements(grounds: readonly WheelShapePart[], colors: PdfFlavorFamilyColors) {
+  return grounds.map((part) => (
+    <Path key={`ground-${part.family}`} d={part.d} fill={pdfPaleTint(colors[part.family])} />
+  ));
+}
+
+/**
+ * The one drawing rule of a wheel, small or large, the same as on the page
+ * (components/results/FlavorWheel.tsx): grounds, petals, the paper-coloured line
+ * that closes each petal, and the outer ring.
+ */
+function wheelMarkElements(shape: WheelShape, frame: WheelFrame, k: number, colors: PdfFlavorFamilyColors) {
+  return [
+    ...groundElements(shape.grounds, colors),
+    ...shape.petals.map((part) => <Path key={`petal-${part.family}`} d={part.d} fill={colors[part.family]} />),
+    ...shape.tips.map((part) => (
+      <Path key={`tip-${part.family}`} d={part.d} stroke={PDF_PALETTE.white} strokeWidth={1.1 / k} fill="none" />
+    )),
+    <Circle
+      key="ring-outer"
+      cx={frame.cx}
+      cy={frame.cy}
+      r={shape.ring}
+      stroke={PDF_PALETTE.reference}
+      strokeWidth={0.8 / k}
+      fill="none"
+    />,
+  ];
 }
 
 function petalElements(petals: readonly WheelPetal[], colors: PdfFlavorFamilyColors) {
@@ -689,10 +731,12 @@ function labelElements(input: {
 }
 
 /**
- * One coffee's counted flavour wheel: a ring per person, a petal per family as
- * long as the number of people who found it, and each family's number and name.
- * `size="mini"` draws the shape only (petals and the outer ring), for a row of
- * small wheels; the caller writes its caption.
+ * One coffee's counted flavour wheel: each family's sector in a pale tint of
+ * its colour (the whole sector is everyone), a petal per family as long as the
+ * number of people who found it, one outer ring, and each family's number and
+ * name. No ring per person: the caller prints the size of the panel with it.
+ * `size="mini"` draws the same shape with no words, for a row of small wheels;
+ * the caller writes its caption.
  */
 export function PdfFlavorWheel({
   counts,
@@ -719,8 +763,7 @@ export function PdfFlavorWheel({
   const g = wheelGeometry(counts, n, frame);
   return (
     <Svg viewBox={`0 0 ${frame.width} ${frame.height}`} width={w} height={height}>
-      {petalElements(g.petals, colors)}
-      {mini ? ringElements(g.rings.filter((r) => r.outer), frame, k) : ringElements(g.rings, frame, k)}
+      {wheelMarkElements(wheelShape(g), frame, k, colors)}
       {mini
         ? null
         : labelElements({
@@ -761,8 +804,12 @@ const COMPARE_CELL_COL = 46;
  * The comparison drawing with its legend and its table. With `base`, that
  * coffee keeps its coloured petals and up to two `others` are laid over them as
  * outlines; without it, up to three `others` are drawn as territories alone.
- * The table under it (families by coffees) is the exact reading: with three
- * coffees the drawing prints no numbers.
+ * The table under it (families by coffees) is the exact reading: the drawing
+ * prints no numbers.
+ *
+ * `ground`, as on the page (components/results/FlavorCompare.tsx): "rings" (the
+ * default) keeps a ring per person, the only scale of a drawing that prints no
+ * counts; "families" draws the nine pale sectors and the outer ring alone.
  */
 export function PdfFlavorCompare({
   base = null,
@@ -771,6 +818,7 @@ export function PdfFlavorCompare({
   ofWord,
   width,
   colors = PDF_FLAVOR_FAMILY_COLORS,
+  ground = "rings",
 }: {
   base?: PdfCompareCoffee | null;
   others: readonly PdfCompareCoffee[];
@@ -780,6 +828,7 @@ export function PdfFlavorCompare({
   /** Rendered width of the drawing in pt (default 320). */
   width?: number;
   colors?: PdfFlavorFamilyColors;
+  ground?: "rings" | "families";
 }) {
   const frame: WheelFrame = WHEEL_FRAMES.compare;
   const w = Math.max(WHEEL_MIN_WIDTH, width ?? 320);
@@ -794,8 +843,11 @@ export function PdfFlavorCompare({
   return (
     <View style={{ width: Math.max(w, COMPARE_FAMILY_COL + COMPARE_CELL_COL * drawn.length) }}>
       <Svg viewBox={`0 0 ${frame.width} ${frame.height}`} width={w} height={height}>
+        {ground === "families" ? groundElements(familyGrounds(frame, g.n), colors) : null}
+        {/* the rings pass UNDER the base coffee's petals, as on the page: no line across a petal */}
+        {ringElements(ground === "rings" ? g.rings.filter((r) => !r.outer) : [], frame, k)}
         {petalElements(g.petals, colors)}
-        {ringElements(g.rings, frame, k)}
+        {ringElements(g.rings.filter((r) => r.outer), frame, k)}
         {g.territories.map((t) => {
           const st = styles[t.order % styles.length];
           return st.fill > 0 ? <Path key={`fill-${t.id}`} d={t.d} fill={st.color} fillOpacity={st.fill} /> : null;
