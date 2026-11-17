@@ -28,11 +28,9 @@ function input(over: {
   format?: string;
   /** Default true: these tests model a SENT evaluation's sheet. */
   sent?: boolean;
-  sessionOpen?: boolean;
 }): CvaFormInput {
   return {
     ownerView: over.ownerView,
-    sessionOpen: over.sessionOpen ?? true,
     format: over.format ?? "affective",
     sessionName: "Sesión",
     date: "1 oct 2026",
@@ -92,6 +90,13 @@ describe("buildCvaFormData — score state machine", () => {
     const sheet = buildCvaFormData(input({ ownerView: false, affective: affectiveFull }));
     expect(sheet.scoreState).toBe("complete");
     expect(sheet.score).not.toBe("—");
+  });
+
+  it("unsent: a complete draft prints '—' and no Σh, whether its session is open or over (A-01, F2b)", () => {
+    const sheet = buildCvaFormData(input({ ownerView: false, affective: affectiveFull, sent: false }));
+    expect(sheet.scoreState).toBe("unsent");
+    expect(sheet.score).toBe("—");
+    expect(sheet.breakdown.affectiveSum).toBe(0);
   });
 
   it("partial: some attributes filled shows the placeholder score", () => {

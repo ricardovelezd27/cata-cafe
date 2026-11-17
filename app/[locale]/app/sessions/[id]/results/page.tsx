@@ -678,10 +678,7 @@ export default async function ResultsPage({
       ) as Record<string, unknown> | null | undefined;
       return [
         s.id,
-        // A-01: sessionOpen lets canShowMyScore hide the total of an unsent draft.
-        deriveMyEvaluation(format, ev ? { isDraft: ev.isDraft, data: data ?? {} } : null, {
-          sessionOpen: !sessionOver,
-        }),
+        deriveMyEvaluation(format, ev ? { isDraft: ev.isDraft, data: data ?? {} } : null),
       ] as const;
     }),
   );

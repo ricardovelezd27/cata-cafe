@@ -729,8 +729,8 @@ export type CvaSampleSheet = {
    *   is the same lie in smaller form).
    * - "empty"    — no finals at all → print "—", no annotation (a blank paper
    *   form is faithful).
-   * - "unsent"   — complete, but an unsent draft of an open session (A-01,
-   *   lib/ownTotal.ts): print "—" and the "not sent" annotation, no Σh line.
+   * - "unsent"   — complete, but an unsent draft (A-01, lib/ownTotal.ts),
+   *   whatever the session's state: print "—" and the "not sent" note, no Σh line.
    */
   scoreState: "complete" | "partial" | "empty" | "unsent";
   /** S10 WP3b: the partial evaluation was DECLARED (sections marked "no evaluado"); labelled differently from an unmarked incomplete one. */
@@ -747,12 +747,6 @@ export type CvaFormInput = {
    * here so no caller can leak per-sample owner data to a participant.
    */
   ownerView: boolean;
-  /**
-   * A-01: the session still takes evaluations (not closed, closing date not
-   * passed). With `sample.sent` it decides, through lib/ownTotal.ts, whether
-   * the sheet may print the total. Absent = open (never a draft's total).
-   */
-  sessionOpen?: boolean;
   format: string; // session.format
   sessionName: string;
   date: string; // pre-formatted string
@@ -771,7 +765,7 @@ export type CvaFormInput = {
     /** Rule the printed evaluation was scored under: "v1" for a stored row with
      *  cups NULL (before 2026-11), so past sheets print unchanged. Absent = v2. */
     scoreRule?: ScoreRule;
-    /** A-01: the printed evaluation was SENT (stored isDraft === false). Absent = not sent. */
+    /** A-01: the printed evaluation was SENT (stored isDraft === false); only then is a total printed (lib/ownTotal.ts). Absent = not sent. */
     sent?: boolean;
     descriptive: D;
     affective: D;
@@ -920,7 +914,7 @@ export function buildCvaFormData(input: CvaFormInput): CvaSampleSheet {
     }).length;
     if (
       isAffectiveComplete(scoreSource) &&
-      !mayShowOwnTotal({ sent: input.sample.sent === true, sessionOpen: input.sessionOpen })
+      !mayShowOwnTotal({ sent: input.sample.sent === true })
     ) {
       // A-01 / decision 10: no total (nor its Σh · u · d line) before "Enviar".
       scoreState = "unsent";

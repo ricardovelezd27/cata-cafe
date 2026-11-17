@@ -312,8 +312,6 @@ export async function sendCloseEmails(
         const isOwnerRecipient = p.userId === session.createdBy;
         const cvaProps: CvaDocumentProps = {
           ownerView: isOwnerRecipient,
-          // Sent after the close, from submitted evaluations only (A-01 rule, lib/ownTotal.ts).
-          sessionOpen: false,
           sessionName: session.name,
           date: assets.dateStr,
           cupperName: profile?.displayName ?? "",

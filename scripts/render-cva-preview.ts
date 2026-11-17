@@ -81,6 +81,8 @@ function sample(label: string, revealed = true, isReference = false) {
     coffeeName: revealed ? `Café Año ${label} Ñandú 🍋` : null,
     roastLevel: revealed ? "Medio" : null,
     isReference,
+    // The fixtures are SENT evaluations, so their totals print (A-01, lib/ownTotal.ts).
+    sent: true,
     descriptive,
     affective,
     combined: { ...descriptive, ...affective },
@@ -99,8 +101,24 @@ const base = {
   cupsPerSample: 5,
   locale: "es" as const,
   ownerView: true,
-  sessionOpen: false, // a printed past sheet: totals print as before (lib/ownTotal.ts)
 };
+
+// The four states of the score cell side by side (affective sheet, es + en):
+// a sent complete evaluation (a total), an incomplete one, a declared partial
+// ("no evaluado" on aroma) and an unsent draft (A-01: "—" and the note).
+function scoreStates(): CvaDocumentProps["samples"] {
+  const incomplete: Record<string, unknown> = { ...affective };
+  delete incomplete.acidez_af_final;
+  delete incomplete.impresion_global_final;
+  const declaredPartial: Record<string, unknown> = { ...affective, aroma_af_ne: true };
+  delete declaredPartial.aroma_af_final;
+  return [
+    { ...sample("A"), label: "Completa enviada" },
+    { ...sample("B"), label: "Incompleta", affective: incomplete },
+    { ...sample("C"), label: "Parcial declarada", affective: declaredPartial },
+    { ...sample("D"), label: "Sin enviar", sent: false },
+  ];
+}
 
 async function main() {
   const cases: [string, number][] = [
@@ -118,6 +136,11 @@ async function main() {
     };
     const file = path.join(OUT, `cva-${format}.pdf`);
     await renderToFile(CvaFormDocument(props), file);
+    console.log("wrote", file);
+  }
+  for (const locale of ["es", "en"] as const) {
+    const file = path.join(OUT, `cva-score-states.${locale}.pdf`);
+    await renderToFile(CvaFormDocument({ ...base, locale, format: "affective", samples: scoreStates() }), file);
     console.log("wrote", file);
   }
 }
