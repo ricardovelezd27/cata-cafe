@@ -17,7 +17,7 @@ export function generateStaticParams() {
 function ChartCard({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="bg-white rounded-card border border-[#E8E0D0] shadow-card p-5">
-      <h2 className="text-xs font-semibold text-brown-mid uppercase tracking-wide mb-4">
+      <h2 className="font-sans text-xs font-semibold text-on-surface-variant uppercase tracking-wide mb-4">
         {title}
       </h2>
       {children}

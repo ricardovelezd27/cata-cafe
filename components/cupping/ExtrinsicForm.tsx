@@ -100,7 +100,7 @@ export function ExtrinsicForm({
       {!hideHeader && (
         <>
           <div className="flex items-center gap-2 mb-1">
-            <h2 className="font-display text-lg text-brown-dark">Extrínseco</h2>
+            <h2 className="text-lg">Extrínseco</h2>
             <BetaBadge />
           </div>
           <div className="text-xs text-brown-mid mb-3">

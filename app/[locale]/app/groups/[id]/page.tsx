@@ -158,7 +158,7 @@ export default async function GroupDetailPage({
   // the newest valid join link for an active session, else no link at all.
   const sessionsSection = (
     <div className="space-y-3">
-      <h2 className="font-display text-2xl text-primary-container">{t("sessionsTitle")}</h2>
+      <h2 className="section-title text-2xl">{t("sessionsTitle")}</h2>
       {groupSessions.length === 0 ? (
         <p className="text-sm text-on-surface-variant">{t("noSessions")}</p>
       ) : (
@@ -243,12 +243,12 @@ export default async function GroupDetailPage({
         </p>
 
         <div className="space-y-3">
-          <h2 className="font-display text-2xl text-primary-container">{t("feed.title")}</h2>
+          <h2 className="section-title text-2xl">{t("feed.title")}</h2>
           <GroupFeed posts={feedPosts} isOwner={false} locale={locale} t={feedT} />
         </div>
 
         <div className="space-y-3">
-          <h2 className="font-display text-2xl text-primary-container">{t("members")}</h2>
+          <h2 className="section-title text-2xl">{t("members")}</h2>
           <div className="space-y-2">
             {memberRows.map((m) => (
               <div
@@ -472,14 +472,14 @@ export default async function GroupDetailPage({
 
       {/* Announcements — the group's pulse, front and center right after stats */}
       <div className="space-y-3">
-        <h2 className="font-display text-2xl text-primary-container">{t("feed.title")}</h2>
+        <h2 className="section-title text-2xl">{t("feed.title")}</h2>
         <PostComposer groupId={group.id} recipientCount={ownerMembers.length} t={composerT} />
         <GroupFeed posts={feedPosts} isOwner locale={locale} t={feedT} />
       </div>
 
       {/* Roster */}
       <div className="space-y-3">
-        <h2 className="font-display text-xl text-primary-container">{t("members")}</h2>
+        <h2 className="section-title text-xl">{t("members")}</h2>
         <MemberList
           groupId={group.id}
           members={ownerMembers.map((m) => ({
@@ -531,7 +531,7 @@ export default async function GroupDetailPage({
       {/* Add members */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-3">
-          <h3 className="text-xs text-on-surface-variant font-semibold uppercase tracking-wide">
+          <h3 className="font-sans text-xs text-on-surface-variant font-semibold uppercase tracking-wide">
             {t("coCuppersTitle")}
           </h3>
           <QuickAddCoCuppers
@@ -549,7 +549,7 @@ export default async function GroupDetailPage({
           />
         </div>
         <div className="space-y-3">
-          <h3 className="text-xs text-on-surface-variant font-semibold uppercase tracking-wide">
+          <h3 className="font-sans text-xs text-on-surface-variant font-semibold uppercase tracking-wide">
             {t("addByEmail")}
           </h3>
           <AddByEmailForm
@@ -570,7 +570,7 @@ export default async function GroupDetailPage({
 
       {/* Email composer */}
       <div className="space-y-3">
-        <h2 className="font-display text-xl text-primary-container">{t("composeEmail")}</h2>
+        <h2 className="section-title text-xl">{t("composeEmail")}</h2>
         <GroupEmailComposer
           groupId={group.id}
           sessions={composerSessions}

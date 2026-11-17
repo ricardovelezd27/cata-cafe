@@ -36,7 +36,7 @@ export function FigureGallery({ locale }: { locale: string }) {
           <p className="text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">
             dev · figures review
           </p>
-          <h1 className="font-display text-3xl text-primary-container">
+          <h1 className="page-title text-3xl">
             {lw(WARMUP_SHARED.title, locale)} — figuras
           </h1>
           <p className="mt-1 text-sm text-on-surface-variant">

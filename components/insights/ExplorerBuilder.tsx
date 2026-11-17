@@ -253,7 +253,7 @@ export function ExplorerBuilder({ locale, t, loadedConfig, loadKey, onConfigChan
       {/* Preview */}
       <div className="bg-white rounded-card border border-[#E8E0D0] shadow-card p-5">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xs font-semibold text-brown-mid uppercase tracking-wide">
+          <h2 className="font-sans text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
             {t.dimensions[dimension]} · {t.measures[measure]}
           </h2>
           {isPending && (

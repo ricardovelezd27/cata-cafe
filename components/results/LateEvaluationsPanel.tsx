@@ -93,7 +93,7 @@ export function LateEvaluationsPanel({
 
   return (
     <section className="mx-4 mt-4 flex flex-col gap-3 rounded-card border border-secondary/30 bg-secondary-container/20 p-4 lg:mx-6">
-      <h2 className="font-display text-xl text-primary-container">{t.title}</h2>
+      <h2 className="section-title text-xl">{t.title}</h2>
       <p className="font-sans text-sm text-on-surface-variant">{t.intro}</p>
       <ul className="flex flex-col gap-2">
         {rows.map((r) => (

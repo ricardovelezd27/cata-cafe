@@ -168,7 +168,7 @@ export function ResumenTab({
       <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-6">
         {/* Ranking */}
         <div className="flex flex-col gap-3">
-          <h2 className="inline-flex items-center gap-1.5 font-display text-xl text-primary-container">
+          <h2 className="section-title inline-flex items-center gap-1.5 text-xl">
             {t.ranking}
             <InfoHint title={help.ranking.title} body={help.ranking.body} closeLabel={help.closeLabel} />
           </h2>
@@ -290,7 +290,7 @@ export function ResumenTab({
         {/* Performance / community pending */}
         {showPerformance ? (
           <div className="flex flex-col gap-4 rounded-card border border-outline-variant bg-surface-container-lowest p-5">
-            <h3 className="inline-flex items-center gap-1.5 font-display text-xl text-primary-container">
+            <h3 className="inline-flex items-center gap-1.5 text-xl">
               {t.performance}
               <InfoHint
                 title={help.performance.title}
@@ -350,7 +350,7 @@ export function ResumenTab({
       {/* Highlights */}
       {showHighlights && (
         <div className="flex flex-col gap-1 rounded-card border border-outline-variant bg-surface-container-lowest p-5">
-          <h2 className="mb-2 inline-flex items-center gap-1.5 font-display text-xl text-primary-container">
+          <h2 className="section-title mb-2 inline-flex items-center gap-1.5 text-xl">
             {t.highlights}
             <InfoHint
               title={help.highlights.title}

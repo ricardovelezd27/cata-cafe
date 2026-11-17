@@ -60,7 +60,7 @@ export function SampleComparisons({
     <div className="flex flex-col gap-4">
       {comparison && (
         <section className="flex flex-col gap-2 rounded-card border border-outline-variant bg-surface-container-low p-4">
-          <h3 className="font-display text-sm font-semibold text-on-surface">{t.groupTitle}</h3>
+          <h3 className="text-sm">{t.groupTitle}</h3>
           {comparison.status === "too_few" ? (
             <p className="text-sm text-on-surface-variant">{t.tooFew}</p>
           ) : (
@@ -97,7 +97,7 @@ export function SampleComparisons({
                 <>
                   {comparison.descriptive.intensities.length > 0 && (
                     <>
-                      <h4 className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
+                      <h4 className="font-sans text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
                         {t.intensities}
                       </h4>
                       <ul className="flex flex-col gap-1">
@@ -137,7 +137,7 @@ export function SampleComparisons({
 
       {hasRepeat && (
         <section className="flex flex-col gap-3 rounded-card border border-outline-variant bg-surface-container-low p-4">
-          <h3 className="font-display text-sm font-semibold text-on-surface">{t.repeatTitle}</h3>
+          <h3 className="text-sm">{t.repeatTitle}</h3>
           {repeatDiffs!.map((d) => (
             <div key={d.partnerLabel} className="flex flex-col gap-1">
               <p className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">

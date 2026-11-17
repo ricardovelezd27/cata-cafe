@@ -282,7 +282,7 @@ export function GuestIdentityChoice({
           id="identity-title"
           ref={titleRef}
           tabIndex={-1}
-          className="break-words font-serif text-xl font-semibold text-on-surface outline-none"
+          className="break-words text-xl outline-none"
         >
           {t.title}
         </h2>

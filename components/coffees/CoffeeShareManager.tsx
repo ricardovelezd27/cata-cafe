@@ -131,7 +131,7 @@ export function CoffeeShareManager({
 
   return (
     <div className="space-y-4">
-      <h2 className="font-display text-lg text-primary-container font-semibold">{t.title}</h2>
+      <h2 className="section-title text-lg">{t.title}</h2>
 
       {token ? (
         <div className="flex flex-col gap-2 sm:flex-row">

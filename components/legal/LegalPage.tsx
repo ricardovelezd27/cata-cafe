@@ -11,7 +11,7 @@ function Block({ block }: { block: LegalBlock }) {
     return <p className={`mt-2 ${TEXT}`}>{block}</p>;
   }
   if ("sub" in block) {
-    return <h3 className="mt-5 text-base font-semibold text-on-surface">{block.sub}</h3>;
+    return <h3 className="text-base">{block.sub}</h3>;
   }
   if ("list" in block) {
     return (
@@ -70,7 +70,7 @@ export default async function LegalPage({
       <div className="mt-8 space-y-8">
         {doc.sections.map((s) => (
           <section key={s.heading}>
-            <h2 className="font-serif text-xl text-on-surface">{s.heading}</h2>
+            <h2 className="text-xl">{s.heading}</h2>
             {s.body.map((block, i) => (
               <Block key={i} block={block} />
             ))}

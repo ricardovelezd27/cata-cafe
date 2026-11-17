@@ -24,7 +24,7 @@ export default async function InsightsLayout({
 
   return (
     <div className="max-w-5xl mx-auto">
-      <h1 className="font-display text-2xl text-brown-dark mb-1">{t("title")}</h1>
+      <h1 className="page-title text-2xl mb-1">{t("title")}</h1>
       <p className="text-sm text-brown-mid mb-4">{t("subtitle")}</p>
       <InsightsTabs
         locale={locale}

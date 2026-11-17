@@ -110,7 +110,7 @@ export default async function JoinPage({
       <main className="flex flex-1 items-center justify-center px-6 py-16">
         <div className="w-full max-w-md bg-surface-container-lowest border border-outline-variant rounded-card p-8 space-y-6">
           <div>
-            <h1 className="break-words text-2xl font-serif text-on-surface font-semibold">
+            <h1 className="page-title break-words text-2xl">
               {invite.session.name}
             </h1>
             {!member && decision.kind === "ok" && decision.late && (
@@ -198,7 +198,7 @@ export default async function JoinPage({
       <main className="flex flex-1 items-center justify-center px-6 py-16">
         <div className="w-full max-w-md bg-[#FDFBF7] border border-brown-light rounded-card p-8 space-y-6">
           <div>
-            <h1 className="text-2xl font-serif text-green-dark font-semibold">
+            <h1 className="page-title text-2xl">
               {invite.session.name}
             </h1>
             <p className="text-sm text-brown-mid mt-1">{t("joinSession")}</p>
@@ -244,7 +244,7 @@ export default async function JoinPage({
     <main className="flex flex-1 items-center justify-center px-6 py-16">
       <div className="w-full max-w-md bg-[#FDFBF7] border border-brown-light rounded-card p-8 space-y-6">
         <div>
-          <h1 className="text-2xl font-serif text-green-dark font-semibold">
+          <h1 className="page-title text-2xl">
             {invite.session.name}
           </h1>
           <p className="text-sm text-brown-mid mt-1">{t("joinSession")}</p>

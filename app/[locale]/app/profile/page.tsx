@@ -332,11 +332,11 @@ export default async function ProfilePage({
           />
 
           <div className="space-y-6 rounded-card border border-outline-variant bg-surface-container-lowest p-6 shadow-card">
-            <h2 className="font-display text-xl text-primary-container">{t("recentActivity")}</h2>
+            <h2 className="section-title text-xl">{t("recentActivity")}</h2>
 
             <section>
               <div className="mb-2 flex items-center justify-between">
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+                <h3 className="font-sans text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
                   {t("recentSessions")}
                 </h3>
                 <TextActionLink href={`/${locale}/app/sessions`} className="-my-[15px]">
@@ -373,7 +373,7 @@ export default async function ProfilePage({
 
             <section>
               <div className="mb-2 flex items-center justify-between">
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+                <h3 className="font-sans text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
                   {t("recentCoffees")}
                 </h3>
                 <GuestGateLink
@@ -411,7 +411,7 @@ export default async function ProfilePage({
 
         {/* Account actions — reachable on mobile via the "Perfil" tab */}
         <section>
-          <h2 className="mb-3 font-display text-xl text-primary-container">{t("account")}</h2>
+          <h2 className="section-title mb-3 text-xl">{t("account")}</h2>
           <div className="rounded-card border border-outline-variant bg-surface-container-lowest p-4">
             <div className="mb-3 text-sm text-on-surface-variant">{identityLine}</div>
             {showInsights && (

@@ -124,7 +124,7 @@ export function DashboardIntro({
         <p className="mono text-[11px] font-semibold uppercase tracking-[0.18em] text-green-mid">
           {t.eyebrow}
         </p>
-        <h2 className="mt-1 max-w-xl font-display text-2xl leading-tight text-primary-container sm:text-[26px]">
+        <h2 className="section-title mt-1 max-w-xl text-2xl leading-tight sm:text-[26px]">
           {t.title}
         </h2>
 
@@ -188,7 +188,7 @@ export function DashboardIntro({
         >
           <div className="overflow-hidden">
             <div className="mt-5 rounded-input border border-outline-variant bg-surface-container/60 p-4 sm:p-5">
-              <h3 className="font-display text-lg text-primary-container">
+              <h3 className="text-lg">
                 {t.calcTitle}
               </h3>
               <p className="mt-1 text-sm text-on-surface-variant">{t.calcLead}</p>

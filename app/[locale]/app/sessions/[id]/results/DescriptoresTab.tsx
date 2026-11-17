@@ -196,7 +196,7 @@ export function DescriptoresTab({
 
       {/* Word cloud */}
       <div className="rounded-card border border-outline-variant bg-surface-container-lowest p-4 flex flex-col gap-3">
-        <h3 className="inline-flex items-center gap-1.5 font-display text-lg font-medium text-primary-container">
+        <h3 className="inline-flex items-center gap-1.5 text-lg">
           {isSoloDescriptors ? t.soloCloudTitle : t.cloudTitle}
           <InfoHint title={help.nube.title} body={help.nube.body} closeLabel={help.closeLabel} />
         </h3>

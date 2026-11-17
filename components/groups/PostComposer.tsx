@@ -101,7 +101,7 @@ export function PostComposer({
       onSubmit={onSubmit}
       className="bg-surface-container-lowest border border-outline-variant rounded-card p-5 space-y-4"
     >
-      <h3 className="font-display text-xl text-on-surface">{t.composerTitle}</h3>
+      <h3 className="text-xl">{t.composerTitle}</h3>
       <div className="space-y-1.5">
         <label htmlFor={`${uid}-title`} className={labelCls}>
           {t.titleLabel}

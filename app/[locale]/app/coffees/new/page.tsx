@@ -59,7 +59,7 @@ export default async function NewCoffeePage({
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <h1 className="font-display text-3xl text-primary-container font-semibold">
+        <h1 className="page-title text-3xl">
           {t("newPage.title")}
         </h1>
         <p className="text-sm text-on-surface-variant mt-1">{t("newPage.subtitle")}</p>

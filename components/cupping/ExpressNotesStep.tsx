@@ -34,7 +34,7 @@ export function ExpressNotesStep({
     <div className="space-y-4">
       <div className="space-y-1">
         <div className="flex items-center gap-2">
-          <h2 className="font-display text-2xl text-primary-container">{title}</h2>
+          <h2 className="section-title text-2xl">{title}</h2>
           <Badge tone="neutral" size="xs">
             {optional}
           </Badge>

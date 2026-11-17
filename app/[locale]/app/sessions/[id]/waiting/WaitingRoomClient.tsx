@@ -347,7 +347,7 @@ export function WaitingRoomClient({
         </div>
 
         <div className="space-y-3">
-          <h1 className="font-serif text-3xl text-green-dark font-semibold">
+          <h1 className="page-title text-3xl">
             {translations.title}
           </h1>
           <p className="text-lg font-medium text-brown-dark">{sessionName}</p>
@@ -444,7 +444,7 @@ export function WaitingRoomClient({
               />
             ) : (
               <>
-                <h2 className="mt-1 font-display text-xl text-primary-container">{warmup.title}</h2>
+                <h2 className="section-title mt-1 text-xl">{warmup.title}</h2>
                 <p className="mt-1 text-sm leading-relaxed text-on-surface-variant">{warmup.body}</p>
               </>
             )}

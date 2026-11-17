@@ -1379,7 +1379,7 @@ export function ResultsClient({
           {/* Owner-only: per-catador analysis, integrated into Resultados */}
           {canViewIndividual && (
             <section className="flex flex-col gap-3">
-              <h2 className="inline-flex items-center gap-1.5 font-display text-xl text-primary-container">
+              <h2 className="section-title inline-flex items-center gap-1.5 text-xl">
                 {translations.ownerSection}
                 <InfoHint
                   title={translations.help.porCatador.title}
