@@ -26,9 +26,13 @@ function input(over: {
   affective?: Record<string, unknown>;
   descriptive?: Record<string, unknown>;
   format?: string;
+  /** Default true: these tests model a SENT evaluation's sheet. */
+  sent?: boolean;
+  sessionOpen?: boolean;
 }): CvaFormInput {
   return {
     ownerView: over.ownerView,
+    sessionOpen: over.sessionOpen ?? true,
     format: over.format ?? "affective",
     sessionName: "Sesión",
     date: "1 oct 2026",
@@ -41,6 +45,7 @@ function input(over: {
       revealed: over.revealed ?? false,
       coffeeName: "Café X",
       roastLevel: "Medio",
+      sent: over.sent ?? true,
       descriptive: over.descriptive ?? {},
       affective: over.affective ?? {},
       combined: {},

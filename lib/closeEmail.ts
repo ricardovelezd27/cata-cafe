@@ -312,6 +312,8 @@ export async function sendCloseEmails(
         const isOwnerRecipient = p.userId === session.createdBy;
         const cvaProps: CvaDocumentProps = {
           ownerView: isOwnerRecipient,
+          // Sent after the close, from submitted evaluations only (A-01 rule, lib/ownTotal.ts).
+          sessionOpen: false,
           sessionName: session.name,
           date: assets.dateStr,
           cupperName: profile?.displayName ?? "",
@@ -330,6 +332,7 @@ export async function sendCloseEmails(
               isReference: s.referenceRank != null || s.id === session.referenceSampleId,
               referenceRank: s.referenceRank ?? null,
               scoreRule: evaluationScoreRule(ev?.cups, ev !== undefined),
+              sent: ev !== undefined, // `evals` holds isDraft: false rows only
               descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},
               affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
               combined: (ev?.combinedData as Record<string, unknown>) ?? {},

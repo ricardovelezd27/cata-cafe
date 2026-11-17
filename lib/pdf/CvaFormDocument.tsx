@@ -558,6 +558,8 @@ function ScoreCell({ sheet, t }: { sheet: CvaSampleSheet; t: Record<string, stri
         </Text>
       ) : sheet.scoreState === "partial" ? (
         <Text style={s.scoreFormula}>{sheet.partialDeclared ? t.partialDeclared : t.incomplete}</Text>
+      ) : sheet.scoreState === "unsent" ? (
+        <Text style={s.scoreFormula}>{t.unsent}</Text>
       ) : null}
     </View>
   );
@@ -1081,6 +1083,8 @@ export type CvaDocumentProps = {
   locale: Locale;
   /** The sheet shows at least one UNSENT (draft) evaluation: stamp it "Borrador". */
   draft?: boolean;
+  /** A-01: the session still takes evaluations; with each sample's `sent` it decides whether a total prints (lib/ownTotal.ts). Absent = open. */
+  sessionOpen?: boolean;
   /** Defaults to the server clock at render time. */
   generatedAt?: Date;
   samples: {
@@ -1094,6 +1098,8 @@ export type CvaDocumentProps = {
     referenceRank?: number | null;
     /** "v1" = stored before the 2026-11 rule (lib/scoreRule.ts). */
     scoreRule?: ScoreRule;
+    /** A-01: the evaluation was sent (stored isDraft === false). Absent = not sent. */
+    sent?: boolean;
     descriptive: Record<string, unknown>;
     affective: Record<string, unknown>;
     combined: Record<string, unknown>;
@@ -1131,6 +1137,7 @@ export function CvaFormDocument(props: CvaDocumentProps) {
       sample,
       locale: props.locale,
       ownerView: props.ownerView,
+      sessionOpen: props.sessionOpen,
     };
     return buildCvaFormData(input);
   });

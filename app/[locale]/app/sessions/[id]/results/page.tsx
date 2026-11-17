@@ -13,7 +13,7 @@ import { isAffectiveDeclaredPartial } from "@/lib/affectivePartial";
 import { evaluationScoreRule, sampleScoreRule, type ScoreRule } from "@/lib/scoreRule";
 import { AFFECTIVE_ATTRIBUTES, asSessionFormat, type SessionFormat } from "@/lib/constants";
 import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
-import { deriveMyEvaluation, summarizeMyProgress } from "@/lib/evaluationState";
+import { deriveMyEvaluation, NO_EVALUATION, summarizeMyProgress } from "@/lib/evaluationState";
 import { isSessionExpired, viewerMayReadGroupResults } from "@/lib/sessionState";
 import { wasClosedSilently } from "@/lib/repairClose";
 import { resultsUpdatedAfterClose } from "@/lib/exclusionReasons";
@@ -678,7 +678,10 @@ export default async function ResultsPage({
       ) as Record<string, unknown> | null | undefined;
       return [
         s.id,
-        deriveMyEvaluation(format, ev ? { isDraft: ev.isDraft, data: data ?? {} } : null),
+        // A-01: sessionOpen lets canShowMyScore hide the total of an unsent draft.
+        deriveMyEvaluation(format, ev ? { isDraft: ev.isDraft, data: data ?? {} } : null, {
+          sessionOpen: !sessionOver,
+        }),
       ] as const;
     }),
   );
@@ -1214,7 +1217,7 @@ export default async function ResultsPage({
             scoreRule: evaluationScoreRule(ev?.cups, ev !== undefined),
             isReference: s.referenceRank != null,
             referenceRank: s.referenceRank ?? null,
-            myEvaluation: myEvaluationBySample.get(s.id) ?? { status: "none", complete: false },
+            myEvaluation: myEvaluationBySample.get(s.id) ?? NO_EVALUATION,
             comparison: comparisonBySample.get(s.id) ?? null,
             repeatDiffs: repeatDiffsBySample.get(s.id) ?? [],
           };

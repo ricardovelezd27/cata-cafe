@@ -978,7 +978,7 @@
       "viewDetail": "Ver detalle",
       "inProgress": "En curso",
       "notEvaluated": "Sin evaluar",
-      "inProgressLegend": "En curso = tu evaluación aún no se ha enviado; el puntaje aparece cuando completas los 8 atributos."
+      "inProgressLegend": "En curso = tu evaluación aún no se ha enviado; verás tu puntaje al enviarla."
     },
     "detail": {
       "fragrance": "Fragancia",

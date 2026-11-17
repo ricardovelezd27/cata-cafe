@@ -99,6 +99,7 @@ const base = {
   cupsPerSample: 5,
   locale: "es" as const,
   ownerView: true,
+  sessionOpen: false, // a printed past sheet: totals print as before (lib/ownTotal.ts)
 };
 
 async function main() {

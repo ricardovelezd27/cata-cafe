@@ -4,7 +4,7 @@ import { referenceBadgeText } from "@/lib/referenceRules";
 import { Check, ChevronRight, Eye } from "lucide-react";
 import { calcIndividualScore, hasIndividualScore } from "@/lib/scoring";
 import { isAffectiveDeclaredPartial } from "@/lib/affectivePartial";
-import { canShowMyScore } from "@/lib/evaluationState";
+import { canShowMyRatings, canShowMyScore } from "@/lib/evaluationState";
 import { deltasVsReference, formatSignedDelta } from "@/lib/referenceDelta";
 import { AFFECTIVE_ATTRIBUTES, type SessionFormat } from "@/lib/constants";
 import { DESCRIPTOR_STAGES, PERCEPTUAL_BLOCKS } from "@/lib/descriptors";
@@ -279,7 +279,7 @@ export function ScoreTable({
 
             const score = myScoreOf(sample);
             const isPartial =
-              !!affData && isAffectiveDeclaredPartial(affData) && canShowMyScore(sample.myEvaluation);
+              !!affData && isAffectiveDeclaredPartial(affData) && canShowMyRatings(sample.myEvaluation);
             const stateChip =
               sample.myEvaluation.status === "draft"
                 ? (t.inProgress ?? null)

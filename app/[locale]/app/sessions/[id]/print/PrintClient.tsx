@@ -120,6 +120,8 @@ type SampleData = {
   referenceRank?: number | null;
   /** "v1" = stored before the 2026-11 rule (lib/scoreRule.ts). */
   scoreRule?: ScoreRule;
+  /** A-01: the evaluation was sent (stored isDraft === false). Absent = not sent. */
+  sent?: boolean;
   descriptive: D;
   affective: D;
   combined: D;
@@ -652,6 +654,10 @@ function ScoreCell({ sheet, t }: { sheet: CvaSampleSheet; t: T }) {
         <div style={{ fontSize: "4.5pt", color: C.soft, fontStyle: "italic", marginTop: "0.5pt" }}>
           {sheet.partialDeclared ? t.partialDeclared : t.incomplete}
         </div>
+      ) : sheet.scoreState === "unsent" ? (
+        <div style={{ fontSize: "4.5pt", color: C.soft, fontStyle: "italic", marginTop: "0.5pt" }}>
+          {t.unsent}
+        </div>
       ) : null}
     </div>
   );
@@ -1163,6 +1169,8 @@ export function PrintClient({
     objective?: string | null;
     cupperName: string;
     ownerView: boolean;
+    /** A-01: the session still takes evaluations (lib/ownTotal.ts). */
+    sessionOpen: boolean;
     samples: SampleData[];
   };
   inviteUrl?: string | null;
@@ -1191,6 +1199,7 @@ export function PrintClient({
       sample,
       locale: loc,
       ownerView: session.ownerView,
+      sessionOpen: session.sessionOpen,
     })
   );
 

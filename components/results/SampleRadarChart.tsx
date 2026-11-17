@@ -22,7 +22,7 @@ import { ScoreBreakdownPanel, type ScoreBreakdownTranslations } from "@/componen
 import { getChartColors } from "@/components/results/chartColors";
 import { useContainerWidth } from "@/hooks/useContainerWidth";
 import { formatSignedDelta } from "@/lib/referenceDelta";
-import { canShowMyScore, type MyEvaluation } from "@/lib/evaluationState";
+import { canShowMyRatings, canShowMyScore, type MyEvaluation } from "@/lib/evaluationState";
 import { Badge } from "@/components/ui";
 import { isAffectiveDeclaredPartial } from "@/lib/affectivePartial";
 
@@ -156,7 +156,9 @@ export function SampleRadarChart({
   // draft would draw a plausible-looking shape and score — gate both on the
   // row's own-evaluation state, exactly like ScoreTable.
   const myState: MyEvaluation = sample.myEvaluation ?? { status: "submitted", complete: true };
-  const hasMyData = hasAffectiveData(affData) && canShowMyScore(myState);
+  // Ratings (polygon, partial label) follow the ratings gate; the TOTAL below
+  // follows canShowMyScore (A-01: never for an unsent draft of an open session).
+  const hasMyData = hasAffectiveData(affData) && canShowMyRatings(myState);
   const isPartial = hasMyData && isAffectiveDeclaredPartial(affData);
   const stateChip =
     myState.status === "draft"
@@ -207,7 +209,7 @@ export function SampleRadarChart({
       })
     : [];
 
-  const score = hasMyData && affData && hasIndividualScore(affData) ? calcIndividualScore(affData, cupsPerSample, { rule: sample.scoreRule }) : null;
+  const score = hasMyData && canShowMyScore(myState) && affData && hasIndividualScore(affData) ? calcIndividualScore(affData, cupsPerSample, { rule: sample.scoreRule }) : null;
   const scoreNum = score !== null && score !== "—" ? Number(score) : null;
   const scoreColorClass = "text-on-surface";
 
