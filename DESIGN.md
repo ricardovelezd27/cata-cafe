@@ -165,15 +165,15 @@ Anything else that tints a number or a rating by its value is a finding.
 
 | Family | Hex |
 |---|---|
-| Floral | `#b07d2f` |
-| Frutal | `#c0552a` |
-| Dulce | `#a07040` |
-| Ácido/Fermentado | `#ba1a1a` |
-| Verde/Vegetal | `#456553` |
-| Nueces/Cacao | `#6b5240` |
-| Especia | `#8b5e3c` |
-| Tostado | `#332f2a` |
-| Otro | `#5e5a55` |
+| Floral | `#c2368f` |
+| Frutal | `#e0472e` |
+| Dulce | `#cc7f2b` |
+| Ácido/Fermentado | `#98941f` |
+| Verde/Vegetal | `#4a8f5b` |
+| Nueces/Cacao | `#9c6b43` |
+| Especia | `#7a2638` |
+| Tostado | `#5c4632` |
+| Otro | `#6e8b94` |
 
 ### Colours for people, processes and formats (rule)
 

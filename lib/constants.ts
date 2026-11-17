@@ -82,6 +82,10 @@ type RawGroup = { key: string; es: string; en: string; color: string; syn?: stri
 // Base hue per L1 group, matched to the real SCA/WCR Coffee Taster's Flavor Wheel
 // (there's no wheel image/asset in the repo to sample pixels from). Shared with the
 // Acidity/Sweetness/Mouthfeel CATA sets below so the whole app stays one palette.
+// The SAME nine values are the `--color-flavor-*` tokens of app/globals.css (one
+// palette, RESULTS-DESIGN.md 6c, decided 2026-11-16): change both together.
+// tests/flavorPalette.test.ts fails if they differ or if one drops under 3 : 1 as a
+// drawn shape on surface / surface-container-lowest.
 export const L1_GROUP_COLOR = {
   floral: '#C2368F',
   fruity: '#E0472E',
@@ -89,8 +93,8 @@ export const L1_GROUP_COLOR = {
   nutty_cocoa: '#9C6B43',
   spice: '#7A2638',
   roasted: '#5C4632',
-  sweet: '#D4922E',
-  sour_fermented: '#C9A227',
+  sweet: '#CC7F2B',
+  sour_fermented: '#98941F',
   other: '#6E8B94',
 } as const
 

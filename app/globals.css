@@ -87,15 +87,15 @@
   --color-red-defect: var(--color-error);              /* #ba1a1a */
 
   /* ── Flavor families (CATA pills only) ─────────────────── */
-  --color-flavor-floral:  #b07d2f;
-  --color-flavor-fruity:  #c0552a;
-  --color-flavor-sweet:   #a07040;
-  --color-flavor-sour:    #ba1a1a;
-  --color-flavor-green:   #456553;
-  --color-flavor-nutty:   #6b5240;
-  --color-flavor-spice:   #8b5e3c;
-  --color-flavor-roasted: #332f2a;
-  --color-flavor-other:   #5e5a55;
+  --color-flavor-floral:  #c2368f;
+  --color-flavor-fruity:  #e0472e;
+  --color-flavor-sweet:   #cc7f2b;
+  --color-flavor-sour:    #98941f;
+  --color-flavor-green:   #4a8f5b;
+  --color-flavor-nutty:   #9c6b43;
+  --color-flavor-spice:   #7a2638;
+  --color-flavor-roasted: #5c4632;
+  --color-flavor-other:   #6e8b94;
 
   /* ── Typography ─────────────────────────────────────────── */
   --font-display: 'Newsreader', Georgia, 'Times New Roman', serif;
@@ -246,15 +246,15 @@
   --color-red-defect: #ba1a1a;
 
   /* Flavor families */
-  --color-flavor-floral:  #b07d2f;
-  --color-flavor-fruity:  #c0552a;
-  --color-flavor-sweet:   #a07040;
-  --color-flavor-sour:    #ba1a1a;
-  --color-flavor-green:   #456553;
-  --color-flavor-nutty:   #6b5240;
-  --color-flavor-spice:   #8b5e3c;
-  --color-flavor-roasted: #332f2a;
-  --color-flavor-other:   #5e5a55;
+  --color-flavor-floral:  #c2368f;
+  --color-flavor-fruity:  #e0472e;
+  --color-flavor-sweet:   #cc7f2b;
+  --color-flavor-sour:    #98941f;
+  --color-flavor-green:   #4a8f5b;
+  --color-flavor-nutty:   #9c6b43;
+  --color-flavor-spice:   #7a2638;
+  --color-flavor-roasted: #5c4632;
+  --color-flavor-other:   #6e8b94;
 
   /* Radius */
   --radius-sm:    0.5rem;
