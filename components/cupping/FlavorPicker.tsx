@@ -552,6 +552,7 @@ export function FlavorPicker({
           <button
             type="button"
             onClick={() => setNavId(null)}
+            aria-current={navId === null ? "location" : undefined}
             className={`font-medium ${navId === null ? "text-brown-dark" : "text-green-dark hover:underline"}`}
           >
             {t.all}
@@ -562,6 +563,7 @@ export function FlavorPicker({
               <button
                 type="button"
                 onClick={() => setNavId(c.id)}
+                aria-current={c.id === navId ? "location" : undefined}
                 className={`font-medium ${c.id === navId ? "text-brown-dark" : "text-green-dark hover:underline"}`}
               >
                 {label(c, locale)}

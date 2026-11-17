@@ -10,7 +10,7 @@
 // sessionId (reusing the newest valid SessionInvite), so we only need to
 // pass groupId/subject/message/sessionId — never the raw token.
 
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import { sendGroupEmail, type GroupEmailSummary } from "@/app/actions/groups";
 import { useActionFeedback } from "@/components/ui";
 
@@ -59,6 +59,9 @@ export function NotifyGroupPanel({
   const [dismissed, setDismissed] = useState(false);
   const [rateLimited, setRateLimited] = useState(false);
   const [pending, start] = useTransition();
+  // N3: each field is named by its visible label (ids from useId).
+  const uid = useId();
+  const labelCls = "block text-xs text-on-surface-variant font-semibold uppercase tracking-wide";
 
   if (groups.length === 0 || dismissed) return null;
 
@@ -101,34 +104,52 @@ export function NotifyGroupPanel({
         </button>
       </div>
 
-      <select
-        value={groupId}
-        onChange={(e) => setGroupId(e.target.value)}
-        className={inputCls}
-        title={t.selectGroup}
-      >
-        {groups.map((g) => (
-          <option key={g.id} value={g.id}>
-            {g.name} ({g.memberCount})
-          </option>
-        ))}
-      </select>
+      <div className="space-y-1.5">
+        <label htmlFor={`${uid}-group`} className={labelCls}>
+          {t.selectGroup}
+        </label>
+        <select
+          id={`${uid}-group`}
+          value={groupId}
+          onChange={(e) => setGroupId(e.target.value)}
+          className={inputCls}
+          title={t.selectGroup}
+        >
+          {groups.map((g) => (
+            <option key={g.id} value={g.id}>
+              {g.name} ({g.memberCount})
+            </option>
+          ))}
+        </select>
+      </div>
 
-      <input
-        className={inputCls}
-        value={subject}
-        onChange={(e) => setSubject(e.target.value)}
-        placeholder={t.subject}
-        maxLength={200}
-      />
+      <div className="space-y-1.5">
+        <label htmlFor={`${uid}-subject`} className={labelCls}>
+          {t.subject}
+        </label>
+        <input
+          id={`${uid}-subject`}
+          className={inputCls}
+          value={subject}
+          onChange={(e) => setSubject(e.target.value)}
+          placeholder={t.subject}
+          maxLength={200}
+        />
+      </div>
 
-      <textarea
-        className={inputCls + " min-h-[80px]"}
-        value={message}
-        onChange={(e) => setMessage(e.target.value)}
-        placeholder={t.message}
-        maxLength={5000}
-      />
+      <div className="space-y-1.5">
+        <label htmlFor={`${uid}-message`} className={labelCls}>
+          {t.message}
+        </label>
+        <textarea
+          id={`${uid}-message`}
+          className={inputCls + " min-h-[80px]"}
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder={t.message}
+          maxLength={5000}
+        />
+      </div>
 
       <button
         type="button"

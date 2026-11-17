@@ -104,6 +104,7 @@ export function PhysicalEvalForm({
                 key={c}
                 type="button"
                 onClick={() => set("phys_color", active ? null : c)}
+                aria-pressed={active}
                 className={`px-3 py-1.5 rounded-pill border text-[11px] font-medium transition-colors ${
                   active
                     ? "bg-green-dark text-white border-green-dark"

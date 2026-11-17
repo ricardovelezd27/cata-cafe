@@ -6,6 +6,7 @@ import { ClipboardList, Coffee, Users, ChevronRight, ChevronLeft } from "lucide-
 import { completeOnboarding, dismissOnboarding } from "@/app/actions/profile";
 import { TextAction, useActionFeedback } from "@/components/ui";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
+import { radioKeyDown } from "@/components/radioKeys";
 import { COUNTRIES } from "@/lib/constants";
 
 // NOTE: these lists drive ONBOARDING CHOICES (values + prompt copy), a separate
@@ -214,14 +215,21 @@ export default function WelcomeModal({ locale, initialDisplayName, translations:
         {/* Step 3 — First step */}
         {step === 3 && (
           <div className="pb-2 flex flex-col gap-5">
-            <div className="space-y-3">
-              {PATHS.map((path) => {
+            {/* N3: one choice of three, a radio group named by the step's visible title. */}
+            <div role="radiogroup" aria-label={t.whereToStart} className="space-y-3">
+              {PATHS.map((path, i) => {
                 const Icon = path.icon;
                 const isSelected = selectedPath === path.id;
                 return (
                   <button
                     key={path.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={isSelected}
+                    // The checked card is the Tab stop; before any choice, the first one.
+                    tabIndex={isSelected || (selectedPath === null && i === 0) ? 0 : -1}
                     onClick={() => setSelectedPath(path.id)}
+                    onKeyDown={(e) => radioKeyDown(e, i, PATHS.length, (n) => setSelectedPath(PATHS[n].id))}
                     className={`w-full text-left rounded-card border-2 p-4 flex items-start gap-3 transition-all ${
                       isSelected
                         ? "border-primary-container bg-primary-fixed"

@@ -288,6 +288,7 @@ export function CreateGroupDialog({
                       key={c.userId}
                       type="button"
                       onClick={() => toggleCandidate(c.userId)}
+                      aria-pressed={selected}
                       className={
                         "inline-flex min-h-[44px] items-center gap-1 px-3 py-1.5 rounded-pill text-xs font-semibold border transition-colors " +
                         (selected

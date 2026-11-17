@@ -33,6 +33,7 @@ import {
 } from "@/lib/sessionDefaults";
 import { Select } from "@/components/ui/Select";
 import { HIT_Y44 } from "@/components/ui/hitArea";
+import { radioKeyDown } from "@/components/radioKeys";
 import { sampleCountWarning, type SampleCountWarning } from "@/lib/sampleCount";
 import { DEFAULT_NOTIFY_WHEN, type NotifyWhen } from "@/lib/groupNotify";
 import { DEFAULT_REFERENCE_MODE, referenceExplanation, type ReferenceMode } from "@/lib/referenceRules";
@@ -314,6 +315,9 @@ function FieldLabel({
     </label>
   );
 }
+
+/** The three formats, in the order the wizard offers them (a radio group, N3). */
+const FORMAT_CHOICES = ["descriptive", "affective", "combined"] as const;
 
 export function NewSessionForm({
   locale,
@@ -1042,25 +1046,23 @@ export function NewSessionForm({
       {/* 2. Format */}
       <div>
         <FieldLabel>{t.format}</FieldLabel>
-        <div className="flex flex-wrap gap-2">
-          {(
-            [
-              { v: "descriptive", l: t.formatDescriptive },
-              { v: "affective", l: t.formatAffective },
-              { v: "combined", l: t.formatCombined },
-            ] as const
-          ).map((opt) => (
+        <div role="radiogroup" aria-label={t.format} className="flex flex-wrap gap-2">
+          {FORMAT_CHOICES.map((v, i, all) => (
             <button
-              key={opt.v}
+              key={v}
               type="button"
-              onClick={() => setFormat(opt.v)}
+              role="radio"
+              aria-checked={format === v}
+              tabIndex={format === v ? 0 : -1}
+              onClick={() => setFormat(v)}
+              onKeyDown={(e) => radioKeyDown(e, i, all.length, (n) => setFormat(all[n]))}
               className={
-                format === opt.v
+                format === v
                   ? "min-h-[44px] bg-primary-container text-on-primary rounded-pill px-5 py-2.5 text-sm font-medium"
                   : "min-h-[44px] border border-outline-variant text-on-surface rounded-pill px-5 py-2.5 text-sm hover:bg-surface-container transition-colors"
               }
             >
-              {opt.l}
+              {{ descriptive: t.formatDescriptive, affective: t.formatAffective, combined: t.formatCombined }[v]}
             </button>
           ))}
         </div>
@@ -1392,6 +1394,7 @@ export function NewSessionForm({
                                   key={cert}
                                   type="button"
                                   onClick={() => toggleCoffeeCertification(coffee.id, cert)}
+                                  aria-pressed={active}
                                   className={
                                     active
                                       ? `${HIT_Y44} min-h-[30px] rounded-pill bg-primary-container px-3 py-1 text-xs font-semibold text-on-primary transition-colors`

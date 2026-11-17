@@ -4,6 +4,7 @@ import { useId, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createCoffee, updateCoffee } from "@/app/actions/coffees";
 import { PROCESS_TYPES, CERTIFICATIONS, ROAST_LEVELS } from "@/lib/constants";
+import { radioKeyDown } from "@/components/radioKeys";
 
 type Visibility = "private" | "shared" | "public";
 
@@ -384,6 +385,7 @@ export function CoffeeForm({
                 key={c}
                 type="button"
                 onClick={() => toggleCertification(c)}
+                aria-pressed={active}
                 className={
                   active
                     ? "bg-primary-container text-on-primary rounded-pill px-3.5 py-1.5 text-xs font-semibold transition-colors"
@@ -413,14 +415,22 @@ export function CoffeeForm({
       {!isEdit && (
         <div className="bg-surface-container-lowest border border-outline-variant rounded-card p-5 space-y-3">
           <FieldLabel id={fid("visibility")}>{t.visibilityLabel}</FieldLabel>
-          <div role="group" aria-labelledby={fid("visibility")} className="grid sm:grid-cols-3 gap-3">
-            {visibilityOptions.map((opt) => {
+          <div role="radiogroup" aria-labelledby={fid("visibility")} className="grid sm:grid-cols-3 gap-3">
+            {visibilityOptions.map((opt, i) => {
               const active = visibility === opt.value;
               return (
                 <button
                   key={opt.value}
                   type="button"
+                  role="radio"
+                  aria-checked={active}
+                  // Only the checked card is a Tab stop; the arrows move between them.
+                  tabIndex={active ? 0 : -1}
                   onClick={() => setVisibility(opt.value)}
+                  // N3: a radio group: the arrows move and check, as native radios do.
+                  onKeyDown={(e) =>
+                    radioKeyDown(e, i, visibilityOptions.length, (n) => setVisibility(visibilityOptions[n].value))
+                  }
                   className={
                     "text-left rounded-card border p-3.5 transition-colors " +
                     (active

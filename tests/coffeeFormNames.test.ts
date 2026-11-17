@@ -64,11 +64,13 @@ describe("N1: the coffee form names every control by its visible label", () => {
     expect(src).toMatch(/<label htmlFor=\{htmlFor\} id=\{id\}/);
   });
 
-  it("the certification and visibility buttons are groups named by their visible label", () => {
+  it("the certification buttons are a group and the visibility cards a radio group, each named by its visible label", () => {
     for (const group of ["certifications", "visibility"]) {
       expect(src).toContain(`<FieldLabel id={fid("${group}")}>`);
-      expect(src).toContain(`role="group" aria-labelledby={fid("${group}")}`);
     }
+    expect(src).toContain('role="group" aria-labelledby={fid("certifications")}');
+    // N3: the visibility cards act as radio buttons, so they are a radio group.
+    expect(src).toContain('role="radiogroup" aria-labelledby={fid("visibility")}');
   });
 });
 

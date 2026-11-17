@@ -19,6 +19,8 @@ const GROUP_FILES = [
   "components/groups/GroupNameControls.tsx",
   "components/groups/MemberList.tsx",
   "components/groups/PostComposer.tsx",
+  // N3: the session wizard's "notify the group" panel, kept in this folder.
+  "components/groups/NotifyGroupPanel.tsx",
 ];
 
 /** Controls named by an aria-label instead of a visible <label>, with the reason. */

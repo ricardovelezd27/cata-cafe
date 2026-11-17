@@ -39,3 +39,12 @@ describe("results page: one scroll container, only the tabs docked", () => {
     expect(client).toMatch(/data-results-tabs className="sticky -top-4 lg:-top-6/);
   });
 });
+
+describe("results page: the sheet gives focus back through the kit (N3)", () => {
+  it("has no focus workaround of its own: ResponsiveDialog returns focus to \"Exportar\"", () => {
+    expect(sheet).not.toMatch(/requestAnimationFrame|cancelAnimationFrame/);
+    expect(sheet).not.toMatch(/\.focus\(\)/);
+    expect(sheet).not.toMatch(/useEffect|useRef/);
+    expect(sheet).toContain("<ResponsiveDialog open={open} onOpenChange={setOpen}");
+  });
+});
