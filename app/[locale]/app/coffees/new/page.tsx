@@ -59,10 +59,10 @@ export default async function NewCoffeePage({
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <h1 className="page-title text-3xl">
+        <h1 className="page-title">
           {t("newPage.title")}
         </h1>
-        <p className="text-sm text-on-surface-variant mt-1">{t("newPage.subtitle")}</p>
+        <p className="text-caption text-on-surface-variant mt-1">{t("newPage.subtitle")}</p>
       </div>
       <CoffeeForm locale={locale} translations={translations} countries={countries} />
     </div>

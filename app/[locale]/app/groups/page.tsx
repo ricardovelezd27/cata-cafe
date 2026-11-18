@@ -117,8 +117,8 @@ export default async function GroupsPage({
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="page-title text-3xl">{t("title")}</h1>
-          <p className="text-sm text-on-surface-variant mt-1">{t("subtitle")}</p>
+          <h1 className="page-title">{t("title")}</h1>
+          <p className="text-caption text-on-surface-variant mt-1">{t("subtitle")}</p>
         </div>
         <CreateGroupDialog
           locale={locale}

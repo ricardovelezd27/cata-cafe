@@ -70,7 +70,7 @@ const PIVOT_TABLE_MAX_ROWS = 10;
 const PIVOT_TABLE_MAX_COLS = 7;
 
 const inputClass =
-  "w-full rounded-input border border-outline-variant bg-surface-container-lowest px-3 py-2 text-sm text-on-surface focus:border-primary-container";
+  "w-full rounded-input border border-outline-variant bg-surface-container-lowest px-3 py-2 text-body text-on-surface focus:border-primary-container";
 
 function emptyPivotResult(measure: MeasureId): PivotResult {
   return {
@@ -201,7 +201,7 @@ export function InsightCardComposer({ locale, config, citationLines, t }: Insigh
       <div className="flex flex-col gap-4">
         <div className="bg-surface-container-lowest rounded-card border border-outline-variant shadow-card p-5 flex flex-col gap-4">
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
+            <span className="label-caps">
               {t.headline}
             </span>
             <input
@@ -219,7 +219,7 @@ export function InsightCardComposer({ locale, config, citationLines, t }: Insigh
               type="button"
               onClick={handleDownloadPng}
               disabled={exporting}
-              className="flex items-center gap-1.5 rounded-pill bg-primary-container text-on-primary text-sm font-semibold px-4 py-2 disabled:opacity-50"
+              className="flex items-center gap-1.5 rounded-pill bg-primary-container text-on-primary text-caption font-semibold px-4 py-2 disabled:opacity-50"
             >
               {exporting ? <Loader2 size={15} className="animate-spin" /> : <ImageDown size={15} />}
               {t.downloadPng}
@@ -228,19 +228,19 @@ export function InsightCardComposer({ locale, config, citationLines, t }: Insigh
               type="button"
               onClick={() => generateTexts(false)}
               disabled={liPending}
-              className="flex items-center gap-1.5 rounded-pill border border-outline-variant bg-surface-container-lowest text-sm font-semibold text-on-surface px-4 py-2 disabled:opacity-50 hover:border-primary-container hover:text-primary-container"
+              className="flex items-center gap-1.5 rounded-pill border border-outline-variant bg-surface-container-lowest text-caption font-semibold text-on-surface px-4 py-2 disabled:opacity-50 hover:border-primary-container hover:text-primary-container"
             >
               <Sparkles size={15} />
               {t.generateTexts}
             </button>
           </div>
-          {exportError && <p className="text-sm text-error">{t.exportError}</p>}
+          {exportError && <p className="text-caption text-error">{t.exportError}</p>}
         </div>
 
         {(liPending || liResult) && (
           <div className="bg-surface-container rounded-card border border-outline-variant shadow-card p-5">
             {liPending ? (
-              <div className="flex items-center gap-2 text-sm text-on-surface-variant animate-pulse">
+              <div className="flex items-center gap-2 text-caption text-on-surface-variant animate-pulse">
                 <Sparkles size={16} />
                 {t.ai.generating}
               </div>
@@ -265,19 +265,19 @@ export function InsightCardComposer({ locale, config, citationLines, t }: Insigh
                   onCopy={copyText}
                 />
                 {liContent.hashtags.length > 0 && (
-                  <p className="text-xs text-primary-container font-medium">
+                  <p className="text-caption text-primary-container font-medium">
                     {liContent.hashtags.map((h) => `#${h}`).join(" ")}
                   </p>
                 )}
                 <div className="flex items-center justify-between gap-3 pt-2 mt-1 border-t border-outline-variant">
-                  <span className="text-[11px] text-on-surface-variant/70">
+                  <span className="text-caption text-on-surface-variant/70">
                     {t.ai.disclaimer}
                     {liResult?.ok ? ` · ${liResult.model}` : ""}
                   </span>
                   <button
                     type="button"
                     onClick={() => generateTexts(true)}
-                    className="flex items-center gap-1 text-xs font-semibold text-primary-container hover:underline shrink-0"
+                    className="flex items-center gap-1 text-caption font-semibold text-primary-container hover:underline shrink-0"
                   >
                     <RefreshCw size={12} />
                     {t.ai.regenerate}
@@ -285,14 +285,14 @@ export function InsightCardComposer({ locale, config, citationLines, t }: Insigh
                 </div>
               </div>
             ) : liSkipped ? (
-              <p className="text-sm text-on-surface-variant">{t.ai.notConfigured}</p>
+              <p className="text-caption text-on-surface-variant">{t.ai.notConfigured}</p>
             ) : liErrored ? (
               <div className="flex items-center justify-between gap-3">
-                <span className="text-sm text-error">{t.ai.error}</span>
+                <span className="text-caption text-error">{t.ai.error}</span>
                 <button
                   type="button"
                   onClick={() => generateTexts(false)}
-                  className="text-xs font-semibold text-primary-container hover:underline shrink-0"
+                  className="text-caption font-semibold text-primary-container hover:underline shrink-0"
                 >
                   {t.ai.regenerate}
                 </button>
@@ -326,10 +326,10 @@ export function InsightCardComposer({ locale, config, citationLines, t }: Insigh
               style={{ width: CARD_WIDTH, height: CARD_HEIGHT, backgroundColor: "var(--color-surface)" }}
             >
               <div className="flex items-center justify-between">
-                <span className="font-bold text-2xl text-primary-container">
+                <span className="font-bold text-section text-primary-container">
                   Cata Café
                 </span>
-                <span className="text-sm text-on-surface-variant">catacafe.app</span>
+                <span className="text-caption text-on-surface-variant">catacafe.app</span>
               </div>
 
               <div className="flex-1 flex flex-col justify-center gap-6 min-h-0">
@@ -388,10 +388,10 @@ export function InsightCardComposer({ locale, config, citationLines, t }: Insigh
               </div>
 
               <div className="flex items-center justify-between gap-4">
-                <p className="text-[9px] text-on-surface-variant/60 truncate max-w-[820px]">
+                <p className="text-caption text-on-surface-variant/60 truncate max-w-[820px]">
                   {citationLines.join(" · ")}
                 </p>
-                <span className="text-[10px] text-on-surface-variant/70 shrink-0">{dateLabel}</span>
+                <span className="text-caption text-on-surface-variant/70 shrink-0">{dateLabel}</span>
               </div>
             </div>
           </div>
@@ -421,17 +421,17 @@ function PostBlock({
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">{label}</span>
+        <span className="label-caps">{label}</span>
         <button
           type="button"
           onClick={() => onCopy(lang, text)}
-          className="flex items-center gap-1 text-xs font-semibold text-primary-container hover:underline"
+          className="flex items-center gap-1 text-caption font-semibold text-primary-container hover:underline"
         >
           {copied ? <Check size={13} /> : <Copy size={13} />}
           {copied ? copiedLabel : copyLabel}
         </button>
       </div>
-      <pre className="whitespace-pre-wrap font-sans text-sm text-on-surface bg-surface-container-lowest border border-outline-variant rounded-card p-3">
+      <pre className="whitespace-pre-wrap font-sans text-body text-on-surface bg-surface-container-lowest border border-outline-variant rounded-card p-3">
         {text}
       </pre>
     </div>

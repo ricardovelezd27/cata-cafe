@@ -117,12 +117,12 @@ export function GroupFeed({
   };
 
   const inputCls =
-    "w-full border border-outline-variant rounded-input px-3 py-2 text-sm text-on-surface bg-surface-container-lowest focus:border-primary-container transition-colors";
+    "w-full border border-outline-variant rounded-input px-3 py-2 text-body text-on-surface bg-surface-container-lowest focus:border-primary-container transition-colors";
   // The label style of the group forms (GroupNameControls, CreateGroupDialog).
-  const labelCls = "block text-xs text-on-surface-variant font-semibold uppercase tracking-wide";
+  const labelCls = "label-caps block";
 
   if (posts.length === 0) {
-    return <p className="text-sm text-on-surface-variant">{isOwner ? t.empty : t.emptyMember}</p>;
+    return <p className="text-caption text-on-surface-variant">{isOwner ? t.empty : t.emptyMember}</p>;
   }
 
   return (
@@ -162,7 +162,7 @@ export function GroupFeed({
                     type="button"
                     onClick={() => saveEdit(post.id)}
                     disabled={savingId === post.id || !editBody.trim()}
-                    className="inline-flex min-h-[44px] items-center gap-1.5 rounded-pill bg-primary-container px-3 py-1.5 text-xs font-semibold text-on-primary hover:bg-primary transition-colors disabled:opacity-50"
+                    className="inline-flex min-h-[44px] items-center gap-1.5 rounded-pill bg-primary-container px-3 py-1.5 text-caption font-semibold text-on-primary hover:bg-primary transition-colors disabled:opacity-50"
                   >
                     <Check size={14} /> {t.save}
                   </button>
@@ -170,7 +170,7 @@ export function GroupFeed({
                     type="button"
                     onClick={cancelEdit}
                     disabled={savingId === post.id}
-                    className="inline-flex min-h-[44px] items-center gap-1.5 rounded-pill px-3 py-1.5 text-xs font-medium text-on-surface-variant hover:text-on-surface transition-colors disabled:opacity-50"
+                    className="inline-flex min-h-[44px] items-center gap-1.5 rounded-pill px-3 py-1.5 text-caption font-medium text-on-surface-variant hover:text-on-surface transition-colors disabled:opacity-50"
                   >
                     <X size={14} /> {t.cancel}
                   </button>
@@ -181,7 +181,7 @@ export function GroupFeed({
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 space-y-1">
                     {post.title && <p className="font-semibold text-on-surface">{post.title}</p>}
-                    <p className="text-sm text-on-surface whitespace-pre-wrap">{post.body}</p>
+                    <p className="text-body text-on-surface whitespace-pre-wrap">{post.body}</p>
                   </div>
                   {isOwner && (
                     <div className="flex items-center gap-1 shrink-0">
@@ -206,7 +206,7 @@ export function GroupFeed({
                     </div>
                   )}
                 </div>
-                <div className="flex items-center gap-2 flex-wrap text-xs text-on-surface-variant">
+                <div className="flex items-center gap-2 flex-wrap text-caption text-on-surface-variant">
                   <span>
                     {post.author.displayName ?? "—"} · {formatPostDate(post.createdAt, locale)}
                   </span>
@@ -222,7 +222,7 @@ export function GroupFeed({
         );
       })}
 
-      {error && <p className="text-xs text-error">{error}</p>}
+      {error && <p className="text-caption text-error">{error}</p>}
 
       {isOwner && (
         <ConfirmDialog

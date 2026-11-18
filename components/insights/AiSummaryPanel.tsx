@@ -61,16 +61,16 @@ export function AiSummaryPanel({ locale, target, translations: t }: AiSummaryPan
   return (
     <div className="bg-surface-container rounded-card border border-outline-variant shadow-card p-5">
       {isPending ? (
-        <div className="flex items-center gap-2 text-sm text-on-surface-variant animate-pulse">
+        <div className="flex items-center gap-2 text-caption text-on-surface-variant animate-pulse">
           <Sparkles size={16} />
           {t.generating}
         </div>
       ) : content ? (
         <div className="flex flex-col gap-3">
-          <h3 className="text-base leading-snug">
+          <h3 className="text-body leading-snug">
             {content.headline}
           </h3>
-          <div className="flex flex-col gap-2 text-sm text-on-surface leading-relaxed">
+          <div className="flex flex-col gap-2 text-body text-on-surface leading-relaxed">
             {content.body
               .split(/\n+/)
               .map((p) => p.trim())
@@ -80,21 +80,21 @@ export function AiSummaryPanel({ locale, target, translations: t }: AiSummaryPan
               ))}
           </div>
           {content.highlights.length > 0 && (
-            <ul className="list-disc pl-5 flex flex-col gap-1 text-sm text-on-surface">
+            <ul className="list-disc pl-5 flex flex-col gap-1 text-caption text-on-surface">
               {content.highlights.map((h, i) => (
                 <li key={i}>{h}</li>
               ))}
             </ul>
           )}
           <div className="flex items-center justify-between gap-3 pt-3 mt-1 border-t border-outline-variant">
-            <span className="text-[11px] text-on-surface-variant/70">
+            <span className="text-caption text-on-surface-variant/70">
               {t.disclaimer}
               {result?.ok ? ` · ${result.model}` : ""}
             </span>
             <button
               type="button"
               onClick={() => generate(true)}
-              className="flex items-center gap-1 text-xs font-semibold text-primary-container hover:underline shrink-0"
+              className="flex items-center gap-1 text-caption font-semibold text-primary-container hover:underline shrink-0"
             >
               <RefreshCw size={12} />
               {t.regenerate}
@@ -102,14 +102,14 @@ export function AiSummaryPanel({ locale, target, translations: t }: AiSummaryPan
           </div>
         </div>
       ) : skipped ? (
-        <p className="text-sm text-on-surface-variant">{t.notConfigured}</p>
+        <p className="text-caption text-on-surface-variant">{t.notConfigured}</p>
       ) : errored ? (
         <div className="flex items-center justify-between gap-3">
-          <span className="text-sm text-error">{t.error}</span>
+          <span className="text-caption text-error">{t.error}</span>
           <button
             type="button"
             onClick={() => generate(false)}
-            className="text-xs font-semibold text-primary-container hover:underline shrink-0"
+            className="text-caption font-semibold text-primary-container hover:underline shrink-0"
           >
             {t.regenerate}
           </button>
@@ -118,7 +118,7 @@ export function AiSummaryPanel({ locale, target, translations: t }: AiSummaryPan
         <button
           type="button"
           onClick={() => generate(false)}
-          className="flex items-center gap-2 text-sm font-semibold text-primary-container hover:underline"
+          className="flex items-center gap-2 text-caption font-semibold text-primary-container hover:underline"
         >
           <Sparkles size={16} />
           {t.generate}

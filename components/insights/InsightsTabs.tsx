@@ -44,7 +44,7 @@ export function InsightsTabs({ locale, isSuperAdmin, isAiAdmin, labels }: Insigh
           <Link
             key={href}
             href={href}
-            className={`px-4 py-2.5 text-sm whitespace-nowrap border-b-2 -mb-px transition-colors ${
+            className={`px-4 py-2.5 text-caption whitespace-nowrap border-b-2 -mb-px transition-colors ${
               active
                 ? "border-primary-container text-primary-container font-semibold"
                 : "border-transparent text-on-surface-variant hover:text-on-surface"

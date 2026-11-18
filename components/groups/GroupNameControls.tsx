@@ -72,7 +72,7 @@ export function GroupNameControls({
           <input
             id={`${uid}-name`}
             autoFocus
-            className="min-h-[44px] w-full px-3 py-2 border border-outline-variant rounded-input text-lg font-display bg-surface-container-lowest text-on-surface focus:border-primary-container"
+            className="min-h-[44px] w-full px-3 py-2 border border-outline-variant rounded-input text-card font-display bg-surface-container-lowest text-on-surface focus:border-primary-container"
             value={value}
             onChange={(e) => setValue(e.target.value)}
             maxLength={80}
@@ -81,13 +81,13 @@ export function GroupNameControls({
         <div className="space-y-1.5">
           <label
             htmlFor={`${uid}-description`}
-            className="block text-xs text-on-surface-variant font-semibold uppercase tracking-wide"
+            className="label-caps block"
           >
             {t.descriptionLabel}
           </label>
           <textarea
             id={`${uid}-description`}
-            className="w-full px-3 py-2 border border-outline-variant rounded-input text-sm bg-surface-container-lowest text-on-surface focus:border-primary-container min-h-[72px]"
+            className="w-full px-3 py-2 border border-outline-variant rounded-input text-body bg-surface-container-lowest text-on-surface focus:border-primary-container min-h-[72px]"
             value={descValue}
             onChange={(e) => setDescValue(e.target.value)}
             placeholder={t.descriptionPlaceholder}
@@ -97,11 +97,11 @@ export function GroupNameControls({
         <button
           type="submit"
           disabled={pending || !value.trim()}
-          className="inline-flex min-h-[44px] items-center gap-1.5 px-3 py-2 rounded-pill bg-primary-container text-white text-sm font-semibold disabled:opacity-50"
+          className="inline-flex min-h-[44px] items-center gap-1.5 px-3 py-2 rounded-pill bg-primary-container text-white text-caption font-semibold disabled:opacity-50"
         >
           <Check size={16} /> {t.saveDetails}
         </button>
-        {error && <p className="text-xs text-error">{error}</p>}
+        {error && <p className="text-caption text-error">{error}</p>}
       </form>
     );
   }
@@ -111,8 +111,8 @@ export function GroupNameControls({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-start gap-2 min-w-0">
           <div className="min-w-0">
-            <h1 className="page-title text-3xl truncate">{name}</h1>
-            <p className="text-sm text-on-surface-variant mt-1">{description || t.noDescription}</p>
+            <h1 className="page-title truncate">{name}</h1>
+            <p className="text-body text-on-surface-variant mt-1">{description || t.noDescription}</p>
           </div>
           <button
             type="button"
@@ -132,12 +132,12 @@ export function GroupNameControls({
           type="button"
           onClick={() => setDeleteOpen(true)}
           disabled={pending}
-          className="inline-flex min-h-[44px] items-center gap-1.5 px-3 py-1.5 rounded-pill border border-outline-variant text-sm font-semibold text-error hover:bg-error-container transition-colors disabled:opacity-50 shrink-0"
+          className="inline-flex min-h-[44px] items-center gap-1.5 px-3 py-1.5 rounded-pill border border-outline-variant text-caption font-semibold text-error hover:bg-error-container transition-colors disabled:opacity-50 shrink-0"
         >
           <Trash2 size={16} aria-hidden /> {t.delete}
         </button>
       </div>
-      {error && <p className="text-xs text-error">{error}</p>}
+      {error && <p className="text-caption text-error">{error}</p>}
 
       <ConfirmDialog
         open={deleteOpen}

@@ -71,7 +71,7 @@ export function AccessManager({ users: initialUsers, locale, t }: AccessManagerP
   const nameCell = (user: AnalyticsUser) => (
     <div className="min-w-0">
       <div className="flex min-w-0 items-center gap-2">
-        <span className="truncate text-sm font-semibold text-on-surface">{user.displayName}</span>
+        <span className="truncate text-caption font-semibold text-on-surface">{user.displayName}</span>
         {user.isSuperAdmin && (
           <Badge tone="success" size="xs">
             <ShieldCheck size={11} aria-hidden />
@@ -80,7 +80,7 @@ export function AccessManager({ users: initialUsers, locale, t }: AccessManagerP
         )}
       </div>
       {errorId === user.userId && (
-        <span role="alert" className="mt-0.5 block text-xs text-error">
+        <span role="alert" className="mt-0.5 block text-caption text-error">
           {t.toggleError}
         </span>
       )}
@@ -93,7 +93,7 @@ export function AccessManager({ users: initialUsers, locale, t }: AccessManagerP
       <label className="flex cursor-pointer select-none items-center gap-2">
         {/* H-07: on phones the text is visually hidden, not removed, so
             the switch inside this label keeps its name. */}
-        <span className="text-xs text-on-surface-variant max-sm:sr-only">{t.accessLabel}</span>
+        <span className="text-caption text-on-surface-variant max-sm:sr-only">{t.accessLabel}</span>
         <button
           type="button"
           role="switch"
@@ -135,7 +135,7 @@ export function AccessManager({ users: initialUsers, locale, t }: AccessManagerP
       sortable: true,
       sortValue: (u) => (u.email ?? "").toLowerCase(),
       render: (u) => (
-        <span className="block truncate text-xs text-on-surface-variant">{u.email ?? t.emailUnavailable}</span>
+        <span className="block truncate text-caption text-on-surface-variant">{u.email ?? t.emailUnavailable}</span>
       ),
     },
     {
@@ -143,7 +143,7 @@ export function AccessManager({ users: initialUsers, locale, t }: AccessManagerP
       label: t.colCountry,
       sortable: true,
       sortValue: (u) => u.country ?? "",
-      render: (u) => <span className="text-xs text-on-surface-variant">{u.country ?? "–"}</span>,
+      render: (u) => <span className="text-caption text-on-surface-variant">{u.country ?? "–"}</span>,
     },
     {
       key: "access",
@@ -164,7 +164,7 @@ export function AccessManager({ users: initialUsers, locale, t }: AccessManagerP
         <div className="flex items-center gap-3 rounded-card border border-outline-variant bg-surface-container-lowest p-4">
           <div className="min-w-0 flex-1 space-y-0.5">
             {nameCell(u)}
-            <span className="block truncate text-xs text-on-surface-variant">
+            <span className="block truncate text-caption text-on-surface-variant">
               {u.email ?? t.emailUnavailable}
               {u.country ? ` · ${u.country}` : ""}
             </span>

@@ -4,6 +4,7 @@ import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, Tooltip, XAxis, 
 import { useContainerWidth } from "@/hooks/useContainerWidth";
 import type { PivotResult } from "@/lib/analytics/types";
 import { getChartColors, seriesColor } from "@/components/results/chartColors";
+import { chartTick, CHART_HTML_PX } from "./chartText";
 
 // Same palette/margins/tooltip conventions as InsightChart.tsx.
 const CHART_HEIGHT = 320;
@@ -35,7 +36,7 @@ export function PivotChart({ result, view, measureLabel, t }: PivotChartProps) {
 
   if (rowKeys.length === 0) {
     return (
-      <div className="flex items-center justify-center h-40 text-sm text-on-surface-variant">{t.empty}</div>
+      <div className="flex items-center justify-center h-40 text-caption text-on-surface-variant">{t.empty}</div>
     );
   }
 
@@ -68,15 +69,15 @@ export function PivotChart({ result, view, measureLabel, t }: PivotChartProps) {
           <CartesianGrid stroke={colors.grid} vertical={false} />
           <XAxis
             dataKey="name"
-            tick={{ fontSize: 10, fill: colors.axisText }}
+            tick={chartTick(colors.axisText)}
             interval={0}
             angle={rotateLabels ? -35 : 0}
             textAnchor={rotateLabels ? "end" : "middle"}
             height={rotateLabels ? 70 : 30}
           />
-          <YAxis tick={{ fontSize: 10, fill: colors.axisText }} width={40} />
-          <Tooltip contentStyle={{ fontSize: 12, borderColor: colors.grid }} />
-          {showLegend && <Legend wrapperStyle={{ fontSize: 11, color: colors.axisText }} />}
+          <YAxis tick={chartTick(colors.axisText)} width={40} />
+          <Tooltip contentStyle={{ fontSize: CHART_HTML_PX, borderColor: colors.grid }} />
+          {showLegend && <Legend wrapperStyle={{ fontSize: CHART_HTML_PX, color: colors.axisText }} />}
           {series.map((s, i) => (
             <Bar
               key={s.key}
@@ -98,10 +99,10 @@ export function PivotChart({ result, view, measureLabel, t }: PivotChartProps) {
           margin={{ top: 8, right: 8, bottom: 8, left: 0 }}
         >
           <CartesianGrid stroke={colors.grid} vertical={false} />
-          <XAxis dataKey="name" tick={{ fontSize: 10, fill: colors.axisText }} />
-          <YAxis tick={{ fontSize: 10, fill: colors.axisText }} width={40} />
-          <Tooltip contentStyle={{ fontSize: 12, borderColor: colors.grid }} />
-          {showLegend && <Legend wrapperStyle={{ fontSize: 11, color: colors.axisText }} />}
+          <XAxis dataKey="name" tick={chartTick(colors.axisText)} />
+          <YAxis tick={chartTick(colors.axisText)} width={40} />
+          <Tooltip contentStyle={{ fontSize: CHART_HTML_PX, borderColor: colors.grid }} />
+          {showLegend && <Legend wrapperStyle={{ fontSize: CHART_HTML_PX, color: colors.axisText }} />}
           {series.map((s, i) => (
             <Line
               key={s.key}

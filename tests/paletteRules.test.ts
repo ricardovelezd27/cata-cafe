@@ -32,7 +32,7 @@ describe("T5: people, processes and formats take the system's colours", () => {
     expect(processToneVar("algo antiguo")).toBe(`var(${PROCESS_TONE.Otro})`);
     const table = read("components/coffees/CoffeesTable.tsx");
     expect(table).toContain("style={{ backgroundColor: processToneVar(type) }}");
-    expect(table).toMatch(/text-xs font-medium text-on-surface">/);
+    expect(table).toMatch(/text-caption font-medium text-on-surface">/);
     expect(table).not.toMatch(/PROCESS_COLORS|text-white/);
   });
 });

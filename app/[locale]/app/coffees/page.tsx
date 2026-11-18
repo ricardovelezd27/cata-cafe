@@ -120,7 +120,7 @@ export default async function CoffeesPage({
           <>
             {t("registered", { count: coffees.length })}
             {isAdmin && (
-              <span className="mt-1 block text-xs font-semibold text-secondary">
+              <span className="mt-1 block text-caption font-semibold text-secondary">
                 {t("adminBadge")}
               </span>
             )}
@@ -129,7 +129,7 @@ export default async function CoffeesPage({
         action={
           <Link
             href={`/${locale}/app/coffees/new`}
-            className="min-h-[44px] inline-flex shrink-0 items-center gap-1.5 rounded-pill bg-primary-container px-4 py-2 text-sm font-semibold text-on-primary transition-colors hover:bg-primary"
+            className="min-h-[44px] inline-flex shrink-0 items-center gap-1.5 rounded-pill bg-primary-container px-4 py-2 text-caption font-semibold text-on-primary transition-colors hover:bg-primary"
           >
             <Plus size={16} />
             {t("createCoffee")}

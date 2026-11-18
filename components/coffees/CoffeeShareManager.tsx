@@ -131,7 +131,7 @@ export function CoffeeShareManager({
 
   return (
     <div className="space-y-4">
-      <h2 className="section-title text-lg">{t.title}</h2>
+      <h2 className="section-title">{t.title}</h2>
 
       {token ? (
         <div className="flex flex-col gap-2 sm:flex-row">
@@ -139,19 +139,19 @@ export function CoffeeShareManager({
             readOnly
             value={inviteUrl}
             onFocus={(e) => e.target.select()}
-            className="min-h-[44px] flex-1 border border-outline-variant rounded-input px-3 py-2 text-xs font-mono truncate bg-surface-container-lowest"
+            className="min-h-[44px] flex-1 border border-outline-variant rounded-input px-3 py-2 text-caption font-mono truncate bg-surface-container-lowest"
           />
           <button
             type="button"
             onClick={handleCopy}
-            className="min-h-[44px] rounded-pill border border-outline-variant text-xs font-semibold px-3 py-1.5 hover:bg-surface-container whitespace-nowrap"
+            className="min-h-[44px] rounded-pill border border-outline-variant text-caption font-semibold px-3 py-1.5 hover:bg-surface-container whitespace-nowrap"
           >
             {copied ? t.copied : t.copyLink}
           </button>
           <button
             type="button"
             onClick={() => setAskRotate(true)}
-            className="min-h-[44px] rounded-pill border border-outline-variant text-xs font-semibold px-3 py-1.5 hover:bg-surface-container whitespace-nowrap"
+            className="min-h-[44px] rounded-pill border border-outline-variant text-caption font-semibold px-3 py-1.5 hover:bg-surface-container whitespace-nowrap"
           >
             {t.rotate}
           </button>
@@ -161,30 +161,30 @@ export function CoffeeShareManager({
           type="button"
           disabled={isPending}
           onClick={handleGenerate}
-          className="min-h-[44px] rounded-pill bg-primary-container text-white text-xs font-semibold px-3 py-1.5 hover:bg-primary-muted transition disabled:opacity-60"
+          className="min-h-[44px] rounded-pill bg-primary-container text-white text-caption font-semibold px-3 py-1.5 hover:bg-primary-muted transition disabled:opacity-60"
         >
           {isPending ? t.generating : t.generateLink}
         </button>
       )}
 
       {token && (
-        <p className="text-xs text-on-surface-variant">
+        <p className="text-caption text-on-surface-variant">
           {expiresAt ? t.expiresOn.replace("{date}", formatExpiry(expiresAt, locale)) : t.noExpiry}
         </p>
       )}
 
       <div className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+        <p className="label-caps">
           {t.peopleWithAccess}
         </p>
         {shares.length === 0 ? (
-          <p className="text-sm text-on-surface-variant">{t.noShares}</p>
+          <p className="text-caption text-on-surface-variant">{t.noShares}</p>
         ) : (
           <ul className="space-y-1.5">
             {shares.map((s) => (
               <li
                 key={s.userId}
-                className="flex items-center justify-between gap-3 text-sm text-on-surface"
+                className="flex items-center justify-between gap-3 text-caption text-on-surface"
               >
                 <span>{s.displayName}</span>
                 <button
@@ -194,7 +194,7 @@ export function CoffeeShareManager({
                     setAlsoRotate(true);
                     setAskRevoke(s);
                   }}
-                  className="min-h-[44px] rounded-pill border border-outline-variant text-xs font-semibold px-3 py-1.5 hover:bg-surface-container disabled:opacity-60"
+                  className="min-h-[44px] rounded-pill border border-outline-variant text-caption font-semibold px-3 py-1.5 hover:bg-surface-container disabled:opacity-60"
                 >
                   {t.revoke}
                 </button>
@@ -204,7 +204,7 @@ export function CoffeeShareManager({
         )}
       </div>
 
-      <p className="text-xs text-on-surface-variant">{t.linkHint}</p>
+      <p className="text-caption text-on-surface-variant">{t.linkHint}</p>
 
       <ConfirmDialog
         open={askRotate}
@@ -226,7 +226,7 @@ export function CoffeeShareManager({
         body={
           <div className="space-y-3">
             <p>{t.revokeBody.replace("{name}", askRevoke?.displayName ?? "")}</p>
-            <label className="flex min-h-[44px] cursor-pointer items-center gap-2 text-sm text-on-surface">
+            <label className="flex min-h-[44px] cursor-pointer items-center gap-2 text-body text-on-surface">
               <input
                 type="checkbox"
                 checked={alsoRotate}

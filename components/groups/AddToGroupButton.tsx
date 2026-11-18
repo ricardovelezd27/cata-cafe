@@ -90,7 +90,7 @@ export function AddToGroupButton({
 
   if (added) {
     return (
-      <span className="inline-flex items-center gap-1.5 text-sm font-medium text-primary-container">
+      <span className="inline-flex items-center gap-1.5 text-caption font-medium text-primary-container">
         <Check size={16} /> {t.added}
       </span>
     );
@@ -101,7 +101,7 @@ export function AddToGroupButton({
       <form onSubmit={handleCreateAndAdd} className="space-y-1.5">
         <label
           htmlFor={`${uid}-new-group`}
-          className="block text-xs text-on-surface-variant font-semibold uppercase tracking-wide"
+          className="label-caps block"
         >
           {t.groupName}
         </label>
@@ -109,7 +109,7 @@ export function AddToGroupButton({
           <input
             id={`${uid}-new-group`}
             autoFocus
-            className="min-h-[44px] flex-1 min-w-0 px-2.5 py-1.5 border border-outline-variant rounded-input text-xs bg-surface-container-lowest text-on-surface focus:border-primary-container"
+            className="min-h-[44px] flex-1 min-w-0 px-2.5 py-1.5 border border-outline-variant rounded-input text-caption bg-surface-container-lowest text-on-surface focus:border-primary-container"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             placeholder={t.namePlaceholder}
@@ -118,7 +118,7 @@ export function AddToGroupButton({
           <button
             type="submit"
             disabled={pending || !newName.trim()}
-            className="min-h-[44px] px-3 py-1.5 rounded-pill bg-primary-container text-white text-xs font-semibold disabled:opacity-50 whitespace-nowrap"
+            className="min-h-[44px] px-3 py-1.5 rounded-pill bg-primary-container text-white text-caption font-semibold disabled:opacity-50 whitespace-nowrap"
           >
             {t.create}
           </button>
@@ -134,7 +134,7 @@ export function AddToGroupButton({
         onChange={(e) => handleSelect(e.target.value)}
         disabled={pending}
         aria-label={t.addToGroupNamed.replace("{name}", candidateName)}
-        className="min-h-[44px] w-full px-3 py-2 border border-outline-variant rounded-input text-sm bg-surface-container-lowest text-on-surface focus:border-primary-container disabled:opacity-50"
+        className="min-h-[44px] w-full px-3 py-2 border border-outline-variant rounded-input text-caption bg-surface-container-lowest text-on-surface focus:border-primary-container disabled:opacity-50"
       >
         <option value="" disabled>
           {t.addToGroup}
@@ -146,7 +146,7 @@ export function AddToGroupButton({
         ))}
         <option value={NEW_GROUP_VALUE}>{t.newGroupOption}</option>
       </select>
-      {error && <p className="text-xs text-error">{error}</p>}
+      {error && <p className="text-caption text-error">{error}</p>}
     </div>
   );
 }
