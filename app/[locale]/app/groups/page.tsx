@@ -10,6 +10,8 @@ import { profileDisplayName } from "@/lib/accountDeletion/deletedProfile";
 import { claimGroupMembershipsByEmail } from "@/lib/groupMembership";
 import { CreateGroupDialog } from "@/components/groups/CreateGroupDialog";
 import { CoCupperCard } from "@/components/groups/CoCupperCard";
+import { PageContainer } from "@/components/ui/PageContainer";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 // Hosts the create-group action, which sends invitation mail (S9-01 D-08).
 export const maxDuration = 120;
@@ -113,19 +115,18 @@ export default async function GroupsPage({
   };
 
   return (
-    <div className="space-y-10">
-      {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="page-title">{t("title")}</h1>
-          <p className="text-caption text-on-surface-variant mt-1">{t("subtitle")}</p>
-        </div>
-        <CreateGroupDialog
-          locale={locale}
-          candidates={cuppers.map((c) => ({ userId: c.userId, displayName: c.displayName }))}
-          t={createGroupT}
-        />
-      </div>
+    <PageContainer>
+      <PageHeader
+        title={t("title")}
+        description={t("subtitle")}
+        action={
+          <CreateGroupDialog
+            locale={locale}
+            candidates={cuppers.map((c) => ({ userId: c.userId, displayName: c.displayName }))}
+            t={createGroupT}
+          />
+        }
+      />
 
       {/* My groups */}
       <div className="space-y-4">
@@ -193,6 +194,6 @@ export default async function GroupsPage({
           </div>
         )}
       </div>
-    </div>
+    </PageContainer>
   );
 }

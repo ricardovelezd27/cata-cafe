@@ -41,6 +41,7 @@ import { DuplicateButton } from "@/components/DuplicateButton";
 import { Card } from "@/components/ui/Card";
 import { Notice } from "@/components/ui/Notice";
 import { PaperSectionHeading } from "@/components/ui/PaperSectionHeading";
+import { PageContainer } from "@/components/ui/PageContainer";
 
 // Auth'd page with a dynamic [id] segment: must render per-request. With
 // generateStaticParams present, prod attempts on-demand static generation and
@@ -209,6 +210,7 @@ export default async function CoffeeProfilePage({
   );
 
   return (
+    <PageContainer>
     <div>
       {/* Banner — same brand-toned strip as the user profile */}
       <div className="h-32 rounded-card bg-gradient-to-r from-primary via-primary-container to-primary shadow-card sm:h-40" />
@@ -672,5 +674,6 @@ export default async function CoffeeProfilePage({
         )}
       </div>
     </div>
+    </PageContainer>
   );
 }

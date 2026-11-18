@@ -11,6 +11,7 @@ import { toIsoOrNull } from "@/lib/safeDate";
 import { profileDisplayName } from "@/lib/accountDeletion/deletedProfile";
 import { SessionsTable, type SessionRow, type SessionsTableTranslations } from "./SessionsTable";
 import type { DeleteSessionTranslations } from "./DeleteSessionButton";
+import { PageContainer } from "@/components/ui/PageContainer";
 
 export default async function SessionsList({
   params,
@@ -208,7 +209,7 @@ export default async function SessionsList({
   };
 
   return (
-    <div className="space-y-6">
+    <PageContainer>
       <PageHeader
         title={t("list")}
         description={
@@ -255,6 +256,6 @@ export default async function SessionsList({
         deleteTranslations={deleteTranslations}
         isAdmin={isAdmin}
       />
-    </div>
+    </PageContainer>
   );
 }

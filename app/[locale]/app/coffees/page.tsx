@@ -8,6 +8,7 @@ import { profileDisplayName } from "@/lib/accountDeletion/deletedProfile";
 import { PageHeader } from "@/components/ui";
 import CoffeesTable from "@/components/coffees/CoffeesTable";
 import type { DeleteCoffeeTranslations } from "@/components/coffees/DeleteCoffeeButton";
+import { PageContainer } from "@/components/ui/PageContainer";
 
 export function generateStaticParams() {
   return [{ locale: "es" }, { locale: "en" }];
@@ -113,7 +114,7 @@ export default async function CoffeesPage({
   };
 
   return (
-    <div className="space-y-6">
+    <PageContainer>
       <PageHeader
         title={t("list")}
         description={
@@ -143,6 +144,6 @@ export default async function CoffeesPage({
         deleteTranslations={deleteTranslations}
         isAdmin={isAdmin}
       />
-    </div>
+    </PageContainer>
   );
 }

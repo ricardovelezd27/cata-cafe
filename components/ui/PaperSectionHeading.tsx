@@ -17,8 +17,9 @@ import type { ReactNode } from "react";
  * - `level` is the heading's LEVEL (2 for a section, 3 for a title inside a card);
  *   the look follows the role: level 2 is the section heading (21 px, green, from
  *   `.section-title`), level 3 is the card heading (17.5 px, ink).
- * - It carries the gap to its content (12 px on a phone, 16 px from 768 px: the
- *   paper rhythm), so no section sets its own.
+ * - Its gap to its content is `.paper-section-head` (12 px on a phone, 16 px from 768 px: the
+ *   paper rhythm, app/globals.css), so no section sets its own; inside a `.paper-section`
+ *   the section's own row gap takes over.
  */
 
 /** The uppercase label role (11 px, the floor). Shared with `Card`'s eyebrow. */
@@ -55,7 +56,7 @@ export function PaperSectionHeading({
   const Tag = level === 3 ? "h3" : "h2";
   const titleClasses = level === 3 ? "text-card text-on-surface" : "section-title text-section";
   return (
-    <div className={`flex items-start justify-between gap-3 ${flush ? "" : "mb-[12px] md:mb-[16px]"}`}>
+    <div className={`flex items-start justify-between gap-3 ${flush ? "" : "paper-section-head"}`}>
       <div className="min-w-0 flex-1">
         {name && <p className={`${LABEL_CLASSES} mb-1`}>{name}</p>}
         <div className="flex items-center gap-1">

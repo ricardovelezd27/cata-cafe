@@ -14,6 +14,8 @@ import { Badge, ScorePill, StatusPill } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Card } from "@/components/ui/Card";
 import { PaperSectionHeading } from "@/components/ui/PaperSectionHeading";
+import { PageContainer } from "@/components/ui/PageContainer";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 function timeAgo(date: Date, locale: string): string {
   const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
@@ -172,15 +174,11 @@ export default async function Dashboard({
   };
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="page-title leading-tight">
-            {t("welcome", { name: profile?.displayName ?? "" })}
-          </h1>
-          <p className="text-caption text-on-surface-variant mt-1 max-w-[68ch]">{t("subtitle")}</p>
-        </div>
+    <PageContainer>
+      <PageHeader
+        title={t("welcome", { name: profile?.displayName ?? "" })}
+        description={t("subtitle")}
+        action={
         <div className="flex shrink-0 flex-col items-stretch gap-2 sm:flex-row sm:items-center">
           <GuestGateLink
             href={`/${locale}/app/sessions/express`}
@@ -195,7 +193,8 @@ export default async function Dashboard({
             {t("fullWizardCta")}
           </GuestGateLink>
         </div>
-      </header>
+        }
+      />
 
       {/* How it works + scoring methodology: collapsed for a returning user (S6, F-15) */}
       <DashboardIntro
@@ -314,7 +313,8 @@ export default async function Dashboard({
       )}
 
       {/* Stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* F-11: a stat card is as wide as its content needs (capped at 240 px, auto-fill). */}
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,240px))] gap-[12px] md:gap-[16px]">
         <StatCard
           label={t("statSessions")}
           value={String(sessionCount)}
@@ -408,6 +408,6 @@ export default async function Dashboard({
           )}
         </section>
       )}
-    </div>
+    </PageContainer>
   );
 }

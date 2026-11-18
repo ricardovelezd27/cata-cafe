@@ -87,10 +87,10 @@ describe("PaperSectionHeading renders the level it is given, with the role's loo
     expect(html).toMatch(/<h2 id="x"/);
     expect(html).toMatch(/<p class="mt-1 text-caption text-on-surface-variant">A<\/p>/);
     expect(html.indexOf("Ver")).toBeGreaterThan(html.indexOf("A</p>"));
-    expect(html).toMatch(/mb-\[12px\] md:mb-\[16px\]/);
+    expect(html).toMatch(/paper-section-head/); // P1a: the gap is the class (12 / 16 px)
   });
   it("flush drops the gap to the content", () => {
-    expect(renderToStaticMarkup(h(PaperSectionHeading, { title: "T", flush: true }))).not.toMatch(/mb-\[12px\]/);
+    expect(renderToStaticMarkup(h(PaperSectionHeading, { title: "T", flush: true }))).not.toMatch(/paper-section-head/);
   });
 });
 

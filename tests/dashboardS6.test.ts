@@ -42,7 +42,8 @@ describe("C-01: one ask, one filled button per fold", () => {
   it("the dashboard has exactly one filled action, in its header: Catar ahora", () => {
     const filled = filledActions(page);
     expect(filled).toHaveLength(1);
-    const header = /<header[\s\S]*?<\/header>/.exec(page)![0];
+    // P1a: the page opens with PageHeader; its action slot holds the ask.
+    const header = /<PageHeader[\s\S]*?\n {6}\/>/.exec(page)![0];
     expect(filledActions(header)).toHaveLength(1);
     const firstLink = /<GuestGateLink[\s\S]*?<\/GuestGateLink>/.exec(header)![0];
     expect(firstLink).toMatch(/sessions\/express/);
