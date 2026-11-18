@@ -42,9 +42,9 @@ export type EditSampleMetadataFormTranslations = {
 };
 
 const inputCls =
-  "w-full px-3 py-2 border border-outline-variant rounded-input text-sm bg-surface-container-lowest text-on-surface focus:border-primary-container";
+  "w-full px-3 py-2 border border-outline-variant rounded-input text-caption bg-surface-container-lowest text-on-surface focus:border-primary-container";
 const labelCls =
-  "block text-xs text-on-surface-variant font-semibold uppercase tracking-wide mb-1";
+  "label-caps block mb-1";
 
 export function EditSampleMetadataForm({
   initialData,
@@ -118,7 +118,7 @@ export function EditSampleMetadataForm({
         />
       )}
       {error && (
-        <p role="alert" className="text-sm text-error">
+        <p role="alert" className="text-caption text-error">
           {error}
         </p>
       )}
@@ -127,14 +127,14 @@ export function EditSampleMetadataForm({
           type="button"
           disabled={saving}
           onClick={onCancel}
-          className="px-4 py-2 rounded-pill border border-outline-variant font-sans text-sm text-on-surface hover:bg-surface-container disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2"
+          className="px-4 py-2 rounded-pill border border-outline-variant font-sans text-caption text-on-surface hover:bg-surface-container disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2"
         >
           {t.cancel}
         </button>
         <button
           type="submit"
           disabled={saving}
-          className="px-4 py-2 rounded-pill bg-primary-container font-sans text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2"
+          className="px-4 py-2 rounded-pill bg-primary-container font-sans text-caption font-semibold text-white hover:opacity-90 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2"
         >
           {saving ? t.saving : t.save}
         </button>

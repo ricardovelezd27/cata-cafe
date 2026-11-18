@@ -141,7 +141,7 @@ export function CombinedForm({
     lockedAffective && lockedNote ? (
       <div
         role="note"
-        className="mb-4 rounded-card border border-secondary/30 bg-secondary-fixed px-4 py-3 font-sans text-sm text-on-secondary-fixed-variant"
+        className="mb-4 rounded-card border border-secondary/30 bg-secondary-fixed px-4 py-3 font-sans text-body text-on-secondary-fixed-variant"
       >
         {lockedNote}
       </div>
@@ -183,7 +183,7 @@ export function CombinedForm({
 
         {showCups && lockedAffective && lockedCupsNote && (
           <FormSection title={copy.title}>
-            <p className="font-sans text-sm text-on-surface-variant">{lockedCupsNote}</p>
+            <p className="font-sans text-caption text-on-surface-variant">{lockedCupsNote}</p>
           </FormSection>
         )}
         {showCups && !lockedAffective && (
@@ -199,7 +199,7 @@ export function CombinedForm({
               onSetDefect={(i, type) => onChange(applyDefectChoice(d, cupsPerSample, i, type))}
             />
             {(nonUniformCount > 0 || defectiveCount > 0) && (
-              <div className="mt-2 text-[11px] text-on-surface-variant">
+              <div className="mt-2 text-caption text-on-surface-variant">
                 {cupSummary(copy, nonUniformCount, defectiveCount)}
               </div>
             )}
@@ -210,7 +210,7 @@ export function CombinedForm({
           <MarketNote data={d} onChange={onChange} copy={marketCopy ?? MARKET_COPY_FALLBACK[locale]} />
         )}
 
-        <p className="mt-4 font-sans text-sm text-on-surface-variant">{copy.scoreLater}</p>
+        <p className="mt-4 font-sans text-caption text-on-surface-variant">{copy.scoreLater}</p>
       </div>
     );
   }
@@ -235,7 +235,7 @@ export function CombinedForm({
             <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-x-6">
               {/* Left: descriptive */}
               <div className="min-w-0">
-                <div className="font-mono text-[10px] font-semibold tracking-[0.18em] uppercase text-primary-muted mb-2">
+                <div className="label-caps text-primary-muted mb-2">
                   Descriptivo
                 </div>
                 <IntensitySlider
@@ -270,7 +270,7 @@ export function CombinedForm({
 
               {/* Right: affective + notes */}
               <div className="min-w-0 mt-5 pt-5 border-t border-outline-variant lg:mt-0 lg:pt-0 lg:border-t-0 lg:border-l lg:pl-6">
-                <div className="font-mono text-[10px] font-semibold tracking-[0.18em] uppercase text-secondary mb-2">
+                <div className="label-caps text-secondary mb-2">
                   Calidad 1–9
                 </div>
                 <AffectiveBubbles
@@ -301,7 +301,7 @@ export function CombinedForm({
 
       {currentStep === "taste_aftertaste" && (
         <FormSection title="Gustos Predominantes" accent flagged={isFlagged("gustos")}>
-          <div className="text-[11px] text-on-surface-variant mb-2">
+          <div className="text-caption text-on-surface-variant mb-2">
             Selecciona hasta 2 sabores principales
           </div>
           <CATAPills

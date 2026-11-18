@@ -39,15 +39,15 @@ export function SampleKey({
         "group rounded-input border border-outline-variant bg-surface-container-low/50 " + className
       }
     >
-      <summary className="flex min-h-[44px] cursor-pointer select-none items-center justify-between gap-2 px-3.5 py-2 text-xs font-semibold uppercase tracking-widest text-on-surface-variant [&::-webkit-details-marker]:hidden">
+      <summary className="label-caps flex min-h-[44px] cursor-pointer select-none items-center justify-between gap-2 px-3.5 py-2 [&::-webkit-details-marker]:hidden">
         {t.title}
         <ChevronDown size={14} className="transition-transform group-open:rotate-180" aria-hidden />
       </summary>
       <div className="px-3.5 pb-3">
-        <p className="mb-2 text-xs text-on-surface-variant">{t.hint}</p>
+        <p className="mb-2 text-caption text-on-surface-variant">{t.hint}</p>
         <ul className="space-y-1">
           {rows.map((r) => (
-            <li key={r.id} className="flex items-baseline gap-2 text-sm text-on-surface">
+            <li key={r.id} className="flex items-baseline gap-2 text-caption text-on-surface">
               <span className="w-28 shrink-0 font-semibold">{r.label}</span>
               <span className={r.coffee ? "" : "text-on-surface-variant"}>
                 {r.coffee || t.noCoffee}

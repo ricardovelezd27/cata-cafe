@@ -53,7 +53,7 @@ export function WarmupEntry({
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="inline-flex min-h-[44px] items-center text-left text-sm text-on-surface-variant underline-offset-4 transition-colors hover:text-on-surface hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-container"
+          className="inline-flex min-h-[44px] items-center text-left text-body text-on-surface-variant underline-offset-4 transition-colors hover:text-on-surface hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-container"
         >
           {label.replace("{min}", String(exercise.durationMin))}
         </button>

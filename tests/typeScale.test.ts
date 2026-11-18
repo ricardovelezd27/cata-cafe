@@ -26,20 +26,9 @@ const FLOOR = 11;
 
 /** Kit files left for a later step of T4, with the reason. May only SHRINK. */
 const KIT_ALLOWLIST: Record<string, string> = {
-  // The cupping screen: another session is changing it, and its text is T4's
-  // last step ("the cup page checked on a phone").
-  SessionShell: "the cupping screen (T4, last step)",
-  CanvasFooter: "the cupping screen (T4, last step)",
-  SampleTabs: "the cupping screen (T4, last step)",
-  ModuleSwitcher: "the cupping screen (T4, last step)",
-  AffectiveBubbles: "the cupping screen (T4, last step)",
-  IntensitySlider: "the cupping screen (T4, last step)",
-  CATAPills: "the cupping screen (T4, last step)",
-  CupToggleGrid: "the cupping screen (T4, last step)",
-  MasterControls: "the cupping screen (T4, last step)",
-  FormSection: "the cupping screen (T4, last step)",
-  // CountBar, DotPlot and ScoreWithContext left with T4d: they are swept with
-  // the results (SWEPT_AREAS below, CSS modules included).
+  // Empty since T4e: the results parts left with T4d and the cupping screen's
+  // modules with T4e; both are swept areas now (SWEPT_AREAS below, CSS modules
+  // included).
 };
 
 const KIT = "components/ui";
@@ -187,10 +176,41 @@ const SWEPT_AREAS: { area: string; paths: string[] }[] = [
       "components/ui/ScoreWithContext.module.css",
     ],
   },
+  {
+    area: "T4e: the cupping screen, its forms and its kit modules",
+    paths: [
+      "app/[locale]/app/sessions/[id]/cup",
+      "components/cupping",
+      "components/session-moments/WarmupEntry.tsx",
+      "components/ui/SessionShell.tsx",
+      "components/ui/SessionShell.module.css",
+      "components/ui/CanvasFooter.tsx",
+      "components/ui/CanvasFooter.module.css",
+      "components/ui/SampleTabs.tsx",
+      "components/ui/SampleTabs.module.css",
+      "components/ui/ModuleSwitcher.tsx",
+      "components/ui/ModuleSwitcher.module.css",
+      "components/ui/AffectiveBubbles.tsx",
+      "components/ui/AffectiveBubbles.module.css",
+      "components/ui/IntensitySlider.tsx",
+      "components/ui/IntensitySlider.module.css",
+      "components/ui/CATAPills.tsx",
+      "components/ui/CATAPills.module.css",
+      "components/ui/CupToggleGrid.tsx",
+      "components/ui/CupToggleGrid.module.css",
+      "components/ui/MasterControls.tsx",
+      "components/ui/MasterControls.module.css",
+      "components/ui/FormSection.tsx",
+      "components/ui/FormSection.module.css",
+      "components/ui/Notes.tsx",
+      "components/ui/Notes.module.css",
+    ],
+  },
 ];
 
 /** A size outside the six roles that a swept file keeps, and why. May only shrink. */
 const SWEPT_ALLOWLIST: Record<string, { token: string; reason: string }[]> = {
+  "components/cupping/PhysicalEvalForm.tsx": [{ token: "text-5xl", reason: "the physical evaluation's total, a display numeral (42 px)" }],
   "components/results/SampleDetail.tsx": [{ token: "text-[42px]", reason: "the coffee sheet's score, a display numeral" }],
   "components/dashboard/StatCard.tsx": [{ token: "text-4xl", reason: "a stat's numeral, a display size outside the six roles (31.5 px)" }],
   "app/[locale]/app/sessions/express/ExpressForm.tsx": [{ token: "text-4xl", reason: "the sample counter's numeral, a display size (31.5 px)" }],
@@ -226,6 +246,17 @@ const SWEPT_CSS_PX: Record<string, { px: string; reason: string }[]> = {
   "components/ui/ScoreWithContext.module.css": [
     { px: "31.5px", reason: "the medium score numeral, a display size" },
     { px: "42px", reason: "the large score numeral, a display size" },
+  ],
+  "components/ui/AffectiveBubbles.module.css": [
+    { px: "19px", reason: "the number inside a 44 px rating bubble, a numeral sized with its circle" },
+    { px: "15px", reason: "the same number inside a 34 px bubble on phones" },
+    { px: "22px", reason: "the FINAL readout's number (wide columns)" },
+    { px: "17px", reason: "the FINAL readout's number on phones" },
+  ],
+  "components/ui/CupToggleGrid.module.css": [{ px: "15px", reason: "a cup's number inside its toggle, sized with the bubbles" }],
+  "components/ui/IntensitySlider.module.css": [
+    { px: "24px", reason: "the slider's value readout, a display numeral" },
+    { px: "18px", reason: "the same readout on phones" },
   ],
 };
 

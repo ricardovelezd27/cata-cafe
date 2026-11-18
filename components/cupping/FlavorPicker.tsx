@@ -113,7 +113,7 @@ function FileUnderRow({
         }`}
       >
         <Plus size={13} aria-hidden className="shrink-0 text-on-surface-variant" />
-        <span className="text-[13px] text-on-surface">
+        <span className="text-caption text-on-surface">
           {copy} <span className="font-medium">«{term}»</span>…
         </span>
         <CornerDownLeft size={13} aria-hidden className="ml-auto shrink-0 text-on-surface-variant" />
@@ -385,7 +385,7 @@ export function FlavorPicker({
       {/* Selected chips — persistent section, visible on the form */}
       <div className="mb-3">
         <div className="flex items-center justify-between mb-2">
-          <span className="font-mono text-[10px] font-semibold tracking-[0.16em] uppercase text-on-surface-variant">
+          <span className="label-caps">
             {t.selected}
             {maxSelect !== undefined && (
               <span className="ml-1 normal-case tracking-normal">
@@ -398,14 +398,14 @@ export function FlavorPicker({
               type="button"
               onClick={() => setChipsOpen(false)}
               aria-expanded
-              className={`${HIT_Y44} min-[641px]:hidden text-[12px] font-medium text-primary-container underline underline-offset-2`}
+              className={`${HIT_Y44} min-[641px]:hidden text-caption font-medium text-primary-container underline underline-offset-2`}
             >
               {t.showLess}
             </button>
           )}
         </div>
         {value.length === 0 ? (
-          <p className="text-[12px] text-on-surface-variant italic">{t.none}</p>
+          <p className="text-caption text-on-surface-variant italic">{t.none}</p>
         ) : (
           <>
           {!chipsOpen && (
@@ -414,12 +414,12 @@ export function FlavorPicker({
               type="button"
               onClick={() => setChipsOpen(true)}
               aria-expanded={false}
-              className={`${HIT_Y44} min-[641px]:hidden flex w-full min-h-[30px] items-center gap-2 text-left text-[13px] text-on-surface`}
+              className={`${HIT_Y44} min-[641px]:hidden flex w-full min-h-[30px] items-center gap-2 text-left text-caption text-on-surface`}
             >
               <span className="min-w-0 flex-1 truncate">
                 {value.map((id) => resolveDescriptor(id, locale)?.label ?? id).join(", ")}
               </span>
-              <span className="inline-flex shrink-0 items-center gap-0.5 text-[12px] font-medium text-primary-container underline underline-offset-2">
+              <span className="inline-flex shrink-0 items-center gap-0.5 text-caption font-medium text-primary-container underline underline-offset-2">
                 {t.showAll}
                 <ChevronDown size={13} aria-hidden />
               </span>
@@ -443,7 +443,7 @@ export function FlavorPicker({
                   type="button"
                   onClick={() => toggle(id)}
                   aria-label={`${t.remove}: ${chipLabel}`}
-                  className={`${HIT_Y44} inline-flex min-h-[30px] items-center gap-1.5 rounded-pill px-2.5 py-1 text-[12px] font-medium`}
+                  className={`${HIT_Y44} inline-flex min-h-[30px] items-center gap-1.5 rounded-pill px-2.5 py-1 text-caption font-medium`}
                   style={{ background: color, color: getContrastTextColor(color) }}
                 >
                   {chipLabel}
@@ -457,7 +457,7 @@ export function FlavorPicker({
       </div>
 
       {genericWords.length > 0 && (
-        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-card bg-secondary/10 px-3 py-2 text-[12px] text-on-surface">
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-card bg-secondary/10 px-3 py-2 text-caption text-on-surface">
           <span>{t.otherNudge.replace("{n}", String(genericWords.length))}</span>
           <button
             type="button"
@@ -491,7 +491,7 @@ export function FlavorPicker({
             placeholder={t.search}
             aria-label={t.search}
             autoComplete="off"
-            className="min-h-[44px] w-full rounded-pill border-[1.5px] border-outline-variant/60 bg-surface py-1.5 pl-9 pr-3 text-[13px] text-on-surface placeholder:text-on-surface-variant focus:border-primary-muted"
+            className="min-h-[44px] w-full rounded-pill border-[1.5px] border-outline-variant/60 bg-surface py-1.5 pl-9 pr-3 text-body text-on-surface placeholder:text-on-surface-variant focus:border-primary-muted"
           />
         </div>
 
@@ -519,11 +519,11 @@ export function FlavorPicker({
                     style={{ background: m.color }}
                     aria-hidden
                   />
-                  <span className="text-[13px] font-medium text-on-surface">
+                  <span className="text-caption font-medium text-on-surface">
                     {m.label}
                   </span>
                   {m.path && (
-                    <span className="ml-auto truncate pl-2 text-[11px] text-on-surface-variant">
+                    <span className="ml-auto truncate pl-2 text-caption text-on-surface-variant">
                       {m.path}
                     </span>
                   )}
@@ -552,7 +552,7 @@ export function FlavorPicker({
           setNavId(null);
           setOpen(true);
         }}
-        className="inline-flex items-center gap-1.5 rounded-pill border-[1.5px] border-dashed border-primary-muted px-3.5 py-1.5 text-[13px] font-medium text-primary-container transition-colors hover:bg-primary-muted/10"
+        className="inline-flex items-center gap-1.5 rounded-pill border-[1.5px] border-dashed border-primary-muted px-3.5 py-1.5 text-caption font-medium text-primary-container transition-colors hover:bg-primary-muted/10"
       >
         <Plus size={15} aria-hidden />
         {t.add}
@@ -578,13 +578,13 @@ export function FlavorPicker({
         closeLabel={t.close}
       >
         {fileUnder && limitHit && maxSelect !== undefined && (
-          <p role="alert" className="mb-3 rounded-card bg-error-container px-3 py-2 text-[12px] text-on-error-container">
+          <p role="alert" className="mb-3 rounded-card bg-error-container px-3 py-2 text-caption text-on-error-container">
             {t.limitReached.replace("{n}", String(maxSelect))}
           </p>
         )}
 
         {/* Breadcrumb */}
-        <nav className="flex flex-wrap items-center gap-1 text-[12px] mb-3">
+        <nav className="flex flex-wrap items-center gap-1 text-caption mb-3">
           <button
             type="button"
             onClick={() => setNavId(null)}
@@ -614,7 +614,7 @@ export function FlavorPicker({
             onClick={() =>
               setNavId(flavorNodeById(navId)?.parentId ?? null)
             }
-            className="inline-flex items-center gap-1 text-[12px] font-medium text-primary-container hover:underline mb-3"
+            className="inline-flex items-center gap-1 text-caption font-medium text-primary-container hover:underline mb-3"
           >
             <ChevronLeft size={14} aria-hidden />
             {t.back}
@@ -679,7 +679,7 @@ export function FlavorPicker({
           <button
             type="button"
             onClick={() => pickFileTarget(OTHER_ID)}
-            className="mt-4 w-full rounded-pill border border-outline-variant px-4 py-2 text-[12px] text-on-surface-variant hover:text-on-surface"
+            className="mt-4 w-full rounded-pill border border-outline-variant px-4 py-2 text-caption text-on-surface-variant hover:text-on-surface"
           >
             {t.fileUnderOther}
           </button>
@@ -693,7 +693,7 @@ export function FlavorPicker({
               setFileUnder(null);
               setLimitHit(false);
             }}
-            className="rounded-pill bg-primary-container px-5 py-2 text-[13px] font-semibold text-surface"
+            className="rounded-pill bg-primary-container px-5 py-2 text-caption font-semibold text-surface"
           >
             {t.done}
           </button>

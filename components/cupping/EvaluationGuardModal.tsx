@@ -54,11 +54,11 @@ export function EvaluationGuardModal({
       closeLabel={t.review}
     >
       <div className="space-y-5">
-        {body && <p className="font-sans text-sm text-on-surface">{body}</p>}
+        {body && <p className="font-sans text-body text-on-surface">{body}</p>}
 
         <ul className="space-y-1.5">
           {items.map((item, i) => (
-            <li key={i} className="font-sans text-sm text-on-surface">
+            <li key={i} className="font-sans text-body text-on-surface">
               {item.sample && (
                 <span className="font-semibold">{item.sample}: </span>
               )}
@@ -73,7 +73,7 @@ export function EvaluationGuardModal({
         {notes && notes.length > 0 && (
           <ul className="space-y-1.5">
             {notes.map((n, i) => (
-              <li key={i} className="font-sans text-sm text-on-surface">
+              <li key={i} className="font-sans text-body text-on-surface">
                 {n}
               </li>
             ))}
@@ -81,14 +81,14 @@ export function EvaluationGuardModal({
         )}
 
         {outcome && (
-          <p className="font-sans text-sm font-medium text-secondary">{outcome}</p>
+          <p className="font-sans text-caption font-medium text-secondary">{outcome}</p>
         )}
 
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 rounded-pill border border-outline-variant font-sans text-sm text-on-surface hover:bg-surface-container focus-visible:outline-2 focus-visible:outline-offset-2"
+            className="px-4 py-2 rounded-pill border border-outline-variant font-sans text-caption text-on-surface hover:bg-surface-container focus-visible:outline-2 focus-visible:outline-offset-2"
           >
             {t.review}
           </button>
@@ -96,7 +96,7 @@ export function EvaluationGuardModal({
             <button
               type="button"
               onClick={secondary.onClick}
-              className="px-4 py-2 rounded-pill border border-primary-container font-sans text-sm font-semibold text-primary-container hover:bg-surface-container focus-visible:outline-2 focus-visible:outline-offset-2"
+              className="px-4 py-2 rounded-pill border border-primary-container font-sans text-caption font-semibold text-primary-container hover:bg-surface-container focus-visible:outline-2 focus-visible:outline-offset-2"
             >
               {secondary.label}
             </button>
@@ -104,7 +104,7 @@ export function EvaluationGuardModal({
           <button
             type="button"
             onClick={onConfirm}
-            className="px-4 py-2 rounded-pill bg-primary-container font-sans text-sm font-semibold text-white hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2"
+            className="px-4 py-2 rounded-pill bg-primary-container font-sans text-caption font-semibold text-white hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2"
           >
             {t.confirm}
           </button>

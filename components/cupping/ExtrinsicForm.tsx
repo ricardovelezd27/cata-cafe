@@ -18,7 +18,7 @@ function CheckField({ id, label, checked, onChange }: CheckFieldProps) {
   return (
     <label
       htmlFor={id}
-      className="flex min-h-[44px] items-center gap-2 mb-1.5 cursor-pointer text-on-surface text-sm"
+      className="flex min-h-[44px] items-center gap-2 mb-1.5 cursor-pointer text-on-surface text-body"
     >
       <input
         id={id}
@@ -47,7 +47,7 @@ function TextField({ id, value, placeholder, onChange }: TextFieldProps) {
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="w-full mb-2 px-3 py-1.5 border border-outline-variant rounded-sm text-sm bg-surface-container text-on-surface focus:border-primary-container"
+      className="w-full mb-2 px-3 py-1.5 border border-outline-variant rounded-sm text-body bg-surface-container text-on-surface focus:border-primary-container"
     />
   );
 }
@@ -64,7 +64,7 @@ function PillButton({ active, onClick, children }: PillButtonProps) {
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`px-3 py-1.5 rounded-pill border text-xs font-medium transition-colors ${
+      className={`px-3 py-1.5 rounded-pill border text-caption font-medium transition-colors ${
         active
           ? "bg-primary-container text-white border-primary-container"
           : "bg-transparent text-on-surface border-outline-variant hover:bg-surface-container"
@@ -100,13 +100,13 @@ export function ExtrinsicForm({
       {!hideHeader && (
         <>
           <div className="flex items-center gap-2 mb-1">
-            <h2 className="text-lg">Extrínseco</h2>
+            <h2 className="text-card">Extrínseco</h2>
             <BetaBadge />
           </div>
-          <div className="text-xs text-on-surface-variant mb-3">
+          <div className="text-caption text-on-surface-variant mb-3">
             No aplica todavía — sección en desarrollo
           </div>
-          <div className="text-[11px] text-on-surface-variant mb-4 p-3 bg-surface-container rounded-sm text-center italic">
+          <div className="text-caption text-on-surface-variant mb-4 p-3 bg-surface-container rounded-sm text-center italic">
             Fase POST-CATA · Rellenar después de revelar la identidad de las muestras
           </div>
         </>
@@ -158,7 +158,7 @@ export function ExtrinsicForm({
         <CheckField id="ext_descafeinado" label="Descafeinado" checked={bool("ext_descafeinado")} onChange={(v) => set("ext_descafeinado", v)} />
 
         <div className="mt-3">
-          <div className="font-mono text-[10px] font-semibold tracking-[0.18em] uppercase text-on-surface-variant mb-2">
+          <div className="label-caps mb-2">
             Tipo de proceso
           </div>
           <div className="flex flex-wrap gap-1.5">

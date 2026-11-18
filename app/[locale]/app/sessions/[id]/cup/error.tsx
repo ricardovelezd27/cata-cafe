@@ -185,7 +185,7 @@ export default function CupError({
           <div
             role="status"
             aria-live="polite"
-            className="flex max-w-md flex-wrap items-center gap-x-3 gap-y-1 rounded-card border border-outline-variant bg-secondary-fixed px-4 py-2 text-sm text-on-secondary-fixed"
+            className="flex max-w-md flex-wrap items-center gap-x-3 gap-y-1 rounded-card border border-outline-variant bg-secondary-fixed px-4 py-2 text-body text-on-secondary-fixed"
           >
             <span className="flex-1 min-w-[12rem]">
               {identityChanged ? copy.identityChanged : copy.newVersion}

@@ -16,9 +16,9 @@
   align-items: center;
   gap: 6px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--text-label);
   font-weight: 600;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
@@ -48,9 +48,9 @@
 
 .rowLabel {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--text-label);
   font-weight: 600;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--color-on-surface-variant);
   display: flex;
@@ -63,7 +63,7 @@
 
 .rowHint {
   font-family: var(--font-ui);
-  font-size: 11px;
+  font-size: var(--text-caption);
   font-weight: 400;
   letter-spacing: 0;
   text-transform: none;
@@ -121,7 +121,7 @@
 
 .note {
   font-family: var(--font-ui);
-  font-size: 11px;
+  font-size: var(--text-caption);
   font-style: italic;
   color: var(--color-secondary);
   display: inline-flex;
@@ -139,7 +139,7 @@
   padding: 6px 14px;
   border-radius: var(--radius-pill);
   font-family: var(--font-ui);
-  font-size: 12px;
+  font-size: var(--text-caption);
   font-weight: 500;
   cursor: pointer;
   border: 1.5px solid var(--color-outline-variant);

@@ -74,7 +74,7 @@ export function CloseSessionDialog({
 
   const busy = pending !== null;
   const secondary =
-    "min-h-[44px] rounded-pill border border-outline-variant px-5 py-2.5 text-sm font-medium text-on-surface transition-colors hover:bg-surface-container-low disabled:opacity-50";
+    "min-h-[44px] rounded-pill border border-outline-variant px-5 py-2.5 text-caption font-medium text-on-surface transition-colors hover:bg-surface-container-low disabled:opacity-50";
 
   return (
     <ResponsiveDialog
@@ -86,9 +86,9 @@ export function CloseSessionDialog({
       closeLabel={t.close}
     >
       <div className="space-y-5">
-        <div className="text-sm text-on-surface">{body}</div>
+        <div className="text-body text-on-surface">{body}</div>
         {error && (
-          <p role="alert" className="text-sm text-error">
+          <p role="alert" className="text-caption text-error">
             {error}
           </p>
         )}
@@ -97,7 +97,7 @@ export function CloseSessionDialog({
             type="button"
             disabled={busy || confirmDisabled}
             onClick={() => void run("now")}
-            className="min-h-[44px] rounded-pill bg-error px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-error/90 disabled:opacity-50"
+            className="min-h-[44px] rounded-pill bg-error px-5 py-2.5 text-caption font-medium text-white transition-colors hover:bg-error/90 disabled:opacity-50"
           >
             {t.closeNow}
           </button>
@@ -117,12 +117,12 @@ export function CloseSessionDialog({
           >
             {t.announce5}
           </button>
-          <p className="text-xs text-on-surface-variant">{t.hint}</p>
+          <p className="text-caption text-on-surface-variant">{t.hint}</p>
           <button
             type="button"
             disabled={busy}
             onClick={() => onOpenChange(false)}
-            className="min-h-[44px] px-5 py-2.5 text-sm font-medium text-on-surface-variant transition-colors hover:text-on-surface disabled:opacity-50"
+            className="min-h-[44px] px-5 py-2.5 text-caption font-medium text-on-surface-variant transition-colors hover:text-on-surface disabled:opacity-50"
           >
             {t.cancel}
           </button>

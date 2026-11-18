@@ -5,7 +5,7 @@ import { ChevronDown } from "lucide-react";
 import styles from "./FormSection.module.css";
 
 interface FormSectionProps {
-  /** Eyebrow label, mono uppercase. e.g. "FRAGANCIA" */
+  /** Eyebrow label, in capitals. e.g. "FRAGANCIA" */
   title: string;
   /** Optional display-font headline below the eyebrow. */
   headline?: string;

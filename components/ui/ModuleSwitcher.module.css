@@ -8,7 +8,7 @@
   padding: 10px 16px 10px 20px;
   text-align: left;
   font-family: var(--font-ui);
-  font-size: 14px;
+  font-size: var(--text-body);
   font-weight: 500;
   color: var(--color-on-surface);
   background: transparent;
@@ -73,7 +73,7 @@
 
 .chevron {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--text-caption);
   color: var(--color-on-surface-variant);
   flex-shrink: 0;
 }
@@ -82,9 +82,9 @@
   padding: 0 20px 6px;
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  font-size: 10px;
+  font-size: var(--text-label);
   font-weight: 600;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--color-on-surface-variant);
 }

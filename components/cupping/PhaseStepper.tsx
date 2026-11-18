@@ -81,7 +81,7 @@ export function PhaseStepper<T extends string>({
               gap: 2,
               padding: compact ? "4px 12px" : "6px 12px",
               borderRadius: 20,
-              fontSize: 11,
+              fontSize: "var(--text-caption)",
               fontWeight: isActive ? 700 : 400,
               background: isLight
                 ? (isActive ? "var(--color-surface-container-lowest)" : "transparent")
@@ -104,7 +104,8 @@ export function PhaseStepper<T extends string>({
             </span>
             <span
               style={{
-                fontSize: 7,
+                // a status dot drawn with a glyph, not text: it keeps its 7 px (0.57 of the caption)
+                fontSize: "0.57em",
                 lineHeight: 1,
                 color: statusDot.color,
                 transition: "color 0.25s",

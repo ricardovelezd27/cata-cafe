@@ -23,33 +23,33 @@ function DefectRowView({ defect, count, onChange }: DefectRowViewProps) {
   const full = calcFullDefects(count, defect.ratio);
   return (
     <div className="flex items-center gap-2 mb-1.5 px-3 py-1.5 bg-surface-container rounded-sm">
-      <div className="flex-1 text-xs text-on-surface">
+      <div className="flex-1 text-caption text-on-surface">
         {defect.name}{" "}
-        <span className="text-on-surface-variant text-[10px]">({defect.ratio})</span>
+        <span className="text-on-surface-variant text-caption">({defect.ratio})</span>
       </div>
       <div className="flex items-center gap-1">
         <button
           type="button"
           onClick={() => onChange(Math.max(0, count - 1))}
-          className="w-7 h-7 rounded-sm border border-outline-variant bg-surface-container-lowest text-on-surface text-sm font-mono tabular-nums hover:bg-surface-container transition-colors"
+          className="w-7 h-7 rounded-sm border border-outline-variant bg-surface-container-lowest text-on-surface text-caption font-mono tabular-nums hover:bg-surface-container transition-colors"
           aria-label="Decrease"
         >
           −
         </button>
-        <span className="w-9 text-center text-sm font-semibold text-primary-container font-mono tabular-nums">
+        <span className="w-9 text-center text-caption font-semibold text-primary-container font-mono tabular-nums">
           {count}
         </span>
         <button
           type="button"
           onClick={() => onChange(count + 1)}
-          className="w-7 h-7 rounded-sm border border-outline-variant bg-surface-container-lowest text-on-surface text-sm font-mono tabular-nums hover:bg-surface-container transition-colors"
+          className="w-7 h-7 rounded-sm border border-outline-variant bg-surface-container-lowest text-on-surface text-caption font-mono tabular-nums hover:bg-surface-container transition-colors"
           aria-label="Increase"
         >
           +
         </button>
       </div>
       <div
-        className={`w-12 text-right text-[13px] font-semibold font-mono tabular-nums ${
+        className={`w-12 text-right text-caption font-semibold font-mono tabular-nums ${
           full > 0 ? "text-error" : "text-on-surface-variant"
         }`}
       >
@@ -85,13 +85,13 @@ export function PhysicalEvalForm({
   return (
     <div>
       <div className="flex items-center gap-2 mb-1">
-        <h2 className="text-lg">Evaluación física</h2>
+        <h2 className="text-card">Evaluación física</h2>
         <BetaBadge />
       </div>
-      <div className="text-xs text-on-surface-variant mb-3">
+      <div className="text-caption text-on-surface-variant mb-3">
         No aplica todavía — sección en desarrollo
       </div>
-      <div className="text-[11px] text-on-surface-variant mb-4 p-3 bg-surface-container rounded-sm text-center italic">
+      <div className="text-caption text-on-surface-variant mb-4 p-3 bg-surface-container rounded-sm text-center italic">
         Con base en una muestra de 350g
       </div>
 
@@ -105,7 +105,7 @@ export function PhysicalEvalForm({
                 type="button"
                 onClick={() => set("phys_color", active ? null : c)}
                 aria-pressed={active}
-                className={`px-3 py-1.5 rounded-pill border text-[11px] font-medium transition-colors ${
+                className={`px-3 py-1.5 rounded-pill border text-caption font-medium transition-colors ${
                   active
                     ? "bg-primary-container text-white border-primary-container"
                     : "bg-transparent text-on-surface border-outline-variant hover:bg-surface-container"
@@ -129,24 +129,24 @@ export function PhysicalEvalForm({
             step={0.1}
             min={0}
             max={100}
-            className="w-24 px-3 py-2 border border-outline-variant rounded-sm text-sm bg-surface-container text-on-surface text-center font-mono tabular-nums focus:border-primary-container"
+            className="w-24 px-3 py-2 border border-outline-variant rounded-sm text-caption bg-surface-container text-on-surface text-center font-mono tabular-nums focus:border-primary-container"
           />
-          <span className="text-sm text-on-surface-variant">%</span>
+          <span className="text-caption text-on-surface-variant">%</span>
         </div>
       </FormSection>
 
       <FormSection title="Tamaño (Zaranda)" accent>
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-xs">
+          <table className="w-full border-collapse text-caption">
             <thead>
               <tr>
-                <th className="text-left py-2 px-2 text-on-surface-variant border-b border-outline-variant font-mono text-[10px] uppercase tracking-wider font-semibold">
+                <th className="label-caps text-left py-2 px-2 border-b border-outline-variant">
                   Zaranda
                 </th>
-                <th className="text-center py-2 px-2 text-on-surface-variant border-b border-outline-variant font-mono text-[10px] uppercase tracking-wider font-semibold">
+                <th className="label-caps text-center py-2 px-2 border-b border-outline-variant">
                   Gramos
                 </th>
-                <th className="text-right py-2 px-2 text-on-surface-variant border-b border-outline-variant font-mono text-[10px] uppercase tracking-wider font-semibold">
+                <th className="label-caps text-right py-2 px-2 border-b border-outline-variant">
                   %
                 </th>
               </tr>
@@ -168,7 +168,7 @@ export function PhysicalEvalForm({
                         placeholder="0"
                         step={0.1}
                         min={0}
-                        className="w-16 py-1 px-2 border border-outline-variant rounded-sm text-xs text-center bg-surface-container text-on-surface font-mono tabular-nums focus:border-primary-container"
+                        className="w-16 py-1 px-2 border border-outline-variant rounded-sm text-caption text-center bg-surface-container text-on-surface font-mono tabular-nums focus:border-primary-container"
                       />
                     </td>
                     <td className="py-1.5 px-2 text-right text-on-surface-variant font-mono tabular-nums">
@@ -193,7 +193,7 @@ export function PhysicalEvalForm({
           />
         ))}
         <div className="flex justify-end py-2 border-t-2 border-primary-container mt-3">
-          <span className="text-[13px] font-bold text-primary-container font-mono tabular-nums">
+          <span className="text-caption font-bold text-primary-container font-mono tabular-nums">
             Total Cat. 1: {totalCat1.toFixed(1)}
           </span>
         </div>
@@ -210,7 +210,7 @@ export function PhysicalEvalForm({
           />
         ))}
         <div className="flex justify-end py-2 border-t-2 border-primary-container mt-3">
-          <span className="text-[13px] font-bold text-primary-container font-mono tabular-nums">
+          <span className="text-caption font-bold text-primary-container font-mono tabular-nums">
             Total Cat. 2: {totalCat2.toFixed(1)}
           </span>
         </div>
@@ -225,7 +225,7 @@ export function PhysicalEvalForm({
           >
             {(totalCat1 + totalCat2).toFixed(1)}
           </div>
-          <div className="text-[11px] text-on-surface-variant mt-2 font-mono tabular-nums">
+          <div className="text-caption text-on-surface-variant mt-2 font-mono tabular-nums">
             Cat. 1: {totalCat1.toFixed(1)} · Cat. 2: {totalCat2.toFixed(1)}
           </div>
         </div>
