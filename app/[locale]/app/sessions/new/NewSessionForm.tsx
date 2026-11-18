@@ -43,6 +43,10 @@ import { WARMUP_EXERCISES, lw, type WarmupId } from "@/lib/warmup/exercises";
 import { fieldErrorId, fieldForErrorCode, fieldInputId, type SessionFormField } from "@/lib/sessionFormErrors";
 import { scrollBehavior } from "@/lib/motion";
 import { FormActionBar, dockedFormClass } from "@/components/ui/FormActionBar";
+import { Card } from "@/components/ui/Card";
+import { cardClasses } from "@/components/ui/cardRecipe";
+import { Notice } from "@/components/ui/Notice";
+import { PaperSectionHeading } from "@/components/ui/PaperSectionHeading";
 import {
   addSample as addSampleTo,
   blankCoffee,
@@ -258,13 +262,22 @@ function SectionTitle({
   className?: string;
   children: React.ReactNode;
 }) {
+  // P2b (B-04): the paper heading (same h2, same id); the margins stay the caller's.
   return (
-    <h2 id={id} className={`section-title ${className}`}>
-      <span className="tabular-nums">{n}</span>
-      <span aria-hidden="true"> · </span>
-      <span className="sr-only">. </span>
-      {children}
-    </h2>
+    <div className={className || undefined}>
+      <PaperSectionHeading
+        id={id}
+        flush
+        title={
+          <>
+            <span className="tabular-nums">{n}</span>
+            <span aria-hidden="true"> · </span>
+            <span className="sr-only">. </span>
+            {children}
+          </>
+        }
+      />
+    </div>
   );
 }
 
@@ -746,7 +759,7 @@ export function NewSessionForm({
 
         <SampleKey rows={sampleKey} translations={t.newForm.sampleKey} />
 
-        <div className="bg-surface-container-low border border-outline-variant rounded-card p-5 space-y-3">
+        <Card tone="quiet" className="space-y-3">
           <p className="text-body font-semibold text-primary-container">{t.groupInviteLink}</p>
           {inviteUrl && (
             <div className="flex justify-center py-1">
@@ -775,25 +788,20 @@ export function NewSessionForm({
               {copied ? t.groupCopied : t.groupCopyLink}
             </button>
           </div>
-        </div>
+        </Card>
 
-        {inviteBlocked && (
-          <div
-            role="status"
-            className="bg-secondary/10 border border-secondary/40 rounded-card px-4 py-3 text-body text-secondary font-medium"
-          >
-            {groupsT.autoInviteRateLimited}
-          </div>
-        )}
+        {/* P2b (E-05): the rate limit needs attention (warning, not terracotta); the summary is
+            information. Same text; the rate limit keeps its status role. */}
+        {inviteBlocked && <Notice tone="warning">{groupsT.autoInviteRateLimited}</Notice>}
 
         {emailSummary && (
-          <div className="bg-primary-fixed border border-primary-container/40 rounded-card px-4 py-3 text-body text-primary-container font-medium">
+          <Notice tone="info" live={false}>
             {formatTemplate(groupsT.autoInviteSummary, {
               sent: emailSummary.sent,
               skipped: emailSummary.skipped,
               failed: emailSummary.failed,
             })}
-          </div>
+          </Notice>
         )}
 
         <NotifyGroupPanel
@@ -1241,7 +1249,7 @@ export function NewSessionForm({
             <span id={`${fid}-warmup`} className="text-body text-on-surface font-medium">{t.warmup.toggle}</span>
           </div>
           {warmupOn && (
-            <div className="bg-surface-container-low rounded-card p-4 space-y-2">
+            <Card tone="quiet" padding="compact" className="space-y-2">
               <FieldLabel htmlFor={`${fid}-warmup-exercise`}>{t.warmup.label}</FieldLabel>
               <Select
                 id={`${fid}-warmup-exercise`}
@@ -1254,7 +1262,7 @@ export function NewSessionForm({
                 }))}
               />
               <p className="text-caption text-on-surface-variant">{t.warmup.hint}</p>
-            </div>
+            </Card>
           )}
         </div>
       </section>
@@ -1361,10 +1369,9 @@ export function NewSessionForm({
                 }
                 role="group"
                 aria-label={sampleName}
-                className={
-                  "bg-surface-container-lowest border rounded-card shadow-card p-5 space-y-4 " +
-                  (invalid ? "border-error" : "border-outline-variant")
-                }
+                // P2b (D-07): the card recipe (no shadow), through cardClasses() because the
+                // element keeps its ref; an invalid sample takes the error border.
+                className={`${cardClasses({ invalid })} space-y-4`}
               >
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="label-caps bg-surface-container rounded-pill px-3 py-1 text-on-surface">
@@ -1530,7 +1537,7 @@ export function NewSessionForm({
         </div>
 
         {isGroup && (
-          <div className="bg-surface-container-low rounded-card p-4 space-y-4">
+          <Card tone="quiet" padding="compact" className="space-y-4">
             <div>
               <FieldLabel htmlFor={fieldInputId("closesAt")}>{t.groupClosesAt}</FieldLabel>
               <input
@@ -1613,7 +1620,7 @@ export function NewSessionForm({
                 </div>
               </fieldset>
             )}
-          </div>
+          </Card>
         )}
       </section>
 
@@ -1621,10 +1628,11 @@ export function NewSessionForm({
       <FormActionBar
         status={
           <>
+            {/* P2b (E-05): an error Notice; no role added (the bar's announcement is unchanged). */}
             {stripText && (
-              <div className="bg-error-container text-on-error-container rounded-card px-4 py-3 text-body">
+              <Notice tone="error" live={false}>
                 {stripText}
-              </div>
+              </Notice>
             )}
             {!online && t.newForm.errors.offline && (
               <p role="status" className="text-center text-body text-error">

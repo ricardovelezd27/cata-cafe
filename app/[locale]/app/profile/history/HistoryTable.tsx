@@ -7,6 +7,7 @@ import { Coffee } from "lucide-react";
 import { DataTable, type Column, type Facet } from "@/components/ui/DataTable";
 import { Badge, ScorePill } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Card } from "@/components/ui/Card";
 import { buttonClasses } from "@/components/ui/Button";
 
 export type HistoryRow = {
@@ -183,7 +184,8 @@ export function HistoryTable({
       searchText={(row) => [row.coffeeName, row.sampleLabel ?? "", row.sessionName]}
       facets={facets}
       renderMobileCard={(row) => (
-        <div className="space-y-2 rounded-card border border-outline-variant bg-surface-container-lowest p-4">
+        // P2b (D-07): each row's phone card is a Card.
+        <Card padding="compact" className="space-y-2">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 space-y-0.5">
               {row.coffeeId === null ? (
@@ -235,7 +237,7 @@ export function HistoryTable({
               <ScorePill score={row.communityScore} />
             </div>
           </div>
-        </div>
+        </Card>
       )}
       emptyState={
         <EmptyState

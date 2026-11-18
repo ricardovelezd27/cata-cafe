@@ -7,6 +7,7 @@ import { useConnectivity } from "@/hooks/useConnectivity";
 import { useOfflineSync } from "@/hooks/useOfflineSync";
 import { loadSession } from "@/lib/offline/store";
 import { SyncConflictModal, type SyncConflictTranslations } from "@/components/offline/SyncConflictModal";
+import { Notice, type NoticeTone } from "@/components/ui/Notice";
 
 export type SessionSyncStatusTranslations = SyncConflictTranslations & {
   // RAW templates containing the literal "{count}" — substituted client-side
@@ -123,32 +124,36 @@ export function SessionSyncStatus({
     line = { tone: "success", icon: <CheckCircle2 size={14} aria-hidden />, text: t.synced, retry: false };
   }
 
-  const palette: Record<"info" | "warn" | "success", string> = {
-    info: "border-secondary/30 bg-secondary-container/20 text-on-surface",
-    warn: "border-secondary/30 bg-secondary-container/20 text-on-surface",
-    success: "border-primary-container/30 bg-primary-fixed text-primary-container",
+  // P2b (E-05): the frame is a Notice. Same lines, same conditions, same retry; the
+  // terracotta goes: what is waiting or unsent needs attention (warning), "syncing" and
+  // "synced" are information. `role="status"` (polite) comes from Notice, as before.
+  const noticeTone: Record<"info" | "warn" | "success", NoticeTone> = {
+    info: "info",
+    warn: "warning",
+    success: "info",
   };
 
   return (
     <>
       {line && (
-        <div
-          role="status"
-          aria-live="polite"
-          className={`mx-4 mt-4 flex items-center gap-2 rounded-card border px-4 py-2 font-sans text-caption lg:mx-6 ${palette[line.tone]}`}
+        <Notice
+          tone={noticeTone[line.tone]}
+          icon={line.icon}
+          className="mx-4 mt-4 lg:mx-6"
+          action={
+            line.retry ? (
+              <button
+                type="button"
+                onClick={() => void retrySync()}
+                className="inline-flex min-h-[44px] items-center font-semibold underline underline-offset-2 hover:opacity-80"
+              >
+                {t.retry}
+              </button>
+            ) : undefined
+          }
         >
-          <span className="shrink-0 text-secondary">{line.icon}</span>
-          <span className="flex-1">{line.text}</span>
-          {line.retry && (
-            <button
-              type="button"
-              onClick={() => void retrySync()}
-              className="shrink-0 font-semibold text-primary-container underline underline-offset-2 hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 rounded-sm"
-            >
-              {t.retry}
-            </button>
-          )}
-        </div>
+          {line.text}
+        </Notice>
       )}
       <SyncConflictModal
         conflicts={conflicts.filter((c) => c.sessionId === sessionId)}

@@ -26,7 +26,8 @@ describe("P2a: the primitives paint with the system", () => {
     expect(src[f]).not.toMatch(/text-\[\d/);
   });
   it("a card has no shadow and no terracotta ground; its padding is the paper rhythm in pixels", () => {
-    const s = src["components/ui/Card.tsx"];
+    // P2b: the recipe lives in cardRecipe.ts (no "use client") so a server page can call cardClasses().
+    const s = src["components/ui/Card.tsx"] + read("components/ui/cardRecipe.ts");
     expect(s).not.toMatch(/shadow-/);
     expect(s).not.toMatch(/bg-secondary/);
     expect(s).toMatch(/regular: "p-\[16px\] md:p-\[20px\]"/);
@@ -178,12 +179,16 @@ describe("the recipe count (what the later P2 steps take to zero)", () => {
     },
     SCAN_TIMEOUT_MS,
   );
-  it("the adopted places are no longer counted", () => {
-    const { hits } = countRecipes();
-    const at = (f: string) => (hits as { file: string; kind: string }[]).filter((x) => x.file === f).map((x) => x.kind);
-    expect(at("components/groups/GroupEmailOptOutNotice.tsx")).toEqual([]);
-    expect(at("app/[locale]/app/groups/page.tsx")).toEqual([]);
-  });
+  it(
+    "the adopted places are no longer counted",
+    () => {
+      const { hits } = countRecipes();
+      const at = (f: string) => (hits as { file: string; kind: string }[]).filter((x) => x.file === f).map((x) => x.kind);
+      expect(at("components/groups/GroupEmailOptOutNotice.tsx")).toEqual([]);
+      expect(at("app/[locale]/app/groups/page.tsx")).toEqual([]);
+    },
+    SCAN_TIMEOUT_MS, // scans the whole source tree, like its neighbour
+  );
   it("sorts a path into its area", () => {
     expect(areaOf("app/[locale]/app/sessions/[id]/cup/CupClient.tsx")).toBe("cupping");
     expect(areaOf("components/results/CoffeeCards.tsx")).toBe("results");

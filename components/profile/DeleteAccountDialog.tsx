@@ -6,6 +6,8 @@ import type { AccountDeletionImpact } from "@/lib/accountDeletion/plan";
 import { clearLocalDeviceState } from "@/lib/offline/deviceState";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
 import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Notice } from "@/components/ui/Notice";
 import { useActionFeedback } from "@/components/ui/Toast";
 
 export type DeleteAccountStrings = {
@@ -155,19 +157,19 @@ export function DeleteAccountDialog({
             }}
           >
             {changed && (
-              <p role="alert" className="rounded-card border border-error/40 bg-error/5 p-3 text-body leading-relaxed text-on-surface">
-                {t.changed}
-              </p>
+              // P2b (E-05): an error Notice (role alert, as before).
+              <Notice tone="error">{t.changed}</Notice>
             )}
             <p className="text-body leading-relaxed text-on-surface">{t.intro}</p>
             <ul className="list-disc space-y-1 pl-5 text-body text-on-surface">
               {lines.length > 0 ? lines.map((l) => <li key={l}>{l}</li>) : <li>{t.impactNothing}</li>}
             </ul>
-            <div className="space-y-2 rounded-card border border-outline-variant bg-surface-container-low p-3 text-body leading-relaxed text-on-surface-variant">
+            {/* P2b (D-07): three facts, not one sentence: a quiet Card, not a Notice. */}
+            <Card tone="quiet" padding="compact" className="space-y-2 text-body leading-relaxed text-on-surface-variant">
               <p>{t.keepScores}</p>
               <p>{t.keepCoffees}</p>
               <p className="font-semibold text-error">{t.irreversible}</p>
-            </div>
+            </Card>
             <div>
               <label
                 htmlFor={inputId}

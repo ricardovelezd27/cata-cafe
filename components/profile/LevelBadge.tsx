@@ -1,5 +1,7 @@
 "use client";
 
+import { Card } from "@/components/ui/Card";
+
 // Client component per project i18n convention: translations arrive as a
 // plain object (no useTranslations() here). All ICU-templated strings
 // (pointsLabel/progressText/topPercentText) are pre-interpolated server-side
@@ -34,7 +36,8 @@ export function LevelBadge({
   const levelOfLabel = locale === "es" ? `Nivel ${level} de 6` : `Level ${level} of 6`;
 
   return (
-    <div className="bg-surface-container-lowest border border-outline-variant rounded-card p-5 flex flex-col gap-3">
+    // P2b (D-07): a Card.
+    <Card className="flex flex-col gap-3">
       <span className="label-caps">
         {t.levelTitle}
       </span>
@@ -73,6 +76,6 @@ export function LevelBadge({
       <p className="text-caption text-on-surface-variant border-t border-outline-variant pt-2 mt-1">
         {t.howPoints}
       </p>
-    </div>
+    </Card>
   );
 }

@@ -3,6 +3,7 @@
 import { createContext, useContext, type MouseEventHandler, type ReactNode } from "react";
 import Link from "next/link";
 import { LABEL_CLASSES } from "./PaperSectionHeading";
+import { CARD_FRAME, CARD_INTERACTIVE, CARD_PADDING, CARD_TONE, cardClasses, type CardPadding, type CardTone } from "./cardRecipe";
 
 /**
  * The paper card (DESIGN.md "`Card` and `Notice`"; package P2 of the 2026-11-15
@@ -19,7 +20,8 @@ import { LABEL_CLASSES } from "./PaperSectionHeading";
  * - `tone`: default `surface-container-lowest`, quiet `surface-container-low`,
  *   selected `primary-fixed`. Never a shadow, never a terracotta ground.
  * - `padding`: "regular" is the paper rhythm (16 px on a phone, 20 px from 768 px);
- *   "compact" stays 16 px.
+ *   "compact" stays 16 px; "row" is the rhythm's row in a list (12 x 16 px), for a
+ *   list whose items are cards (a session, a coffee).
  * - Interactive: give it `href` (a real link) or `onClick` (a real button). The
  *   whole card is then the control, with the base focus ring (T6) and a
  *   `surface-container-high` hover. An interactive card takes no `action` (a
@@ -29,12 +31,16 @@ import { LABEL_CLASSES } from "./PaperSectionHeading";
  * - `stat`: a stat card is capped at 240 px wide.
  * - `className` is for placing the card in its layout (a grid span), not for
  *   painting it.
+ * - `cardClasses()` gives the same recipe to a wrapper that must render its own
+ *   element (GuestGateLink: a link for members, a button for guests), as
+ *   `buttonClasses()` does for buttons.
  */
 
 const InsideCard = createContext(false);
 
-export type CardTone = "default" | "quiet" | "selected";
-export type CardPadding = "regular" | "compact";
+export type { CardTone, CardPadding };
+// The recipe lives in a plain module so a server component can call cardClasses().
+export { cardClasses };
 
 type CardBase = {
   as?: "div" | "section" | "article" | "li";
@@ -59,19 +65,10 @@ type ButtonCard = CardBase & {
 };
 export type CardProps = StaticCard | LinkCard | ButtonCard;
 
-const TONE: Record<CardTone, string> = {
-  default: "bg-surface-container-lowest",
-  quiet: "bg-surface-container-low",
-  selected: "bg-primary-fixed",
-};
-const PADDING: Record<CardPadding, string> = {
-  regular: "p-[16px] md:p-[20px]",
-  compact: "p-[16px]",
-};
-const FRAME = "rounded-card border border-outline-variant text-on-surface";
-// Only the ground transitions: `transition-colors` would also fade the focus ring in from
-// the text colour (Tailwind v4 includes outline-color), so the ring is green at once.
-const INTERACTIVE = "block w-full text-left transition-[background-color] hover:bg-surface-container-high disabled:cursor-default disabled:opacity-60";
+const TONE = CARD_TONE;
+const PADDING = CARD_PADDING;
+const FRAME = CARD_FRAME;
+const INTERACTIVE = CARD_INTERACTIVE;
 
 export function Card(props: CardProps) {
   const nested = useContext(InsideCard);

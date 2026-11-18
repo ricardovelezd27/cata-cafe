@@ -5,6 +5,7 @@ import { WifiOff, RefreshCw, CheckCircle2, AlertTriangle } from "lucide-react";
 import type { SyncPhase } from "@/hooks/useOfflineSync";
 import { reloadIdentity } from "@/lib/identityResolve";
 import { isIdentityChanged, onIdentityChanged, registerIdentityNoticeHost } from "@/lib/identityChange";
+import { Notice, type NoticeTone } from "@/components/ui/Notice";
 
 export type OfflineBannerTranslations = {
   bannerOffline: string;
@@ -106,42 +107,44 @@ export function OfflineBanner({
 
   if (!tone) return null;
 
-  const palette: Record<string, string> = {
-    offline: "bg-error/10 text-error border-error/30",
-    info: "bg-secondary/10 text-secondary border-secondary/30",
-    success: "bg-primary-container/10 text-primary-container border-primary-container/30",
-    warn: "bg-secondary/10 text-secondary border-secondary/40",
+  // P2b (E-05): the frame is the kit's Notice. Same states, text, order (identity first)
+  // and handlers; only the colours change: no terracotta for information. Offline and
+  // the warnings need attention (warning); reconnecting and synced are information.
+  // `role="status"` (polite) comes from Notice, as before.
+  const noticeTone: Record<string, NoticeTone> = {
+    offline: "warning",
+    info: "info",
+    success: "info",
+    warn: "warning",
   };
+  const actionClasses =
+    "inline-flex min-h-[44px] items-center font-semibold underline underline-offset-2 hover:opacity-80";
 
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      className={`flex items-center gap-2 px-4 py-2 mb-3 rounded-card border font-sans text-caption ${palette[tone]}`}
+    <Notice
+      tone={noticeTone[tone]}
+      icon={icon}
+      className="mb-3"
+      action={
+        showIdentity ? (
+          <button
+            type="button"
+            onClick={() => {
+              if (renderedUserId) void reloadIdentity(renderedUserId);
+              else window.location.reload();
+            }}
+            className={actionClasses}
+          >
+            {t.reloadNow ?? "Reload"}
+          </button>
+        ) : showRetry ? (
+          <button type="button" onClick={onRetry} className={actionClasses}>
+            {t.retrySync}
+          </button>
+        ) : undefined
+      }
     >
-      {icon}
-      <span className="flex-1">{message}</span>
-      {showIdentity && (
-        <button
-          type="button"
-          onClick={() => {
-            if (renderedUserId) void reloadIdentity(renderedUserId);
-            else window.location.reload();
-          }}
-          className="shrink-0 font-semibold underline underline-offset-2 hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 rounded-sm"
-        >
-          {t.reloadNow ?? "Reload"}
-        </button>
-      )}
-      {showRetry && (
-        <button
-          type="button"
-          onClick={onRetry}
-          className="shrink-0 font-semibold underline underline-offset-2 hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 rounded-sm"
-        >
-          {t.retrySync}
-        </button>
-      )}
-    </div>
+      {message}
+    </Notice>
   );
 }

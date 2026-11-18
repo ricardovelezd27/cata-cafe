@@ -86,8 +86,10 @@ describe("S7a: the four forms of C-08 use it, as their last element", () => {
     const numbers = [...src.matchAll(/<SectionTitle n=\{(\d)\}/g)].map((m) => Number(m[1]));
     expect(numbers).toEqual([1, 2, 3, 4]);
     expect(src.match(/<section aria-labelledby=\{`\$\{fid\}-sec-\w+`\}/g)).toHaveLength(4);
-    // T4b: `.section-title` paints the section role (21 px) by itself.
-    expect(src).toContain('<h2 id={id} className={`section-title ${className}`}>');
+    // T4b: `.section-title` paints the section role (21 px) by itself. P2b: the h2 (with that
+    // class and the section's id) is rendered by the paper heading.
+    expect(src).toMatch(/<PaperSectionHeading\s+id=\{id\}/);
+    expect(read("components/ui/PaperSectionHeading.tsx")).toContain('"section-title text-section"');
   });
 
   it("the wizard has ONE add action for samples (D-05): no separate 'add another coffee'", () => {

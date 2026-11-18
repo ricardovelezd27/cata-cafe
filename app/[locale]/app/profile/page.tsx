@@ -20,6 +20,8 @@ import { EditProfileDialog } from "./EditProfileDialog";
 import { ChangeEmailDialog } from "@/components/profile/ChangeEmailDialog";
 import { isAccountDeletionEnabled } from "@/lib/features";
 import { DeleteAccountDialog } from "@/components/profile/DeleteAccountDialog";
+import { Card } from "@/components/ui/Card";
+import { PaperSectionHeading } from "@/components/ui/PaperSectionHeading";
 import { deleteConfirmationWord, MAX_SESSIONS_TO_DELETE } from "@/lib/accountDeletion/plan";
 
 // The "Eliminar cuenta" dialog posts deleteAccount from this page: its one
@@ -247,7 +249,8 @@ export default async function ProfilePage({
       <div className="relative -mt-10 space-y-6 px-2 sm:px-4">
         {/* Row 1 — profile block + stats */}
         <div className="grid gap-6 lg:grid-cols-[minmax(320px,380px)_1fr]">
-          <div className="rounded-card border border-outline-variant bg-surface-container-lowest p-6 shadow-card">
+          {/* P2b (D-07): the profile block is a Card (one border, no shadow). */}
+          <Card>
             <div className="flex items-start justify-between gap-3">
               <div className="-mt-14 shrink-0 rounded-full ring-4 ring-surface-container-lowest">
                 <Avatar name={profile?.displayName || user.email || "?"} seed={user.id} size={88} />
@@ -283,7 +286,7 @@ export default async function ProfilePage({
                 {profile.bio}
               </p>
             )}
-          </div>
+          </Card>
 
           <div className="grid content-start grid-cols-2 gap-3 xl:grid-cols-4">
             <StatCard
@@ -332,8 +335,10 @@ export default async function ProfilePage({
             }}
           />
 
-          <div className="space-y-6 rounded-card border border-outline-variant bg-surface-container-lowest p-6 shadow-card">
-            <h2 className="section-title">{t("recentActivity")}</h2>
+          {/* P2b (D-07): a Card with its title as the card's own heading (h2 for the page's
+              outline). The rows inside it are a list now, not cards: cards do not nest. */}
+          <Card title={t("recentActivity")} titleLevel={2}>
+            <div className="space-y-6">
 
             <section>
               <div className="mb-2 flex items-center justify-between">
@@ -355,12 +360,12 @@ export default async function ProfilePage({
                   }
                 />
               ) : (
-                <div className="space-y-2">
+                <div className="divide-y divide-outline-variant">
                   {recentSessions.map((s) => (
                     <Link
                       key={s.id}
                       href={sessionHref(s, { locale, isOwner: s.createdBy === user.id })}
-                      className="min-h-[44px] flex items-center justify-between gap-3 rounded-card border border-outline-variant bg-surface px-4 py-2.5 transition-colors hover:bg-surface-container-low"
+                      className="min-h-[44px] -mx-[8px] flex items-center justify-between gap-3 rounded-sm px-[8px] py-[10px] transition-colors hover:bg-surface-container-low"
                     >
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-1.5">
@@ -403,12 +408,12 @@ export default async function ProfilePage({
                   }
                 />
               ) : (
-                <div className="space-y-2">
+                <div className="divide-y divide-outline-variant">
                   {recentCoffees.map((c) => (
                     <GuestGateLink
                       key={c.id}
                       href={`/${locale}/app/coffees/${c.id}`}
-                      className="min-h-[44px] flex items-center justify-between gap-3 rounded-card border border-outline-variant bg-surface px-4 py-2.5 transition-colors hover:bg-surface-container-low"
+                      className="min-h-[44px] -mx-[8px] flex items-center justify-between gap-3 rounded-sm px-[8px] py-[10px] transition-colors hover:bg-surface-container-low"
                     >
                       <span className="truncate text-caption font-semibold text-on-surface">{c.name}</span>
                       <Badge
@@ -423,13 +428,14 @@ export default async function ProfilePage({
                 </div>
               )}
             </section>
-          </div>
+            </div>
+          </Card>
         </div>
 
         {/* Account actions — reachable on mobile via the "Perfil" tab */}
         <section>
-          <h2 className="section-title mb-3">{t("account")}</h2>
-          <div className="rounded-card border border-outline-variant bg-surface-container-lowest p-4">
+          <PaperSectionHeading title={t("account")} />
+          <Card padding="compact">
             <div className="mb-3 text-caption text-on-surface-variant">{identityLine}</div>
             {showInsights && (
               <GuestGateLink
@@ -537,7 +543,7 @@ export default async function ProfilePage({
                 />
               </div>
             )}
-          </div>
+          </Card>
         </section>
       </div>
     </div>
