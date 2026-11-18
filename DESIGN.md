@@ -502,7 +502,7 @@ The landing was the place to find the rules; the app is where most of them apply
 
 | Place | Allowed | Why |
 |---|---|---|
-| Sign-in, the emailed-link confirmation, the guest claim card | Yes: stage ground, the offer-card recipe (`surface-solid`) for the form | Nothing is being evaluated; this is an arrival |
+| Sign-in, the emailed-link confirmation, the guest claim card, the two join pages | Yes: stage ground, the offer-card recipe (`surface-solid`) for the form. Built as `ArrivalStage` (S8): the ground and one still light, no dots yet | Nothing is being evaluated; this is an arrival |
 | Waiting room before a live session starts | Yes, behind the status, never behind the participant list or a control | A moment of waiting |
 | Empty states of a list (no sessions, no coffees yet) | A still, small formation as the illustration, on paper | It explains "nothing here yet" without a stock drawing |
 | The warm-up ("Movimiento sensorial") | Yes: its eyes-closed legs ARE the stage (see "The warm-up's two stages" below), and the dots follow the instruction for the whole run (they breathe, travel with the movement, gather on a hold, settle into a ring) | It is a guided moment, not data entry |
@@ -858,7 +858,7 @@ The baseline is WCAG 2.2 AA. These are the measurable parts; each is a line of t
 
 **(rule)** The product has one name, **"Café Sensible"**, in Spanish and in English, in the app, the emails, the reports and the arrival screens. "Cata Café", "Cata Café Sensible" and "cafesensible.ai" are not used as the product's name in copy (the repository and the domain keep their names).
 
-The name is shown through one component, `Wordmark` (the landing header's wordmark, made shared; built by package P4 of the audit's plan). It links home and appears in:
+The name is shown through one component, `Wordmark` (`components/brand/Wordmark.tsx`: the landing header's wordmark, made shared in package S8). It links home and appears in:
 
 - the landing's header and footer;
 - the app shell: the sidebar, the icon rail and the phone's top bar;

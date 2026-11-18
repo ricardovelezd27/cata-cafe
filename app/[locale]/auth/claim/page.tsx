@@ -5,6 +5,8 @@ import { getGuestClaimSummary } from "@/lib/guestClaim";
 import { safeClaimBack, verifyGuestClaimToken } from "@/lib/guestClaimToken";
 import { ButtonLink } from "@/components/ui";
 import { ClaimCard } from "@/components/auth/ClaimCard";
+import { ArrivalCard } from "@/components/arrival/ArrivalCard";
+import { ArrivalStage } from "@/components/arrival/ArrivalStage";
 
 // Reads cookies (the freshly signed-in user) — never statically rendered.
 export const dynamic = "force-dynamic";
@@ -63,29 +65,27 @@ export default async function ClaimPage({
     }
   }
 
-  const card = "w-full max-w-md space-y-4 rounded-card border border-outline-variant bg-surface-container-lowest p-8";
-
   if (error || !summary || !token) {
     return (
-      <main className="flex flex-1 items-center justify-center px-6 py-16">
-        <div className={card}>
-          <h1 className="page-title">{t("errorTitle")}</h1>
-          <p className="text-body text-on-surface-variant">
-            {error === "expired" ? t("errorExpired") : error === "already" ? t("errorAlready") : t("errorInvalid")}
-          </p>
-          <ButtonLink href={home} size="sm">
-            {t("continue")}
-          </ButtonLink>
-        </div>
-      </main>
+      <ArrivalStage locale={loc}>
+        <ArrivalCard
+          tone="warning"
+          title={t("errorTitle")}
+          lead={error === "expired" ? t("errorExpired") : error === "already" ? t("errorAlready") : t("errorInvalid")}
+          actions={
+            <ButtonLink href={home} className="w-full">
+              {t("continue")}
+            </ButtonLink>
+          }
+        />
+      </ArrivalStage>
     );
   }
 
   const claimUrl = `/${loc}/auth/claim?token=${encodeURIComponent(token)}&back=${encodeURIComponent(safeBack)}`;
 
   return (
-    <main className="flex flex-1 items-center justify-center px-6 py-16">
-      <div className={card}>
+    <ArrivalStage locale={loc}>
         <ClaimCard
           locale={loc}
           token={token}
@@ -117,7 +117,6 @@ export default async function ClaimPage({
             offline: t("offline"),
           }}
         />
-      </div>
-    </main>
+    </ArrivalStage>
   );
 }

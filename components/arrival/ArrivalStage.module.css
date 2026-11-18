@@ -1,0 +1,147 @@
+/* The arrival stage (package S8, audit K-01; DESIGN.md "Where the dots and the
+   dark ground may appear in the app"): the landing's dark ground for the
+   screens where a person arrives, with ONE solid cream card that holds the ask.
+
+   It does NOT take the landing's `.stage-ground` class on purpose:
+   app/globals.css reads that class as "this page is the landing" and switches
+   off the paper focus ring, the paper heading rule and the one reduced-motion
+   reset. An arrival screen is a form on a card: it keeps all three. The ground
+   is painted here from the same tokens. */
+
+.ground {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow: hidden;
+  overflow: clip;
+  background-color: var(--color-stage);
+  background-image: linear-gradient(180deg, var(--color-stage) 0%, var(--color-stage-deep) 100%);
+  color: var(--color-surface);
+}
+
+/* One still pool of the stage's mint light behind the card (the global
+   `.stage-light .stage-light-mint` recipe paints it; this only places it).
+   No canvas, no script, nothing that moves: the dots are a later package.
+   It starts under the 60 px bar, so the mark and the language never sit on it. */
+.light {
+  z-index: -1;
+  left: 50%;
+  top: 72px;
+  width: min(760px, 170vw);
+  aspect-ratio: 1;
+  transform: translateX(-50%);
+}
+
+/* The bar: the mark on the left, the language on the right. The landing
+   header's own measures (60 px tall, 20 px of side padding, 32 from 640 px). */
+.bar {
+  display: flex;
+  width: 100%;
+  max-width: 1152px;
+  height: 60px;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-inline: auto;
+  padding-inline: 20px;
+}
+
+.language {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  margin-right: -8px;
+  padding-inline: 8px;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-caption);
+  font-weight: 600;
+  line-height: 1;
+  color: color-mix(in srgb, var(--color-surface) 82%, transparent);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--color-surface) 40%, transparent);
+  text-underline-offset: 3px;
+}
+.language:hover {
+  color: var(--color-surface);
+}
+
+/* On a phone the card starts near the top, so the field and its button are
+   still on screen with the keyboard open; from 768 px it is centred. */
+.main {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: clamp(4px, 4vh, 40px) 16px 16px;
+}
+
+/* The one solid surface (`.surface-solid` gives the cream, the hairline and
+   the stage card's shadow). Narrow: 400 px, the plan's width for arrival cards. */
+.card {
+  width: 100%;
+  max-width: 400px;
+  padding: 20px;
+  border-radius: var(--radius-card);
+}
+
+.foot {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0 4px;
+  padding: 0 12px 12px;
+  font-size: var(--text-caption);
+  line-height: 1;
+  color: color-mix(in srgb, var(--color-surface) 72%, transparent);
+}
+.footLink {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  padding-inline: 8px;
+  border-radius: var(--radius-pill);
+  color: color-mix(in srgb, var(--color-surface) 82%, transparent);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--color-surface) 40%, transparent);
+  text-underline-offset: 3px;
+}
+.footLink:hover {
+  color: var(--color-surface);
+}
+
+/* Focus on the dark ground: the paper ring is the app's dark green, which
+   cannot be seen here. Outside the card the ring is the stage's mint; inside
+   the card (cream) it is the paper ring again. Same 2 px, same 2 px offset. */
+.ground :focus-visible:where(:not([tabindex="-1"])) {
+  outline: 2px solid var(--color-primary-fixed);
+  outline-offset: 2px;
+}
+.card :focus-visible:where(:not([tabindex="-1"])) {
+  outline-color: var(--color-primary-container);
+}
+
+/* A field of the card keeps room under it when the browser scrolls it into
+   view for the keyboard: its button (12 px below, 44 px tall) stays on screen. */
+.card :where(input:not([type="hidden"]), select, textarea) {
+  scroll-margin-block: 16px 76px;
+}
+
+@media (min-width: 640px) {
+  .bar { padding-inline: 32px; }
+  .card { padding: 28px; }
+}
+@media (min-width: 768px) {
+  .main {
+    justify-content: center;
+    padding-block: 24px 40px;
+  }
+  .foot { padding-bottom: 20px; }
+}

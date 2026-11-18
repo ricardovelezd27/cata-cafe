@@ -1,9 +1,11 @@
-import Link from "next/link";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { isRegisteredUser } from "@/lib/guestScope";
 import { JoinCoffeeForm } from "@/components/join/JoinCoffeeForm";
+import { ArrivalCard } from "@/components/arrival/ArrivalCard";
+import { ArrivalStage } from "@/components/arrival/ArrivalStage";
+import { ButtonLink } from "@/components/ui";
 
 // Auth'd page with an extra dynamic [token] segment: must render per-request
 // (see the documented production outage for groups/[id] and coffees/[id]).
@@ -40,22 +42,22 @@ export default async function JoinCoffeePage({
 
   if (!isValid) {
     return (
-      <main className="flex flex-1 items-center justify-center px-6 py-16">
-        <div className="w-full max-w-md bg-surface-container-lowest border border-outline-variant rounded-card p-8 text-center space-y-4">
-          <p className="text-card font-semibold text-error">{t("share.invalidToken")}</p>
-          <div className="flex flex-col gap-2 text-caption">
-            <Link href={`/${locale}/app`} className="flex min-h-[44px] items-center justify-center text-on-surface-variant underline hover:text-primary-container">
-              {tErrors("home")}
-            </Link>
-            <Link
-              href={`/${locale}/auth/login`}
-              className="flex min-h-[44px] items-center justify-center text-on-surface-variant underline hover:text-primary-container"
-            >
-              {tAuth("loginTitle")}
-            </Link>
-          </div>
-        </div>
-      </main>
+      <ArrivalStage locale={locale}>
+        <ArrivalCard
+          tone="warning"
+          title={t("share.invalidToken")}
+          actions={
+            <>
+              <ButtonLink href={user ? `/${locale}/app` : `/${locale}/auth/login`} className="w-full">
+                {user ? tErrors("home") : tAuth("loginTitle")}
+              </ButtonLink>
+              <ButtonLink href={user ? `/${locale}/auth/login` : `/${locale}/app`} variant="secondary" className="w-full">
+                {user ? tAuth("loginTitle") : tErrors("home")}
+              </ButtonLink>
+            </>
+          }
+        />
+      </ArrivalStage>
     );
   }
 
@@ -64,38 +66,25 @@ export default async function JoinCoffeePage({
   if (!isRegisteredUser(user)) {
     const loginHref = `/${locale}/auth/login?next=${encodeURIComponent(`/${locale}/join/coffee/${token}`)}`;
     return (
-      <main className="flex flex-1 items-center justify-center px-6 py-16">
-        <div className="w-full max-w-md bg-surface-container-lowest border border-outline-variant rounded-card p-8 space-y-6">
-          <div>
-            <h1 className="page-title">
-              {invite.coffee.name}
-            </h1>
-            <p className="text-caption text-on-surface-variant mt-1">{t("share.joinTitle")}</p>
-          </div>
-          <Link
-            href={loginHref}
-            className="block w-full text-center py-3 rounded-pill bg-primary-container text-white font-bold hover:bg-primary-muted transition"
-          >
-            {t("share.joinLogin")}
-          </Link>
-        </div>
-      </main>
+      <ArrivalStage locale={locale}>
+        <ArrivalCard
+          title={invite.coffee.name}
+          lead={t("share.joinTitle")}
+          actions={
+            <ButtonLink href={loginHref} className="w-full">
+              {t("share.joinLogin")}
+            </ButtonLink>
+          }
+        />
+      </ArrivalStage>
     );
   }
 
   const errorCodes = tErrors.raw("codes") as Record<string, string>;
 
   return (
-    <main className="flex flex-1 items-center justify-center px-6 py-16">
-      <div className="w-full max-w-md bg-surface-container-lowest border border-outline-variant rounded-card p-8 space-y-6">
-        <div>
-          <h1 className="page-title">
-            {invite.coffee.name}
-          </h1>
-          <p className="text-caption text-on-surface-variant mt-1">
-            {t("share.joinBody", { name: invite.coffee.name })}
-          </p>
-        </div>
+    <ArrivalStage locale={locale}>
+      <ArrivalCard title={invite.coffee.name} lead={t("share.joinBody", { name: invite.coffee.name })}>
         <JoinCoffeeForm
           token={token}
           locale={locale}
@@ -106,7 +95,7 @@ export default async function JoinCoffeePage({
             home: tErrors("home"),
           }}
         />
-      </div>
-    </main>
+      </ArrivalCard>
+    </ArrivalStage>
   );
 }

@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { verifyEmailCode } from "@/app/actions/auth";
 import { announceSignedIn } from "@/lib/identityChange";
+import { Mail } from "lucide-react";
+import { ArrivalMark } from "@/components/arrival/ArrivalCard";
 import { authErrorFromAction, type AuthErrorKey } from "@/lib/authErrors";
 
 // The "we sent you something" state shared by the login form and the
@@ -38,9 +40,9 @@ const TONES = {
     text: "text-on-surface",
     muted: "text-on-surface-variant",
     input:
-     "min-h-[44px] w-full rounded-input border border-outline-variant bg-surface-container-lowest px-3 py-2 text-center text-card tracking-[0.4em] text-on-surface",
+     "min-h-[44px] w-full rounded-input border border-outline bg-surface-container-lowest px-3 py-2 text-center text-card tracking-[0.4em] text-on-surface",
     primary:
-      "rounded-pill bg-primary-container px-5 min-h-[44px] text-caption font-medium text-on-primary hover:bg-primary disabled:opacity-60",
+      "w-full rounded-pill bg-primary-container px-5 min-h-[44px] text-body font-semibold text-on-primary hover:bg-primary disabled:opacity-60",
     link: "inline-flex min-h-[44px] items-center text-caption font-semibold text-primary underline disabled:no-underline disabled:opacity-60",
     error: "text-caption text-error",
   },
@@ -66,6 +68,7 @@ export function EmailSentState({
   onChangeEmail,
   initialCooldownMs = COOLDOWN_MS,
   tone = "light",
+  arrival = false,
 }: {
   email: string;
   next?: string;
@@ -76,6 +79,8 @@ export function EmailSentState({
   onChangeEmail: () => void;
   initialCooldownMs?: number;
   tone?: keyof typeof TONES;
+  /** On an arrival card (the sign-in screen): the card anatomy's info mark and its heading size. */
+  arrival?: boolean;
 }) {
   const s = TONES[tone];
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -145,9 +150,11 @@ export function EmailSentState({
   const errorId = "email-sent-error";
 
   return (
-    <div className={`space-y-4 ${s.text}`}>
+    <div className={`space-y-4 ${s.text}`} data-arrival-state={arrival ? "info" : undefined}>
+      {/* On the arrival card: the anatomy's info mark. The landing's form keeps its own look. */}
+      {arrival ? <ArrivalMark tone="info" icon={<Mail size={18} aria-hidden />} /> : null}
       <div role="status" className="space-y-1">
-        <h2 ref={headingRef} tabIndex={-1} className="text-body outline-none">
+        <h2 ref={headingRef} tabIndex={-1} className={`outline-none ${arrival ? "text-card" : "text-body"}`}>
           {labels.title}
         </h2>
         <p className={`text-body ${s.muted}`}>{labels.body.replace("{email}", email)}</p>

@@ -103,6 +103,7 @@ export function LoginForm({
         locale={locale}
         labels={sentLabels}
         supportHref={supportHref}
+        arrival
         onResend={() => send(lastSent.current)}
         onChangeEmail={() => {
           // The typed address stays in the field.
@@ -114,14 +115,14 @@ export function LoginForm({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-[16px]">
       {inApp ? (
         <div className="rounded-card border border-outline-variant bg-surface-container-lowest p-3 text-body text-on-surface space-y-2">
           <p>{inAppLabels.hint}</p>
           <button
             type="button"
             onClick={copyPageLink}
-            className="rounded-pill border border-primary-muted px-3.5 py-2 text-caption font-semibold text-primary-container hover:bg-primary-fixed-dim/25 transition-colors"
+            className="inline-flex min-h-[44px] items-center rounded-pill border border-primary-container px-[16px] text-caption font-semibold text-primary-container transition-colors hover:bg-primary-fixed"
           >
             {linkCopied ? inAppLabels.copied : inAppLabels.copy}
           </button>
@@ -131,7 +132,7 @@ export function LoginForm({
         type="button"
         onClick={onGoogleClick}
         disabled={isPending}
-        className="min-h-[44px] w-full flex items-center justify-center gap-3 py-2.5 rounded-pill border border-outline-variant bg-surface-container-lowest text-on-surface font-semibold text-caption hover:bg-surface-container transition disabled:opacity-50"
+        className="flex min-h-[44px] w-full items-center justify-center gap-3 rounded-pill border border-outline bg-surface-container-lowest py-2.5 text-body font-semibold text-on-surface transition hover:bg-surface-container disabled:opacity-50"
       >
         <GoogleMark />
         {googleLabel}
@@ -144,7 +145,7 @@ export function LoginForm({
         <div className="flex-1 h-px bg-outline-variant" />
       </div>
 
-      <form onSubmit={onSubmit} className="space-y-3">
+      <form onSubmit={onSubmit} className="flex flex-col gap-[12px]">
         <p className="text-body text-on-surface-variant">{subtitleLabel}</p>
         <label className="block">
           <span className="label-caps">
@@ -164,13 +165,13 @@ export function LoginForm({
             autoFocus={autoFocusEmail}
             aria-describedby={error ? "login-error" : undefined}
             aria-invalid={error ? true : undefined}
-            className="min-h-[44px] mt-1 w-full px-3 py-2 border border-outline-variant rounded-input text-body bg-surface-container-lowest text-on-surface focus:border-primary-container"
+            className="mt-1 min-h-[44px] w-full rounded-input border border-outline bg-surface-container-lowest px-3 py-2 text-body text-on-surface focus:border-primary-container"
           />
         </label>
         <button
           type="submit"
           disabled={status === "sending"}
-          className="min-h-[44px] w-full py-2.5 rounded-pill bg-primary-container text-white font-bold hover:bg-primary-muted transition disabled:opacity-50"
+          className="min-h-[44px] w-full rounded-pill bg-primary-container py-2.5 text-body font-semibold text-on-primary transition hover:bg-primary disabled:opacity-50"
         >
           {status === "sending" ? sendingLabel : sendLabel}
         </button>
@@ -180,7 +181,7 @@ export function LoginForm({
           </p>
         )}
         <p className="text-caption">
-          <a href={supportHref} className="font-semibold text-primary-container underline">
+          <a href={supportHref} className="inline-flex min-h-[44px] items-center font-semibold text-primary-container underline">
             {sentLabels.support}
           </a>
         </p>

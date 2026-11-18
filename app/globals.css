@@ -661,6 +661,32 @@ button { font-family: inherit; cursor: pointer; }
   border-color: var(--color-secondary-container);
   color: var(--color-stage-deep);
 }
+/* The same numbered step on PAPER (the stage's `.rail-step` above is cream on
+   green). One recipe for every numbered step of the app: the coffee cards' row
+   on a phone, the onboarding dialog. 24 px, the number in the caption size; the
+   step being read is filled with the app's green. A tappable step puts it in a
+   44 px button. */
+.step-mark {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--color-outline);
+  border-radius: 50%;
+  font-family: var(--font-ui);
+  font-size: 12.25px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--color-on-surface-variant);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+.step-mark[data-on="1"] {
+  border-color: var(--color-primary-container);
+  background: var(--color-primary-container);
+  color: var(--color-on-primary);
+}
 .steps-rail-line {
   position: relative;
   width: 1.5px;

@@ -1,5 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { ConfirmClient } from "./ConfirmClient";
+import { ArrivalStage } from "@/components/arrival/ArrivalStage";
 import { loginHref } from "@/lib/authRedirect";
 import { safeNext } from "@/lib/safeNext";
 import { trustedRequestOrigin } from "@/lib/requestOrigin";
@@ -34,8 +35,7 @@ export default async function ConfirmPage({
   const dest = safeNext(next, { origin, fallback: `/${loc}/app` });
 
   return (
-    <main className="flex flex-1 items-center justify-center px-6 py-16">
-      <div className="w-full max-w-md space-y-5 rounded-card border border-outline-variant bg-surface-container-lowest p-8">
+    <ArrivalStage locale={loc}>
         <ConfirmClient
           tokenHash={valid ? tokenHash : undefined}
           type={valid ? type : undefined}
@@ -62,7 +62,6 @@ export default async function ConfirmPage({
             toLogin: t("toLogin"),
           }}
         />
-      </div>
-    </main>
+    </ArrivalStage>
   );
 }
