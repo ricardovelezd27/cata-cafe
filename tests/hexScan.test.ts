@@ -17,7 +17,6 @@ const ALLOWLIST: Record<string, string> = {
   "components/results/chartColors.ts": "Recharts' SSR snapshot of the tokens (tests/insightsTokens.test.ts checks it equals them)",
   "components/landing": "the landing's constellation canvas keeps a snapshot of the stage tokens (DESIGN.md sanctions it)",
   "components/warmup": "the warm-up's stage field draws the same particle dialect on the stage",
-  "app/[locale]/app/sessions/[id]/waiting/WaitingRoomClient.tsx": "the waiting room is being rebuilt on the stage (package S7b)",
   "app/[locale]/app/sessions/[id]/print/PrintClient.tsx":
     "the printed CVA sheet: its ink, rules, cream, green and red are the paper's colours and mirror lib/pdf's document palette; a screen token would change the printed sheet",
   "components/auth/GoogleMark.tsx": "Google's brand colours, required as they are",
