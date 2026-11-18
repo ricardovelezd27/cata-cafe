@@ -38,6 +38,9 @@ import { ReportLink } from "@/components/ui/ReportLink";
 import { coffeeSessionOriginEditedAt } from "@/lib/originEdit";
 import { historyCupsPerSample, isQuickImpression } from "@/lib/historyRules";
 import { DuplicateButton } from "@/components/DuplicateButton";
+import { Card } from "@/components/ui/Card";
+import { Notice } from "@/components/ui/Notice";
+import { PaperSectionHeading } from "@/components/ui/PaperSectionHeading";
 
 // Auth'd page with a dynamic [id] segment: must render per-request. With
 // generateStaticParams present, prod attempts on-demand static generation and
@@ -49,11 +52,10 @@ export const dynamic = "force-dynamic";
 // overlapping identity card + stats → sensory profile + activity → details →
 // owner settings) so a coffee "profile" reads like a user profile.
 const GRID_2COL = "grid gap-6 lg:grid-cols-[minmax(320px,380px)_1fr]";
-const CARD = "rounded-card border border-outline-variant bg-surface-container-lowest p-6 shadow-card";
 // Uppercase label headings (DESIGN.md "Uppercase label": UI font, 600, on-surface-variant).
 const SUB_H3 = "label-caps font-sans";
-const LIST_ROW =
-  "flex items-center justify-between gap-3 rounded-card border border-outline-variant bg-surface px-4 py-2.5";
+// P2c (D-07): rows of a list inside a card, separated by hairlines (cards do not nest).
+const LIST_ROW = "flex items-center justify-between gap-3 py-[10px]";
 const FIELD_LABEL = "label-caps mb-0.5";
 
 export default async function CoffeeProfilePage({
@@ -214,7 +216,8 @@ export default async function CoffeeProfilePage({
       <div className="relative -mt-10 space-y-6 px-2 sm:px-4">
         {/* Row 1 — identity card + stats */}
         <div className={GRID_2COL}>
-          <div className={CARD}>
+          {/* P2c (D-07): the identity block is a Card (one border, no shadow). */}
+          <Card>
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="-mt-14 shrink-0 rounded-full ring-4 ring-surface-container-lowest">
                 <div
@@ -296,7 +299,7 @@ export default async function CoffeeProfilePage({
                 {coffee.notes}
               </p>
             )}
-          </div>
+          </Card>
 
           <div className="grid content-start grid-cols-2 gap-3 xl:grid-cols-4">
             {showResults ? (
@@ -341,9 +344,10 @@ export default async function CoffeeProfilePage({
               </section>
               </CoffeeScoreBlock>
             ) : (
-              <div className="col-span-2 flex items-center rounded-card border border-outline-variant bg-surface-container-lowest p-5 shadow-card xl:col-span-3">
-                {privateNotice}
-              </div>
+              // P2c (E-05): a notice, not a card. Part of the page, so not announced.
+              <Notice tone="info" live={false} className="col-span-2 xl:col-span-3">
+                {t("resultsPrivate")}
+              </Notice>
             )}
             <Link href="#historial" className="block">
               <StatCard
@@ -358,8 +362,11 @@ export default async function CoffeeProfilePage({
 
         {/* Row 2 — sensory profile + activity */}
         <div className={GRID_2COL}>
-          <div className="flex flex-col gap-4 rounded-card border border-outline-variant bg-surface-container-lowest p-5">
-            <h2 className={SUB_H3}>{t("sensoryTitle")}</h2>
+          {/* P2c (B-04, D-07): the section heading above its card; the card's own titles are
+              level 3. The h2 was an 11 px label over 17.5 px h3s. */}
+          <section>
+          <PaperSectionHeading title={t("sensoryTitle")} />
+          <Card className="flex flex-col gap-4">
             {!showResults ? (
               privateNotice
             ) : !hasResults ? (
@@ -368,9 +375,7 @@ export default async function CoffeeProfilePage({
               <>
                 {Object.keys(aggregate.attrAverages).length > 0 && (
                   <div>
-                    <h3 className="mb-3 text-card">
-                      {t("attrAveragesTitle")}
-                    </h3>
+                    <PaperSectionHeading level={3} title={t("attrAveragesTitle")} />
                     <div className="flex flex-col gap-3">
                       {AFFECTIVE_ATTRIBUTES.filter(
                         (attr) => aggregate.attrAverages[attr.label] != null,
@@ -398,9 +403,7 @@ export default async function CoffeeProfilePage({
                 )}
                 {aggregate.allDescriptive.length > 0 && (
                   <div className="border-t border-outline-variant/50 pt-4">
-                    <h3 className="mb-2 text-card">
-                      {t("flavorsTitle")}
-                    </h3>
+                    <PaperSectionHeading level={3} title={t("flavorsTitle")} />
                     <FlavorCloud
                       descriptive={unionDescriptive}
                       allDescriptive={aggregate.allDescriptive}
@@ -411,28 +414,31 @@ export default async function CoffeeProfilePage({
                 )}
               </>
             )}
-          </div>
+          </Card>
+          </section>
 
-          <div className={`space-y-6 ${CARD}`}>
-            <h2 className="section-title">{t("activityTitle")}</h2>
+          {/* P2c: the same anatomy for the activity: heading, then its card. */}
+          <section>
+          <PaperSectionHeading title={t("activityTitle")} />
+          <Card className="space-y-6">
 
             {showResults && (
               <section>
-                <h3 className={`mb-2 ${SUB_H3}`}>{t("sessionsListTitle")}</h3>
+                <PaperSectionHeading level={3} title={t("sessionsListTitle")} />
                 <p className="mb-2 font-sans text-caption text-on-surface-variant">{tc("scoreLegend")}</p>
                 {aggregate.sessionRows.length === 0 ? (
                   <EmptyState
                     title={aggregate.sessionsCount > 0 ? t("sessionsOthersNote") : t("noResults")}
                   />
                 ) : (
-                  <div className="space-y-2">
+                  <div className="divide-y divide-outline-variant">
                     {aggregate.sessionRows.map((row, i) => (
                       // Only sessions the viewer owns or joined reach this list
                       // (filterCoffeeSamples), so every row can open its results.
                       <Link
                         key={`${row.sessionId}-${i}`}
                         href={`/${locale}/app/sessions/${row.sessionId}/results`}
-                        className={`${LIST_ROW} transition-colors hover:bg-surface-container-low`}
+                        className={`${LIST_ROW} -mx-[8px] min-h-[44px] rounded-sm px-[8px] transition-colors hover:bg-surface-container-low`}
                       >
                         <div className="min-w-0">
                           <div className="truncate text-caption font-semibold text-on-surface">
@@ -464,17 +470,20 @@ export default async function CoffeeProfilePage({
             )}
 
             <section id="historial">
-              <div className="mb-2 flex items-center justify-between">
-                <h3 className={SUB_H3}>{t("tastingHistory")}</h3>
-                <TextActionLink href={`/${locale}/app/profile/history`} className="-my-[15px]">
-                  {tProfile("viewHistory")}
-                </TextActionLink>
-              </div>
+              <PaperSectionHeading
+                level={3}
+                title={t("tastingHistory")}
+                action={
+                  <TextActionLink href={`/${locale}/app/profile/history`} className="-my-[15px]">
+                    {tProfile("viewHistory")}
+                  </TextActionLink>
+                }
+              />
               {history.length === 0 ? (
                 // The page's header already offers "Catar este café": point to it in words.
                 <EmptyState title={th("empty")} body={t("historyEmptyBody")} />
               ) : (
-                <div className="space-y-2">
+                <div className="divide-y divide-outline-variant">
                   {history.map((h) => {
                     const snapshot = h.snapshot as { sessionName?: string; cupsPerSample?: number } | null;
                     const quick = isQuickImpression(historyCupsPerSample(h.session, snapshot));
@@ -524,13 +533,15 @@ export default async function CoffeeProfilePage({
                 </div>
               )}
             </section>
-          </div>
+          </Card>
+          </section>
         </div>
 
         {/* Ficha técnica */}
         <section>
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h2 className="section-title">{t("detailsTitle")}</h2>
+          <PaperSectionHeading
+            title={t("detailsTitle")}
+            action={
             <ReportLink
               href={`/api/coffees/${coffee.id}/ficha?locale=${locale}&inline=1`}
               filename={`ficha-${coffee.id}.pdf`}
@@ -542,8 +553,9 @@ export default async function CoffeeProfilePage({
             >
               {t("downloadFicha")}
             </ReportLink>
-          </div>
-          <div className="grid grid-cols-2 gap-4 rounded-card border border-outline-variant bg-surface-container-lowest p-5 sm:grid-cols-3 lg:grid-cols-4">
+            }
+          />
+          <Card className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {filledFields.map((f) => (
               <div key={f.label}>
                 <p className={FIELD_LABEL}>{f.label}</p>
@@ -568,16 +580,14 @@ export default async function CoffeeProfilePage({
             {filledFields.length === 0 && coffee.certifications.length === 0 && (
               <p className="col-span-full text-caption text-on-surface-variant">—</p>
             )}
-          </div>
+          </Card>
         </section>
 
         {/* Visibility & sharing (owner only) — the "Cuenta" slot of the user profile */}
         {isOwner && (
           <section>
-            <h2 className="section-title mb-3">
-              {t("visibilityTitle")}
-            </h2>
-            <div className="space-y-4 rounded-card border border-outline-variant bg-surface-container-lowest p-5">
+            <PaperSectionHeading title={t("visibilityTitle")} />
+            <Card className="space-y-4">
               <div className="space-y-1.5">
                 <CoffeeVisibilityToggle
                   coffeeId={coffee.id}
@@ -657,7 +667,7 @@ export default async function CoffeeProfilePage({
                   }}
                 />
               </div>
-            </div>
+            </Card>
           </section>
         )}
       </div>

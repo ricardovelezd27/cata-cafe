@@ -8,6 +8,7 @@ import type { CoCupperCandidate } from "@/lib/coCuppers";
 import { ROLE_LABELS } from "@/lib/constants";
 import { formatRelativeDate, type RelativeDateLabels } from "@/lib/relativeDate";
 import { AddToGroupButton, type GroupOption } from "./AddToGroupButton";
+import { cardClasses } from "@/components/ui/cardRecipe";
 
 export function CoCupperCard({
   cupper,
@@ -40,7 +41,7 @@ export function CoCupperCard({
   const roleLabel = ROLE_LABELS[cupper.role]?.[locale === "en" ? "en" : "es"] ?? cupper.role;
 
   return (
-    <div className="bg-surface-container-lowest rounded-card border border-outline-variant p-5 flex flex-col gap-4">
+    <div className={`${cardClasses()} flex flex-col gap-4`}>
       <div className="flex items-center gap-4">
         <Avatar name={cupper.displayName} seed={cupper.userId} size={56} />
         <div className="min-w-0">

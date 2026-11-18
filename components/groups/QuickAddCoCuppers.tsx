@@ -6,6 +6,7 @@ import { Check, Plus } from "lucide-react";
 import { addMemberByUserId } from "@/app/actions/groups";
 import { useActionFeedback } from "@/components/ui/Toast";
 import { HIT_44 } from "@/components/ui/hitArea";
+import { cardClasses } from "@/components/ui/cardRecipe";
 
 type Candidate = { userId: string; displayName: string };
 
@@ -55,7 +56,7 @@ export function QuickAddCoCuppers({
         return (
           <div
             key={c.userId}
-            className="flex items-center justify-between gap-3 px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-card"
+            className={`${cardClasses({ padding: "row" })} flex items-center justify-between gap-3`}
           >
             <p className="text-body text-on-surface truncate">{c.displayName}</p>
             {added ? (

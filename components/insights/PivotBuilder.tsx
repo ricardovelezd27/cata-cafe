@@ -18,6 +18,7 @@ import { isAccessError } from "@/lib/actionResult";
 import { PivotTable } from "@/components/insights/PivotTable";
 import { PivotChart } from "@/components/insights/PivotChart";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
+import { cardClasses } from "@/components/ui/cardRecipe";
 
 export interface PivotTranslations {
   rows: string;
@@ -332,7 +333,7 @@ export function PivotBuilder({ locale, t, loadedConfig, loadKey, onConfigChange 
   return (
     <div className="flex flex-col gap-5">
       {/* Builder controls */}
-      <div className="bg-surface-container-lowest rounded-card border border-outline-variant shadow-card p-5 flex flex-col gap-4">
+      <div className={`${cardClasses()} flex flex-col gap-4`}>
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 max-w-2xl">
           <label className="flex flex-col gap-1">
             <span className={shelfLabelClass}>{t.dataset}</span>
@@ -545,7 +546,7 @@ export function PivotBuilder({ locale, t, loadedConfig, loadKey, onConfigChange 
       </div>
 
       {/* Preview */}
-      <div className="bg-surface-container-lowest rounded-card border border-outline-variant shadow-card p-5">
+      <div className={cardClasses()}>
         <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
           <div className="flex items-center gap-1.5 flex-wrap">
             <div className="inline-flex rounded-pill border border-outline-variant bg-surface-container p-1">

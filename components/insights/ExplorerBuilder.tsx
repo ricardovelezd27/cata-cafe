@@ -16,6 +16,7 @@ import { useActionFeedback } from "@/components/ui/Toast";
 import { isAccessError } from "@/lib/actionResult";
 import { InsightChart } from "@/components/insights/InsightChart";
 import { AiSummaryPanel, type AiSummaryTranslations } from "@/components/insights/AiSummaryPanel";
+import { cardClasses } from "@/components/ui/cardRecipe";
 
 export interface ExplorerTranslations {
   dataset: string;
@@ -153,7 +154,7 @@ export function ExplorerBuilder({ locale, t, loadedConfig, loadKey, onConfigChan
   return (
     <div className="flex flex-col gap-5">
       {/* Builder controls */}
-      <div className="bg-surface-container-lowest rounded-card border border-outline-variant shadow-card p-5">
+      <div className={cardClasses()}>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <label className="flex flex-col gap-1">
             <span className="label-caps">
@@ -251,7 +252,7 @@ export function ExplorerBuilder({ locale, t, loadedConfig, loadKey, onConfigChan
       </div>
 
       {/* Preview */}
-      <div className="bg-surface-container-lowest rounded-card border border-outline-variant shadow-card p-5">
+      <div className={cardClasses()}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="label-caps font-sans">
             {t.dimensions[dimension]} · {t.measures[measure]}

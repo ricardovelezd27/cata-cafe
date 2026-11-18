@@ -13,6 +13,7 @@ import {
   type ShareComposerTranslations,
 } from "@/components/insights/InsightCardComposer";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
+import { cardClasses } from "@/components/ui/cardRecipe";
 
 export interface SavedInsightItem {
   id: string;
@@ -212,7 +213,7 @@ export function ExplorerWorkspace({
       )}
 
       {/* Saved insights */}
-      <div className="bg-surface-container-lowest rounded-card border border-outline-variant shadow-card p-5">
+      <div className={cardClasses()}>
         <h2 className="label-caps font-sans mb-3">
           {t.savedTitle}
         </h2>

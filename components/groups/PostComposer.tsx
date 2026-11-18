@@ -11,6 +11,8 @@ import { useRouter } from "next/navigation";
 import { Send } from "lucide-react";
 import { createGroupPost } from "@/app/actions/groups";
 import { useActionFeedback } from "@/components/ui/Toast";
+import { cardClasses } from "@/components/ui/cardRecipe";
+import { PaperSectionHeading } from "@/components/ui/PaperSectionHeading";
 
 export type PostComposerTranslations = {
   composerTitle: string;
@@ -99,9 +101,9 @@ export function PostComposer({
   return (
     <form
       onSubmit={onSubmit}
-      className="bg-surface-container-lowest border border-outline-variant rounded-card p-5 space-y-4"
+      className={`${cardClasses()} space-y-4`}
     >
-      <h3 className="text-card">{t.composerTitle}</h3>
+      <PaperSectionHeading level={3} title={t.composerTitle} flush />
       <div className="space-y-1.5">
         <label htmlFor={`${uid}-title`} className={labelCls}>
           {t.titleLabel}

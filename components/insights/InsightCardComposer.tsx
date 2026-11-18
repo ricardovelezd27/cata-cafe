@@ -22,6 +22,7 @@ import { PivotTable } from "@/components/insights/PivotTable";
 import { PivotChart } from "@/components/insights/PivotChart";
 import { useContainerWidth } from "@/hooks/useContainerWidth";
 import { downloadFile } from "@/lib/platform/files";
+import { cardClasses } from "@/components/ui/cardRecipe";
 
 export interface ShareComposerTranslations {
   headline: string;
@@ -199,7 +200,7 @@ export function InsightCardComposer({ locale, config, citationLines, t }: Insigh
     <div className="grid grid-cols-1 gap-5 items-start">
       {/* Controls */}
       <div className="flex flex-col gap-4">
-        <div className="bg-surface-container-lowest rounded-card border border-outline-variant shadow-card p-5 flex flex-col gap-4">
+        <div className={`${cardClasses()} flex flex-col gap-4`}>
           <label className="flex flex-col gap-1">
             <span className="label-caps">
               {t.headline}
@@ -238,7 +239,7 @@ export function InsightCardComposer({ locale, config, citationLines, t }: Insigh
         </div>
 
         {(liPending || liResult) && (
-          <div className="bg-surface-container rounded-card border border-outline-variant shadow-card p-5">
+          <div className={cardClasses({ tone: "quiet" })}>
             {liPending ? (
               <div className="flex items-center gap-2 text-caption text-on-surface-variant animate-pulse">
                 <Sparkles size={16} />
@@ -303,7 +304,7 @@ export function InsightCardComposer({ locale, config, citationLines, t }: Insigh
       </div>
 
       {/* Preview */}
-      <div className="bg-surface-container-lowest rounded-card border border-outline-variant shadow-card p-5">
+      <div className={cardClasses()}>
         <div
           ref={scaleRef}
           className="relative w-full overflow-hidden"

@@ -7,6 +7,8 @@ import { createCoffee, updateCoffee } from "@/app/actions/coffees";
 import { PROCESS_TYPES, CERTIFICATIONS, ROAST_LEVELS } from "@/lib/constants";
 import { radioKeyDown } from "@/components/radioKeys";
 import { FormActionBar, dockedFormClass } from "@/components/ui/FormActionBar";
+import { cardClasses } from "@/components/ui/cardRecipe";
+import { Notice } from "@/components/ui/Notice";
 
 type Visibility = "private" | "shared" | "public";
 
@@ -242,7 +244,7 @@ export function CoffeeForm({
       </datalist>
 
       {/* Basic info */}
-      <div className="bg-surface-container-lowest border border-outline-variant rounded-card p-5 space-y-4">
+      <div className={`${cardClasses()} space-y-4`}>
         <div>
           <FieldLabel required htmlFor={fid("name")}>{t.name}</FieldLabel>
           <input
@@ -377,7 +379,7 @@ export function CoffeeForm({
       </div>
 
       {/* Certifications */}
-      <div className="bg-surface-container-lowest border border-outline-variant rounded-card p-5 space-y-3">
+      <div className={`${cardClasses()} space-y-3`}>
         <FieldLabel id={fid("certifications")}>{t.certifications}</FieldLabel>
         {/* Chips paint 30 px, 15 px apart in height: each chip's 44 px hit area
             (HIT_Y44) meets the next row's at the midpoint (T7b). */}
@@ -404,7 +406,7 @@ export function CoffeeForm({
       </div>
 
       {/* Notes */}
-      <div className="bg-surface-container-lowest border border-outline-variant rounded-card p-5 space-y-1.5">
+      <div className={`${cardClasses()} space-y-1.5`}>
         <FieldLabel htmlFor={fid("notes")}>{t.notes}</FieldLabel>
         <textarea
           id={fid("notes")}
@@ -417,7 +419,7 @@ export function CoffeeForm({
 
       {/* Visibility — create only; edit has its own toggle on the detail page */}
       {!isEdit && (
-        <div className="bg-surface-container-lowest border border-outline-variant rounded-card p-5 space-y-3">
+        <div className={`${cardClasses()} space-y-3`}>
           <FieldLabel id={fid("visibility")}>{t.visibilityLabel}</FieldLabel>
           <div role="radiogroup" aria-labelledby={fid("visibility")} className="grid sm:grid-cols-3 gap-3">
             {visibilityOptions.map((opt, i) => {
@@ -465,18 +467,23 @@ export function CoffeeForm({
       <FormActionBar
         status={
           errorText && (
-            <div className="bg-error-container text-on-error-container rounded-card px-4 py-3 text-body">
+            <Notice
+              tone="error"
+              live={false}
+              action={
+                errorCode === "conflict" && t.conflictReload ? (
+                  <button
+                    type="button"
+                    onClick={() => window.location.reload()}
+                    className="block min-h-[44px] rounded-input border border-on-error-container px-3 text-caption font-semibold"
+                  >
+                    {t.conflictReload}
+                  </button>
+                ) : undefined
+              }
+            >
               {errorText}
-              {errorCode === "conflict" && t.conflictReload && (
-                <button
-                  type="button"
-                  onClick={() => window.location.reload()}
-                  className="mt-2 block min-h-[44px] rounded-input border border-on-error-container px-3 text-caption font-semibold"
-                >
-                  {t.conflictReload}
-                </button>
-              )}
-            </div>
+            </Notice>
           )
         }
       >

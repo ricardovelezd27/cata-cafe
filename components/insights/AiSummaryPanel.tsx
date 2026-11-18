@@ -5,6 +5,7 @@ import { RefreshCw, Sparkles } from "lucide-react";
 import { generateDashboardNarrative, generateInsightNarrative } from "@/app/actions/ai";
 import type { CachedAiResult } from "@/lib/ai/cache";
 import type { NarrativeContent } from "@/lib/ai/narratives";
+import { cardClasses } from "@/components/ui/cardRecipe";
 
 export interface AiSummaryTranslations {
   generate: string;
@@ -59,7 +60,7 @@ export function AiSummaryPanel({ locale, target, translations: t }: AiSummaryPan
   const errored = result != null && !result.ok && !result.skipped;
 
   return (
-    <div className="bg-surface-container rounded-card border border-outline-variant shadow-card p-5">
+    <div className={cardClasses({ tone: "quiet" })}>
       {isPending ? (
         <div className="flex items-center gap-2 text-caption text-on-surface-variant animate-pulse">
           <Sparkles size={16} />

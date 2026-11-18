@@ -4,6 +4,7 @@ import { getAnalyticsAccess } from "@/lib/analytics/access";
 import { listAnalyticsUsers } from "@/app/actions/analytics";
 import { getLastDigestRun } from "@/lib/insightsDigestEmail";
 import { AccessManager } from "@/components/insights/AccessManager";
+import { cardClasses } from "@/components/ui/cardRecipe";
 
 export function generateStaticParams() {
   return [{ locale: "es" }, { locale: "en" }];
@@ -33,7 +34,7 @@ export default async function InsightsAccessPage({
   return (
     <div className="flex flex-col gap-4 pb-8">
       <p className="text-caption text-on-surface-variant">{t("lead")}</p>
-      <div className="rounded-card border border-outline-variant bg-surface-container-lowest p-4">
+      <div className={cardClasses({ padding: "compact" })}>
         <h2 className="text-body">{t("digestTitle")}</h2>
         <p className="mt-1 text-caption text-on-surface-variant">
           {!lastDigest

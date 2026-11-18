@@ -3,6 +3,7 @@
 import { useId, useRef, useState, useTransition } from "react";
 import { Mail, Check, Clock, X, RotateCcw, type LucideIcon } from "lucide-react";
 import { sendGroupEmail, type GroupEmailSummary } from "@/app/actions/groups";
+import { cardClasses } from "@/components/ui/cardRecipe";
 
 type SessionOption = { id: string; name: string; status: string };
 
@@ -110,7 +111,7 @@ export function GroupEmailComposer({
     summary !== null && summary.results.length > 0 && summary.results.every((r) => r.status === "skipped");
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4 bg-surface-container-lowest border border-outline-variant rounded-card p-5">
+    <form onSubmit={onSubmit} className={`${cardClasses()} space-y-4`}>
       <div className="space-y-1.5">
         <label htmlFor={`${uid}-subject`} className={labelCls}>
           {t.subject}
@@ -229,7 +230,7 @@ export function GroupEmailComposer({
               return (
                 <div
                   key={r.memberId}
-                  className="flex items-center justify-between gap-3 text-caption px-3 py-1.5 bg-surface border border-outline-variant rounded-card"
+                  className="flex items-center justify-between gap-3 border-b border-outline-variant py-1.5 text-caption last:border-b-0"
                 >
                   <span className="text-on-surface truncate">{r.label}</span>
                   <span

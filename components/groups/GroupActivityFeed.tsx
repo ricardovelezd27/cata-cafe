@@ -1,4 +1,6 @@
 import { EmptyState } from "@/components/ui/EmptyState";
+import { cardClasses } from "@/components/ui/cardRecipe";
+import { PaperSectionHeading } from "@/components/ui/PaperSectionHeading";
 
 // Presentational-only server component: page.tsx does the data fetching,
 // stream-merging, and translation (t()) calls, then hands this component a
@@ -38,8 +40,8 @@ export function GroupActivityFeed({
 }) {
   return (
     <div className="space-y-3">
-      <h2 className="section-title">{title}</h2>
-      <div className="bg-surface-container-lowest rounded-card border border-outline-variant shadow-card p-5">
+      <PaperSectionHeading title={title} flush />
+      <div className={cardClasses()}>
         {events.length === 0 ? (
           <EmptyState title={emptyText} />
         ) : (

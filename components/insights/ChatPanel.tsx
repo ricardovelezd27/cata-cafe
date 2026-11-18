@@ -8,6 +8,8 @@ import { useInsightsChatStore } from "@/stores/insightsChatStore";
 import { serializeBlocksForHistory } from "@/lib/ai/chatTypes";
 import type { DimensionId, MeasureId } from "@/lib/analytics/types";
 import { scrollBehavior } from "@/lib/motion";
+import { Notice } from "@/components/ui/Notice";
+import { PaperSectionHeading } from "@/components/ui/PaperSectionHeading";
 
 // Orchestrator for the "ask the data" chat: header (title/subtitle + usage
 // counter + clear), scrollable message list with an empty state and example
@@ -180,7 +182,7 @@ export function ChatPanel({ locale, t }: ChatPanelProps) {
     <div className="flex flex-col gap-3 pb-8">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h2 className="section-title">{t.title}</h2>
+          <PaperSectionHeading title={t.title} flush />
           <p className="text-caption text-on-surface-variant mt-0.5">{t.subtitle}</p>
         </div>
         <div className="flex items-center gap-3 shrink-0">
@@ -207,9 +209,7 @@ export function ChatPanel({ locale, t }: ChatPanelProps) {
       </div>
 
       {usage && usage.remaining <= 0 && (
-        <div className="rounded-card border border-secondary/40 bg-secondary/10 px-4 py-2.5 text-body text-on-surface">
-          {formatTemplate(t.limitReachedTemplate, { limit: usage.limit })}
-        </div>
+        <Notice tone="warning">{formatTemplate(t.limitReachedTemplate, { limit: usage.limit })}</Notice>
       )}
 
       <div className="bg-surface-container-lowest rounded-card border border-outline-variant shadow-card flex flex-col h-[60vh] min-h-[420px]">

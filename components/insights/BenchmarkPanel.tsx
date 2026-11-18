@@ -5,6 +5,7 @@ import { Loader2 } from "lucide-react";
 import { runBenchmark } from "@/app/actions/analytics";
 import { useActionFeedback } from "@/components/ui/Toast";
 import type { BenchmarkComparison, BenchmarkSlices } from "@/lib/analytics/benchmarks";
+import { cardClasses } from "@/components/ui/cardRecipe";
 
 export interface BenchmarkTranslations {
   country: string;
@@ -87,7 +88,7 @@ export function BenchmarkPanel({ slices, initialComparison, t }: BenchmarkPanelP
   const showEmpty = mine.n === 0 || benchmark.n === 0;
 
   return (
-    <section className="bg-surface-container-lowest rounded-card border border-outline-variant shadow-card p-5">
+    <section className={cardClasses()}>
       <div className="flex items-start justify-between gap-3 mb-4">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 flex-1">
           <label className="flex flex-col gap-1">

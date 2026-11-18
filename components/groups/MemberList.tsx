@@ -8,6 +8,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useActionFeedback } from "@/components/ui/Toast";
 import { Badge } from "@/components/ui/Badge";
 import { HIT_Y44 } from "@/components/ui/hitArea";
+import { cardClasses } from "@/components/ui/cardRecipe";
 
 type Member = {
   id: string;
@@ -132,7 +133,7 @@ export function MemberList({
         return (
           <div
             key={m.id}
-            className="flex items-center justify-between gap-3 px-4 py-3 bg-surface-container-lowest border border-outline-variant rounded-card"
+            className={`${cardClasses({ padding: "row" })} flex items-center justify-between gap-3`}
           >
             {isEditing ? (
               <div className="flex flex-1 items-center gap-2 min-w-0">

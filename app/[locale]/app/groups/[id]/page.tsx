@@ -25,6 +25,8 @@ import { DuplicateButton } from "@/components/DuplicateButton";
 import { LeaveGroupButton } from "@/components/groups/LeaveGroupButton";
 import { GroupEmailOptOutNotice } from "@/components/groups/GroupEmailOptOutNotice";
 import { profileDisplayName } from "@/lib/accountDeletion/deletedProfile";
+import { Card } from "@/components/ui/Card";
+import { PaperSectionHeading } from "@/components/ui/PaperSectionHeading";
 
 // Auth'd page with a dynamic [id] segment: must render per-request. With
 // generateStaticParams present, prod attempts on-demand static generation and
@@ -159,7 +161,7 @@ export default async function GroupDetailPage({
   // the newest valid join link for an active session, else no link at all.
   const sessionsSection = (
     <div className="space-y-3">
-      <h2 className="section-title">{t("sessionsTitle")}</h2>
+      <PaperSectionHeading title={t("sessionsTitle")} flush />
       {groupSessions.length === 0 ? (
         <EmptyState icon={<Clipboard size={20} aria-hidden />} title={t("noSessions")} />
       ) : (
@@ -194,18 +196,16 @@ export default async function GroupDetailPage({
               </>
             );
             return (
-              <li
-                key={s.id}
-                className="bg-surface-container-lowest border border-outline-variant rounded-card px-4 py-3"
-              >
-                {href ? (
-                  <Link href={href} className="block hover:opacity-80 transition-opacity">
-                    {content}
-                  </Link>
-                ) : (
-                  content
-                )}
-              </li>
+              // P2c (D-07): each session is a Card (the whole card is the link when there is one).
+              href ? (
+                <Card as="li" key={s.id} href={href} padding="row">
+                  {content}
+                </Card>
+              ) : (
+                <Card as="li" key={s.id} padding="row">
+                  {content}
+                </Card>
+              )
             );
           })}
         </ul>
@@ -244,20 +244,17 @@ export default async function GroupDetailPage({
         </p>
 
         <div className="space-y-3">
-          <h2 className="section-title">{t("feed.title")}</h2>
+          <PaperSectionHeading title={t("feed.title")} flush />
           <GroupFeed posts={feedPosts} isOwner={false} locale={locale} t={feedT} />
         </div>
 
         <div className="space-y-3">
-          <h2 className="section-title">{t("members")}</h2>
+          <PaperSectionHeading title={t("members")} flush />
           <div className="space-y-2">
             {memberRows.map((m) => (
-              <div
-                key={m.id}
-                className="px-4 py-3 bg-surface-container-lowest border border-outline-variant rounded-card text-caption font-semibold text-on-surface"
-              >
+              <Card key={m.id} padding="row" className="text-caption font-semibold">
                 {m.label}
-              </div>
+              </Card>
             ))}
           </div>
         </div>
@@ -473,14 +470,14 @@ export default async function GroupDetailPage({
 
       {/* Announcements — the group's pulse, front and center right after stats */}
       <div className="space-y-3">
-        <h2 className="section-title">{t("feed.title")}</h2>
+        <PaperSectionHeading title={t("feed.title")} flush />
         <PostComposer groupId={group.id} recipientCount={ownerMembers.length} t={composerT} />
         <GroupFeed posts={feedPosts} isOwner locale={locale} t={feedT} />
       </div>
 
       {/* Roster */}
       <div className="space-y-3">
-        <h2 className="section-title">{t("members")}</h2>
+        <PaperSectionHeading title={t("members")} flush />
         <MemberList
           groupId={group.id}
           members={ownerMembers.map((m) => ({
@@ -532,9 +529,7 @@ export default async function GroupDetailPage({
       {/* Add members */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-3">
-          <h3 className="label-caps font-sans">
-            {t("coCuppersTitle")}
-          </h3>
+          <PaperSectionHeading level={3} title={t("coCuppersTitle")} flush />
           <QuickAddCoCuppers
             groupId={group.id}
             candidates={eligibleCuppers.map((c) => ({
@@ -550,9 +545,7 @@ export default async function GroupDetailPage({
           />
         </div>
         <div className="space-y-3">
-          <h3 className="label-caps font-sans">
-            {t("addByEmail")}
-          </h3>
+          <PaperSectionHeading level={3} title={t("addByEmail")} flush />
           <AddByEmailForm
             groupId={group.id}
             t={{
@@ -571,7 +564,7 @@ export default async function GroupDetailPage({
 
       {/* Email composer */}
       <div className="space-y-3">
-        <h2 className="section-title">{t("composeEmail")}</h2>
+        <PaperSectionHeading title={t("composeEmail")} flush />
         <GroupEmailComposer
           groupId={group.id}
           sessions={composerSessions}
