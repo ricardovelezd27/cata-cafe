@@ -24,7 +24,7 @@ import { formatCoffeeCode } from "@/lib/coffeeCode";
 import { FLAVOR_DESC_KEYS } from "@/lib/descriptors";
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
 import { StatCard } from "@/components/dashboard/StatCard";
-import { FlavorCloud } from "@/components/results/FlavorCloud";
+import { FlavorCloud } from "@/components/coffees/FlavorCloud";
 import { PublishResultsToggle } from "@/components/coffees/PublishResultsToggle";
 import { CoffeeVisibilityToggle } from "@/components/coffees/CoffeeVisibilityToggle";
 import { CoffeeShareManager } from "@/components/coffees/CoffeeShareManager";

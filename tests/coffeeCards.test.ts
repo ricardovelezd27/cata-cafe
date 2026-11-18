@@ -164,8 +164,8 @@ describe("a participant's cards: counts and aggregates only", () => {
     expect(page.match(/viewerMayReadGroupResults\(/g)).toHaveLength(1);
     const client = read("app", "[locale]", "app", "sessions", "[id]", "results", "ResultsClient.tsx");
     expect(client).toMatch(/coffeeCards\(\{ samples: session\.samples, referenceId, ctx: rankCtx, data: overview\.data \}\)/);
-    // the drill-down's group block is rendered only under the same gate
-    expect(client).toMatch(/if \(!card\?\.context \|\| !isGroup \|\| !canViewGroup \|\| !agg \|\| agg\.communityScore == null\) return null;/);
+    // the sheet gets the group's stored numbers only under the same gate
+    expect(client).toContain("const aggregate = isGroup && canViewGroup && agg && agg.communityScore != null ? agg : null;");
   });
 });
 
@@ -384,7 +384,7 @@ describe("the styles of the cards hold no colour or grade of their own", () => {
   it("no hex colour, no legacy alias, no family tone, no error red", () => {
     expect(css).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
     expect(css).not.toMatch(/--color-(error|secondary|family)/);
-    for (const source of [tsx, read("components", "results", "OverviewCompare.tsx"), read("components", "results", "SampleGroupBlock.tsx")]) {
+    for (const source of [tsx, read("components", "results", "OverviewCompare.tsx"), read("components", "results", "SampleDetail.tsx")]) {
       expect(source).not.toMatch(/text-green-dark|text-brown-|bg-cream|amber-warm|red-defect|rounded-(md|lg|xl)\b/);
     }
   });

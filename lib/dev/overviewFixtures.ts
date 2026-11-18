@@ -11,7 +11,10 @@
 
 import { AFFECTIVE_ATTRIBUTES, type SessionFormat } from "@/lib/constants";
 import type { MyEvaluation } from "@/lib/evaluationState";
+import { buildSheetData, type SheetData } from "@/lib/reports/coffeeSheet";
 import { buildOverviewData, type OverviewData, type OverviewRow } from "@/lib/reports/overview";
+import { buildPersonalComparison, type PersonalComparison } from "@/lib/reports/personalComparison";
+import { computeSampleBlockFrequencies } from "@/lib/resultsAggregation";
 import type { RankContext } from "@/lib/reports/ranking";
 import { computeGroupAggregate } from "@/lib/scoring";
 
@@ -35,6 +38,8 @@ export type FixtureSample = {
   } | null;
   myEvaluation: MyEvaluation;
   referenceRank: number | null;
+  /** "Tú vs. grupo" (B3), built by the real rule: a participant of a closed group cupping only. */
+  comparison?: PersonalComparison | null;
 };
 
 export type OverviewScenario = {
@@ -44,6 +49,8 @@ export type OverviewScenario = {
   ctx: RankContext;
   referenceId: string | null;
   data: OverviewData;
+  /** R3: per coffee, the panel's descriptors stage by stage (the sheet). */
+  sheets: Record<string, SheetData | null>;
   myAlignment: { matches: number; opportunities: number } | null;
   preliminary: boolean;
   referencePinned: boolean;
@@ -117,6 +124,7 @@ function moduleOf(plan: Plan, sample: SamplePlan, cupper: number): Record<string
   const data: Record<string, unknown> = {
     sabor_desc: sample.picks[cupper] ?? [],
     sabor_notas: `nota privada ${secret}`,
+    sabor_desc_notes: Object.fromEntries((sample.picks[cupper] ?? []).slice(0, 1).map((id) => [id, [`fragmento ${secret}`]])),
     cupperName: `Nombre ${secret}`,
   };
   if (plan.format !== "descriptive") {
@@ -211,6 +219,48 @@ function build(plan: Plan): OverviewScenario {
     sentCuppers,
     excludedParticipants: excluded.size,
   });
+  // The sheet's lists and "tú vs. grupo", built as the page builds them.
+  const excludedKeys = new Set(rows.filter((r) => r.excluded).map((r) => r.cupperKey));
+  const frequencies =
+    group && plan.format !== "affective"
+      ? computeSampleBlockFrequencies({
+          format: plan.format,
+          samples: samples.map((s) => ({ id: s.id, label: s.label })),
+          evals: rows.map((r) => ({
+            cupperId: r.cupperKey,
+            sessionSampleId: r.sampleId,
+            descriptiveData: r.data,
+            combinedData: r.data,
+          })),
+          excludedUserIds: excludedKeys,
+          blockLabel: (id) => id,
+          locale: "es",
+        })
+      : null;
+  const sheets = buildSheetData({ sampleIds: samples.map((s) => s.id), overview: data, frequencies });
+  if (group && !plan.ownerLens && (plan.closed ?? true)) {
+    const viewerKey = cupperKey(plan.viewer);
+    for (const sample of samples) {
+      const included = rows.filter((r) => r.sampleId === sample.id && !r.excluded);
+      const mine = rows.find((r) => r.sampleId === sample.id && r.cupperKey === viewerKey) ?? null;
+      const toEval = (r: OverviewRow) => ({
+        cupperId: r.cupperKey,
+        data: r.data as Record<string, unknown>,
+        cups: r.cups,
+      });
+      sample.comparison = buildPersonalComparison({
+        format: plan.format,
+        cupsPerSample: plan.cups,
+        locale: "es",
+        included: included.map(toEval),
+        viewer: mine ? toEval(mine) : null,
+        aggregate: sample.aggregateScore
+          ? { communityScore: sample.aggregateScore.communityScore, scoreSd: sample.aggregateScore.scoreSd }
+          : null,
+        groupBlocks: frequencies?.find((f) => f.sampleId === sample.id)?.blocks ?? null,
+      });
+    }
+  }
   const reference = samples.find((s) => s.referenceRank !== null) ?? null;
   return {
     id: plan.id,
@@ -219,6 +269,7 @@ function build(plan: Plan): OverviewScenario {
     ctx: { format: plan.format, isGroup: plan.isGroup, canViewGroup: plan.canViewGroup, cupsPerSample: plan.cups },
     referenceId: reference?.id ?? null,
     data,
+    sheets,
     myAlignment: plan.myAlignment ?? null,
     preliminary: plan.preliminary ?? false,
     referencePinned: plan.samples.some((s) => s.reference === "anchor") && plan.format !== "descriptive",

@@ -1,10 +1,13 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { buildCardsStrings } from "@/components/results/cardsStrings";
+import type { SampleDetailTranslations, SheetCompareTranslations } from "@/components/results/SampleDetail";
+import { buildSheetStrings } from "@/components/results/sheetStrings";
 import { buildOverviewStrings, type OverviewStrings } from "@/components/results/overviewStrings";
 import { buildResultsPartsStrings } from "@/components/results/partsStrings";
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
 import { OVERVIEW_SCENARIOS } from "@/lib/dev/overviewFixtures";
+import { SHEET_BLOCK_IDS } from "@/lib/reports/coffeeSheet";
 import { referenceCopySuffix, referenceExplanation } from "@/lib/referenceRules";
 import { GALLERY_SECTIONS, ResultsPartsGallery, type GallerySection } from "./ResultsPartsGallery";
 
@@ -29,6 +32,7 @@ export default async function ResultsPartsDevPage({
   const tCups = await getTranslations("cupping.cups");
   const tAttr = await getTranslations("attributes");
   const tg = await getTranslations("group");
+  const tBlocks = await getTranslations("blocks");
   // The words of each invented cupping, chosen as the results page chooses them
   // (the reference's title and explanation depend on the format and the mode).
   const overviewStrings: Record<string, OverviewStrings> = Object.fromEntries(
@@ -78,6 +82,23 @@ export default async function ResultsPartsDevPage({
           AFFECTIVE_ATTRIBUTES.map((a) => [a.id, tAttr(a.id as Parameters<typeof tAttr>[0])]),
         ),
       })}
+      // the sheet's words, read whole from the messages (the board has no session to shape them)
+      sheetWords={{
+        detail: {
+          ...(t.raw("detail") as SampleDetailTranslations),
+          breakdown: t.raw("breakdown") as SampleDetailTranslations["breakdown"],
+          inProgress: t("table.inProgress"),
+          notEvaluated: t("table.notEvaluated"),
+          market: t.raw("market") as SampleDetailTranslations["market"],
+          partial: t.raw("partial") as SampleDetailTranslations["partial"],
+          prep: t.raw("samplePrep") as SampleDetailTranslations["prep"],
+        },
+        compare: t.raw("compare") as SheetCompareTranslations,
+        s: buildSheetStrings(t),
+        blockLabels: Object.fromEntries(
+          SHEET_BLOCK_IDS.map((id) => [id, tBlocks(id as Parameters<typeof tBlocks>[0])]),
+        ),
+      }}
       only={sections}
     />
   );

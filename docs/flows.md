@@ -1175,13 +1175,19 @@ participants and members only take part.
 viewer, owner and participant alike. There is no separate participant-only or
 owner-only page; gating happens *inside* the views and the drill-down dialog.
 Since R2 (2026-11) the first view is the results themselves: the overview's tiles,
-then one card per coffee. It has up to three tabs: "Resultados" (everyone),
-"Descriptores" (when descriptor data exists; it stays until the coffee's sheet of
-package R3) and "Panel" (the organizer, or the admin's read-only lens, of a group
-session with participants: the per-cupper matrix). A viewer with ONE view (a
-participant of an affective session, a solo affective cupping) gets no tab bar.
-The table of 17 columns, the radar cards and the Tabla / Gráfico switch are gone:
-what they showed lives on a card, in the drill-down, or in "Exportar" (the CSV).
+then one card per coffee; a card opens the coffee's SHEET (R3). The only other
+tab is "Panel" (the organizer, or the admin's read-only lens, of a group session
+with participants: the per-cupper matrix, the notes after the close and the
+alignment table). A participant has ONE view and no tab bar. The Descriptores
+tab, the word cloud, the roll-up lists with typed words and their sentences are
+gone (R3): what a panel found in a coffee is on that coffee's sheet, counted by
+people.
+The coffee whose sheet is open is in the address (`?sample=<id>`,
+`useSheetAddress` over the native History API): opening pushes an entry, so the
+browser's Back closes the sheet and the page under it has not moved; a reload
+opens it again; an id that is not one of the session's samples opens nothing and
+is removed. The cup page's leave guard listens to `popstate` only while the cup
+page is mounted and never sees these entries.
 S8-21: `hasCoffee` in the results payload is sent only to the owner/super-admin or
 for a revealed sample, so a participant cannot tell whether an unrevealed (blind)
 sample has a coffee linked; every consumer of the flag is owner-gated.
@@ -1209,43 +1215,37 @@ flowchart TD
     subgraph T2 ["Panel — the organizer (or the admin's lens) of a group session"]
         S3["Análisis por catador —\nmatrix + exclusion switches\n+ DE (SD) column"]
         S4["Notes the cuppers added after the close"]
+        S5["Cupper alignment table\n(one coffee, or all of them)"]
         S3 --> S4
-    end
-
-    subgraph T3 ["Descriptores — shown when descriptor data exists\n(solo descriptive/combined sessions use their own data)"]
-        D1["Filter row: sample\n(Todas | per-sample, PillTabs)"]
-        D2["Filter row: block\n(General | 6 perceptual blocks, PillTabs)"]
-        D3["Word cloud + frequency bars +\nconsensus sentences"]
-        D4{"isOwner?"}
-        D5["Cupper alignment panel\n(same two filters)"]
-        D1 --> D3
-        D2 --> D3
-        D3 --> D4
-        D4 -- yes --> D5
+        S4 --> S5
     end
 
     R1 -.->|open a tile or a ranking row| DET
     R2 -.->|open a card| DET
     S3 -.->|open matrix cell| DET
 
-    DET["Sample drill-down dialog\n(SampleDetailDialog)"]
-    DET --> DETG{"own lens, and the viewer\nmay read the group's results?"}
-    DETG -- yes --> DETGB["'El grupo en este café' (SampleGroupBlock):\nthe group's score with its context,\nits arithmetic, the value per quality attribute"]
+    DET["The coffee's sheet\n(SampleDetailDialog + SampleDetail),\nthe coffee in the address"]
+    DET --> SH1["1 Score: context, arithmetic in one line,\nONE '¿Cómo se calculó?' (mine, then the group's)"]
+    SH1 --> SH2["2 Quality on a fixed 1 to 9 scale:\nmy ring, the group's dot\n(group from two included cuppers)"]
+    SH2 --> SH3["3 What was found: the full wheel,\n'Comparar con' (closed only),\ndescriptors by people, stage by stage,\nwhat I marked"]
+    SH3 --> SH4["4 Intensities on a fixed 0 to 15 scale\n(group: closed, participant, three per row)"]
+    SH4 --> SH5["5 Defective cups · 6 The same coffee twice ·\n7 Notes, the note after close, origin and prep"]
     DET --> DETOWNER{"isOwner?"}
-    DETOWNER -- yes --> DETX["Catador switcher +\nedit sample metadata +\nedit origin data (ExtrinsicEditDialog,\nrevealed samples only)"]
+    DETOWNER -- yes --> DETX["Cupper switch (one cupper's evaluation,\nnothing of the group) +\nedit sample metadata + 'Asignar café' +\nedit origin data (ExtrinsicEditDialog,\nrevealed samples only)"]
 ```
 
-The "General" pseudo-block in Descriptores is not a real perceptual block: it is
-the whole-sample descriptor profile, deduped per cupper across all blocks, and
-feeds the same word cloud / frequency bars / consensus-sentence panels as any
-other block selection.
+On the sheet, "General" is not a real stage: it is every stage together, each
+cupper counted once per descriptor. A coffee's lists reach a viewer only where
+that coffee's wheel reached them as the group's counts (`buildSheetData`,
+`lib/reports/coffeeSheet.ts`): a participant under three cuppers, a participant
+of an open session and a solo cupper see what they marked themselves instead.
 
 The owner's reference sample (if set), cupped first (see §1), is outside the
 ranking, the session average and "first": it has its own tile in the overview and
 its card comes first, marked "Fuera del ranking". Every other coffee's card shows
 a display-only signed difference against it (the score the card shows against the
 reference's same kind of score); with several references the "Comparar con"
-selector lives in the reference's tile. The drill-down's group block adds the
+selector lives in the reference's tile. The sheet's score section adds the
 viewer's own score against their own score of the reference.
 
 A card and its tile can never disagree: both read `overviewView`

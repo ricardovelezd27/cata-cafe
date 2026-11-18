@@ -32,6 +32,7 @@ import { INTENSITY_SCALE, QUALITY_SCALE, countBar } from "@/lib/resultsScales";
 import { OVERVIEW_SCENARIOS } from "@/lib/dev/overviewFixtures";
 import css from "./gallery.module.css";
 import { OverviewFixture } from "./OverviewFixture";
+import { SheetFixture, type SheetWords } from "./SheetFixture";
 
 // The board's own words (a dev page: they are not product copy and are not in
 // the messages). The parts' words come from `results.parts`, through `strings`.
@@ -40,6 +41,8 @@ const COPY = {
     dev: "Página de desarrollo. Datos inventados; no lee la base de datos ni necesita una cuenta.",
     title: "Partes de resultados",
     overview: "El resumen de una cata",
+    sheet: "La ficha de un café",
+    sheetNote: "El cuerpo de la ficha, con las mismas catas inventadas y los mismos filtros que la página: lo que ve un participante ante una cata cerrada, con dos catadores, con la cata abierta, y quien organiza.",
     overviewNote: "La parte de arriba de la página de resultados, con catas inventadas: los estados que ninguna cuenta de prueba puede mostrar (un participante ante una cata cerrada, dos catadores, una referencia libre).",
     lead: "Cada parte de la nueva página de resultados, dibujada con datos inventados. Lo que aquí se ve es lo que las pantallas usarán; todavía no está en ninguna.",
     score: "El puntaje con su contexto",
@@ -100,6 +103,8 @@ const COPY = {
     dev: "Development page. Invented data; it reads no database and needs no account.",
     title: "Results parts",
     overview: "The overview of a cupping",
+    sheet: "A coffee's sheet",
+    sheetNote: "The body of the sheet, with the same invented cuppings and the same gates as the page: what a participant sees at a closed cupping, with two cuppers, at an open cupping, and what the organizer sees.",
     overviewNote: "The top of the results page, with invented cuppings: the states no test account can show (a participant looking at a closed cupping, two cuppers, a free reference).",
     lead: "Every part of the new results page, drawn from invented data. What is seen here is what the screens will use; it is in none of them yet.",
     score: "The score with its context",
@@ -182,14 +187,29 @@ function Card({ title, note, option, children }: { title?: string; note?: string
 }
 
 /** The groups of parts the board can show, in the order of the page. */
-export const GALLERY_SECTIONS = ["overview", "wheel", "minis", "compare", "rank", "dots", "score", "narrow"] as const;
+export const GALLERY_SECTIONS = ["overview", "sheet", "wheel", "minis", "compare", "rank", "dots", "score", "narrow"] as const;
 export type GallerySection = (typeof GALLERY_SECTIONS)[number];
+
+/** Scenario and coffee (by its index) of each sheet shown on the board. */
+const SHEET_CASES: readonly (readonly [string, number])[] = [
+  ["closed", 1],
+  ["closed", 0],
+  ["closed", 5],
+  ["closed-owner", 1],
+  ["two", 0],
+  ["free", 1],
+  ["open", 0],
+  ["open", 2],
+  ["solo", 2],
+  ["descriptive", 1],
+];
 
 export function ResultsPartsGallery({
   locale,
   strings,
   overviewStrings,
   cardsStrings,
+  sheetWords,
   only,
 }: {
   locale: FixtureLocale;
@@ -197,6 +217,8 @@ export function ResultsPartsGallery({
   /** The overview's words for each invented cupping, by scenario id. */
   overviewStrings: Record<string, OverviewStrings>;
   cardsStrings: CardsStrings;
+  /** The words of a coffee's sheet (package R3). */
+  sheetWords: SheetWords;
   /** Show only these groups (`?only=wheel,compare`); everything without it. */
   only?: readonly GallerySection[];
 }) {
@@ -318,6 +340,34 @@ export function ResultsPartsGallery({
               />
             </div>
           ))}
+        </section>
+      ) : null}
+
+      {show("sheet") ? (
+        <section className={css.section}>
+          <h2 className={css.sectionTitle}>{c.sheet}</h2>
+          <p className={css.sectionNote}>{c.sheetNote}</p>
+          {SHEET_CASES.map(([scenarioId, sampleIndex]) => {
+            const scenario = OVERVIEW_SCENARIOS.find((x) => x.id === scenarioId);
+            if (!scenario) return null;
+            return (
+              <div key={`${scenarioId}-${sampleIndex}`} className={css.scenario} data-sheet-case={`${scenarioId}-${sampleIndex}`}>
+                <p className={css.listTitle}>
+                  {scenario.title[locale]} · {scenario.samples[sampleIndex].label}
+                </p>
+                <SheetFixture
+                  scenario={scenario}
+                  sampleIndex={sampleIndex}
+                  locale={locale}
+                  familyLabels={families}
+                  parts={strings}
+                  overview={overviewStrings[scenario.id]}
+                  cards={cardsStrings}
+                  words={sheetWords}
+                />
+              </div>
+            );
+          })}
         </section>
       ) : null}
 

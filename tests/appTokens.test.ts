@@ -13,8 +13,6 @@ import { readSource, walkSource, SCAN_TIMEOUT_MS } from "./helpers/sourceTree";
  * role tokens. Never add one.
  */
 const ALLOWLIST: Record<string, string> = {
-  "app/[locale]/app/sessions/[id]/results": "results route, being rebuilt by the results redesign (R packages)",
-  "components/results": "results parts, being rebuilt by the results redesign (R packages)",
   "components/landing": "the landing's own stage rules and tests",
   "components/warmup": "the warm-up player's own stage rules and tests",
   "components/legal": "the legal pages paint exactly as published",
