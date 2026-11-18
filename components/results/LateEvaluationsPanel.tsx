@@ -52,7 +52,7 @@ const signed = (n: number) => `${n > 0 ? "+" : ""}${num(n)}`;
 
 function Label({ row, t }: { row: OwnerLateRow; t: LateEvaluationsTranslations }) {
   return row.receivedLate ? (
-    <p className="flex items-start gap-1.5 font-sans text-[12.25px] font-medium text-warning">
+    <p className="flex items-start gap-1.5 font-sans text-caption font-medium text-warning">
       <AlertTriangle size={13} aria-hidden className="mt-0.5 shrink-0" />
       <span>{t.receivedLate}</span>
     </p>
@@ -67,11 +67,11 @@ function Label({ row, t }: { row: OwnerLateRow; t: LateEvaluationsTranslations }
 function Numbers({ row, t }: { row: OwnerLateRow; t: LateEvaluationsTranslations }) {
   return (
     <>
-      <p className="font-sans text-sm text-on-surface">
+      <p className="font-sans text-caption text-on-surface">
         {row.individualScore === null ? t.scorePartial : t.score.replace("{score}", num(row.individualScore))}
       </p>
       {row.diff !== null && (
-        <p className="font-sans text-[12.25px] text-on-surface-variant">{t.diff.replace("{diff}", signed(row.diff))}</p>
+        <p className="font-sans text-caption text-on-surface-variant">{t.diff.replace("{diff}", signed(row.diff))}</p>
       )}
     </>
   );
@@ -106,8 +106,8 @@ export function LateEvaluationsPanel({
       }
       data-panel-section="late"
     >
-      <h2 className="section-title text-xl">{t.title}</h2>
-      <p className="font-sans text-sm text-on-surface-variant">{t.intro}</p>
+      <h2 className="section-title">{t.title}</h2>
+      <p className="font-sans text-caption text-on-surface-variant">{t.intro}</p>
       <ul className="flex flex-col gap-2">
         {rows.map((r) => (
           <li
@@ -116,10 +116,10 @@ export function LateEvaluationsPanel({
           >
             <div className="flex flex-wrap items-center gap-2">
               <div className="min-w-[180px] flex-1">
-                <p className="font-sans text-sm font-semibold text-on-surface">
+                <p className="font-sans text-caption font-semibold text-on-surface">
                   {r.cupperName} · {r.sampleLabel}
                 </p>
-                <p className="font-sans text-[12.25px] text-on-surface-variant" suppressHydrationWarning>
+                <p className="font-sans text-caption text-on-surface-variant" suppressHydrationWarning>
                   {t.savedAt.replace("{date}", dateFmt.format(new Date(r.savedAt)))}
                 </p>
               </div>
@@ -133,14 +133,14 @@ export function LateEvaluationsPanel({
               type="button"
               aria-expanded={open === r.evaluationId}
               onClick={() => setOpen(open === r.evaluationId ? null : r.evaluationId)}
-              className="min-h-[44px] w-fit text-left font-sans text-[12.25px] font-medium text-primary-container underline underline-offset-2"
+              className="min-h-[44px] w-fit text-left font-sans text-caption font-medium text-primary-container underline underline-offset-2"
             >
               {open === r.evaluationId ? t.hideRatings : t.showRatings}
             </button>
             {open === r.evaluationId && (
               <ul className="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2">
                 {r.ratings.map((a) => (
-                  <li key={a.id} className="flex justify-between font-sans text-sm text-on-surface">
+                  <li key={a.id} className="flex justify-between font-sans text-caption text-on-surface">
                     <span>{t.attributeLabels[a.id] ?? a.id}</span>
                     <span className="tabular-nums">{a.value ?? "—"}</span>
                   </li>

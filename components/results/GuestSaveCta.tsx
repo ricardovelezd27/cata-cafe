@@ -104,8 +104,8 @@ export function GuestSaveCta({
       <div className="flex items-start gap-3">
         <UserRoundPlus size={18} aria-hidden className="mt-0.5 shrink-0 text-secondary" />
         <div className="min-w-0 flex-1">
-          <p className="font-sans text-sm font-semibold text-on-surface">{t.title}</p>
-          <p className="mt-0.5 text-xs text-on-surface-variant">{t.body}</p>
+          <p className="font-sans text-caption font-semibold text-on-surface">{t.title}</p>
+          <p className="mt-0.5 text-body text-on-surface-variant">{t.body}</p>
 
           <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
             <Button size="sm" onClick={handleStart} disabled={starting || !online}>
@@ -114,15 +114,15 @@ export function GuestSaveCta({
             <button
               type="button"
               onClick={handleDismiss}
-              className="text-xs font-medium text-on-surface-variant underline underline-offset-2 hover:text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2 sm:ml-1"
+              className="text-caption font-medium text-on-surface-variant underline underline-offset-2 hover:text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2 sm:ml-1"
             >
               {t.dismiss}
             </button>
           </div>
 
-          {!online && <p className="mt-2 text-xs text-on-surface-variant">{t.offline}</p>}
+          {!online && <p className="mt-2 text-caption text-on-surface-variant">{t.offline}</p>}
           {failed && (
-            <p role="alert" className="mt-2 text-xs text-error">
+            <p role="alert" className="mt-2 text-caption text-error">
               {t.error}
             </p>
           )}

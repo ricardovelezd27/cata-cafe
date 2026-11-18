@@ -4,7 +4,7 @@ import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, Tooltip, XAxis, 
 import { useContainerWidth } from "@/hooks/useContainerWidth";
 import type { PivotResult } from "@/lib/analytics/types";
 import { getChartColors, seriesColor } from "@/components/results/chartColors";
-import { chartTick, CHART_HTML_PX } from "./chartText";
+import { chartTick, CHART_HTML_PX } from "@/lib/chartText";
 
 // Same palette/margins/tooltip conventions as InsightChart.tsx.
 const CHART_HEIGHT = 320;

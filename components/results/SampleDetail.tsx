@@ -156,14 +156,14 @@ function marksOf(data: Data, keys: readonly string[], lang: Lang) {
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="flex flex-col gap-2 border-t border-outline-variant pt-4 first:border-t-0 first:pt-0">
-      <h3 className="text-[17.5px] leading-tight">{title}</h3>
+      <h3 className="text-card leading-tight">{title}</h3>
       {children}
     </section>
   );
 }
 
-const quiet = "m-0 text-[12.25px] leading-snug text-on-surface-variant";
-const plain = "m-0 text-[14px] leading-snug text-on-surface";
+const quiet = "m-0 text-caption leading-snug text-on-surface-variant";
+const plain = "m-0 text-body leading-snug text-on-surface";
 
 /** A descriptor as words, with its family as a DOT beside it (never a filled pill). */
 function Mark({ label, family }: { label: string; family: WheelFamilyId | null }) {
@@ -386,12 +386,12 @@ export function SampleDetail({
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="m-0 flex flex-wrap items-center gap-2">
             {referenceBadge ? (
-              <span className="inline-flex items-center rounded-pill border border-outline-variant px-2 py-px text-[12.25px] font-semibold text-on-surface-variant">
+              <span className="inline-flex items-center rounded-pill border border-outline-variant px-2 py-px text-caption font-semibold text-on-surface-variant">
                 {referenceBadge}
               </span>
             ) : null}
             {stateChip ? (
-              <span className="inline-flex items-center rounded-pill border border-outline-variant px-2 py-px text-[12.25px] font-semibold text-on-surface-variant">
+              <span className="inline-flex items-center rounded-pill border border-outline-variant px-2 py-px text-caption font-semibold text-on-surface-variant">
                 {stateChip}
               </span>
             ) : null}
@@ -522,7 +522,7 @@ export function SampleDetail({
           {/* "Comparar con": other coffees as outlines over this one's petals. */}
           {groupWheel && compare && compare.others.length > 0 ? (
             <div className="flex flex-col gap-2">
-              <p className="m-0 text-[12.25px] font-semibold text-on-surface">{s.compareWith}</p>
+              <p className="m-0 text-caption font-semibold text-on-surface">{s.compareWith}</p>
               <div className="flex flex-wrap gap-2" role="group" aria-label={s.compareWith}>
                 {compare.others.map((o) => {
                   const on = laid.includes(o.id);
@@ -537,7 +537,7 @@ export function SampleDetail({
                       onClick={() =>
                         setLaid((prev) => (prev.includes(o.id) ? prev.filter((x) => x !== o.id) : prev.length >= 2 ? prev : [...prev, o.id]))
                       }
-                      className={`inline-flex min-h-[44px] max-w-full items-center gap-2 rounded-pill border bg-surface-container-lowest pl-2 pr-3.5 text-[14px] leading-tight ${
+                      className={`inline-flex min-h-[44px] max-w-full items-center gap-2 rounded-pill border bg-surface-container-lowest pl-2 pr-3.5 text-body leading-tight ${
                         on
                           ? "border-on-surface font-semibold text-on-surface"
                           : full
@@ -547,7 +547,7 @@ export function SampleDetail({
                     >
                       <span
                         aria-hidden="true"
-                        className={`inline-flex size-[26px] shrink-0 items-center justify-center rounded-full border-[1.5px] text-[12.25px] font-semibold leading-none ${
+                        className={`inline-flex size-[26px] shrink-0 items-center justify-center rounded-full border-[1.5px] text-caption font-semibold leading-none ${
                           on ? "border-on-surface bg-on-surface text-surface-container-lowest" : "border-current"
                         }`}
                       >
@@ -607,7 +607,7 @@ export function SampleDetail({
               {activeStage.items.length > ROWS ? (
                 <button
                   type="button"
-                  className="inline-flex min-h-[44px] w-fit items-center text-[14px] font-semibold text-primary-container underline-offset-2 hover:underline"
+                  className="inline-flex min-h-[44px] w-fit items-center text-body font-semibold text-primary-container underline-offset-2 hover:underline"
                   aria-expanded={allRows}
                   onClick={() => setAllRows((v) => !v)}
                 >
@@ -632,11 +632,11 @@ export function SampleDetail({
           {marks.length > 0 ? (
             <div className="flex flex-col gap-1.5">
               {groupWheel || tooFew ? (
-                <h4 className="font-sans text-[12.25px] font-semibold leading-tight text-on-surface">
+                <h4 className="font-sans text-caption font-semibold leading-tight text-on-surface">
                   {groupWheel ? `${s.flavourOwn} · ${s.marksTitle}` : s.marksTitle}
                 </h4>
               ) : null}
-              <dl className="m-0 grid grid-cols-[minmax(84px,auto)_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-[14px] leading-snug" data-sheet-marks="">
+              <dl className="m-0 grid grid-cols-[minmax(84px,auto)_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-body leading-snug" data-sheet-marks="">
                 {marks.map((row) => (
                   <div key={row.id} className="contents">
                     <dt className="text-on-surface-variant">{row.label}</dt>
@@ -677,7 +677,7 @@ export function SampleDetail({
           <div className="flex gap-2">
             <span aria-hidden="true" className="mt-[5px] size-[8px] shrink-0 rounded-full bg-error" />
             <div className="flex min-w-0 flex-col gap-0.5">
-              <p className="m-0 text-[14px] font-semibold leading-snug text-on-surface [font-variant-numeric:tabular-nums]">
+              <p className="m-0 text-body font-semibold leading-snug text-on-surface [font-variant-numeric:tabular-nums]">
                 {defects.cups === 1 ? overview.defectCupsOne : fillPattern(overview.defectCupsMany, { n: defects.cups })}
               </p>
               <p className={quiet}>
@@ -703,12 +703,12 @@ export function SampleDetail({
         <Section title={compareT.repeatTitle}>
           {repeatDiffs.map((d) => (
             <div key={d.partnerLabel} className="flex flex-col gap-1">
-              <p className="m-0 text-[12.25px] font-semibold text-on-surface-variant">
+              <p className="m-0 text-caption font-semibold text-on-surface-variant">
                 {fillPattern(compareT.repeatVs, { label: d.partnerLabel })}
               </p>
               <ul className="m-0 flex list-none flex-col gap-1 p-0">
                 {[...(d.total ? [{ ...d.total, label: compareT.total }] : []), ...d.intensities].map((r) => (
-                  <li key={r.id} className="flex items-baseline justify-between gap-3 text-[14px]">
+                  <li key={r.id} className="flex items-baseline justify-between gap-3 text-body">
                     <span className="text-on-surface">{r.label}</span>
                     <span className="text-right text-on-surface-variant [font-variant-numeric:tabular-nums]">
                       {fillPattern(compareT.repeatValues, { mine: r.mine, other: r.other })}
@@ -728,7 +728,7 @@ export function SampleDetail({
       {!filled ? <p className={quiet}>{t.noData}</p> : null}
       {hasNotes ? (
         <Section title={s.notes}>
-          <dl className="m-0 grid grid-cols-[minmax(84px,auto)_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-[14px] leading-snug" data-sheet-notes="">
+          <dl className="m-0 grid grid-cols-[minmax(84px,auto)_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-body leading-snug" data-sheet-notes="">
             {noteRows.map((row) => (
               <div key={row.id} className="contents">
                 <dt className="text-on-surface-variant">{row.label}</dt>
@@ -767,7 +767,7 @@ export function SampleDetail({
           {extrinsicNote ? <p className={quiet}>{extrinsicNote}</p> : null}
           {/* A9: roast date / preparation / off-protocol (organizer, or revealed). */}
           {prep && t.prep ? (
-            <dl className="m-0 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-[14px] leading-snug">
+            <dl className="m-0 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-body leading-snug">
               {prep.roastDate ? (
                 <div className="contents">
                   <dt className="text-on-surface-variant">{t.prep.roastDate}</dt>

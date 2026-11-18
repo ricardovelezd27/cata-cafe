@@ -38,11 +38,8 @@ const KIT_ALLOWLIST: Record<string, string> = {
   CupToggleGrid: "the cupping screen (T4, last step)",
   MasterControls: "the cupping screen (T4, last step)",
   FormSection: "the cupping screen (T4, last step)",
-  // The results parts living in the kit: the results route is being rebuilt,
-  // and these were written at 12 px and above.
-  CountBar: "a results part (results route, being rebuilt)",
-  DotPlot: "a results part (results route, being rebuilt)",
-  ScoreWithContext: "a results part (results route, being rebuilt); its numerals are display sizes outside the six roles",
+  // CountBar, DotPlot and ScoreWithContext left with T4d: they are swept with
+  // the results (SWEPT_AREAS below, CSS modules included).
 };
 
 const KIT = "components/ui";
@@ -177,10 +174,24 @@ const SWEPT_AREAS: { area: string; paths: string[] }[] = [
     area: "S8: the arrival stage and the wordmark",
     paths: ["components/arrival", "components/brand"],
   },
+  {
+    area: "T4d: the results route and its parts, CSS modules included",
+    paths: [
+      "app/[locale]/app/sessions/[id]/results",
+      "components/results",
+      "components/ui/CountBar.tsx",
+      "components/ui/CountBar.module.css",
+      "components/ui/DotPlot.tsx",
+      "components/ui/DotPlot.module.css",
+      "components/ui/ScoreWithContext.tsx",
+      "components/ui/ScoreWithContext.module.css",
+    ],
+  },
 ];
 
 /** A size outside the six roles that a swept file keeps, and why. May only shrink. */
 const SWEPT_ALLOWLIST: Record<string, { token: string; reason: string }[]> = {
+  "components/results/SampleDetail.tsx": [{ token: "text-[42px]", reason: "the coffee sheet's score, a display numeral" }],
   "components/dashboard/StatCard.tsx": [{ token: "text-4xl", reason: "a stat's numeral, a display size outside the six roles (31.5 px)" }],
   "app/[locale]/app/sessions/express/ExpressForm.tsx": [{ token: "text-4xl", reason: "the sample counter's numeral, a display size (31.5 px)" }],
   "components/onboarding/WelcomeModal.tsx": [{ token: "text-5xl", reason: "the welcome's coffee-cup emoji, used as a picture (42 px)" }],
@@ -194,11 +205,47 @@ const SWEPT_ALLOWLIST: Record<string, { token: string; reason: string }[]> = {
 const SIZE_ANY = /(?<![\w-])(?:[a-z-]+:)?text-(?:xs|sm|base|lg|xl|2xl|3xl|4xl|5xl|6xl|\[\d+(?:\.\d+)?(?:px|rem|em)\])(?![\w\]-])/g;
 const HANDMADE_LABEL = /(?<![\w-])uppercase(?![\w-])/;
 
+/**
+ * A CSS module of a swept area names its sizes by the scale's variables
+ * (`font-size: var(--text-caption)`); a pixel value stays only here, with its
+ * reason. May only shrink.
+ */
+const SWEPT_CSS_PX: Record<string, { px: string; reason: string }[]> = {
+  "components/results/SessionOverview.module.css": [
+    { px: "31.5px", reason: "a tile's fact numeral, a display size" },
+    { px: "72px", reason: "the overview's score numeral (phone), a display size" },
+    { px: "46px", reason: "the score numeral's decimals (phone)" },
+    { px: "88px", reason: "the overview's score numeral (from 768 px)" },
+    { px: "56px", reason: "the score numeral's decimals (from 768 px)" },
+  ],
+  "components/results/RankStrip.module.css": [
+    { px: "12px", reason: "the axis tick inside the drawing: CHART_TICK_PX (lib/chartText.ts)" },
+    { px: "24px", reason: "a rank's score from 768 px, a display numeral" },
+  ],
+  "components/ui/DotPlot.module.css": [{ px: "12px", reason: "the axis tick inside the drawing: CHART_TICK_PX (lib/chartText.ts)" }],
+  "components/ui/ScoreWithContext.module.css": [
+    { px: "31.5px", reason: "the medium score numeral, a display size" },
+    { px: "42px", reason: "the large score numeral, a display size" },
+  ],
+};
+
+function sweptCss(): string[] {
+  const out: string[] = [];
+  for (const { paths } of SWEPT_AREAS) {
+    for (const p of paths) {
+      if (p.endsWith(".module.css")) out.push(p);
+      else if (!/\.\w+$/.test(p)) out.push(...walkSource(p, `typescale-css-${p}`, { include: /\.module\.css$/ }));
+    }
+  }
+  return [...new Set(out)];
+}
+
 function sweptFiles(): string[] {
   const out: string[] = [];
   for (const { paths } of SWEPT_AREAS) {
     for (const p of paths) {
       if (p.endsWith(".tsx")) out.push(p);
+      else if (/\.\w+$/.test(p)) continue;
       else out.push(...walkSource(p, `typescale-${p}`, { include: /\.tsx$/ }));
     }
   }
@@ -239,9 +286,32 @@ describe("T4b: the swept areas paint only the named sizes", () => {
       }
     }
     expect(offenders).toEqual([]);
-    const sizes = read("components/insights/chartText.ts");
+    const sizes = read("lib/chartText.ts");
     expect(Number(/CHART_TICK_PX = ([\d.]+)/.exec(sizes)![1])).toBeGreaterThanOrEqual(12);
-    expect(Number(/CHART_HTML_PX = ([\d.]+)/.exec(sizes)![1])).toBe(SCALE["text-caption"]);
+    expect(Number(/CHART_CAPTION_PX = ([\d.]+)/.exec(sizes)![1])).toBe(SCALE["text-caption"]);
+    expect(sizes).toMatch(/CHART_HTML_PX = CHART_CAPTION_PX;/);
+  });
+
+  it("a swept CSS module names its font sizes by the scale's variables (outside its allowlist)", () => {
+    const css = sweptCss();
+    expect(css.length).toBeGreaterThan(5);
+    const offenders: string[] = [];
+    for (const f of css) {
+      const allowed = new Set((SWEPT_CSS_PX[f] ?? []).map((a) => a.px));
+      for (const m of read(f).matchAll(/font-size:\s*([^;]+);/g)) {
+        const v = m[1].trim();
+        if (/^var\(--text-(page|section|card|body|caption|label)\)$/.test(v)) continue;
+        if (!allowed.has(v)) offenders.push(`${f}: ${v}`);
+      }
+    }
+    expect(offenders).toEqual([]);
+    const tick = Number(/CHART_TICK_PX = ([\d.]+)/.exec(read("lib/chartText.ts"))![1]);
+    for (const f of ["components/results/RankStrip.module.css", "components/ui/DotPlot.module.css"]) {
+      expect(read(f), f).toMatch(new RegExp(`\\.tickText\\s*\\{[^}]*font-size:\\s*${tick}px;`));
+    }
+    for (const [f, entries] of Object.entries(SWEPT_CSS_PX)) {
+      for (const e of entries) expect(read(f), `${f} ${e.px}`).toContain(`font-size: ${e.px}`);
+    }
   });
 
   it("the swept allowlist only shrinks: every entry still holds its token", () => {

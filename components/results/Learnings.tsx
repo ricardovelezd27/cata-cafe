@@ -19,7 +19,7 @@ const nameOf = (s: NamedSample) => {
 };
 
 const card = "flex min-w-0 flex-col gap-2 rounded-card border border-outline-variant bg-surface-container-lowest p-4 md:p-5";
-const quiet = "m-0 text-[12.25px] leading-snug text-on-surface-variant";
+const quiet = "m-0 text-caption leading-snug text-on-surface-variant";
 
 /**
  * "Aprendizajes": what a closed cupping taught, in sentences computed by fixed
@@ -93,7 +93,7 @@ export function Learnings({
       {items.map((l, i) => (
         <li
           key={`${l.rule}-${l.about.join("-")}-${i}`}
-          className="mb-2.5 break-inside-avoid text-[14px] leading-snug text-on-surface last:mb-0"
+          className="mb-2.5 break-inside-avoid text-body leading-snug text-on-surface last:mb-0"
           data-learning={l.rule}
         >
           {learningSentence(l, names, t.sentences).map((segment, k) =>
@@ -113,7 +113,7 @@ export function Learnings({
   return (
     <section className="flex flex-col gap-3 font-sans md:gap-4" aria-labelledby={titleId} data-learnings="">
       <div className="flex flex-col gap-0.5">
-        <h2 id={titleId} className="section-title text-[21px] leading-tight">
+        <h2 id={titleId} className="section-title text-section leading-tight">
           {t.title}
         </h2>
         <p className={quiet}>{t.lead}</p>
@@ -121,7 +121,7 @@ export function Learnings({
       <div className={`grid grid-cols-1 gap-3 md:gap-4 ${showPanel && showOwn ? "md:grid-cols-2" : ""}`}>
         {showPanel ? (
           <div className={card} data-learnings-scope="panel">
-            <h3 className="text-[17.5px] leading-tight">{t.panelTitle}</h3>
+            <h3 className="text-card leading-tight">{t.panelTitle}</h3>
             {learnings.panelStatus === "too_few" ? (
               <p className={quiet}>{t.tooFew}</p>
             ) : learnings.panel.length === 0 ? (
@@ -133,13 +133,13 @@ export function Learnings({
         ) : null}
         {showOwn ? (
           <div className={card} data-learnings-scope="mine">
-            <h3 className="text-[17.5px] leading-tight">{t.mineTitle}</h3>
+            <h3 className="text-card leading-tight">{t.mineTitle}</h3>
             {learnings.mine.length === 0 ? <p className={quiet}>{t.mineNone}</p> : list(learnings.mine)}
           </div>
         ) : null}
       </div>
       {/* said once, under sentences that set someone beside the group */}
-      {isGroup && besideGroup > 0 ? <p className="m-0 text-[14px] leading-snug text-on-surface">{t.closing}</p> : null}
+      {isGroup && besideGroup > 0 ? <p className="m-0 text-body leading-snug text-on-surface">{t.closing}</p> : null}
     </section>
   );
 }
@@ -178,7 +178,7 @@ export function Reflection({
   return (
     <section className="flex flex-col gap-3 font-sans md:gap-4" aria-labelledby={titleId} data-reflection="">
       <div className="flex flex-col gap-0.5">
-        <h2 id={titleId} className="section-title text-[21px] leading-tight">
+        <h2 id={titleId} className="section-title text-section leading-tight">
           {t.reflectionTitle}
         </h2>
         <p className={quiet}>
@@ -190,10 +190,10 @@ export function Reflection({
           const note = notes[s.id];
           return (
             <li key={s.id} className="flex min-w-0 flex-col gap-2">
-              <h3 className="text-[17.5px] leading-tight">
+              <h3 className="text-card leading-tight">
                 {s.label}
                 {s.revealed && s.coffee && s.coffee.name.trim() ? (
-                  <span className="font-sans text-[14px] font-normal text-on-surface-variant"> {s.coffee.name.trim()}</span>
+                  <span className="font-sans text-body font-normal text-on-surface-variant"> {s.coffee.name.trim()}</span>
                 ) : null}
               </h3>
               <PostCloseNoteEditor

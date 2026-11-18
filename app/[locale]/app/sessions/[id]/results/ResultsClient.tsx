@@ -753,7 +753,7 @@ export function ResultsClient({
   const compareSelector =
     references.length > 1 ? (
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-medium text-on-surface-variant">
+        <span className="text-caption font-medium text-on-surface-variant">
           {translations.compareWith}
         </span>
         <SegmentedControl
@@ -822,7 +822,7 @@ export function ResultsClient({
             title={session.name}
             action={cuppingOpen ? undefined : exportSheet}
           />
-          <p className="mt-1 text-sm text-on-surface-variant tabular-nums">
+          <p className="mt-1 text-caption text-on-surface-variant tabular-nums">
             {[
               `${overview.t.pageKind} · ${session.date}`,
               closedOnLabel,
@@ -872,13 +872,13 @@ export function ResultsClient({
         )}
 
         {liveUpdatesDown && (
-          <p role="status" className="px-4 pb-2 text-[11px] text-secondary">
+          <p role="status" className="px-4 pb-2 text-caption text-secondary">
             {translations.liveUpdatesDown}
           </p>
         )}
 
         {closeEmails && (
-          <div className="flex flex-wrap items-center gap-2 px-4 pb-2 text-[11px] text-on-surface-variant">
+          <div className="flex flex-wrap items-center gap-2 px-4 pb-2 text-caption text-on-surface-variant">
             <span>{closeEmails.line}</span>
             {closeEmails.showResend && (
               <Button
@@ -903,7 +903,7 @@ export function ResultsClient({
           <div className="px-4 pb-2">
             <span
               role="status"
-              className="inline-flex rounded-card border border-secondary/40 bg-secondary-fixed/40 px-3 py-1 text-[11px] text-on-surface"
+              className="inline-flex rounded-card border border-secondary/40 bg-secondary-fixed/40 px-3 py-1 text-caption text-on-surface"
             >
               {updatedAfterCloseLabel}
             </span>
@@ -912,7 +912,7 @@ export function ResultsClient({
 
         {exclusionNotice && (
           <div className="px-4 pb-2">
-            <p role="status" className="rounded-card border border-outline-variant bg-surface-container px-3 py-2 text-xs text-on-surface-variant">
+            <p role="status" className="rounded-card border border-outline-variant bg-surface-container px-3 py-2 text-caption text-on-surface-variant">
               {exclusionNotice}
             </p>
           </div>
@@ -941,7 +941,7 @@ export function ResultsClient({
       {adminViewNotice && (
         <div
           role="status"
-          className="mx-4 mt-4 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-sm text-on-surface lg:mx-6"
+          className="mx-4 mt-4 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-caption text-on-surface lg:mx-6"
         >
           {adminViewNotice}
         </div>
@@ -955,7 +955,7 @@ export function ResultsClient({
       {closedNotice && (
         <div
           role="status"
-          className="mx-4 mt-4 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-sm text-on-surface lg:mx-6"
+          className="mx-4 mt-4 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-caption text-on-surface lg:mx-6"
         >
           {closedNotice}
         </div>
@@ -963,7 +963,7 @@ export function ResultsClient({
       {closeAsIs && showCloseAsIs && (
         <div
           role="status"
-          className="mx-4 mt-4 flex flex-wrap items-center gap-2 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-sm text-on-surface lg:mx-6"
+          className="mx-4 mt-4 flex flex-wrap items-center gap-2 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-caption text-on-surface lg:mx-6"
         >
           <span className="flex-1 min-w-[200px]">{closeAsIs.line}</span>
           <Button size="sm" variant="secondary" onClick={() => setCloseAsIsOpen(true)}>
@@ -994,7 +994,7 @@ export function ResultsClient({
         <div
           key={line}
           role="status"
-          className="mx-4 mt-4 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-sm text-on-surface lg:mx-6"
+          className="mx-4 mt-4 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-caption text-on-surface lg:mx-6"
         >
           {line}
         </div>
@@ -1008,7 +1008,7 @@ export function ResultsClient({
       {closeNow && (
         <div
           role="status"
-          className="mx-4 mt-4 flex flex-wrap items-center gap-2 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-sm text-on-surface lg:mx-6"
+          className="mx-4 mt-4 flex flex-wrap items-center gap-2 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-caption text-on-surface lg:mx-6"
         >
           <span className="flex-1 min-w-[200px]">{closeNow.line}</span>
           <Button size="sm" variant="secondary" onClick={() => setCloseNowOpen(true)}>
@@ -1061,7 +1061,7 @@ export function ResultsClient({
       {myDraftNotice && (
         <div
           role="status"
-          className="mx-4 mt-4 flex flex-wrap items-center gap-2 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-sm text-on-surface lg:mx-6"
+          className="mx-4 mt-4 flex flex-wrap items-center gap-2 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-caption text-on-surface lg:mx-6"
         >
           <span className="flex-1 min-w-[200px]">{myDraftNotice}</span>
           {!isAdminViewer && cuppingOpen && (
@@ -1114,7 +1114,7 @@ export function ResultsClient({
       {partialSyncNotice && !(effectiveTab === "resumen" && overview.data.who) && (
         <div
           role="status"
-          className="mx-4 mt-4 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-sm text-on-surface lg:mx-6"
+          className="mx-4 mt-4 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-caption text-on-surface lg:mx-6"
         >
           {partialSyncNotice}
         </div>
@@ -1122,7 +1122,7 @@ export function ResultsClient({
       {coffeeNotOwnedNotice && (
         <div
           role="status"
-          className="mx-4 mt-4 flex items-start gap-2 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-sm text-on-surface lg:mx-6"
+          className="mx-4 mt-4 flex items-start gap-2 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-caption text-on-surface lg:mx-6"
         >
           <span className="flex-1">{translations.editSampleNotOwner}</span>
           <button

@@ -54,11 +54,11 @@ export function CupperAlignment({
   return (
     <section className="flex flex-col gap-3" aria-labelledby={titleId} data-panel-section="alignment">
       <div className="flex flex-col gap-0.5">
-        <h2 id={titleId} className="section-title inline-flex items-center gap-1.5 text-xl">
+        <h2 id={titleId} className="section-title inline-flex items-center gap-1.5">
           {t.title}
           {titleAction}
         </h2>
-        <p className="m-0 text-[12.25px] leading-snug text-on-surface-variant">{t.subtitle}</p>
+        <p className="m-0 text-caption leading-snug text-on-surface-variant">{t.subtitle}</p>
       </div>
       {samples.length > 1 ? (
         <PillTabs
@@ -71,12 +71,12 @@ export function CupperAlignment({
       ) : null}
       <div className="rounded-card border border-outline-variant bg-surface-container-lowest p-4">
         {!hasData ? (
-          <p className="m-0 text-[14px] text-on-surface-variant">{t.noData}</p>
+          <p className="m-0 text-body text-on-surface-variant">{t.noData}</p>
         ) : (
           <ul className="m-0 flex list-none flex-col gap-3 p-0">
             {bars.map((bar) => (
               <li key={bar.id} className="flex flex-col gap-1" data-alignment-row="">
-                <div className="flex items-baseline justify-between gap-3 text-[14px]">
+                <div className="flex items-baseline justify-between gap-3 text-body">
                   <span className={`min-w-0 truncate font-semibold ${bar.excluded ? "text-on-surface-variant" : "text-on-surface"}`}>
                     {bar.name}
                     {bar.excluded ? <span className="font-normal"> {t.excluded}</span> : null}

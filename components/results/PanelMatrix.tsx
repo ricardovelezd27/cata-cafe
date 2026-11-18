@@ -62,9 +62,9 @@ function tone(cell: PanelCell, excluded: boolean): string {
   return "text-on-surface";
 }
 
-const head = "border-b border-outline-variant px-2 py-2 text-center text-[12.25px] font-semibold text-on-surface-variant";
+const head = "border-b border-outline-variant px-2 py-2 text-center text-caption font-semibold text-on-surface-variant";
 const stick = "sticky left-0 z-[1] bg-surface-container-lowest";
-const lineCell = "border-b border-outline-variant/60 px-2 py-2 text-center text-[14px] tabular-nums";
+const lineCell = "border-b border-outline-variant/60 px-2 py-2 text-center text-body tabular-nums";
 
 /**
  * The organizer's matrix: every cupper's total for every coffee, the group's
@@ -134,7 +134,7 @@ export function PanelMatrix({
         onClick={() => onOpen(coffees[ci].id, cuppers[pi].id)}
         aria-label={cellName(ci, pi)}
         data-distance={cuppers[pi].excluded ? "none" : cell.distance}
-        className={`inline-flex min-h-[44px] w-full items-center justify-center gap-1 px-2 py-2 text-[14px] tabular-nums transition-colors hover:brightness-95 ${tone(cell, cuppers[pi].excluded)} ${extra}`}
+        className={`inline-flex min-h-[44px] w-full items-center justify-center gap-1 px-2 py-2 text-body tabular-nums transition-colors hover:brightness-95 ${tone(cell, cuppers[pi].excluded)} ${extra}`}
       >
         <Mark distance={cuppers[pi].excluded ? "none" : cell.distance} />
         {cell.value !== null ? score(cell.value) : cell.partial ? t.partial : t.noScore}
@@ -159,13 +159,13 @@ export function PanelMatrix({
       onClick={() => {
         if (coffees[0]) onOpen(coffees[0].id, cuppers[pi].id);
       }}
-      className={`min-h-[44px] w-full rounded-input px-1.5 text-[14px] font-semibold transition-colors hover:bg-surface-container-high ${
+      className={`min-h-[44px] w-full rounded-input px-1.5 text-body font-semibold transition-colors hover:bg-surface-container-high ${
         cuppers[pi].excluded ? "text-on-surface-variant" : "text-on-surface"
       } ${extra}`}
     >
       <span className={cuppers[pi].excluded ? "line-through" : ""}>{cuppers[pi].name}</span>
       {cuppers[pi].excluded ? (
-        <span className="block text-[12.25px] font-normal text-on-surface-variant">{t.excludedTag}</span>
+        <span className="block text-caption font-normal text-on-surface-variant">{t.excludedTag}</span>
       ) : null}
     </button>
   );
@@ -252,7 +252,7 @@ export function PanelMatrix({
         <tbody>
           {coffees.map((coffee, ci) => (
             <tr key={coffee.id}>
-              <th scope="row" className={`${stick} border-b border-outline-variant/60 px-2 py-2 text-left text-[12.25px] font-semibold`}>
+              <th scope="row" className={`${stick} border-b border-outline-variant/60 px-2 py-2 text-left text-caption font-semibold`}>
                 {coffeeHead(coffee)}
               </th>
               {matrix.scored ? (
@@ -292,11 +292,11 @@ export function PanelMatrix({
               size="sm"
             />
           ) : null}
-          <p className="m-0 flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-[14px] text-on-surface">
+          <p className="m-0 flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-body text-on-surface">
             <span className="inline-flex items-center gap-1.5 font-semibold">
               {current.label}
               {current.isReference && referenceBadge ? (
-                <span className="text-[12.25px] font-normal text-on-surface-variant">
+                <span className="text-caption font-normal text-on-surface-variant">
                   {referenceBadgeText(referenceBadge, current.referenceRank, matrix.references)}
                 </span>
               ) : null}
@@ -317,7 +317,7 @@ export function PanelMatrix({
                     onClick={() => onOpen(current.id, cupper.id)}
                     aria-label={cellName(pickedIndex, pi)}
                     data-distance={cupper.excluded ? "none" : cell.distance}
-                    className="flex min-h-[48px] w-full items-center gap-2 py-1.5 text-left text-[14px]"
+                    className="flex min-h-[48px] w-full items-center gap-2 py-1.5 text-left text-body"
                   >
                     <span className={`min-w-0 flex-1 truncate font-semibold ${cupper.excluded ? "text-on-surface-variant" : "text-on-surface"}`}>
                       <span className={cupper.excluded ? "line-through" : ""}>{cupper.name}</span>
@@ -343,14 +343,14 @@ export function PanelMatrix({
           {table}
         </div>
         {overflows ? (
-          <p className="m-0 text-[12.25px] text-on-surface-variant" data-matrix-hint="">
+          <p className="m-0 text-caption text-on-surface-variant" data-matrix-hint="">
             {t.scrollHint}
           </p>
         ) : null}
       </div>
 
       {matrix.scored ? (
-        <ul className="m-0 flex list-none flex-col gap-1 p-0 text-[12.25px] leading-snug text-on-surface-variant" data-matrix-legend="">
+        <ul className="m-0 flex list-none flex-col gap-1 p-0 text-caption leading-snug text-on-surface-variant" data-matrix-legend="">
           <li className="flex items-start gap-1.5">
             <span className="mt-px h-4 w-5 shrink-0 rounded-sm bg-primary-fixed" aria-hidden="true" />
             {t.markWithin}

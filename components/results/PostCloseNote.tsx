@@ -80,10 +80,10 @@ export function PostCloseNoteEditor({
       <div className="flex flex-col gap-2 rounded-card border border-outline-variant bg-surface-container-low p-3">
         {saved.text ? (
           <>
-            <p className="font-sans text-xs text-on-surface-variant" suppressHydrationWarning>
+            <p className="font-sans text-caption text-on-surface-variant" suppressHydrationWarning>
               {t.added.replace("{date}", formatAt(saved.at, locale))}
             </p>
-            <p className="whitespace-pre-wrap font-sans text-sm text-on-surface">{saved.text}</p>
+            <p className="whitespace-pre-wrap font-sans text-body text-on-surface">{saved.text}</p>
             <div className="flex flex-wrap gap-2">
               <Button size="sm" variant="ghost" onClick={() => { setDraft(saved.text ?? ""); setEditing(true); }}>
                 {t.edit}
@@ -105,14 +105,14 @@ export function PostCloseNoteEditor({
   return (
     <div className="flex flex-col gap-2 rounded-card border border-outline-variant bg-surface-container-low p-3">
       <label className="flex flex-col gap-1">
-        <span className="font-sans text-xs text-on-surface-variant">{t.hint}</span>
+        <span className="font-sans text-caption text-on-surface-variant">{t.hint}</span>
         <textarea
           value={draft}
           maxLength={POST_CLOSE_NOTE_MAX}
           rows={4}
           placeholder={t.placeholder}
           onChange={(e) => setDraft(e.target.value)}
-          className="w-full rounded-input border border-outline-variant bg-surface px-3 py-2 font-sans text-sm text-on-surface"
+          className="w-full rounded-input border border-outline-variant bg-surface px-3 py-2 font-sans text-caption text-on-surface"
         />
       </label>
       <div className="flex flex-wrap items-center gap-2">
@@ -122,7 +122,7 @@ export function PostCloseNoteEditor({
         <Button size="sm" variant="ghost" disabled={saving} onClick={() => setEditing(false)}>
           {t.cancel}
         </Button>
-        <span className="ml-auto font-mono text-[10px] text-on-surface-variant">
+        <span className="ml-auto font-mono text-caption text-on-surface-variant">
           {draft.length}/{POST_CLOSE_NOTE_MAX}
         </span>
       </div>
@@ -156,12 +156,12 @@ export function PostCloseNotesOwnerList({
   items.sort((a, b) => a.who.localeCompare(b.who) || a.sample.localeCompare(b.sample));
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="section-title text-xl">{t.ownerTitle}</h2>
-      <p className="font-sans text-sm text-on-surface-variant">{t.ownerIntro}</p>
+      <h2 className="section-title">{t.ownerTitle}</h2>
+      <p className="font-sans text-caption text-on-surface-variant">{t.ownerIntro}</p>
       <ul className="flex flex-col gap-2">
         {items.map((i) => (
           <li key={i.key} className="flex flex-col gap-1">
-            <p className="font-sans text-sm font-semibold text-on-surface">
+            <p className="font-sans text-caption font-semibold text-on-surface">
               {i.who} · {i.sample}
             </p>
             <PostCloseNoteReadOnly text={i.note.text} at={i.note.at} locale={locale} translations={t} />
@@ -186,10 +186,10 @@ export function PostCloseNoteReadOnly({
 }) {
   return (
     <div className="flex flex-col gap-1 rounded-card border border-outline-variant bg-surface-container-low p-3">
-      <p className="font-sans text-xs text-on-surface-variant" suppressHydrationWarning>
+      <p className="font-sans text-caption text-on-surface-variant" suppressHydrationWarning>
         {t.added.replace("{date}", formatAt(at, locale))}
       </p>
-      <p className="whitespace-pre-wrap font-sans text-sm text-on-surface">{text}</p>
+      <p className="whitespace-pre-wrap font-sans text-body text-on-surface">{text}</p>
     </div>
   );
 }

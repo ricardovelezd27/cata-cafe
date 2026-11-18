@@ -90,7 +90,7 @@ export function PanelView({
       ) : null}
 
       <section className="flex flex-col gap-3" data-panel-section="matrix">
-        <h2 className="section-title inline-flex items-center gap-1.5 text-xl">
+        <h2 className="section-title inline-flex items-center gap-1.5">
           {matrixTitle}
           {matrixHelp}
         </h2>
