@@ -43,7 +43,7 @@ export default async function DevWaitingPage({
         withWarmup || state === "live"
           ? {
               chosenId: withWarmup ? "arm-raise" : null,
-              warmupStartedAt: state === "running" ? new Date(Date.now() - 20_000).toISOString() : null,
+              warmupStartedAt: state === "running" ? new Date(new Date().getTime() - 20_000).toISOString() : null,
               serverNow: new Date().toISOString(),
               synced: {
                 listen: tw("synced.listen"),
