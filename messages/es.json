@@ -1,6 +1,6 @@
 {
   "brand": {
-    "name": "Cata Café Sensible",
+    "name": "Café Sensible",
     "tagline": "Catación profesional SCA CVA"
   },
   "nav": {
@@ -9,7 +9,7 @@
     "coffees": "Cafés",
     "history": "Historial",
     "profile": "Perfil",
-    "logout": "Cerrar sesión",
+    "logout": "Salir",
     "signin": "Iniciar sesión",
     "groups": "Grupos",
     "insights": "Análisis",
@@ -66,7 +66,7 @@
     "googleError": "No pudimos iniciar sesión con Google. Inténtalo de nuevo.",
     "signInWithGoogle": "Continuar con Google",
     "or": "o",
-    "signOut": "Cerrar sesión",
+    "signOut": "Salir",
     "claimIntro": "Crea tu cuenta o inicia sesión para guardar los resultados de tu cata. Al terminar volverás a tus resultados.",
     "claim": {
       "title": "Vincular tus resultados",
@@ -150,13 +150,13 @@
       "dismiss": "Entendido",
       "reopen": "¿Cómo funciona?",
       "calcTitle": "La fórmula CVA",
-      "calcLead": "Cada puntuación afectiva usa la fórmula oficial SCA CVA. No hay matemática oculta:",
+      "calcLead": "Cada puntaje afectivo usa la fórmula oficial SCA CVA. No hay matemática oculta:",
       "calcSigma": "suma de las 8 secciones afectivas (fragancia, aroma, sabor, regusto, acidez, dulzor, sensación e impresión global), cada una de 1 a 9.",
       "calcU": "tazas no uniformes; cada una resta 2 puntos (con una sola taza no se evalúa uniformidad).",
       "calcD": "tazas defectuosas; cada una resta 4 puntos (una taza defectuosa también es no uniforme).",
       "calcAnchors": "Anclas: las ocho secciones en 5 dan 79.00; las ocho en 9 dan 100.00.",
       "calcRounding": "El resultado se redondea al 0.25 más cercano.",
-      "calcGroup": "En grupo, la puntuación de la comunidad promedia las evaluaciones incluidas y resta el descuento de las tazas de todos los catadores; con más de cinco tazas en total, el descuento se reparte.",
+      "calcGroup": "En grupo, el puntaje del grupo promedia las evaluaciones incluidas y resta el descuento de las tazas de todos los catadores; con más de cinco tazas en total, el descuento se reparte.",
       "calcPerResult": "Cada resultado trae su propio desglose «¿Cómo se calculó?» con tus números exactos."
     },
     "welcome": "Hola, {name}",
@@ -168,7 +168,7 @@
     "statSessionsSub": "sesiones realizadas",
     "statSamples": "Muestras evaluadas",
     "statSamplesSub": "cafés únicos catados",
-    "statAvg": "Puntuación promedio",
+    "statAvg": "Puntaje promedio",
     "statAvgSub": "promedio personal, Puntaje Café Sensible",
     "noAvg": "Sin datos",
     "activityEval": "Evaluaste {coffee}",
@@ -187,10 +187,10 @@
   },
   "session": {
     "list": "Sesiones",
-    "adminBadge": "Modo administrador — todas las sesiones",
+    "adminBadge": "Modo administrador: todas las sesiones",
     "new": "Nueva sesión",
     "name": "Nombre",
-    "namePh": "Ej. Origen Etiopía — Lote 12",
+    "namePh": "Ej. Origen Etiopía, Lote 12",
     "date": "Fecha",
     "objective": "Objetivo",
     "objectivePh": "¿Qué quieres aprender con esta sesión?",
@@ -352,7 +352,7 @@
       "roleParticipant": "Como participante",
       "roleOthers": "De otros usuarios",
       "participantBadge": "Participante",
-      "adminOwnerPrefix": "Dueño:",
+      "adminOwnerPrefix": "Organiza:",
       "emptyTitle": "Aún no tienes sesiones",
       "emptyBody": "Empieza con «Catar ahora» o «Nueva sesión», arriba.",
       "solo": "Individual",
@@ -366,7 +366,7 @@
       "formatLocked": "El formato y las tazas por muestra se bloquean cuando la sesión ya tiene evaluaciones.",
       "samplesTitle": "Muestras",
       "addSample": "Añadir muestra",
-      "sampleHasEvals": "Tiene evaluaciones — no se puede eliminar",
+      "sampleHasEvals": "Tiene evaluaciones: no se puede eliminar",
       "removeSampleTitle": "Eliminar muestra",
       "removeSampleBody": "Se eliminará la muestra {label}. Esta acción no se puede deshacer.",
       "save": "Guardar cambios",
@@ -386,11 +386,11 @@
       "sessionExpired": "La fecha de cierre de esta cata ya pasó: se cerrará en las próximas horas y ya no se puede editar.",
       "warmupLocked": "El ejercicio no se puede cambiar una vez iniciada la cata.",
       "repinTitle": "¿Fijar esta muestra como referencia?",
-      "repinBody": "{n} catadores ya evaluaron esta muestra. Al marcarla como referencia, sus notas de calidad se reemplazan por los 79.00 de la referencia fija. Sus calificaciones anteriores de esta muestra se guardan y vuelven si quitas la referencia.",
-      "sampleHasData": "Tiene datos físicos o de origen — no se puede eliminar",
+      "repinBody": "{n} catadores ya evaluaron esta muestra. Al marcarla como referencia, sus notas de calidad se reemplazan por los 79.00 de la referencia fija. Sus notas anteriores de esta muestra se guardan y vuelven si quitas la referencia.",
+      "sampleHasData": "Tiene datos físicos o de origen: no se puede eliminar",
       "removeRepinTitle": "¿Quitar la referencia activa?",
-      "removeRepinBody": "Al quitarla, {label} vuelve a ser la referencia y {n} catadores verán sus notas de calidad reemplazadas por los 79.00 de la referencia fija. Sus calificaciones anteriores de esta muestra se guardan y vuelven si quitas la referencia.",
-      "ratingsRestored": "Se recuperaron las calificaciones anteriores de {n} evaluaciones.",
+      "removeRepinBody": "Al quitarla, {label} vuelve a ser la referencia y {n} catadores verán sus notas de calidad reemplazadas por los 79.00 de la referencia fija. Sus notas anteriores de esta muestra se guardan y vuelven si quitas la referencia.",
+      "ratingsRestored": "Se recuperaron las notas anteriores de {n} evaluaciones.",
       "removeRepinConfirm": "Quitar referencia",
       "referenceRepinBlocked": "Quitar esta muestra reactivaría una referencia anterior y reemplazaría las notas de sus catadores. Cambia primero la referencia.",
       "referenceRevealed": "revelada, no puede ser referencia fija",
@@ -574,15 +574,15 @@
     }
   },
   "waiting": {
-    "title": "Bienvenido a la sesión",
+    "title": "Hola, ya estás en la sesión",
     "titleAsync": "Tu cata está lista",
-    "description": "El maestro de cata está preparando la sala. La cata comenzará cuando el maestro dé la señal. Por favor, espera aquí.",
-    "descriptionAsync": "Esta es una cata asíncrona. Puedes evaluar los cafés a tu propio ritmo — no necesitas esperar al maestro de cata.",
-    "asyncDetail": "Tu evaluación quedará registrada en el perfil de cada café y sumará a la puntuación comunitaria de esta sesión.",
-    "waiting": "Esperando al maestro",
+    "description": "Quien organiza la cata está preparando la sala. La cata comenzará cuando dé la señal. Por favor, espera aquí.",
+    "descriptionAsync": "Esta es una cata asíncrona. Puedes evaluar los cafés a tu propio ritmo: no necesitas esperar a quien organiza.",
+    "asyncDetail": "Tu evaluación quedará registrada en el perfil de cada café y sumará al puntaje del grupo de esta sesión.",
+    "waiting": "Esperando a quien organiza",
     "buttonLabel": "Iniciar cata",
     "backToSessions": "Volver a mis sesiones",
-    "connectionLost": "Conexión en vivo perdida — comprobando cada 15 s",
+    "connectionLost": "Conexión en vivo perdida. comprobando cada 15 s",
     "referenceLine": "Muestra de referencia: {label}",
     "referencesLine": "Referencias: {list}"
   },
@@ -648,7 +648,7 @@
     "preferredLang": "Idioma de los correos",
     "bio": "Bio",
     "save": "Guardar",
-    "ownedSessions": "Mis sesiones como maestro",
+    "ownedSessions": "Sesiones que organicé",
     "participatedSessions": "Sesiones en las que participé",
     "noOwnedSessions": "Aún no has creado sesiones.",
     "noParticipatedSessions": "Aún no has participado en sesiones.",
@@ -750,7 +750,7 @@
     "submittedOf": "{count} de {total} enviaron todo",
     "closeSession": "Cerrar sesión",
     "confirmClose": "¿Cerrar la sesión? Los resultados quedarán finales.",
-    "liveCountDown": "Conteo en vivo no disponible — recarga la página para ver el total actualizado.",
+    "liveCountDown": "Conteo en vivo no disponible. Recarga la página para ver el total actualizado.",
     "closeSessionError": "No se pudo cerrar la sesión. Inténtalo de nuevo.",
     "startSession": "Iniciar cata",
     "starting": "Iniciando…",
@@ -765,9 +765,9 @@
     "invalidToken": "Enlace inválido o expirado",
     "submitEval": "Enviar evaluación",
     "evalSubmitted": "Evaluación enviada",
-    "masterControls": "Panel de maestro",
-    "masterRole": "Maestro de Cata",
-    "participantRole": "Catador Participante",
+    "masterControls": "Panel del organizador",
+    "masterRole": "Organizador",
+    "participantRole": "Catador",
     "copyImage": "Copiar QR",
     "downloadQr": "Descargar QR",
     "inviteMissing": "Esta cata no tiene un enlace de invitación activo. Genera uno desde el panel de la cata.",
@@ -794,7 +794,7 @@
     "identityCancel": "Cancelar",
     "identityClose": "Cerrar",
     "identitySyncing": "Enviando notas pendientes…",
-    "sessionClosed": "Esta cata ya cerró — pide al organizador el enlace de resultados.",
+    "sessionClosed": "Esta cata ya cerró. Pide al organizador el enlace de resultados.",
     "referenceSelect": "Muestra de referencia",
     "referenceNone": "Sin referencia",
     "referenceActive": "activa",
@@ -863,8 +863,8 @@
     "referenceAddHintFree": "Todos puntúan las referencias como cualquier otra muestra; la anterior se mantiene."
   },
   "results": {
-    "title": "Resultados de la Sesión",
-    "adminViewNotice": "Vista de administrador (solo lectura) — sesión de {owner}",
+    "title": "Resultados de la sesión",
+    "adminViewNotice": "Vista de administrador (solo lectura): sesión de {owner}",
     "backToCupping": "Editar evaluación",
     "viewForm": "Ver formulario",
     "downloadPdf": "Descargar PDF",
@@ -888,9 +888,9 @@
       "table": "Tabla",
       "chart": "Gráfico"
     },
-    "flavorProfiles": "Perfiles de Sabor",
+    "flavorProfiles": "Perfiles de sabor",
     "communityPending": "Los resultados del grupo aparecerán cuando se cierre la cata.",
-    "sdAria": "Desviación estándar entre catadores — menor es más consenso",
+    "sdAria": "Desviación estándar entre catadores: menor es más consenso",
     "referenceBadge": "Referencia",
     "deltaVsReference": "Δ vs. referencia",
     "deltaVsReferenceAria": "Diferencia de puntaje frente a la muestra de referencia; positiva si esta muestra puntuó más alto",
@@ -898,7 +898,7 @@
     "compareWith": "Comparar con",
     "referenceLegend": "Δ = diferencia frente a la referencia",
     "closedOn": "Cata cerrada el {date}",
-    "liveUpdatesDown": "Actualizaciones en vivo no disponibles — pulsa «Actualizar» para ver lo último.",
+    "liveUpdatesDown": "Actualizaciones en vivo no disponibles. Pulsa «Actualizar» para ver lo último.",
     "myDraftNotice": "Tu evaluación sigue en curso · {complete} de {total} muestras completas. Los valores que faltan aparecerán a medida que catas; nada se ha perdido.",
     "myDraftCta": "Seguir catando",
     "sync": {
@@ -968,7 +968,7 @@
       "alignmentNote": "Informativo: no afecta los puntajes.",
       "highlights": "Descriptores destacados",
       "soloTopDescriptors": "Tus descriptores más frecuentes",
-      "viewInDescriptors": "Ver en Descriptores",
+      "viewInDescriptors": "Ver en descriptores",
       "includedOf": "{n} de {total} incluidos",
       "rankIndicative": "indicativo",
       "rankNoClearGap": "sin diferencia clara",
@@ -1034,7 +1034,7 @@
       "legendGreen": "≤ 1 DE de la media (consenso)",
       "legendAmber": "> 1 DE de la media",
       "legendRed": "Lejos del grupo en esta muestra (2 DE o más). No es un error: en la cata afectiva las preferencias pueden diferir.",
-      "noScore": "—",
+      "noScore": "–",
       "sdHeader": "DE",
       "manageTitle": "Participantes en el cálculo grupal",
       "manageHint": "Desactiva un catador para excluir sus datos de los promedios, descriptores y gráficos del grupo. Seguirá viendo sus propios resultados.",
@@ -1153,7 +1153,7 @@
       },
       "tabla": {
         "title": "Tabla de resultados",
-        "body": "Todas tus calificaciones por muestra: intensidades descriptivas, calificaciones afectivas (1 a 9) y el puntaje. En sesiones grupales, cada atributo muestra también el promedio de la comunidad debajo de tu valor. Toca el nombre de una muestra para ver su detalle."
+        "body": "Todas tus notas por muestra: intensidades descriptivas, notas afectivas (1 a 9) y el puntaje. En sesiones grupales, cada atributo muestra también el promedio de la comunidad debajo de tu valor. Toca el nombre de una muestra para ver su detalle."
       },
       "grafico": {
         "title": "Gráfico radar",
@@ -1161,7 +1161,7 @@
       },
       "porCatador": {
         "title": "Análisis por catador",
-        "body": "Solo visible para el maestro de la sesión: la matriz de puntajes por catador, con un semáforo de tres colores por consenso — verde dentro de 1 desviación estándar de la media de la muestra, amarillo más de 1 DE, un tono más fuerte a 2 o más DE (lejos del grupo en esa muestra; no es un error, en la cata afectiva las preferencias pueden diferir); los catadores excluidos se muestran en gris. Puedes excluir un catador del cálculo grupal; los puntajes se recalculan automáticamente."
+        "body": "Solo lo ve quien organiza la sesión: la matriz de puntajes por catador, con un semáforo de tres colores por consenso: verde dentro de 1 desviación estándar de la media de la muestra, amarillo más de 1 DE, un tono más fuerte a 2 o más DE (lejos del grupo en esa muestra; no es un error, en la cata afectiva las preferencias pueden diferir); los catadores excluidos se muestran en gris. Puedes excluir un catador del cálculo grupal; los puntajes se recalculan automáticamente."
       },
       "filtros": {
         "title": "Filtros de descriptores",
@@ -1177,19 +1177,19 @@
       },
       "alineacion": {
         "title": "Alineación de catadores",
-        "body": "Solo visible para el maestro: qué porcentaje de los descriptores de consenso del grupo eligió cada catador. Con una muestra filtrada, muestra la alineación en esa muestra específica."
+        "body": "Solo lo ve quien organiza: qué porcentaje de los descriptores de consenso del grupo eligió cada catador. Con una muestra filtrada, muestra la alineación en esa muestra específica."
       },
       "referencia": {
         "title": "Muestra de referencia",
-        "body": "El maestro de cata puede marcar una muestra como referencia: un punto de partida común contra el que se leen las demás. La cata empieza por ella y su calidad queda fijada en 5 (ni alto ni bajo) en todos los atributos, así que cada catador le da siempre 79.00 y solo describe lo que percibe. No entra en el ranking, en el promedio ni en la mejor muestra. La referencia fija es un ejercicio de Café Sensible para alinear al grupo: todos le dan 79.00. No es parte del CVA, donde cada persona puntúa su propia impresión.\nLo que agrega es contexto: junto a cada muestra verás Δ, la diferencia entre su puntaje y el de la referencia, calculada siempre con el mismo tipo de puntaje que ves al lado (comunitario cuando está visible; si no, el tuyo).\nReferencia, media del grupo y desviación son cosas distintas: la referencia es el punto de partida elegido por el maestro; la media es lo que percibió el grupo; la desviación (±) es cuánto se dispersó el grupo.",
-        "bodyFree": "El maestro de cata puede marcar una muestra como referencia: un punto de partida común contra el que se leen las demás. La cata empieza por ella y todos la puntúan libremente, como cualquier otra muestra. No entra en el ranking, en el promedio ni en la mejor muestra.\nLo que agrega es contexto: junto a cada muestra verás Δ, la diferencia entre su puntaje y el de la referencia, calculada siempre con el mismo tipo de puntaje que ves al lado (comunitario cuando está visible; si no, el tuyo).\nReferencia, media del grupo y desviación son cosas distintas: la referencia es el punto de partida elegido por el maestro; la media es lo que percibió el grupo; la desviación (±) es cuánto se dispersó el grupo.",
-        "bodyDescriptive": "El maestro de cata puede marcar una muestra como referencia: un punto de partida común contra el que se leen las demás. La cata empieza por ella. En una cata descriptiva no hay puntajes de calidad, así que la referencia solo sirve de punto de comparación de lo que se describe. No entra en el ranking, en el promedio ni en la mejor muestra."
+        "body": "Quien organiza puede marcar una muestra como referencia: un punto de partida común contra el que se leen las demás. La cata empieza por ella y su calidad queda fijada en 5 (ni alto ni bajo) en todos los atributos, así que cada catador le da siempre 79.00 y solo describe lo que percibe. No entra en el ranking, en el promedio ni en la mejor muestra. La referencia fija es un ejercicio de Café Sensible para alinear al grupo: todos le dan 79.00. No es parte del CVA, donde cada persona puntúa su propia impresión.\nLo que agrega es contexto: junto a cada muestra verás Δ, la diferencia entre su puntaje y el de la referencia, calculada siempre con el mismo tipo de puntaje que ves al lado (comunitario cuando está visible; si no, el tuyo).\nReferencia, media del grupo y desviación son cosas distintas: la referencia es el punto de partida elegido por quien organiza; la media es lo que percibió el grupo; la desviación (±) es cuánto se dispersó el grupo.",
+        "bodyFree": "Quien organiza puede marcar una muestra como referencia: un punto de partida común contra el que se leen las demás. La cata empieza por ella y todos la puntúan libremente, como cualquier otra muestra. No entra en el ranking, en el promedio ni en la mejor muestra.\nLo que agrega es contexto: junto a cada muestra verás Δ, la diferencia entre su puntaje y el de la referencia, calculada siempre con el mismo tipo de puntaje que ves al lado (comunitario cuando está visible; si no, el tuyo).\nReferencia, media del grupo y desviación son cosas distintas: la referencia es el punto de partida elegido por quien organiza; la media es lo que percibió el grupo; la desviación (±) es cuánto se dispersó el grupo.",
+        "bodyDescriptive": "Quien organiza puede marcar una muestra como referencia: un punto de partida común contra el que se leen las demás. La cata empieza por ella. En una cata descriptiva no hay puntajes de calidad, así que la referencia solo sirve de punto de comparación de lo que se describe. No entra en el ranking, en el promedio ni en la mejor muestra."
       }
     },
     "radar": {
       "score": "PUNTAJE",
       "reveal": "Revelar",
-      "communityScore": "Puntuación comunidad",
+      "communityScore": "Puntaje del grupo",
       "includedLine": "{n} de {total} evaluadores incluidos en el promedio",
       "noAffective": "Sin datos afectivos registrados",
       "requiresAffective": "El gráfico radar requiere datos afectivos (formato afectivo o combinado)"
@@ -1233,7 +1233,7 @@
       "edit": "Editar nota",
       "remove": "Borrar nota",
       "placeholder": "Una observación que quieras dejar sobre esta muestra…",
-      "hint": "Solo texto. No cambia ninguna puntuación.",
+      "hint": "Solo texto. No cambia ningún puntaje.",
       "save": "Guardar",
       "saving": "Guardando…",
       "cancel": "Cancelar",
@@ -1531,7 +1531,7 @@
     "certifications": "Certificaciones",
     "tastingHistory": "Historial de catas",
     "resultsTitle": "Resultados de la comunidad",
-    "resultsPrivate": "Los resultados de este café son privados. El dueño puede publicarlos.",
+    "resultsPrivate": "Los resultados de este café son privados. Quien registró el café puede publicarlos.",
     "statSessions": "Sesiones",
     "statEvals": "Catas",
     "statYourAvg": "Tu promedio",
@@ -1554,14 +1554,14 @@
     "confirmMakePublic": "¿Confirmar? Será visible para todos",
     "recordHint": "Un café público aparece en la lista de cafés de todos los catadores.",
     "resultsHint": "Los resultados comunitarios solo se muestran cuando los publicas.",
-    "resultsButPrivateHint": "Los resultados están publicados, pero el café es privado — nadie más puede ver esta página todavía.",
+    "resultsButPrivateHint": "Los resultados están publicados, pero el café es privado: nadie más puede ver esta página todavía.",
     "attrAveragesTitle": "Promedios por atributo",
     "flavorsTitle": "Sabores reportados",
     "sessionsListTitle": "Apariciones en sesiones",
     "originEditedNote": "Datos de origen editados el {date}",
     "noResults": "Aún no hay catas enviadas para este café.",
-    "adminBadge": "Modo administrador — acceso total",
-    "adminOwnerPrefix": "Dueño:",
+    "adminBadge": "Modo administrador: acceso total",
+    "adminOwnerPrefix": "Registrado por:",
     "recentTastingsTitle": "Catas recientes",
     "recentTastingsEmpty": "Sin catas recientes.",
     "sessionsOthersNote": "Las sesiones de este café son de otros catadores; sus nombres no se muestran, pero sus resultados cuentan en los totales.",
@@ -1609,7 +1609,7 @@
     "deleteCoffee": {
       "title": "Eliminar café",
       "titleMany": "Eliminar {count} cafés",
-      "body": "Se borran los datos que identifican el café (nombre, código, finca, productor, notas y certificaciones) y deja de aparecer en tu lista y en las sesiones. Los datos de cata —puntajes, notas percibidas, origen, variedad y proceso— se conservan de forma anónima para las estadísticas. Las fichas de origen de las muestras de sesiones pasadas (finca, productor) y las etiquetas de muestra no se modifican. Esta acción no se puede deshacer.",
+      "body": "Se borran los datos que identifican el café (nombre, código, finca, productor, notas y certificaciones) y deja de aparecer en tu lista y en las sesiones. Los datos de cata (puntajes, notas percibidas, origen, variedad y proceso) se conservan de forma anónima para las estadísticas. Las fichas de origen de las muestras de sesiones pasadas (finca, productor) y las etiquetas de muestra no se modifican. Esta acción no se puede deshacer.",
       "confirm": "Eliminar café",
       "confirmMany": "Eliminar {count} cafés",
       "cancel": "Cancelar",
@@ -1783,7 +1783,7 @@
     }
   },
   "onboarding": {
-    "welcomeTitle": "Bienvenido a Café Sensible",
+    "welcomeTitle": "Hola, esto es Café Sensible",
     "welcomeTagline": "La plataforma profesional para evaluadores SCA CVA",
     "welcomeBody": "Evaluación descriptiva, afectiva y extrínseca siguiendo el protocolo CVA 2024.",
     "start": "Comenzar",
@@ -1827,9 +1827,9 @@
   },
   "landing": {
     "meta": {
-      "title": "cafesensible.ai — Alinea el paladar de tu grupo, con datos",
+      "title": "Café Sensible · Alinea el paladar de tu grupo, con datos",
       "description": "La herramienta del Método Café Sensible: sesiones de cata en grupo sobre el protocolo SCA CVA completo, con la referencia del instructor y una convergencia que se ve. Para escuelas, formadores y facilitadores.",
-      "ogTitle": "cafesensible.ai — El paladar de tu grupo, alineado y medido.",
+      "ogTitle": "Café Sensible · El paladar de tu grupo, alineado y medido.",
       "ogDescription": "Cata SCA CVA en grupo con referencia del instructor, desviación por persona y convergencia visible, sesión a sesión."
     },
     "header": {
@@ -1871,7 +1871,7 @@
       },
       "bandLabel": "Banda de valor justo",
       "perKg": "/kg",
-      "source": "Fuente: percentiles públicos de la Specialty Coffee Transaction Guide — la banda se afinará con datos de la comunidad.",
+      "source": "Fuente: percentiles públicos de la Specialty Coffee Transaction Guide. La banda se afinará con datos de la comunidad.",
       "disclaimer": "Rango orientativo. No constituye una oferta de compra."
     },
     "how": {
@@ -1900,7 +1900,7 @@
         "desc": "El protocolo oficial completo en sus tres hojas: descriptiva, afectiva y extrínseca."
       },
       "item2": {
-        "title": "Puntuación transparente",
+        "title": "Puntaje transparente",
         "desc": "Cada puntaje enseña cómo se calculó, con la fórmula a la vista. Sin cajas negras."
       },
       "item3": {
@@ -2016,7 +2016,7 @@
       "generate": "Generar resumen IA",
       "generating": "Generando…",
       "regenerate": "Regenerar",
-      "disclaimer": "Generado con IA — puede contener errores.",
+      "disclaimer": "Generado con IA: puede contener errores.",
       "notConfigured": "La IA no está configurada (falta GEMINI_API_KEY).",
       "error": "No se pudo generar. Inténtalo de nuevo."
     },
@@ -2223,7 +2223,7 @@
       "placeholder": "Escribe tu pregunta…",
       "send": "Enviar",
       "thinking": "Analizando tus datos…",
-      "disclaimer": "Generado con IA — verifica las cifras importantes.",
+      "disclaimer": "Generado con IA: verifica las cifras importantes.",
       "notConfigured": "La IA no está configurada (falta GEMINI_API_KEY).",
       "error": "No se pudo procesar la pregunta. Inténtalo de nuevo.",
       "noAnswer": "No obtuve una respuesta clara. Intenta reformular la pregunta.",
@@ -2231,7 +2231,7 @@
       "limitReached": "Has alcanzado el límite de {limit} preguntas por día. Vuelve mañana.",
       "remaining": "{remaining} de {limit} preguntas hoy",
       "emptyTitle": "Pregunta lo que quieras sobre tus datos de catación",
-      "emptyHint": "La IA consulta tus datos reales y responde con cifras concretas — nunca inventa números.",
+      "emptyHint": "La IA consulta tus datos reales y responde con cifras concretas: nunca inventa números.",
       "example1": "¿Cuáles son mis orígenes mejor puntuados este trimestre?",
       "example2": "¿Cómo se compara mi puntaje con el benchmark de CQI para cafés de Colombia lavados?",
       "example3": "¿Qué descriptores de sabor aparecen con más frecuencia en mis catas?",
@@ -2268,7 +2268,7 @@
   },
   "groups": {
     "title": "Grupos de cata",
-    "subtitle": "Tu roster de catadores, listo para reutilizar en cualquier sesión",
+    "subtitle": "Tu lista de catadores, listo para reutilizar en cualquier sesión",
     "newGroup": "Nuevo grupo",
     "namePlaceholder": "p. ej. Catadores de la finca",
     "create": "Crear grupo",
@@ -2333,7 +2333,7 @@
     },
     "empty": "Aún no tienes grupos.",
     "coCuppersTitle": "Personas con las que has catado",
-    "noCoCuppers": "Aún no has catado con nadie más — invita por correo.",
+    "noCoCuppers": "Aún no has catado con nadie más. Invita por correo.",
     "sessionOne": "sesión",
     "sessionMany": "sesiones",
     "evaluationOne": "evaluación",
@@ -2375,7 +2375,7 @@
     "selectGroup": "Selecciona un grupo",
     "noGroupsYet": "Aún no tienes grupos guardados.",
     "skip": "Omitir",
-    "inviteDefaultMessage": "Te invito a una sesión de catación en Cata Café. Usa el enlace para unirte.",
+    "inviteDefaultMessage": "Te invito a una sesión de catación en Café Sensible. Usa el enlace para unirte.",
     "newGroupOption": "Nuevo grupo…",
     "added": "Añadido",
     "groupName": "Nombre del grupo",
@@ -2402,7 +2402,7 @@
     "creating": "Creando...",
     "invitesSentSummary": "{sent} invitaciones enviadas · {failed} fallidas",
     "memberBadge": "Integrante",
-    "ownerLabel": "Maestro de cata",
+    "ownerLabel": "Organizador",
     "memberGroupsTitle": "Grupos donde participas",
     "sessionsTitle": "Sesiones del grupo",
     "noSessions": "Aún no hay sesiones vinculadas a este grupo.",
@@ -2430,13 +2430,13 @@
     "error": "No pudimos iniciar el proceso. Inténtalo de nuevo.",
     "guestLabel": "Invitado",
     "profileCta": "Terminar de crear tu cuenta",
-    "accountBody": "Estás participando como invitado: tu acceso vive solo en este navegador y se pierde al borrar los datos de navegación, cambiar de dispositivo o cerrar sesión. Crea tu cuenta para conservar tus catas.",
+    "accountBody": "Estás participando como invitado: tu acceso vive solo en este navegador y se pierde al borrar los datos de navegación, cambiar de dispositivo o salir. Crea tu cuenta para conservar tus catas.",
     "leaveGuestTitle": "Si sales, pierdes tus resultados",
     "leaveGuestBody": "Eres invitado: tus evaluaciones viven solo en este navegador y no podrás recuperarlas si sales. Guarda tus resultados en una cuenta antes de salir.",
     "leaveSave": "Guardar mis resultados",
     "leaveAnyway": "Salir de todos modos",
     "leaveCancel": "Cancelar",
-    "leaveEverywhereTitle": "¿Cerrar sesión en todos los dispositivos?",
+    "leaveEverywhereTitle": "¿Salir en todos los dispositivos?",
     "leaveEverywhereBody": "Saldrás de tu cuenta en este y en todos los demás dispositivos donde hayas iniciado sesión. Tendrás que entrar de nuevo en cada uno.",
     "leaveEverywhereConfirm": "Cerrar en todos"
   },
@@ -2454,10 +2454,10 @@
     "codes": {
       "not_authenticated": "Tu sesión caducó. Vuelve a iniciar sesión.",
       "not_found_or_forbidden": "No encontramos ese elemento o no tienes permiso. Vuelve a la lista e inténtalo desde allí.",
-      "session_not_started": "La cata aún no empezó. Espera a que el maestro la inicie.",
+      "session_not_started": "La cata aún no empezó. Espera a que quien organiza la inicie.",
       "session_closed": "Esta cata ya está cerrada; sus resultados son definitivos. Ábrelos desde tus sesiones.",
       "busy_retry": "La cata está ocupada en este momento. Inténtalo de nuevo en unos segundos.",
-      "reference_revealed": "Esta acción cambiaría las calificaciones de una muestra ya revelada. Puedes marcar otra muestra como referencia o dejar la referencia como está.",
+      "reference_revealed": "Esta acción cambiaría las notas de una muestra ya revelada. Puedes marcar otra muestra como referencia o dejar la referencia como está.",
       "sample_revealed": "Esta muestra ya fue revelada y no se puede seguir evaluando. Pasa a otra muestra o abre los resultados.",
       "invalid_token": "Este enlace de invitación no es válido. Pide al organizador que te envíe el enlace o el QR otra vez.",
       "token_expired": "Este enlace de invitación caducó. Pide al organizador un enlace nuevo.",
@@ -2493,7 +2493,7 @@
       "count": "5 ejercicios",
       "eyesClosed": "Ojos cerrados",
       "intro": "Calmar y enfocar la atención antes de catar. El orden recomendado es del 1 al 5: el primero es la puerta de entrada. Cada ejercicio se puede hacer solo.",
-      "kimLine": "«En mis clases veo que los catadores llegan más presentes a la mesa.» — Kim Ossenblok"
+      "kimLine": "«En mis clases veo que los catadores llegan más presentes a la mesa.» – Kim Ossenblok"
     },
     "dashboard": {
       "eyebrow": "Antes de catar",
@@ -2505,7 +2505,7 @@
       "title": "Mientras esperas",
       "body": "Un movimiento lento para calmar y enfocar la atención antes de catar. Elige un ejercicio; si la cata empieza, te llevamos a la mesa.",
       "minutes": "{min} min",
-      "hero": "Tu maestro eligió",
+      "hero": "Quien organiza eligió",
       "heroStart": "Empezar",
       "heroDone": "Hecho",
       "heroRepeat": "Repetir",
@@ -2639,7 +2639,7 @@
     },
     "synced": {
       "listen": "Cierra los ojos y escucha",
-      "stopped": "El maestro detuvo el ejercicio",
+      "stopped": "Quien organiza detuvo el ejercicio",
       "soundToggle": "Sonido en este teléfono",
       "missed": "El grupo ya casi termina; puedes hacerlo por tu cuenta.",
       "inProgress": "En curso · paso {n} de {total}",
