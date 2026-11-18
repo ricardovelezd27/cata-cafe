@@ -2,6 +2,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { countRecipes } from "../scripts/ux-recipes/count.mjs";
+import { HEAVY_TEST_TIMEOUT_MS } from "./helpers/timeouts";
 
 // Package P2d / P3a: the results page takes the kit (Notice, Card,
 // PaperSectionHeading, TextAction, Badge). Frames only: every notice keeps the
@@ -19,14 +20,15 @@ describe("the results page uses the kit", () => {
     for (const f of files) expect(src(f), f).not.toMatch(/bg-secondary-container\/20|border-secondary\/30/);
   });
 
+  // reads every app and component file: heavy by design (tests/helpers/timeouts.ts)
   it("the recipe counter's results row: no hand-written card, banner or framed notice", () => {
     const { table } = countRecipes();
     const row = table.find((r: { area: string }) => r.area === "results");
     expect(row).toMatchObject({ card: 0, banner: 0, notice: 0 });
     // the two headings left are R2's own anatomy: a coffee card's title (CoffeeCards)
     // and an overview tile's title (SessionOverview)
-    expect(row.heading).toBe(2);
-  });
+    expect(row?.heading).toBe(2);
+  }, HEAVY_TEST_TIMEOUT_MS);
 
   it("every notice keeps the condition that decides who sees it", () => {
     const s = src(join(RESULTS_ROUTE, "ResultsClient.tsx"));
