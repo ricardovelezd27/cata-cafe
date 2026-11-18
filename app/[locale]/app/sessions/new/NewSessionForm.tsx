@@ -964,7 +964,7 @@ export function NewSessionForm({
               value={coffee.roastLevel}
               onChange={(e) => updateCoffee(coffee.id, "roastLevel", e.target.value)}
             >
-              <option value="">—</option>
+              <option value="">–</option>
               {ROAST_LEVELS.map((r) => (
                 <option key={r} value={r}>
                   {r}
@@ -1054,7 +1054,7 @@ export function NewSessionForm({
                 value={coffee.processType}
                 onChange={(e) => updateCoffee(coffee.id, "processType", e.target.value)}
               >
-                <option value="">—</option>
+                <option value="">–</option>
                 {PROCESS_TYPES.map((pt) => (
                   <option key={pt} value={pt}>
                     {pt}

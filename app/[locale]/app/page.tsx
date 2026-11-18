@@ -289,7 +289,7 @@ export default async function Dashboard({
                       </span>
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-on-surface text-caption truncate">
-                          {coffee ? coffeeDisplayName(coffee, tc("coffeeDeleted")) : "—"}
+                          {coffee ? coffeeDisplayName(coffee, tc("coffeeDeleted")) : "–"}
                         </p>
                         {coffee?.country && (
                           <p className="text-caption text-on-surface-variant">{coffee.country}</p>

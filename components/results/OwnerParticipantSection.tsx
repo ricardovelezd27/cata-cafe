@@ -251,9 +251,9 @@ export function OwnerParticipantSection({
                   {excluded && p.trail && (p.trail.by || p.trail.at || p.trail.reason) && (
                     <span className="basis-full text-caption text-on-surface-variant">
                       {fill(t.excludedTrail, {
-                        who: p.trail.by ?? "—",
-                        date: p.trail.at ?? "—",
-                        reason: exclusionReasonText(p.trail.reason, t.reasons) ?? "—",
+                        who: p.trail.by ?? "–",
+                        date: p.trail.at ?? "–",
+                        reason: exclusionReasonText(p.trail.reason, t.reasons) ?? "–",
                       })}
                     </span>
                   )}

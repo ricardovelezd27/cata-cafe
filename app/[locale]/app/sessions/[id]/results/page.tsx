@@ -947,7 +947,7 @@ export default async function ResultsPage({
   // Read-only banner for the super-admin view, interpolated server-side.
   const adminViewNotice = isAdminViewer
     ? tResults("adminViewNotice", {
-        owner: adminTarget ? profileDisplayName({ id: adminTarget.createdBy, displayName: adminTarget.createdByUser.displayName }, localeStr, "—") : "—",
+        owner: adminTarget ? profileDisplayName({ id: adminTarget.createdBy, displayName: adminTarget.createdByUser.displayName }, localeStr, "–") : "–",
       })
     : null;
 

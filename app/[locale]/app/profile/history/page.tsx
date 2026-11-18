@@ -63,7 +63,7 @@ export default async function HistoryPage({
       sampleLabel: d.kind === "label_only" ? d.sampleLabel : null,
       coffeeDeleted: d.coffeeDeleted,
       sessionId: d.sessionId,
-      sessionName: d.sessionName ?? "—",
+      sessionName: d.sessionName ?? "–",
       individualScore: h.individualScore,
       communityScore: h.communityScore,
       quickImpression: isQuickImpression(historyCupsPerSample(h.session, snapshot)),

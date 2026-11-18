@@ -57,7 +57,7 @@ export function ProfileForm({
   // The saved profile's country may predate the fixed list (or hold a value
   // outside it) — keep it selectable rather than silently dropping it.
   const countrySelectOptions = [
-    { value: "", label: "—" },
+    { value: "", label: "–" },
     ...(initial.country && !countryOptions.includes(initial.country)
       ? [{ value: initial.country, label: initial.country }]
       : []),
