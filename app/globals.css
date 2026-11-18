@@ -258,6 +258,30 @@
   --font-mono:    'Hanken Grotesk', system-ui, sans-serif;
   --font-serif:   'Newsreader', Georgia, serif;
   --font-sans:    'Hanken Grotesk', system-ui, sans-serif;
+
+  /* The paper type scale (DESIGN.md "Type Scale"; decision 1 of the 2026-11-15
+     audit; package T4a). Six roles, written at the size the screen PAINTS
+     (the root is 14 px, so these are not Tailwind's defaults). Each makes a
+     utility: text-page, text-section, text-card, text-body, text-caption,
+     text-label. Size and line height only: the family and weight stay on the
+     element (a title is Display through its heading rule or .page-title; a
+     label's weight and capitals are written where it is used), so no weight
+     class already on an element is overridden. The line heights are the ones
+     these sizes painted with before (Tailwind's), except page and body, which
+     take DESIGN.md's leading-tight and leading-relaxed. Nothing is under 11 px;
+     11 px is the uppercase label only. */
+  --text-page: 26.25px;
+  --text-page--line-height: 1.25;
+  --text-section: 21px;
+  --text-section--line-height: 1.3333;
+  --text-card: 17.5px;
+  --text-card--line-height: 1.4;
+  --text-body: 14px;
+  --text-body--line-height: 1.625;
+  --text-caption: 12.25px;
+  --text-caption--line-height: 1.4286;
+  --text-label: 11px;
+  --text-label--line-height: 1.3333;
 }
 
 /* ============================================================
@@ -310,6 +334,15 @@ html, body {
   .section-title {
     font-family: var(--font-display);
     color: var(--color-primary-container);
+  }
+  /* T4a: their sizes by default. A size utility on the element still wins
+     (utilities come after this layer); the sweep of T4 moves those to the
+     scale area by area. */
+  .page-title {
+    @apply text-page;
+  }
+  .section-title {
+    @apply text-section;
   }
 }
 

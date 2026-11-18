@@ -20,8 +20,8 @@ export type TextActionTone = "link" | "quiet" | "none";
 const BOX = "inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center gap-1";
 
 const TONE: Record<TextActionTone, string> = {
-  link: "text-xs font-semibold text-primary-container hover:underline",
-  quiet: "text-xs text-on-surface-variant transition-colors hover:text-on-surface",
+  link: "text-caption font-semibold text-primary-container hover:underline",
+  quiet: "text-caption text-on-surface-variant transition-colors hover:text-on-surface",
   none: "",
 };
 

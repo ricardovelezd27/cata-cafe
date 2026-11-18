@@ -173,7 +173,7 @@ function Th({
     <th
       scope="col"
       aria-sort={sortable ? (active ? (dir === "asc" ? "ascending" : "descending") : "none") : undefined}
-      className={`px-4 py-3 text-xs font-semibold uppercase tracking-wide text-on-surface-variant whitespace-nowrap ${alignToClass(align)} ${className ?? ""}`}
+      className={`px-4 py-3 text-label font-semibold uppercase tracking-wide text-on-surface-variant whitespace-nowrap ${alignToClass(align)} ${className ?? ""}`}
     >
       {sortable ? (
         <button
@@ -364,7 +364,7 @@ export function DataTable<T>({
           aria-live="polite"
           className="flex flex-wrap items-center gap-3 rounded-card border border-outline-variant bg-surface-container-low px-4 py-2"
         >
-          <span className="text-sm font-semibold text-on-surface">
+          <span className="text-caption font-semibold text-on-surface">
             {selection.translations.selectedCount.replace("{count}", String(selectedIds.length))}
           </span>
           <Button variant="ghost" size="sm" onClick={clearSelection}>
@@ -398,12 +398,12 @@ export function DataTable<T>({
       )}
 
       {sorted.length === 0 ? (
-        <p className="py-8 text-center text-sm text-on-surface-variant">{noResults}</p>
+        <p className="py-8 text-center text-caption text-on-surface-variant">{noResults}</p>
       ) : (
         <>
           {/* Desktop table */}
           <div className="hidden overflow-x-auto rounded-card border border-outline-variant md:block">
-            <table className="w-full text-sm">
+            <table className="w-full text-caption">
               <thead className="border-b border-outline-variant bg-surface-container">
                 <tr>
                   {selection && (

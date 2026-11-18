@@ -148,7 +148,7 @@ export function ActionFeedbackProvider({
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className={`pointer-events-auto flex w-full max-w-sm items-start gap-2 rounded-card px-4 py-3 text-sm shadow-card-lg ${
+            className={`pointer-events-auto flex w-full max-w-sm items-start gap-2 rounded-card px-4 py-3 text-caption shadow-card-lg ${
               toast.tone === "error"
                 ? "bg-error-container text-on-error-container"
                 : "bg-inverse-surface text-inverse-on-surface"

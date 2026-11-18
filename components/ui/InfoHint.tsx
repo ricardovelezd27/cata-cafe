@@ -39,7 +39,7 @@ export function InfoHint({
       <ResponsiveDialog open={open} onOpenChange={setOpen} title={title} closeLabel={closeLabel}>
         <div className="flex flex-col gap-3">
           {paragraphs.map((paragraph, idx) => (
-            <p key={idx} className="text-sm leading-relaxed text-on-surface-variant">
+            <p key={idx} className="text-caption leading-relaxed text-on-surface-variant">
               {paragraph}
             </p>
           ))}

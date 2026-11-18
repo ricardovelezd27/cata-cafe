@@ -25,7 +25,7 @@ export function Select({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         aria-label={ariaLabel}
-        className="min-h-[44px] w-full appearance-none rounded-input border border-outline-variant bg-surface-container-lowest py-2 pl-3 pr-8 text-sm text-on-surface transition-colors focus:border-primary-container"
+        className="min-h-[44px] w-full appearance-none rounded-input border border-outline-variant bg-surface-container-lowest py-2 pl-3 pr-8 text-caption text-on-surface transition-colors focus:border-primary-container"
       >
         {options.map((opt) => (
           <option key={opt.value} value={opt.value} disabled={opt.disabled}>

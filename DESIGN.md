@@ -216,14 +216,14 @@ Loaded via `next/font/google` in `app/layout.tsx` with variables `--font-display
 
 **(rule) Paper has six named text roles, and the sizes below are what the screen paints at that root.** The list this table replaced (page 32, section 24, card 20 px) was never what the classes painted: they painted 26.25, 21 and 17.5 px, and those are the sizes the app keeps. Each role becomes one named size in `app/globals.css` (package T4 of the audit's plan); until a role has its name, the class in the table is the one that paints its value.
 
-| Role | Font | Painted size | Class at the 14 px root | Weight | Colour | Notes |
-|---|---|---|---|---|---|---|
-| Page title | Display | 26.25 px | `text-3xl` | 500 | `primary-container` | `leading-tight`; set by `PageHeader` |
-| Section heading | Display | 21 px | `text-2xl` | 500 | `primary-container` | set by the paper `SectionHeading` |
-| Card heading | Display | 17.5 px | `text-xl` | 500 | `on-surface` | |
-| Body text | UI | 14 px | `text-base` | 400 | `on-surface` | `leading-relaxed`; a label in body text is the same size at 600 |
-| Caption / meta | UI | 12.25 px | `text-sm` | 500 | `on-surface-variant` | `tabular-nums` |
-| Uppercase label | UI | 11 px | `text-[11px]` | 600 | `on-surface-variant` | `uppercase tracking-widest`; the floor |
+| Role | Font | Painted size | Named class | Class at the 14 px root | Weight | Colour | Notes |
+|---|---|---|---|---|---|---|---|
+| Page title | Display | 26.25 px | `text-page` | `text-3xl` | 500 | `primary-container` | `leading-tight`; set by `PageHeader` |
+| Section heading | Display | 21 px | `text-section` | `text-2xl` | 500 | `primary-container` | set by the paper `SectionHeading` |
+| Card heading | Display | 17.5 px | `text-card` | `text-xl` | 500 | `on-surface` | |
+| Body text | UI | 14 px | `text-body` | `text-base` | 400 | `on-surface` | `leading-relaxed`; a label in body text is the same size at 600 |
+| Caption / meta | UI | 12.25 px | `text-caption` | `text-sm` | 500 | `on-surface-variant` | `tabular-nums` |
+| Uppercase label | UI | 11 px | `text-label` | `text-[11px]` | 600 | `on-surface-variant` | `uppercase tracking-widest`; the floor |
 
 - **(rule) Nothing is under 11 px**, and the uppercase label is the only role at 11 px. A smaller size is a finding, however little the text.
 - **(rule) Data is never under 12 px.** A number, a count, a chart label, a table cell or an axis tick is at least the caption size.

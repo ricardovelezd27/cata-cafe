@@ -24,7 +24,7 @@ export function SearchInput({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         aria-label={placeholder}
-        className="min-h-[44px] w-full rounded-input border border-outline-variant bg-surface-container-lowest py-2 pl-9 pr-4 text-sm text-on-surface placeholder:text-on-surface-variant transition-colors focus:border-primary-container"
+        className="min-h-[44px] w-full rounded-input border border-outline-variant bg-surface-container-lowest py-2 pl-9 pr-4 text-caption text-on-surface placeholder:text-on-surface-variant transition-colors focus:border-primary-container"
       />
     </div>
   );

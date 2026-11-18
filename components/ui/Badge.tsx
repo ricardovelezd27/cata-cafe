@@ -15,8 +15,8 @@ const TONE_CLASSES: Record<BadgeTone, string> = {
 };
 
 const SIZE_CLASSES: Record<BadgeSize, string> = {
-  xs: "text-[10px] px-1.5 py-0.5",
-  sm: "text-xs px-2 py-0.5",
+  xs: "text-caption px-1.5 py-0.5",
+  sm: "text-caption px-2 py-0.5",
 };
 
 export function Badge({
@@ -81,7 +81,7 @@ export function ScorePill({
   decimals?: number;
 }) {
   if (score == null) {
-    return <span className="text-sm text-on-surface-variant">—</span>;
+    return <span className="text-caption text-on-surface-variant">—</span>;
   }
 
   return (
