@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
 import { historyDisplay, type HistorySnapshotLike } from "@/lib/historyDisplay";
 import { HistoryTable, type HistoryRow, type HistoryTableTranslations } from "./HistoryTable";
+import { PageContainer } from "@/components/ui/PageContainer";
 
 export function generateStaticParams() {
   return [{ locale: "es" }, { locale: "en" }];
@@ -32,6 +33,7 @@ export default async function HistoryPage({
 
   const t = await getTranslations("history");
   const tc = await getTranslations("common");
+  const ta = await getTranslations("actions");
   const tSession = await getTranslations("session");
   // These two column-facet labels borrow real strings from the insights
   // namespace (deliberately — no new i18n keys were added for this table).
@@ -93,14 +95,14 @@ export default async function HistoryPage({
   };
 
   return (
-    <div className="space-y-6">
-      <PageHeader title={t("title")} />
+    <PageContainer>
+      <PageHeader title={t("title")} backHref={`/${locale}/app/profile`} backLabel={ta("back")} />
       <HistoryTable
         rows={rows}
         locale={locale}
         expressHref={`/${locale}/app/sessions/express`}
         translations={tableTranslations}
       />
-    </div>
+    </PageContainer>
   );
 }

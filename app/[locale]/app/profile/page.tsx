@@ -23,6 +23,7 @@ import { DeleteAccountDialog } from "@/components/profile/DeleteAccountDialog";
 import { Card } from "@/components/ui/Card";
 import { PaperSectionHeading } from "@/components/ui/PaperSectionHeading";
 import { deleteConfirmationWord, MAX_SESSIONS_TO_DELETE } from "@/lib/accountDeletion/plan";
+import { PageContainer } from "@/components/ui/PageContainer";
 
 // The "Eliminar cuenta" dialog posts deleteAccount from this page: its one
 // transaction may run up to 120 s (lib/accountDeletion/deleteAccount.ts),
@@ -241,6 +242,7 @@ export default async function ProfilePage({
   );
 
   return (
+    <PageContainer>
     <div>
       {/* Banner — brand-toned, spans the full content width (LinkedIn-style) */}
       <div className="h-32 rounded-card bg-gradient-to-r from-primary via-primary-container to-primary shadow-card sm:h-40" />
@@ -259,9 +261,10 @@ export default async function ProfilePage({
             </div>
             <div className="mt-3">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="font-display text-section text-on-surface">
+                {/* B-03: the person's name is the page's one h1 (the banner layout stays). */}
+                <h1 className="font-display text-section">
                   {profile?.displayName || "—"}
-                </span>
+                </h1>
                 {isGuest && (
                   <Badge tone="neutral" size="xs">
                     {tGate("guestLabel")}
@@ -547,5 +550,6 @@ export default async function ProfilePage({
         </section>
       </div>
     </div>
+    </PageContainer>
   );
 }

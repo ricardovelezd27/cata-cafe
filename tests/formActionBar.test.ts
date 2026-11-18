@@ -35,6 +35,22 @@ describe("S7a: the kit's docked form bar", () => {
     expect(shell).toContain("p-4 lg:p-6 pb-20 lg:pb-6");
   });
 
+  it("P1b: bleeds by the frame's outer margin inside PageContainer, by the shell's padding outside it", () => {
+    // One source: --paper-margin is set by .paper-container (16 / 24 / 32 px, app/globals.css);
+    // outside the frame the fallbacks are the shell's p-4 / lg:p-6, today's values.
+    const bar = rule(".bar");
+    expect(bar).toMatch(/--bar-bleed:\s*var\(--paper-margin, 1rem\)/);
+    expect(bar).toMatch(/margin:\s*24px calc\(-1 \* var\(--bar-bleed\)\) 0/);
+    expect(bar).toMatch(/padding:\s*10px var\(--bar-bleed\)/);
+    const lg = rule(".bar", "(min-width: 64rem)");
+    expect(lg).toMatch(/--bar-bleed:\s*var\(--paper-margin, 1\.5rem\)/);
+    expect(lg).toMatch(/margin:\s*32px calc\(-1 \* var\(--bar-bleed\)\) 0/);
+    expect(lg).toMatch(/padding:\s*12px var\(--bar-bleed\)/);
+    expect(read("app/globals.css")).toMatch(/\.paper-container \{[^}]*--paper-margin: 16px;/);
+    // no number of the margin is written twice
+    expect(css).not.toMatch(/(margin|padding):[^;]*\b1(\.5)?rem/);
+  });
+
   it("is opaque with a hairline on the edge that meets the form (a docked bar over a form does not blur)", () => {
     const bar = rule(".bar");
     expect(bar).toMatch(/background:\s*var\(--color-surface-container-lowest\)/);

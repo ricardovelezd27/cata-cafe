@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { COFFEE_COUNTRIES } from "@/lib/analytics/normalize";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { CoffeeForm } from "@/components/coffees/CoffeeForm";
+import { PageContainer } from "@/components/ui/PageContainer";
 
 // Auth'd page with a dynamic [id] segment: must render per-request. With
 // generateStaticParams present, prod attempts on-demand static generation and
@@ -67,7 +68,7 @@ export default async function EditCoffeePage({
   const countries = COFFEE_COUNTRIES.map((c) => (locale === "en" ? c.nameEn : c.nameEs));
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <PageContainer width="form">
       <PageHeader
         title={t("editTitle")}
         description={t("editSubtitle")}
@@ -99,6 +100,6 @@ export default async function EditCoffeePage({
         submitLabel={t("saveChanges")}
         submittingLabel={t("savingChanges")}
       />
-    </div>
+    </PageContainer>
   );
 }

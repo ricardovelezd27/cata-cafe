@@ -6,6 +6,8 @@ import { NewSessionForm } from "./NewSessionForm";
 import { COFFEE_COUNTRIES } from "@/lib/analytics/normalize";
 import { getUsableCoffees } from "@/lib/coffees/queries";
 import type { UsableCoffee } from "@/components/coffees/CoffeePicker";
+import { PageContainer } from "@/components/ui/PageContainer";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 // Hosts createGroupSession, which can notify a tasting group by mail (S9-01 D-08).
 export const maxDuration = 120;
@@ -237,8 +239,12 @@ export default async function NewSessionPage({
   const initialCoffee = usableCoffees.find((c) => c.id === sp.coffeeId) ?? null;
 
   return (
-    <div className="max-w-2xl">
-      <h1 className="page-title mb-6">{translations.title}</h1>
+    <PageContainer width="form">
+      <PageHeader
+        title={translations.title}
+        backHref={`/${locale}/app/sessions`}
+        backLabel={t("edit.backToSessions")}
+      />
       <NewSessionForm
         locale={locale}
         t={translations}
@@ -251,6 +257,6 @@ export default async function NewSessionPage({
         userId={user?.id ?? null}
         initialCoffee={initialCoffee}
       />
-    </div>
+    </PageContainer>
   );
 }

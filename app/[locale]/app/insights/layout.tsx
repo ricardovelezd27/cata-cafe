@@ -3,6 +3,8 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { getAnalyticsAccess } from "@/lib/analytics/access";
 import { InsightsTabs } from "@/components/insights/InsightsTabs";
 import type { ReactNode } from "react";
+import { PageContainer } from "@/components/ui/PageContainer";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 // Access boundary for the whole insights area: unauthorized users get a 404
 // so the area's existence is not advertised. Server actions are guarded
@@ -23,9 +25,10 @@ export default async function InsightsLayout({
   const t = await getTranslations("insights");
 
   return (
-    <div className="max-w-5xl mx-auto">
-      <h1 className="page-title mb-1">{t("title")}</h1>
-      <p className="text-caption text-on-surface-variant mb-4">{t("subtitle")}</p>
+    <PageContainer>
+      <PageHeader title={t("title")} description={t("subtitle")} />
+      {/* The tabs and the tab's content are one block: the tabs open it. */}
+      <div>
       <InsightsTabs
         locale={locale}
         isSuperAdmin={access.isSuperAdmin}
@@ -40,6 +43,7 @@ export default async function InsightsLayout({
         }}
       />
       {children}
-    </div>
+      </div>
+    </PageContainer>
   );
 }

@@ -1113,7 +1113,7 @@ export function NewSessionForm({
     );
 
   return (
-    <form onSubmit={onSubmit} className={`${dockedFormClass} space-y-8 md:space-y-10`}>
+    <form onSubmit={onSubmit} className={`${dockedFormClass} space-y-[32px] md:space-y-[40px]`}>
       {/* 1. The session */}
       <section aria-labelledby={`${fid}-sec-session`} className="space-y-5">
         <SectionTitle n={1} id={`${fid}-sec-session`}>

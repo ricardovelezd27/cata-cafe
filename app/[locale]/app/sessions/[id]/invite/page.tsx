@@ -7,6 +7,7 @@ import { getLatestInvite } from "@/lib/invites";
 import { isSessionExpired } from "@/lib/sessionState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { InvitePanel } from "./InvitePanel";
+import { PageContainer } from "@/components/ui/PageContainer";
 
 // Authed page with an extra [id] segment: force-dynamic, no generateStaticParams
 // (CLAUDE.md "authed pages with an extra dynamic segment").
@@ -38,29 +39,31 @@ export default async function SessionInvitePage({
   if (!session || session.createdBy !== user.id || !session.isGroup) notFound();
 
   const t = await getTranslations("group");
+  const ts = await getTranslations("session");
+  const back = { backHref: `/${locale}/app/sessions`, backLabel: ts("edit.backToSessions") };
 
   // A closed or expired session accepts no newcomers (joinViaToken refuses
   // with session_closed): don't hand out a dead link/QR, point to results.
   if (isSessionExpired(session)) {
     return (
-      <div className="space-y-6">
-        <PageHeader title={session.name} />
+      <PageContainer width="form">
+        <PageHeader title={session.name} {...back} />
         <p className="text-body text-on-surface-variant">{t("inviteClosed")}</p>
         <Link
           href={`/${locale}/app/sessions/${session.id}/results`}
-          className="inline-block rounded-pill bg-primary-container px-6 py-3 text-caption font-medium text-on-primary hover:bg-primary transition-colors"
+          className="inline-block self-start rounded-pill bg-primary-container px-6 py-3 text-caption font-medium text-on-primary hover:bg-primary transition-colors"
         >
           {t("viewResults")}
         </Link>
-      </div>
+      </PageContainer>
     );
   }
 
   const invite = await getLatestInvite(session.id);
 
   return (
-    <div className="space-y-6">
-      <PageHeader title={session.name} />
+    <PageContainer width="form">
+      <PageHeader title={session.name} {...back} />
       {invite ? (
         <InvitePanel
           locale={locale}
@@ -78,10 +81,10 @@ export default async function SessionInvitePage({
       )}
       <Link
         href={`/${locale}/app/sessions/${session.id}/cup`}
-        className="inline-block rounded-pill bg-primary-container px-6 py-3 text-caption font-medium text-on-primary hover:bg-primary transition-colors"
+        className="inline-block self-start rounded-pill bg-primary-container px-6 py-3 text-caption font-medium text-on-primary hover:bg-primary transition-colors"
       >
         {t("masterControls")}
       </Link>
-    </div>
+    </PageContainer>
   );
 }

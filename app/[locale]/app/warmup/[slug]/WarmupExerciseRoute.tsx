@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
+import { PageBackLink } from "@/components/ui/PageHeader";
 import { lw, warmupById } from "@/lib/warmup/exercises";
 import { WarmupPlayer, type WarmupPlayerStrings } from "@/components/warmup/WarmupPlayer";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -66,13 +66,7 @@ export function WarmupExerciseRoute({
 
   return (
     <div className="space-y-4 max-w-5xl">
-      <Link
-        href={listHref}
-        className="inline-flex w-fit items-center gap-1 text-caption text-on-surface-variant transition-colors hover:text-on-surface"
-      >
-        <ChevronLeft size={16} aria-hidden />
-        {backLabel}
-      </Link>
+      <PageBackLink href={listHref} label={backLabel} />
       <WarmupPlayer
         exercise={exercise}
         locale={locale}
