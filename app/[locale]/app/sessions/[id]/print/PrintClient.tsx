@@ -1206,6 +1206,11 @@ export function PrintClient({
   return (
     <div className="sca-shell" style={{ background: "var(--color-surface-container-high)", minHeight: "100vh", padding: "60px 0 40px" }}>
       <style dangerouslySetInnerHTML={{ __html: PRINT_STYLE }} />
+      {/* B-03 (P1c): the sheet's one h1, for screen readers and the document outline. It is
+          visually hidden on screen and in print: the printed CVA form keeps its own header. */}
+      <h1 className="sr-only">
+        {session.name} · SCA CVA · {formatLabel}
+      </h1>
 
       {/* Mobile-only overlay — A4 sheets are unreadable at phone width. */}
       <div
@@ -1223,18 +1228,15 @@ export function PrintClient({
         }}
       >
         <div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: C.green, lineHeight: 1.2, marginBottom: 10, fontFamily: SERIF }}>
+          <div className="text-section" style={{ fontWeight: 700, color: C.green, lineHeight: 1.2, marginBottom: 10, fontFamily: SERIF }}>
             {session.name}
           </div>
           <div
+            className="label-caps"
             style={{
               display: "inline-block",
               background: C.green,
               color: C.white,
-              fontSize: 9,
-              fontWeight: 700,
-              letterSpacing: "1.5px",
-              textTransform: "uppercase",
               padding: "3px 10px",
               borderRadius: 9999,
             }}
@@ -1242,21 +1244,21 @@ export function PrintClient({
             SCA CVA · {formatLabel}
           </div>
         </div>
-        <div className="font-ui" style={{ fontSize: 14, color: C.ink, lineHeight: 1.5 }}>
+        <div className="font-ui text-body" style={{ color: C.ink, lineHeight: 1.5 }}>
           El formato impreso usa hojas A4. Para mejores resultados, ábrelo desde un ordenador o tablet
           en horizontal.
         </div>
         <div className="flex w-full max-w-[320px] flex-col gap-2">
           <button
             onClick={() => printPage()}
-            className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-pill bg-primary-container px-4 font-ui text-sm font-medium text-on-primary transition-colors hover:bg-primary"
+            className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-pill bg-primary-container px-4 font-ui text-caption font-medium text-on-primary transition-colors hover:bg-primary"
           >
             <Printer size={16} aria-hidden />
             Imprimir o guardar como PDF
           </button>
           <button
             onClick={() => window.history.back()}
-            className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-pill px-4 font-ui text-sm font-medium text-on-surface-variant transition-colors hover:text-on-surface"
+            className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-pill px-4 font-ui text-caption font-medium text-on-surface-variant transition-colors hover:text-on-surface"
           >
             <ArrowLeft size={16} aria-hidden />
             Volver
@@ -1284,17 +1286,17 @@ export function PrintClient({
       >
         <button
           onClick={() => window.history.back()}
-          className="min-h-[44px] flex items-center gap-1.5 rounded-pill border border-white/40 px-3 py-1.5 font-ui text-xs font-medium text-white transition-colors hover:bg-surface-container-lowest/10"
+          className="min-h-[44px] flex items-center gap-1.5 rounded-pill border border-white/40 px-3 py-1.5 font-ui text-caption font-medium text-white transition-colors hover:bg-surface-container-lowest/10"
         >
           <ArrowLeft size={14} aria-hidden />
           Volver
         </button>
-        <span className="flex-1 font-ui text-[11px] text-white/75">
+        <span className="flex-1 font-ui text-caption text-white/75">
           {formatLabel} · A4 · Ctrl+P / Cmd+P → &quot;Guardar como PDF&quot;
         </span>
         <button
           onClick={() => printPage()}
-          className="min-h-[44px] flex items-center gap-1.5 rounded-pill bg-surface-container-lowest px-4 py-1.5 font-ui text-xs font-medium text-primary-container transition-colors hover:bg-surface-container"
+          className="min-h-[44px] flex items-center gap-1.5 rounded-pill bg-surface-container-lowest px-4 py-1.5 font-ui text-caption font-medium text-primary-container transition-colors hover:bg-surface-container"
         >
           <Printer size={14} aria-hidden />
           Imprimir

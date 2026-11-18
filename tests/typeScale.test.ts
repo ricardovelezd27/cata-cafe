@@ -206,7 +206,34 @@ const SWEPT_AREAS: { area: string; paths: string[] }[] = [
       "components/ui/Notes.module.css",
     ],
   },
+  {
+    area: "T4f: the legal pages and the print sheet's screen parts",
+    paths: [
+      "components/legal",
+      "app/[locale]/privacidad",
+      "app/[locale]/terminos",
+      "app/[locale]/aviso-legal",
+      "app/[locale]/app/sessions/[id]/print", // its printed form: see PRINTED_SHEET
+    ],
+  },
 ];
+
+// What is NOT in the scan, and why (T4f):
+// - The landing (components/landing, app/[locale]/page.tsx): it is the stage, not paper.
+//   DESIGN.md: "The stage's scale on a wide screen is 52.5 px (page), 42 px (section),
+//   31.5 px (inside a section) ... Paper's is 26.25, 21 and 17.5 px", and the six named
+//   roles are paper's ("Paper has six named text roles").
+// - The dev pages (app/[locale]/dev, the warm-up dev-* routes, components/dev): development
+//   only, never shown to a cupper.
+// - The warm-up player and its stage (components/warmup): the stage mode, its own rules.
+
+/**
+ * A printed sheet that mirrors lib/pdf: its form is written in inline `pt` styles that must
+ * match the PDF (the CVA document of lib/pdf), capitals included. In these files only the
+ * class strings (the screen's toolbar and phone overlay) are held to the paper scale.
+ */
+const PRINTED_SHEET = new Set(["app/[locale]/app/sessions/[id]/print/PrintClient.tsx"]);
+const classStringsOf = (src: string) => [...src.matchAll(/className=(?:"[^"]*"|\{`[^`]*`\})/g)].map((m) => m[0]).join(" ");
 
 /** A size outside the six roles that a swept file keeps, and why. May only shrink. */
 const SWEPT_ALLOWLIST: Record<string, { token: string; reason: string }[]> = {
@@ -301,7 +328,9 @@ describe("T4b: the swept areas paint only the named sizes", () => {
   });
 
   it("the uppercase label is the one recipe: no hand-written `uppercase` in a swept file", () => {
-    const offenders = files.filter((f) => HANDMADE_LABEL.test(read(f).replace(/\/\/.*$/gm, "")));
+    const offenders = files.filter((f) =>
+      HANDMADE_LABEL.test(PRINTED_SHEET.has(f) ? classStringsOf(read(f)) : read(f).replace(/\/\/.*$/gm, "")),
+    );
     expect(offenders).toEqual([]);
   });
 
@@ -311,7 +340,7 @@ describe("T4b: the swept areas paint only the named sizes", () => {
 
   it("a chart's text in a swept file is at least 12 px (Recharts sizes are props, not classes)", () => {
     const offenders: string[] = [];
-    for (const f of files) {
+    for (const f of files.filter((f) => !PRINTED_SHEET.has(f))) {
       for (const m of read(f).matchAll(/fontSize(?::\s*|=\{)(\d+(?:\.\d+)?)/g)) {
         if (Number(m[1]) < 12) offenders.push(`${f}: ${m[0]}`);
       }
