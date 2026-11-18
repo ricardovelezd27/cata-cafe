@@ -5,8 +5,8 @@ export type PillTabItem = { id: string; label: string; badge?: string; disabled?
 type PillTabsSize = "md" | "sm";
 
 const SIZE_CLASSES: Record<PillTabsSize, string> = {
-  md: "px-4 text-sm",
-  sm: "px-3.5 text-[12px]",
+  md: "px-4 text-caption",
+  sm: "px-3.5 text-caption",
 };
 
 export function PillTabs({
@@ -49,7 +49,7 @@ export function PillTabs({
             {item.label}
             {item.badge != null && (
               <span
-                className={`inline-flex items-center rounded-pill px-1.5 py-0.5 text-[10px] font-semibold tabular-nums ${
+                className={`inline-flex items-center rounded-pill px-1.5 py-0.5 text-caption font-semibold tabular-nums ${
                   active ? "bg-on-primary/20" : "bg-secondary text-on-secondary"
                 }`}
               >

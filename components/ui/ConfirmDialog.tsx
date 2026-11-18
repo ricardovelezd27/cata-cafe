@@ -87,14 +87,14 @@ export function ConfirmDialog({
   return (
     <ResponsiveDialog open={open} onOpenChange={handleOpenChange} title={title} closeLabel={closeLabel}>
       <div className="space-y-5">
-        <div className="text-sm text-on-surface">{body}</div>
-        {showError && <p className="text-sm text-error">{resolvedError ?? error}</p>}
+        <div className="text-caption text-on-surface">{body}</div>
+        {showError && <p className="text-caption text-error">{resolvedError ?? error}</p>}
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
           <button
             type="button"
             disabled={isPending}
             onClick={() => handleOpenChange(false)}
-            className="min-h-[44px] px-5 py-2.5 text-sm font-medium text-on-surface-variant transition-colors hover:text-on-surface disabled:opacity-50"
+            className="min-h-[44px] px-5 py-2.5 text-caption font-medium text-on-surface-variant transition-colors hover:text-on-surface disabled:opacity-50"
           >
             {cancelLabel}
           </button>
@@ -104,8 +104,8 @@ export function ConfirmDialog({
             onClick={handleConfirm}
             className={
               destructive
-                ? "min-h-[44px] rounded-pill bg-error px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-error/90 disabled:opacity-50"
-                : "min-h-[44px] rounded-pill bg-primary-container px-5 py-2.5 text-sm font-medium text-on-primary transition-colors hover:bg-primary disabled:opacity-50"
+                ? "min-h-[44px] rounded-pill bg-error px-5 py-2.5 text-caption font-medium text-white transition-colors hover:bg-error/90 disabled:opacity-50"
+                : "min-h-[44px] rounded-pill bg-primary-container px-5 py-2.5 text-caption font-medium text-on-primary transition-colors hover:bg-primary disabled:opacity-50"
             }
           >
             {confirmLabel}

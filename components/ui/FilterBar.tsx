@@ -39,7 +39,7 @@ export function FilterBar({
         <button
           type="button"
           onClick={onClear}
-          className="inline-flex min-h-[44px] items-center gap-1 text-sm text-on-surface-variant transition-colors hover:text-on-surface"
+          className="inline-flex min-h-[44px] items-center gap-1 text-caption text-on-surface-variant transition-colors hover:text-on-surface"
         >
           <X size={14} aria-hidden />
           {translations.clearFilters}

@@ -86,7 +86,7 @@
 .subtitle {
   margin-top: 2px;
   font-family: var(--font-ui);
-  font-size: 12px;
+  font-size: 12.25px; /* the caption (T4a) */
   color: var(--color-on-surface-variant);
 }
 

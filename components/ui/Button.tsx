@@ -20,8 +20,8 @@ const NOWRAP = "whitespace-nowrap";
 const WRAP = "h-auto whitespace-normal wrap-anywhere py-2 text-center";
 
 const SIZE_CLASSES: Record<ButtonSize, string> = {
-  md: "px-5 text-sm",
-  sm: "px-3.5 text-xs",
+  md: "px-5 text-caption",
+  sm: "px-3.5 text-caption",
 };
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
