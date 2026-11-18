@@ -17,6 +17,7 @@ import {
 import { useContainerWidth } from "@/hooks/useContainerWidth";
 import type { ChartType, InsightRow } from "@/lib/analytics/types";
 import { getChartColors, seriesColor } from "@/components/results/chartColors";
+import { chartTick, CHART_HTML_PX, CHART_TICK_PX } from "./chartText";
 
 const CHART_HEIGHT = 300;
 
@@ -48,7 +49,7 @@ export function InsightChart({
 
   if (rows.length === 0) {
     return (
-      <div className="flex items-center justify-center h-40 text-sm text-on-surface-variant">
+      <div className="flex items-center justify-center h-40 text-caption text-on-surface-variant">
         {emptyLabel}
       </div>
     );
@@ -57,16 +58,16 @@ export function InsightChart({
   if (chartType === "table") {
     return (
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-caption">
           <thead>
             <tr className="border-b border-outline-variant text-left">
-              <th className="py-2 pr-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
+              <th className="label-caps py-2 pr-4">
                 {dimensionLabel}
               </th>
-              <th className="py-2 pr-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wide text-right">
+              <th className="label-caps py-2 pr-4 text-right">
                 {valueLabel}
               </th>
-              <th className="py-2 text-xs font-semibold text-on-surface-variant uppercase tracking-wide text-right">
+              <th className="label-caps py-2 text-right">
                 {countLabel}
               </th>
             </tr>
@@ -110,16 +111,16 @@ export function InsightChart({
           <CartesianGrid stroke={colors.grid} vertical={false} />
           <XAxis
             dataKey="label"
-            tick={{ fontSize: 10, fill: colors.axisText }}
+            tick={chartTick(colors.axisText)}
             interval={0}
             angle={rows.length > 6 ? -35 : 0}
             textAnchor={rows.length > 6 ? "end" : "middle"}
             height={rows.length > 6 ? 70 : 30}
           />
-          <YAxis tick={{ fontSize: 10, fill: colors.axisText }} width={40} />
+          <YAxis tick={chartTick(colors.axisText)} width={40} />
           <Tooltip
             formatter={(value) => [String(value), valueLabel]}
-            contentStyle={{ fontSize: 12, borderColor: colors.grid }}
+            contentStyle={{ fontSize: CHART_HTML_PX, borderColor: colors.grid }}
           />
           <Bar dataKey="value" name={valueLabel} radius={[3, 3, 0, 0]}>
             {rows.map((r, i) => (
@@ -137,11 +138,11 @@ export function InsightChart({
           margin={{ top: 8, right: 8, bottom: 8, left: 0 }}
         >
           <CartesianGrid stroke={colors.grid} vertical={false} />
-          <XAxis dataKey="label" tick={{ fontSize: 10, fill: colors.axisText }} />
-          <YAxis tick={{ fontSize: 10, fill: colors.axisText }} width={40} />
+          <XAxis dataKey="label" tick={chartTick(colors.axisText)} />
+          <YAxis tick={chartTick(colors.axisText)} width={40} />
           <Tooltip
             formatter={(value) => [String(value), valueLabel]}
-            contentStyle={{ fontSize: 12, borderColor: colors.grid }}
+            contentStyle={{ fontSize: CHART_HTML_PX, borderColor: colors.grid }}
           />
           <Line
             type="monotone"
@@ -167,7 +168,7 @@ export function InsightChart({
               `${name} ${percent != null ? Math.round(percent * 100) : 0}%`
             }
             labelLine={{ stroke: colors.grid }}
-            fontSize={11}
+            fontSize={CHART_TICK_PX}
           >
             {rows.map((r, i) => (
               <Cell key={r.key} fill={r.color ?? seriesColor(colors, i)} />
@@ -175,9 +176,9 @@ export function InsightChart({
           </Pie>
           <Tooltip
             formatter={(value) => [String(value), valueLabel]}
-            contentStyle={{ fontSize: 12, borderColor: colors.grid }}
+            contentStyle={{ fontSize: CHART_HTML_PX, borderColor: colors.grid }}
           />
-          <Legend wrapperStyle={{ fontSize: 11, color: colors.axisText }} />
+          <Legend wrapperStyle={{ fontSize: CHART_HTML_PX, color: colors.axisText }} />
         </PieChart>
       )}
     </div>

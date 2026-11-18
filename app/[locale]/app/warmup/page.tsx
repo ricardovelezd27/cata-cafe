@@ -32,16 +32,16 @@ export default async function WarmupLibraryPage({
 
       {/* Editorial lead: the method's three shared ideas, no cards. */}
       <section className="grid gap-6 md:grid-cols-[1.2fr_1fr] md:gap-12">
-        <p className="font-display text-xl leading-snug text-on-surface md:text-2xl">
+        <p className="font-display text-card leading-snug text-on-surface md:text-section">
           {t("library.intro")}
         </p>
         <dl className="space-y-4 border-l-2 border-outline-variant pl-5">
           {shared.map((block) => (
             <div key={block.title.es}>
-              <dt className="text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">
+              <dt className="label-caps">
                 {lw(block.title, locale)}
               </dt>
-              <dd className="mt-1 text-sm leading-relaxed text-on-surface">{lw(block.text, locale)}</dd>
+              <dd className="mt-1 text-body leading-relaxed text-on-surface">{lw(block.text, locale)}</dd>
             </div>
           ))}
         </dl>
@@ -49,7 +49,7 @@ export default async function WarmupLibraryPage({
 
       {/* The five exercises — numbered editorial list with a static thumbnail. */}
       <section className="space-y-2">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">
+        <p className="label-caps">
           {t("library.listEyebrow")}
         </p>
         <ol className="divide-y divide-outline-variant border-y border-outline-variant">
@@ -77,13 +77,13 @@ export default async function WarmupLibraryPage({
                     )}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block font-display text-xl text-primary-container md:text-2xl">
+                    <span className="block font-display text-card text-primary-container md:text-section">
                       {lw(ex.name, locale)}
                     </span>
-                    <span className="mt-1 block text-sm leading-relaxed text-on-surface-variant line-clamp-2">
+                    <span className="mt-1 block text-caption leading-relaxed text-on-surface-variant line-clamp-2">
                       {lw(ex.purpose, locale)}
                     </span>
-                    <span className="mt-2 block text-xs text-on-surface-variant tabular-nums">
+                    <span className="mt-2 block text-caption text-on-surface-variant tabular-nums">
                       {t("library.minutes", { min: ex.durationMin })} · {t("library.steps", { count: ex.steps.length })} ·{" "}
                       {lw(WARMUP_SHARED.posture[ex.posture], locale)}
                     </span>
@@ -103,9 +103,9 @@ export default async function WarmupLibraryPage({
       {/* One first-person line, attributed to Kim. The wording is a DRAFT written for him: the owner
           decided on 2026-11-13 to ship it BEFORE Kim has confirmed it. TODO(kim-validar:F3): remove or
           replace it when he answers. */}
-      <p className="font-display text-base italic text-on-surface-variant">{t("library.kimLine")}</p>
+      <p className="font-display text-body italic text-on-surface-variant">{t("library.kimLine")}</p>
 
-      <p className="text-xs text-on-surface-variant">
+      <p className="text-body text-on-surface-variant">
         {lw(WARMUP_SHARED.closing.text, locale)}{" "}
         <em>
           {lw(WARMUP_SHARED.closing.questions[0], locale)} {lw(WARMUP_SHARED.closing.questions[1], locale)}

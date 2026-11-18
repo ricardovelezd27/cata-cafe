@@ -111,11 +111,11 @@ type Props = {
 
 /** Hoisted to module scope — never redeclare components inside render. */
 function ProcessBadge({ type }: { type: string | null }) {
-  if (!type) return <span className="text-on-surface-variant text-xs">—</span>;
+  if (!type) return <span className="text-on-surface-variant text-caption">—</span>;
   // DESIGN.md: a process is its name in ink with a dot in one family tone,
   // from the one map in lib/processTone.ts (T5, E-01).
   return (
-    <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-medium text-on-surface">
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-caption font-medium text-on-surface">
       <span aria-hidden className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: processToneVar(type) }} />
       {type}
     </span>
@@ -182,12 +182,12 @@ export default function CoffeesTable({
               )}
             </span>
             {row.code && (
-              <span className="block font-mono text-[11px] text-on-surface-variant">
+              <span className="block font-mono text-caption text-on-surface-variant">
                 {formatCoffeeCode(row.code)}
               </span>
             )}
             {row.ownerName && (
-              <span className="block text-xs text-on-surface-variant">
+              <span className="block text-caption text-on-surface-variant">
                 {t.adminOwnerPrefix} {row.ownerName}
               </span>
             )}
@@ -206,7 +206,7 @@ export default function CoffeesTable({
           row.country ? (
             <span>
               {row.country}
-              {row.region && <span className="block text-xs text-on-surface-variant">{row.region}</span>}
+              {row.region && <span className="block text-caption text-on-surface-variant">{row.region}</span>}
             </span>
           ) : (
             <span className="text-on-surface-variant">—</span>
@@ -253,7 +253,7 @@ export default function CoffeesTable({
         render: (row) => {
           const latest = row.coffeeHistory[0] ?? null;
           return (
-            <span className="whitespace-nowrap text-xs text-on-surface-variant">
+            <span className="whitespace-nowrap text-caption text-on-surface-variant">
               {latest ? relativeDate(latest.tastedAt, locale) : "—"}
             </span>
           );
@@ -444,17 +444,17 @@ export default function CoffeesTable({
               </span>
             </div>
             {row.code && (
-              <div className="font-mono text-[11px] text-on-surface-variant">
+              <div className="font-mono text-caption text-on-surface-variant">
                 {formatCoffeeCode(row.code)}
               </div>
             )}
             {row.ownerName && (
-              <div className="text-xs text-on-surface-variant">
+              <div className="text-caption text-on-surface-variant">
                 {t.adminOwnerPrefix} {row.ownerName}
               </div>
             )}
             {(row.country || row.region) && (
-              <div className="text-xs text-on-surface-variant">
+              <div className="text-caption text-on-surface-variant">
                 {[row.country, row.region].filter(Boolean).join(", ")}
               </div>
             )}

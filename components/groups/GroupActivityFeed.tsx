@@ -38,7 +38,7 @@ export function GroupActivityFeed({
 }) {
   return (
     <div className="space-y-3">
-      <h2 className="section-title text-xl">{title}</h2>
+      <h2 className="section-title">{title}</h2>
       <div className="bg-surface-container-lowest rounded-card border border-outline-variant shadow-card p-5">
         {events.length === 0 ? (
           <EmptyState title={emptyText} />
@@ -49,8 +49,8 @@ export function GroupActivityFeed({
                 key={i}
                 className="py-2.5 first:pt-0 last:pb-0 flex items-baseline justify-between gap-3"
               >
-                <span className="text-sm text-on-surface">{event.message}</span>
-                <span className="text-xs text-on-surface-variant whitespace-nowrap">
+                <span className="text-caption text-on-surface">{event.message}</span>
+                <span className="text-caption text-on-surface-variant whitespace-nowrap">
                   {formatRelativeDate(event.timestamp, locale)}
                 </span>
               </li>

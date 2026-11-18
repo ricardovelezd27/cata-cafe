@@ -124,7 +124,7 @@ export function CoffeeVisibilityToggle({
             aria-checked={active}
             onClick={() => handleSelect(opt.value)}
             disabled={isPending}
-            className={`inline-flex min-h-[44px] items-center text-xs font-semibold px-3 py-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+            className={`inline-flex min-h-[44px] items-center text-caption font-semibold px-3 py-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
               i > 0 ? "border-l border-outline-variant" : ""
             } ${
               active
@@ -153,7 +153,7 @@ export function CoffeeVisibilityToggle({
               <li key={s.userId}>{s.displayName}</li>
             ))}
           </ul>
-          <label className="flex min-h-[44px] cursor-pointer items-center gap-2 text-sm">
+          <label className="flex min-h-[44px] cursor-pointer items-center gap-2 text-body">
             <input
               type="radio"
               name="previous-shares"
@@ -163,7 +163,7 @@ export function CoffeeVisibilityToggle({
             />
             {translations.returnKeep}
           </label>
-          <label className="flex min-h-[44px] cursor-pointer items-center gap-2 text-sm">
+          <label className="flex min-h-[44px] cursor-pointer items-center gap-2 text-body">
             <input
               type="radio"
               name="previous-shares"
@@ -173,7 +173,7 @@ export function CoffeeVisibilityToggle({
             />
             {translations.returnClear}
           </label>
-          <p className="text-xs text-on-surface-variant">{translations.returnLinksNote}</p>
+          <p className="text-caption text-on-surface-variant">{translations.returnLinksNote}</p>
         </div>
       }
       confirmLabel={translations.returnConfirm}

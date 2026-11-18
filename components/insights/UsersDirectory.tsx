@@ -194,7 +194,7 @@ export function UsersDirectory({ users, locale, t, canExport, canRevealEmails }:
                   {row.isAnonymous && <Badge tone="neutral">{t.guestBadge}</Badge>}
                 </div>
                 <p
-                  className={`truncate text-xs ${
+                  className={`truncate text-caption ${
                     row.isAnonymous
                       ? "text-on-surface-variant"
                       : row.email
@@ -207,7 +207,7 @@ export function UsersDirectory({ users, locale, t, canExport, canRevealEmails }:
               </div>
               <Badge tone="neutral">{roleLabel(row.role, locale)}</Badge>
             </div>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-on-surface-variant">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-on-surface-variant">
               {row.country && <span>{row.country}</span>}
               <span className="tabular-nums">
                 {row.sessionsCount} · {t.colSessions}

@@ -175,15 +175,15 @@ export function CreateGroupDialog({
   };
 
   const inputCls =
-    "w-full px-3 py-2 border border-outline-variant rounded-input text-sm bg-surface-container-lowest text-on-surface focus:border-primary-container";
-  const labelCls = "block text-xs text-on-surface-variant font-semibold uppercase tracking-wide";
+    "w-full px-3 py-2 border border-outline-variant rounded-input text-caption bg-surface-container-lowest text-on-surface focus:border-primary-container";
+  const labelCls = "label-caps block";
 
   return (
     <>
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex min-h-[44px] items-center gap-1.5 px-4 py-2 rounded-pill bg-primary-container text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+        className="inline-flex min-h-[44px] items-center gap-1.5 px-4 py-2 rounded-pill bg-primary-container text-white text-caption font-semibold hover:opacity-90 transition-opacity"
       >
         <Plus size={16} aria-hidden />
         {t.createGroupCta}
@@ -269,7 +269,7 @@ export function CreateGroupDialog({
             <button
               type="button"
               onClick={addRow}
-              className="inline-flex min-h-[44px] items-center gap-1.5 text-sm font-semibold text-primary-container hover:opacity-80 transition-opacity"
+              className="inline-flex min-h-[44px] items-center gap-1.5 text-caption font-semibold text-primary-container hover:opacity-80 transition-opacity"
             >
               <Plus size={14} aria-hidden /> {t.addAnotherMember}
             </button>
@@ -290,7 +290,7 @@ export function CreateGroupDialog({
                       onClick={() => toggleCandidate(c.userId)}
                       aria-pressed={selected}
                       className={
-                        "inline-flex min-h-[44px] items-center gap-1 px-3 py-1.5 rounded-pill text-xs font-semibold border transition-colors " +
+                        "inline-flex min-h-[44px] items-center gap-1 px-3 py-1.5 rounded-pill text-caption font-semibold border transition-colors " +
                         (selected
                           ? "bg-primary-container text-white border-primary-container"
                           : "bg-surface-container-lowest text-on-surface border-outline-variant hover:border-primary-container")
@@ -306,17 +306,17 @@ export function CreateGroupDialog({
           )}
 
           {error && (
-            <p className="text-xs text-error" role="alert">
+            <p className="text-caption text-error" role="alert">
               {error}
             </p>
           )}
           {blocked && (
-            <p className="text-xs text-secondary font-semibold" role="status">
+            <p className="text-caption text-secondary font-semibold" role="status">
               {t.invitesRateLimited}
             </p>
           )}
           {summary && (
-            <p className="text-xs text-primary-container font-semibold">
+            <p className="text-caption text-primary-container font-semibold">
               {formatTemplate(t.invitesSentSummaryTemplate, summary)}
             </p>
           )}
@@ -325,7 +325,7 @@ export function CreateGroupDialog({
             <button
               type="submit"
               disabled={pending || navigating || !name.trim()}
-              className="inline-flex min-h-[44px] items-center gap-1.5 px-5 py-2.5 rounded-pill bg-primary-container text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+              className="inline-flex min-h-[44px] items-center gap-1.5 px-5 py-2.5 rounded-pill bg-primary-container text-white text-caption font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
             >
               {pending ? t.creating : t.createAndInvite}
             </button>

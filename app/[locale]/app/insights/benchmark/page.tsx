@@ -40,8 +40,8 @@ export default async function InsightsBenchmarkPage({
   return (
     <div className="flex flex-col gap-5 pb-8">
       <div>
-        <h2 className="text-xl mb-1">{t("title")}</h2>
-        <p className="text-sm text-on-surface-variant">{t("subtitle")}</p>
+        <h2 className="text-card mb-1">{t("title")}</h2>
+        <p className="text-caption text-on-surface-variant">{t("subtitle")}</p>
       </div>
 
       <BenchmarkPanel

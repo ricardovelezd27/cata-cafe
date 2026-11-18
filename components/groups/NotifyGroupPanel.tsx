@@ -61,12 +61,12 @@ export function NotifyGroupPanel({
   const [pending, start] = useTransition();
   // N3: each field is named by its visible label (ids from useId).
   const uid = useId();
-  const labelCls = "block text-xs text-on-surface-variant font-semibold uppercase tracking-wide";
+  const labelCls = "label-caps block";
 
   if (groups.length === 0 || dismissed) return null;
 
   const inputCls =
-    "w-full px-3 py-2 border border-outline-variant rounded-input text-sm bg-surface-container-lowest text-on-surface focus:border-primary-container";
+    "w-full px-3 py-2 border border-outline-variant rounded-input text-caption bg-surface-container-lowest text-on-surface focus:border-primary-container";
 
   const allSkipped =
     summary !== null &&
@@ -94,11 +94,11 @@ export function NotifyGroupPanel({
   return (
     <div className="p-4 bg-surface-container-lowest border border-outline-variant rounded-card space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-primary-container">{t.notifyGroupTitle}</p>
+        <p className="text-caption font-semibold text-primary-container">{t.notifyGroupTitle}</p>
         <button
           type="button"
           onClick={() => setDismissed(true)}
-          className="text-xs text-on-surface-variant hover:text-on-surface"
+          className="text-caption text-on-surface-variant hover:text-on-surface"
         >
           {t.skip}
         </button>
@@ -155,27 +155,27 @@ export function NotifyGroupPanel({
         type="button"
         onClick={onSend}
         disabled={pending || !groupId || !subject.trim() || !message.trim()}
-        className="px-4 py-2 rounded-pill bg-primary-container text-white text-sm font-semibold disabled:opacity-50"
+        className="px-4 py-2 rounded-pill bg-primary-container text-white text-caption font-semibold disabled:opacity-50"
       >
         {pending ? t.sending : t.send}
       </button>
 
       {rateLimited && (
-        <p className="text-xs text-secondary font-semibold" role="status">
+        <p className="text-caption text-secondary font-semibold" role="status">
           {t.sendRateLimited}
         </p>
       )}
 
       {summary && (
         <div className="pt-2 border-t border-outline-variant space-y-1">
-          <p className="text-xs font-semibold text-on-surface">
+          <p className="text-caption font-semibold text-on-surface">
             {formatTemplate(t.sendSummary, {
               sent: summary.sent,
               skipped: summary.skipped,
               failed: summary.failed,
             })}
           </p>
-          {allSkipped && <p className="text-xs text-on-surface-variant">{t.sendSkippedNotice}</p>}
+          {allSkipped && <p className="text-caption text-on-surface-variant">{t.sendSkippedNotice}</p>}
         </div>
       )}
     </div>

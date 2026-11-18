@@ -45,7 +45,7 @@ export function QuickAddCoCuppers({
   };
 
   if (candidates.length === 0) {
-    return <p className="text-sm text-on-surface-variant">{t.noCoCuppers}</p>;
+    return <p className="text-caption text-on-surface-variant">{t.noCoCuppers}</p>;
   }
 
   return (
@@ -57,9 +57,9 @@ export function QuickAddCoCuppers({
             key={c.userId}
             className="flex items-center justify-between gap-3 px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-card"
           >
-            <p className="text-sm text-on-surface truncate">{c.displayName}</p>
+            <p className="text-body text-on-surface truncate">{c.displayName}</p>
             {added ? (
-              <span className="inline-flex items-center gap-1 text-xs font-medium text-primary-container shrink-0">
+              <span className="inline-flex items-center gap-1 text-caption font-medium text-primary-container shrink-0">
                 <Check size={14} /> {t.added}
               </span>
             ) : (

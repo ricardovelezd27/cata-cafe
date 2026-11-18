@@ -72,12 +72,12 @@ type View = "table" | "grouped" | "stacked" | "line";
 const MAX_FILTER_ENTRIES = 5;
 
 const selectClass =
-  "w-full rounded-input border border-outline-variant bg-surface-container-lowest px-3 py-2 text-sm text-on-surface focus:border-primary-container";
+  "w-full rounded-input border border-outline-variant bg-surface-container-lowest px-3 py-2 text-body text-on-surface focus:border-primary-container";
 const pickerSelectClass =
-  "rounded-input border border-outline-variant bg-surface-container-lowest px-2 py-1 text-xs text-on-surface focus:border-primary-container";
+  "rounded-input border border-outline-variant bg-surface-container-lowest px-2 py-1 text-caption text-on-surface focus:border-primary-container";
 const addFieldButtonClass =
-  "inline-flex items-center gap-1 rounded-pill border border-dashed border-outline-variant px-3 py-1 text-xs font-semibold text-primary-container hover:border-primary-container hover:bg-surface-container transition-colors";
-const shelfLabelClass = "text-xs font-semibold text-on-surface-variant uppercase tracking-wide";
+  "inline-flex items-center gap-1 rounded-pill border border-dashed border-outline-variant px-3 py-1 text-caption font-semibold text-primary-container hover:border-primary-container hover:bg-surface-container transition-colors";
+const shelfLabelClass = "label-caps";
 
 function FieldChip({
   label,
@@ -98,7 +98,7 @@ function FieldChip({
   // interactive there.
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-pill border border-outline-variant bg-surface-container px-3 py-1 text-xs font-medium text-on-surface ${
+      className={`inline-flex items-center gap-1.5 rounded-pill border border-outline-variant bg-surface-container px-3 py-1 text-caption font-medium text-on-surface ${
         onClick ? "hover:border-primary-container" : ""
       }`}
     >
@@ -539,7 +539,7 @@ export function PivotBuilder({ locale, t, loadedConfig, loadKey, onConfigChange 
           </div>
         </div>
 
-        <p className="text-xs text-on-surface-variant">
+        <p className="text-caption text-on-surface-variant">
           {t.maxRowsHint} {t.maxColsHint}
         </p>
       </div>
@@ -554,7 +554,7 @@ export function PivotBuilder({ locale, t, loadedConfig, loadKey, onConfigChange 
                   key={opt.id}
                   type="button"
                   onClick={() => setView(opt.id)}
-                  className={`px-3 py-1 rounded-pill text-xs font-semibold transition-colors ${
+                  className={`px-3 py-1 rounded-pill text-caption font-semibold transition-colors ${
                     view === opt.id ? "bg-primary-container text-on-primary" : "text-on-surface-variant hover:text-on-surface"
                   }`}
                 >
@@ -567,7 +567,7 @@ export function PivotBuilder({ locale, t, loadedConfig, loadKey, onConfigChange 
                 type="button"
                 onClick={() => setHeatmap((h) => !h)}
                 aria-pressed={heatmap}
-                className={`px-3 py-1 rounded-pill text-xs font-semibold border transition-colors ${
+                className={`px-3 py-1 rounded-pill text-caption font-semibold border transition-colors ${
                   heatmap
                     ? "bg-primary-container text-on-primary border-primary-container"
                     : "border-outline-variant text-on-surface-variant hover:text-on-surface"
@@ -578,7 +578,7 @@ export function PivotBuilder({ locale, t, loadedConfig, loadKey, onConfigChange 
             )}
           </div>
           {isPending && (
-            <span className="flex items-center gap-1.5 text-xs text-on-surface-variant">
+            <span className="flex items-center gap-1.5 text-caption text-on-surface-variant">
               <Loader2 size={14} className="animate-spin" />
               {t.running}
             </span>
@@ -586,9 +586,9 @@ export function PivotBuilder({ locale, t, loadedConfig, loadKey, onConfigChange 
         </div>
 
         {error ? (
-          <div className="text-sm text-error py-8 text-center">{t.error}</div>
+          <div className="text-caption text-error py-8 text-center">{t.error}</div>
         ) : result === null ? (
-          <div className="flex items-center justify-center h-40 text-sm text-on-surface-variant">
+          <div className="flex items-center justify-center h-40 text-caption text-on-surface-variant">
             <Loader2 size={16} className="animate-spin mr-2" />
             {t.running}
           </div>
@@ -627,7 +627,7 @@ export function PivotBuilder({ locale, t, loadedConfig, loadKey, onConfigChange 
             onChange={(e) => setFilterDialogSearch(e.target.value)}
           />
           {filterDialogLoading ? (
-            <div className="flex items-center justify-center h-24 text-sm text-on-surface-variant">
+            <div className="flex items-center justify-center h-24 text-caption text-on-surface-variant">
               <Loader2 size={16} className="animate-spin mr-2" />
               {t.running}
             </div>
@@ -636,7 +636,7 @@ export function PivotBuilder({ locale, t, loadedConfig, loadKey, onConfigChange 
               {filteredDialogValues.map((v) => (
                 <label
                   key={v.key}
-                  className="flex min-h-[44px] items-center gap-2 text-sm text-on-surface py-1 px-1 rounded-input hover:bg-surface-container cursor-pointer"
+                  className="flex min-h-[44px] items-center gap-2 text-caption text-on-surface py-1 px-1 rounded-input hover:bg-surface-container cursor-pointer"
                 >
                   <input
                     type="checkbox"
@@ -647,7 +647,7 @@ export function PivotBuilder({ locale, t, loadedConfig, loadKey, onConfigChange 
                 </label>
               ))}
               {filteredDialogValues.length === 0 && (
-                <p className="text-sm text-on-surface-variant py-4 text-center">{t.empty}</p>
+                <p className="text-caption text-on-surface-variant py-4 text-center">{t.empty}</p>
               )}
             </div>
           )}
@@ -655,14 +655,14 @@ export function PivotBuilder({ locale, t, loadedConfig, loadKey, onConfigChange 
             <button
               type="button"
               onClick={() => setFilterDialogSelected(new Set())}
-              className="text-xs text-on-surface-variant hover:text-error"
+              className="text-caption text-on-surface-variant hover:text-error"
             >
               {t.clearFilter}
             </button>
             <button
               type="button"
               onClick={applyFilterDialog}
-              className="rounded-pill bg-primary-container text-on-primary text-sm font-semibold px-4 py-2"
+              className="rounded-pill bg-primary-container text-on-primary text-caption font-semibold px-4 py-2"
             >
               {t.apply}
             </button>

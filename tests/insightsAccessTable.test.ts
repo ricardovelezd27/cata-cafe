@@ -26,7 +26,7 @@ describe("S10: the access list is the kit's DataTable", () => {
     expect(comp).toContain("aria-checked={on}");
     expect(comp).toContain("disabled={user.isSuperAdmin}");
     expect(comp).toContain("min-h-[44px] min-w-[44px]");
-    expect(comp).toMatch(/<label className="[^"]*">\s*\{\/\*[\s\S]*?\*\/\}\s*<span className="text-xs text-on-surface-variant max-sm:sr-only">\{t\.accessLabel\}<\/span>\s*<button/);
+    expect(comp).toMatch(/<label className="[^"]*">\s*\{\/\*[\s\S]*?\*\/\}\s*<span className="text-caption text-on-surface-variant max-sm:sr-only">\{t\.accessLabel\}<\/span>\s*<button/);
   });
 
   it("keeps the same result handling: optimistic flip, the ActionResult, flip back and the person's error line", () => {

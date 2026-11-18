@@ -61,7 +61,7 @@ export type CoffeeFormInitialValues = {
 };
 
 const inputCls =
-  "min-h-[44px] w-full border border-outline-variant rounded-input px-3.5 py-2.5 text-sm text-on-surface bg-surface-container-lowest focus:border-primary-container transition-colors";
+  "min-h-[44px] w-full border border-outline-variant rounded-input px-3.5 py-2.5 text-body text-on-surface bg-surface-container-lowest focus:border-primary-container transition-colors";
 
 function FieldLabel({
   children,
@@ -77,7 +77,7 @@ function FieldLabel({
   id?: string;
 }) {
   return (
-    <label htmlFor={htmlFor} id={id} className="block text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant mb-1.5">
+    <label htmlFor={htmlFor} id={id} className="label-caps block mb-1.5">
       {children}
       {required && (
         <span className="text-error" aria-hidden="true">
@@ -392,8 +392,8 @@ export function CoffeeForm({
                 aria-pressed={active}
                 className={
                   active
-                    ? `${HIT_Y44} min-h-[30px] bg-primary-container text-on-primary rounded-pill px-3.5 py-1.5 text-xs font-semibold transition-colors`
-                    : `${HIT_Y44} min-h-[30px] border border-outline-variant text-on-surface rounded-pill px-3.5 py-1.5 text-xs font-medium hover:bg-surface-container transition-colors`
+                    ? `${HIT_Y44} min-h-[30px] bg-primary-container text-on-primary rounded-pill px-3.5 py-1.5 text-caption font-semibold transition-colors`
+                    : `${HIT_Y44} min-h-[30px] border border-outline-variant text-on-surface rounded-pill px-3.5 py-1.5 text-caption font-medium hover:bg-surface-container transition-colors`
                 }
               >
                 {c}
@@ -451,9 +451,9 @@ export function CoffeeForm({
                     >
                       {active && <span className="h-2 w-2 rounded-full bg-primary-container" />}
                     </span>
-                    <span className="text-sm font-semibold text-on-surface">{opt.label}</span>
+                    <span className="text-caption font-semibold text-on-surface">{opt.label}</span>
                   </div>
-                  <p className="text-xs text-on-surface-variant mt-1.5">{opt.hint}</p>
+                  <p className="text-caption text-on-surface-variant mt-1.5">{opt.hint}</p>
                 </button>
               );
             })}
@@ -465,13 +465,13 @@ export function CoffeeForm({
       <FormActionBar
         status={
           errorText && (
-            <div className="bg-error-container text-on-error-container rounded-card px-4 py-3 text-sm">
+            <div className="bg-error-container text-on-error-container rounded-card px-4 py-3 text-body">
               {errorText}
               {errorCode === "conflict" && t.conflictReload && (
                 <button
                   type="button"
                   onClick={() => window.location.reload()}
-                  className="mt-2 block min-h-[44px] rounded-input border border-on-error-container px-3 text-sm font-semibold"
+                  className="mt-2 block min-h-[44px] rounded-input border border-on-error-container px-3 text-caption font-semibold"
                 >
                   {t.conflictReload}
                 </button>

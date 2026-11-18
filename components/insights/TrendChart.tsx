@@ -11,6 +11,7 @@ import {
 } from "recharts";
 import { useContainerWidth } from "@/hooks/useContainerWidth";
 import { getChartColors } from "@/components/results/chartColors";
+import { chartTick, CHART_HTML_PX } from "./chartText";
 
 const CHART_HEIGHT = 260;
 
@@ -36,10 +37,10 @@ export function TrendChart({ data, evaluationsLabel, sessionsLabel }: TrendChart
           margin={{ top: 8, right: 8, bottom: 8, left: 0 }}
         >
           <CartesianGrid stroke={colors.grid} vertical={false} />
-          <XAxis dataKey="label" tick={{ fontSize: 10, fill: colors.axisText }} />
-          <YAxis tick={{ fontSize: 10, fill: colors.axisText }} width={40} allowDecimals={false} />
-          <Tooltip contentStyle={{ fontSize: 12, borderColor: colors.grid }} />
-          <Legend wrapperStyle={{ fontSize: 11, color: colors.axisText }} />
+          <XAxis dataKey="label" tick={chartTick(colors.axisText)} />
+          <YAxis tick={chartTick(colors.axisText)} width={40} allowDecimals={false} />
+          <Tooltip contentStyle={{ fontSize: CHART_HTML_PX, borderColor: colors.grid }} />
+          <Legend wrapperStyle={{ fontSize: CHART_HTML_PX, color: colors.axisText }} />
           <Line
             type="monotone"
             dataKey="evaluations"
