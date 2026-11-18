@@ -7,6 +7,7 @@ import { announceSignedInIfStarted, hasIdentityNoticeHost, isIdentityChanged, on
 import { reloadIdentity, checkIdentityOnMarker, checkIdentityOnResume, onRenderedUserChanged } from "@/lib/identityResolve";
 import { useForegroundResume } from "@/hooks/useForegroundResume";
 import { Notice } from "@/components/ui/Notice";
+import { TextAction } from "@/components/ui";
 
 export type IdentityWatcherTranslations = {
   /** errors.codes.identity_changed */
@@ -90,13 +91,13 @@ export function IdentityWatcher({
       icon={<RefreshCw size={15} aria-hidden />}
       className="mx-4 mt-2 break-words lg:mx-6"
       action={
-        <button
+        <TextAction tone="none"
           type="button"
           onClick={() => void reloadIdentity(renderedId)}
-          className="inline-flex min-h-[44px] items-center px-2 font-semibold underline underline-offset-2 hover:opacity-80"
+          className="px-2 font-semibold underline underline-offset-2 hover:opacity-80"
         >
           {t.reload}
-        </button>
+        </TextAction>
       }
     >
       {t.notice}

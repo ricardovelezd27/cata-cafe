@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ClipboardList, Coffee, Users, ChevronRight, ChevronLeft } from "lucide-react";
 import { completeOnboarding, dismissOnboarding } from "@/app/actions/profile";
-import { TextAction, useActionFeedback } from "@/components/ui";
+import { TextAction, useActionFeedback, Button } from "@/components/ui";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
 import { radioKeyDown } from "@/components/radioKeys";
 import { COUNTRIES } from "@/lib/constants";
@@ -127,12 +127,12 @@ export default function WelcomeModal({ locale, initialDisplayName, translations:
 
             <Steps current={1} label={t.stepOf} />
 
-            <button
+            <Button
               onClick={() => setStep(2)}
-              className="w-full bg-primary-container text-on-primary rounded-pill min-h-[44px] py-3 font-medium flex items-center justify-center gap-2 hover:bg-primary transition-colors"
+              className="w-full"
             >
               {t.start} <ChevronRight className="w-4 h-4" />
-            </button>
+            </Button>
             <TextAction
               tone="none"
               onClick={handleDismiss}
@@ -197,19 +197,18 @@ export default function WelcomeModal({ locale, initialDisplayName, translations:
             <Steps current={2} label={t.stepOf} />
 
             <div className="flex gap-3">
-              <button
+              <Button variant="secondary"
                 onClick={() => setStep(1)}
-                className="flex min-h-[44px] items-center gap-1 px-4 text-caption text-on-surface border border-outline rounded-pill hover:bg-surface-container transition-colors"
               >
                 <ChevronLeft className="w-4 h-4" /> {t.back}
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => setStep(3)}
                 disabled={!displayName || !role || !country}
-                className="flex-1 bg-primary-container text-on-primary rounded-pill min-h-[44px] py-3 font-medium flex items-center justify-center gap-2 hover:bg-primary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex-1"
               >
                 {t.next} <ChevronRight className="w-4 h-4" />
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -261,20 +260,19 @@ export default function WelcomeModal({ locale, initialDisplayName, translations:
             <Steps current={3} label={t.stepOf} />
 
             <div className="flex gap-3">
-              <button
+              <Button variant="secondary"
                 onClick={() => setStep(2)}
-                className="flex min-h-[44px] items-center gap-1 px-4 text-caption text-on-surface border border-outline rounded-pill hover:bg-surface-container transition-colors"
               >
                 <ChevronLeft className="w-4 h-4" /> {t.back}
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={handleFinish}
                 disabled={!selectedPath || isPending}
-                className="flex-1 bg-primary-container text-on-primary rounded-pill min-h-[44px] py-3 font-medium flex items-center justify-center gap-2 hover:bg-primary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex-1"
               >
                 {isPending ? t.saving : t.goTo.replace("{label}", selectedPathLabel)}
                 {!isPending && <ChevronRight className="w-4 h-4" />}
-              </button>
+              </Button>
             </div>
           </div>
         )}

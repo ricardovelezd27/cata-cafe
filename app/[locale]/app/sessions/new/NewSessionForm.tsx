@@ -62,7 +62,7 @@ import {
   type SampleEntry,
   type SampleList,
 } from "./wizardModel";
-import { Button, type BadgeTone } from "@/components/ui";
+import { Button, type BadgeTone, TextAction } from "@/components/ui";
 
 // Groups v2: session wizard extends NotifyGroupTranslations with the
 // step-1 "link a group" selector copy + the step-2 auto-invite success
@@ -814,14 +814,14 @@ export function NewSessionForm({
 
         {/* Primary = go to the master panel WITHOUT starting: the room may
             still be arriving, and the warm-up runs from the panel (v3). */}
-        <button
+        <Button
           type="button"
           disabled={pending}
           onClick={() => router.push(`/${locale}/app/sessions/${sessionId}/cup`)}
-          className="w-full bg-primary-container text-on-primary rounded-pill py-3.5 font-medium hover:bg-primary transition-colors disabled:opacity-50"
+          className="w-full"
         >
           {t.newForm.goToPanel}
-        </button>
+        </Button>
         <p className="text-caption text-on-surface-variant text-center">{t.newForm.goToPanelHint}</p>
         {!closesAt && (
           <button
@@ -880,13 +880,12 @@ export function NewSessionForm({
               .join(" · ")}
           </p>
         )}
-        <button
+        <Button variant="secondary" size="sm"
           type="button"
           onClick={() => unlinkCoffee(coffee.id)}
-          className="min-h-[44px] rounded-pill border border-outline-variant px-3 py-1.5 text-caption font-medium text-on-surface hover:bg-surface-container transition-colors"
         >
           {t.picker.unlink}
-        </button>
+        </Button>
       </div>
     ) : (
       <div className="space-y-3">
@@ -1285,13 +1284,12 @@ export function NewSessionForm({
             <p className="text-caption text-on-surface-variant">{t.newForm.referenceHelper}</p>
           </div>
           {referenceId !== null && (
-            <button
+            <TextAction
               type="button"
               onClick={() => setReferenceId(null)}
-              className="text-caption font-medium text-primary-container hover:underline shrink-0"
             >
               {t.newForm.referenceClear}
-            </button>
+            </TextAction>
           )}
         </div>
 
@@ -1389,13 +1387,12 @@ export function NewSessionForm({
                   </label>
                   <div className="flex-1" />
                   {owns && usableCoffees.length > 0 && !coffee.existingCoffeeId && (
-                    <button
+                    <Button variant="secondary" size="sm"
                       type="button"
                       onClick={() => setPickerFor(coffee.id)}
-                      className="min-h-[44px] rounded-pill border border-primary-container px-3 py-1 text-caption font-medium text-primary-container hover:bg-primary-fixed transition-colors"
                     >
                       {t.picker.useExisting}
-                    </button>
+                    </Button>
                   )}
                   {samples.length > 1 && (
                     <button

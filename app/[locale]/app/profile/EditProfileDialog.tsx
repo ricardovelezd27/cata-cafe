@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Pencil } from "lucide-react";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
 import { ProfileForm } from "./ProfileForm";
+import { Button } from "@/components/ui";
 
 type ProfileFormProps = Parameters<typeof ProfileForm>[0];
 
@@ -22,14 +23,13 @@ export function EditProfileDialog({
 
   return (
     <>
-      <button
+      <Button variant="secondary"
         type="button"
         onClick={() => setOpen(true)}
-        className="min-h-[44px] inline-flex items-center gap-1.5 rounded-pill border border-primary-container px-4 py-2 text-caption font-semibold text-primary-container transition-colors hover:bg-primary-fixed"
       >
         <Pencil size={15} />
         {label}
-      </button>
+      </Button>
 
       <ResponsiveDialog
         open={open}

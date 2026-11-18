@@ -529,17 +529,13 @@ function HeroCard({
             {warmup.synced.inProgress.split(" ·")[0]} · {warmup.synced.join}
           </Button>
         )}
-        <button
-          type="button"
+        <Button
+          variant={seen ? "secondary" : "primary"}
           onClick={onStart}
-          className={
-            seen
-              ? "min-h-[44px] rounded-pill border border-outline-variant px-5 text-caption font-medium text-on-surface hover:bg-surface-container"
-              : "min-h-[44px] flex-1 rounded-pill bg-primary-container px-5 text-caption font-medium text-on-primary hover:bg-primary sm:flex-none"
-          }
+          className={seen ? "" : "flex-1 sm:flex-none"}
         >
           {seen ? warmup.heroRepeat : warmup.heroStart}
-        </button>
+        </Button>
         {seen && (
           <Badge tone="success" size="sm">{warmup.heroDone}</Badge>
         )}

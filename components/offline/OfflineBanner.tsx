@@ -6,6 +6,7 @@ import type { SyncPhase } from "@/hooks/useOfflineSync";
 import { reloadIdentity } from "@/lib/identityResolve";
 import { isIdentityChanged, onIdentityChanged, registerIdentityNoticeHost } from "@/lib/identityChange";
 import { Notice, type NoticeTone } from "@/components/ui/Notice";
+import { TextAction } from "@/components/ui";
 
 export type OfflineBannerTranslations = {
   bannerOffline: string;
@@ -117,8 +118,6 @@ export function OfflineBanner({
     success: "info",
     warn: "warning",
   };
-  const actionClasses =
-    "inline-flex min-h-[44px] items-center font-semibold underline underline-offset-2 hover:opacity-80";
 
   return (
     <Notice
@@ -127,20 +126,20 @@ export function OfflineBanner({
       className="mb-3"
       action={
         showIdentity ? (
-          <button
+          <TextAction tone="none"
             type="button"
             onClick={() => {
               if (renderedUserId) void reloadIdentity(renderedUserId);
               else window.location.reload();
             }}
-            className={actionClasses}
+            className="font-semibold underline underline-offset-2 hover:opacity-80"
           >
             {t.reloadNow ?? "Reload"}
-          </button>
+          </TextAction>
         ) : showRetry ? (
-          <button type="button" onClick={onRetry} className={actionClasses}>
+          <TextAction tone="none" type="button" onClick={onRetry} className="font-semibold underline underline-offset-2 hover:opacity-80">
             {t.retrySync}
-          </button>
+          </TextAction>
         ) : undefined
       }
     >

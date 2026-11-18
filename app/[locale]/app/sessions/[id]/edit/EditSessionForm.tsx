@@ -20,7 +20,7 @@ import { MAX_DATE_INPUT } from "@/lib/safeDate";
 import { planRemoveActive, referenceExplanation, shouldPinReference, type ReferenceMode } from "@/lib/referenceRules";
 import { radioKeyDown } from "@/components/radioKeys";
 import { FormActionBar, dockedFormClass } from "@/components/ui/FormActionBar";
-import { Button } from "@/components/ui";
+import { Button, TextAction } from "@/components/ui";
 
 export type EditSessionFormTranslations = {
   name: string;
@@ -651,16 +651,16 @@ export function EditSessionForm({
                   aria-label={t.sampleLabel}
                   className={inputCls + " flex-1"}
                 />
-                <button
+                <TextAction tone="quiet"
                   type="button"
                   disabled={hasEvals}
                   title={hasEvals ? t.sampleHasEvals : undefined}
                   onClick={() => setRemoveTarget(sample)}
                   aria-label={t.removeSample}
-                  className="p-1.5 text-on-surface-variant transition-colors hover:text-error disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:text-on-surface-variant"
+                  className="hover:text-error disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <Trash2 size={16} />
-                </button>
+                </TextAction>
               </div>
             );
           })}
@@ -695,24 +695,23 @@ export function EditSessionForm({
           {newSampleCoffee ? (
             <span className="inline-flex items-center gap-1.5 rounded-pill border border-outline-variant bg-surface-container px-3 py-1.5 text-caption font-medium text-on-surface">
               {newSampleCoffee.name}
-              <button
+              <TextAction tone="quiet"
                 type="button"
                 onClick={() => setNewSampleCoffee(null)}
                 aria-label={t.cancel}
-                className="inline-flex min-h-[28px] min-w-[28px] items-center justify-center text-on-surface-variant hover:text-error"
+                className="-my-[8px] hover:text-error"
               >
                 <X size={14} />
-              </button>
+              </TextAction>
             </span>
           ) : (
-            <button
+            <Button variant="secondary"
               type="button"
               disabled={addPending || usableCoffees.length === 0}
               onClick={() => setPickerOpen(true)}
-              className="inline-flex min-h-[44px] items-center rounded-pill border border-outline-variant px-4 text-caption font-medium text-on-surface transition-colors hover:bg-surface-container disabled:opacity-50"
             >
               {t.picker.useExisting}
-            </button>
+            </Button>
           )}
         </div>
         <CoffeePicker
