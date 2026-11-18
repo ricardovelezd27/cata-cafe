@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Card } from "@/components/ui/Card";
 
 interface StatCardProps {
   label: string;
@@ -10,7 +11,9 @@ interface StatCardProps {
 
 export function StatCard({ label, value, subtext, accent, icon }: StatCardProps) {
   return (
-    <div className="relative bg-surface-container-lowest rounded-card border border-outline-variant shadow-card p-5 flex flex-col gap-1">
+    // P2b (D-07): a Card (one border, no shadow). The 240 px stat cap is not applied:
+    // the dashboard's stat grid would leave gaps (listed in the P2b pull request).
+    <Card className="relative flex flex-col gap-1">
       {icon && (
         <span className="absolute top-4 right-4 text-primary-muted opacity-70">
           {icon}
@@ -28,6 +31,6 @@ export function StatCard({ label, value, subtext, accent, icon }: StatCardProps)
         {value}
       </span>
       <span className="text-caption text-on-surface-variant mt-1">{subtext}</span>
-    </div>
+    </Card>
   );
 }

@@ -46,6 +46,7 @@ export { HIT_44, HIT_Y44 } from './hitArea'
 
 // Paper primitives (P2a): one card, one notice, one paper section heading
 export { Card } from './Card'
+export { cardClasses } from './cardRecipe'
 export type { CardProps, CardTone, CardPadding } from './Card'
 export { Notice } from './Notice'
 export type { NoticeProps, NoticeTone } from './Notice'

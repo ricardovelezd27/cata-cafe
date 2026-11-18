@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Button, ConfirmDialog, Badge } from "@/components/ui";
+import { Button, Card, ConfirmDialog, Badge } from "@/components/ui";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
 import {
   applyReplayOutcome,
@@ -184,10 +184,9 @@ export function UnsyncedNotesPanel({
                 const key = entryKey(e);
                 const text = draftToText(e.data);
                 return (
-                  <li
-                    key={key}
-                    className="rounded-card border border-outline-variant bg-surface-container-low p-3"
-                  >
+                  // P2b (D-07): each unsent note is a card (one object). Frame only: the
+                  // buttons and their handlers below are unchanged.
+                  <Card as="li" key={key} tone="quiet" padding="compact">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-sans text-body font-semibold text-on-surface">
                         {e.sampleLabel}
@@ -242,7 +241,7 @@ export function UnsyncedNotesPanel({
                         {t.discard}
                       </Button>
                     </div>
-                  </li>
+                  </Card>
                 );
               })}
             </ul>

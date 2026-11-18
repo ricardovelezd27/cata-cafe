@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { InviteQR } from "@/components/ui/InviteQR";
+import { Card } from "@/components/ui/Card";
 import { buildInviteUrl } from "@/lib/inviteUrl";
 
 export type InvitePanelTranslations = {
@@ -38,7 +39,8 @@ export function InvitePanel({
   };
 
   return (
-    <div className="bg-surface-container-low border border-outline-variant rounded-card p-5 space-y-3">
+    // P2b (D-07): the invite link is one object: a quiet Card.
+    <Card tone="quiet" className="space-y-3">
       <p className="text-body font-semibold text-primary-container">{t.inviteLink}</p>
       {url && (
         <div className="flex justify-center py-1">
@@ -63,6 +65,6 @@ export function InvitePanel({
           {copied ? t.copied : t.copyLink}
         </button>
       </div>
-    </div>
+    </Card>
   );
 }

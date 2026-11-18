@@ -3,6 +3,7 @@
 import { useState, useSyncExternalStore } from "react";
 import { Clock } from "lucide-react";
 import { deadlineState } from "@/lib/closeRules";
+import { Notice } from "@/components/ui/Notice";
 
 export type DeadlineBannerTranslations = {
   // RAW templates containing the literal "{when}" / "{local}" -- filled here,
@@ -78,21 +79,12 @@ export function DeadlineBanner({
     );
   }
 
-  const tone =
-    state === "open"
-      ? "border-outline-variant bg-surface-container-low text-on-surface"
-      : "border-secondary/30 bg-secondary-container/20 text-on-surface";
-
+  // P2b (E-05): a Notice. An open deadline is information; one that is near or has
+  // passed needs attention (warning), never terracotta. Same text, same role.
   return (
-    <div
-      role="status"
-      className={`flex items-start gap-2 rounded-card border px-4 py-2 font-sans text-caption ${tone}`}
-    >
-      <Clock size={14} aria-hidden className="mt-0.5 shrink-0 text-secondary" />
-      <span className="flex-1">
-        <span className={state === "open" ? "" : "font-medium"}>{text}</span>
-        {local ? <span className="block text-on-surface-variant">{local}</span> : null}
-      </span>
-    </div>
+    <Notice tone={state === "open" ? "info" : "warning"} icon={<Clock size={14} aria-hidden />}>
+      <span className={state === "open" ? "" : "font-medium"}>{text}</span>
+      {local ? <span className="block opacity-80">{local}</span> : null}
+    </Notice>
   );
 }

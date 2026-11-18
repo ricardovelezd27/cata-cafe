@@ -6,6 +6,7 @@ import { IDENTITY_EPOCH_KEY, decideForMarker, parseIdentityMarker } from "@/lib/
 import { announceSignedInIfStarted, hasIdentityNoticeHost, isIdentityChanged, onIdentityChanged } from "@/lib/identityChange";
 import { reloadIdentity, checkIdentityOnMarker, checkIdentityOnResume, onRenderedUserChanged } from "@/lib/identityResolve";
 import { useForegroundResume } from "@/hooks/useForegroundResume";
+import { Notice } from "@/components/ui/Notice";
 
 export type IdentityWatcherTranslations = {
   /** errors.codes.identity_changed */
@@ -81,21 +82,24 @@ export function IdentityWatcher({
   useForegroundResume(() => void checkIdentityOnResume(renderedId), { pageshow: true });
 
   if (!changed || hostedElsewhere) return null;
+  // P2b (E-05): a warning Notice (it needs attention; not terracotta). Same text, same
+  // reload, same conditions; `role="status"` (polite) comes from Notice, as before.
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      className="flex items-center gap-2 border-b border-secondary/30 bg-secondary-container/30 px-4 py-2 font-sans text-caption text-on-surface"
+    <Notice
+      tone="warning"
+      icon={<RefreshCw size={15} aria-hidden />}
+      className="mx-4 mt-2 break-words lg:mx-6"
+      action={
+        <button
+          type="button"
+          onClick={() => void reloadIdentity(renderedId)}
+          className="inline-flex min-h-[44px] items-center px-2 font-semibold underline underline-offset-2 hover:opacity-80"
+        >
+          {t.reload}
+        </button>
+      }
     >
-      <RefreshCw size={15} aria-hidden className="shrink-0" />
-      <span className="flex-1 break-words">{t.notice}</span>
-      <button
-        type="button"
-        onClick={() => void reloadIdentity(renderedId)}
-        className="min-h-[44px] shrink-0 rounded-sm px-2 font-semibold underline underline-offset-2 hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2"
-      >
-        {t.reload}
-      </button>
-    </div>
+      {t.notice}
+    </Notice>
   );
 }

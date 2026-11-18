@@ -4,6 +4,7 @@ import { useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui";
+import { Notice } from "@/components/ui/Notice";
 import { isStaleBundle, onStaleBundle } from "@/lib/staleBundle";
 import { staleNoticeRendersIn, type StaleNoticeSlot } from "@/lib/staleNoticePlacement";
 
@@ -31,19 +32,23 @@ export function StaleBundleNotice({
   const show = stale && staleNoticeRendersIn(slot, pathname);
   return (
     <div role="status" aria-live="polite">
+      {/* P2b (E-05): a warning Notice inside the always-present live region (so the
+          region announces it, and the Notice carries no second role). Same text, same
+          reload. */}
       {show && (
-        <div className="mx-4 lg:mx-6 mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-card border border-outline-variant bg-secondary-fixed px-4 py-2 text-caption text-on-secondary-fixed">
-          <RefreshCw size={15} aria-hidden className="shrink-0 text-secondary" />
-          <span className="flex-1 min-w-[12rem]">{message}</span>
-          <Button
-            size="sm"
-            variant="accentOutline"
-            onClick={() => window.location.reload()}
-            className="shrink-0 hover:bg-secondary-fixed-dim!"
-          >
-            {reloadLabel}
-          </Button>
-        </div>
+        <Notice
+          tone="warning"
+          live={false}
+          icon={<RefreshCw size={15} aria-hidden />}
+          className="mx-4 lg:mx-6 mt-2"
+          action={
+            <Button size="sm" variant="secondary" onClick={() => window.location.reload()}>
+              {reloadLabel}
+            </Button>
+          }
+        >
+          {message}
+        </Notice>
       )}
     </div>
   );

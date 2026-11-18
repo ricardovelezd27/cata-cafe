@@ -26,7 +26,8 @@ describe("P2a: the primitives paint with the system", () => {
     expect(src[f]).not.toMatch(/text-\[\d/);
   });
   it("a card has no shadow and no terracotta ground; its padding is the paper rhythm in pixels", () => {
-    const s = src["components/ui/Card.tsx"];
+    // P2b: the recipe lives in cardRecipe.ts (no "use client") so a server page can call cardClasses().
+    const s = src["components/ui/Card.tsx"] + read("components/ui/cardRecipe.ts");
     expect(s).not.toMatch(/shadow-/);
     expect(s).not.toMatch(/bg-secondary/);
     expect(s).toMatch(/regular: "p-\[16px\] md:p-\[20px\]"/);

@@ -1,4 +1,5 @@
 import { GuestGateLink } from "@/components/guest/GuestGateLink";
+import { cardClasses } from "@/components/ui/cardRecipe";
 import { ChevronRight, PersonStanding } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
@@ -238,7 +239,7 @@ export default async function SessionsList({
       {/* Phones have no sidebar: the warm-up library is reached from here. */}
       <GuestGateLink
         href={`/${locale}/app/warmup`}
-        className="min-h-[44px] lg:hidden flex items-center gap-3 rounded-card bg-surface-container-low px-4 py-3 text-caption font-medium text-on-surface hover:bg-surface-container"
+        className={`${cardClasses({ tone: "quiet", padding: "row" })} min-h-[44px] flex lg:hidden items-center gap-3 text-caption font-medium transition-[background-color] hover:bg-surface-container-high`}
       >
         <PersonStanding size={18} aria-hidden />
         {tw("library.mobileLink")}

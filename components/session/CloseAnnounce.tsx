@@ -15,6 +15,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Clock } from "lucide-react";
 import { Button } from "@/components/ui";
+import { Notice } from "@/components/ui/Notice";
 import {
   bannerState,
   cancelledAfterCancelAttempt,
@@ -98,11 +99,12 @@ export function CloseAnnounceBanner({
   // The live region is always in the DOM so a banner that appears is announced.
   return (
     <div role="status" aria-live="polite" aria-atomic="true">
+      {/* P2b (E-05): a warning Notice inside the always-present atomic live region
+          (no second role). Same text and states. */}
       {text && (
-        <div className="mx-4 mt-3 flex items-start gap-2 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-caption text-on-surface lg:mx-6">
-          <Clock size={14} aria-hidden className="mt-0.5 shrink-0 text-secondary" />
-          <span className="flex-1">{text}</span>
-        </div>
+        <Notice tone="warning" live={false} icon={<Clock size={14} aria-hidden />} className="mx-4 mt-3 lg:mx-6">
+          {text}
+        </Notice>
       )}
     </div>
   );

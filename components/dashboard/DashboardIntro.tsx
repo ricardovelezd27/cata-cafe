@@ -3,6 +3,7 @@
 import { useState, useSyncExternalStore } from "react";
 import { X, ChevronDown, Sigma, HelpCircle } from "lucide-react";
 import { introStartsCollapsed } from "@/lib/dashboardIntro";
+import { PaperSectionHeading } from "@/components/ui/PaperSectionHeading";
 
 export type IntroTranslations = {
   eyebrow: string;
@@ -124,13 +125,11 @@ export function DashboardIntro({
           <X size={15} />
         </button>
 
-        {/* heading */}
-        <p className="label-caps mono text-primary-muted">
-          {t.eyebrow}
-        </p>
-        <h2 className="section-title mt-1 max-w-xl leading-tight sm:text-page">
-          {t.title}
-        </h2>
+        {/* heading. P2b (B-04): the section heading at the section size; it was painted
+            at the PAGE size from 640 px, as large as the page title above it. */}
+        <div className="max-w-xl">
+          <PaperSectionHeading name={t.eyebrow} title={t.title} flush />
+        </div>
 
         {/* why / what / how — a connected sequence, not a grid of cards */}
         <ol className="mt-5 grid gap-5 sm:grid-cols-3 sm:gap-0">
@@ -184,9 +183,7 @@ export function DashboardIntro({
         >
           <div className="overflow-hidden">
             <div className="mt-5 rounded-input border border-outline-variant bg-surface-container/60 p-4 sm:p-5">
-              <h3 className="text-card">
-                {t.calcTitle}
-              </h3>
+              <PaperSectionHeading level={3} title={t.calcTitle} flush />
               <p className="mt-1 max-w-[68ch] text-body text-on-surface-variant">{t.calcLead}</p>
 
               {/* the formula, set apart and scrollable on narrow screens */}
