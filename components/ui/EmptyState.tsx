@@ -1,4 +1,7 @@
-"use client";
+// No "use client" on purpose (K-03): EmptyState has no state and no handler, so
+// it renders where its caller renders. A server page's icon then reaches it as
+// the real lucide element, and the shape can be read from it; across a
+// server-to-client boundary the element would arrive without its identity.
 
 import { isValidElement, type ReactNode } from "react";
 import { Clipboard, Coffee, UserPlus, Users } from "lucide-react";

@@ -42,11 +42,11 @@ function ring(cx: number, cy: number, r: number, count: number, offset: number, 
 export function stillFormation(kind: FormationKind): StillFormation {
   if (kind === "bowls") {
     // three bowls, the middle one a little higher: a cupping table from above
-    const R = 17;
+    const R = 14;
     const centres: [number, number][] = [
-      [24, 44],
-      [60, 30],
-      [96, 44],
+      [22, 44],
+      [60, 28],
+      [98, 44],
     ];
     const counts = [6, 10, 14];
     const dots = centres.flatMap(([cx, cy], b) =>
