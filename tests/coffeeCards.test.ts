@@ -426,7 +426,9 @@ describe("what the cards replace is gone", () => {
   it("the organizer keeps the matrix, on its own tab, and a viewer with one view gets no tab bar", () => {
     const client = read("app", "[locale]", "app", "sessions", "[id]", "results", "ResultsClient.tsx");
     expect(client).toMatch(/\.\.\.\(canViewIndividual \? \[\{ id: "panel", label: overview\.cards\.tabPanel \}\] : \[\]\)/);
-    expect(client).toMatch(/<OwnerParticipantSection/);
+    // since R5 the matrix is one part of the Panel's own view
+    expect(client).toMatch(/<PanelView/);
+    expect(read("components", "results", "PanelView.tsx")).toMatch(/<OwnerParticipantSection/);
     expect(client).toMatch(/\{tabItems\.length > 1 \? \(/);
   });
 });

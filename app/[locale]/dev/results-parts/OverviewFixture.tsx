@@ -22,6 +22,7 @@ export function OverviewFixture({
   t,
   cards,
   learningsT,
+  pending,
 }: {
   scenario: OverviewScenario;
   locale: WheelLocale;
@@ -30,6 +31,8 @@ export function OverviewFixture({
   t: OverviewStrings;
   cards: CardsStrings;
   learningsT: LearningsStrings;
+  /** The organizer's "Pendiente en el panel" tile (its button does nothing on the board). */
+  pending?: { title: string; text: string; action: string } | null;
 }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
@@ -42,6 +45,7 @@ export function OverviewFixture({
         preliminary={scenario.preliminary}
         referencePinned={scenario.referencePinned}
         compare={{ closed: scenario.closed, t: cards }}
+        pending={pending ? { ...pending, onOpen: () => {} } : null}
         familyLabels={familyLabels}
         parts={parts}
         t={t}

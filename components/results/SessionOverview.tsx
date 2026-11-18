@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState, type ReactNode } from "react";
+import { Button } from "@/components/ui/Button";
 import { ScoreWithContext, formatScore, formatSigned } from "@/components/ui/ScoreWithContext";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { fillPattern } from "@/lib/fillPattern";
@@ -61,6 +62,7 @@ export function SessionOverview<S extends OverviewSampleProps>({
   familyLabels,
   parts,
   t,
+  pending,
   onOpenSample,
 }: {
   samples: S[];
@@ -91,6 +93,8 @@ export function SessionOverview<S extends OverviewSampleProps>({
   familyLabels: Record<WheelFamilyId, string>;
   parts: ResultsPartsStrings;
   t: OverviewStrings;
+  /** R5, the organizer only: what waits for them in the Panel, and the way to it. */
+  pending?: { title: string; text: string; action: string; onOpen: () => void } | null;
   onOpenSample: (sampleId: string) => void;
 }) {
   const view = overviewView({ samples, referenceId, ctx, data });
@@ -140,6 +144,17 @@ export function SessionOverview<S extends OverviewSampleProps>({
       ) : null}
 
       <div className={styles.grid} data-small-tiles={smallTiles}>
+        {/* 0. The organizer only: what waits for a decision, and the way to it. */}
+        {pending ? (
+          <Tile title={pending.title} area={styles.aWide}>
+            <div className={styles.pending} data-overview-pending="">
+              <p className={styles.line}>{pending.text}</p>
+              <Button size="sm" variant="secondary" onClick={pending.onOpen}>
+                {pending.action}
+              </Button>
+            </div>
+          </Tile>
+        ) : null}
         {/* 1. The coffee the panel put first: the finding, in the first fold. */}
         {showFirst ? (
           view.first.status === "ok" ? (

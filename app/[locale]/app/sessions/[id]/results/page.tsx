@@ -19,6 +19,7 @@ import { wheelFamilyLabels } from "@/lib/flavorWheelLabels";
 import { buildResultsPartsStrings } from "@/components/results/partsStrings";
 import { buildOverviewStrings } from "@/components/results/overviewStrings";
 import { buildCardsStrings } from "@/components/results/cardsStrings";
+import { buildPanelStrings } from "@/components/results/panelStrings";
 import { buildSheetStrings } from "@/components/results/sheetStrings";
 import { buildSheetData } from "@/lib/reports/coffeeSheet";
 import { buildLearningsInput, learningsPayload, type RepeatPair } from "@/lib/reports/learningsInput";
@@ -1311,6 +1312,8 @@ export default async function ResultsPage({
           frequencies: descriptorFrequency,
         }),
         sheet: buildSheetStrings(tResults),
+        // R5: the words the organizer's Panel added (the matrix, what waits).
+        panelT: buildPanelStrings(tResults),
         // R4b: the learnings (null until the close) and their words.
         learnings,
         learningsT: buildLearningsStrings(tResults),

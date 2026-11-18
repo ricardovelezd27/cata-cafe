@@ -1177,8 +1177,12 @@ owner-only page; gating happens *inside* the views and the drill-down dialog.
 Since R2 (2026-11) the first view is the results themselves: the overview's tiles,
 then one card per coffee; a card opens the coffee's SHEET (R3). The only other
 tab is "Panel" (the organizer, or the admin's read-only lens, of a group session
-with participants: the per-cupper matrix, the notes after the close and the
-alignment table). A participant has ONE view and no tab bar. The Descriptores
+with participants; `PanelView`, R5): what waits for a decision (the evaluations
+received late), every cupper's total beside the group's with a mark on the cells
+far from the group, who counts (the exclusion switches), the notes after the close
+and the alignment on one neutral bar per cupper. The overview announces what waits
+there in a "Pendiente en el panel" tile (the organizer only). A participant has ONE
+view and no tab bar, and their page holds none of the Panel's rows. The Descriptores
 tab, the word cloud, the roll-up lists with typed words and their sentences are
 gone (R3): what a panel found in a coffee is on that coffee's sheet, counted by
 people.
@@ -1227,13 +1231,18 @@ flowchart TD
     end
 
     subgraph T2 ["Panel — the organizer (or the admin's lens) of a group session"]
-        S3["Análisis por catador —\nmatrix + exclusion switches\n+ DE (SD) column"]
+        S2["Evaluations received late\n(the organizer only): accept one by one,\nlabelled 'saved before' / 'received after the close'"]
+        S3["Análisis por catador: every cupper's total per coffee,\nthe group's score and the spread (DE),\na mark on the cells 1 SD and 2 SD from the mean;\none coffee at a time on a phone"]
+        S3b["Who counts: the exclusion switches\n(reason list + confirmation; the organizer only)"]
         S4["Notes the cuppers added after the close"]
-        S5["Cupper alignment table\n(one coffee, or all of them)"]
-        S3 --> S4
+        S5["Alignment: one neutral bar per cupper\n(one coffee, or all of them)"]
+        S2 --> S3
+        S3 --> S3b
+        S3b --> S4
         S4 --> S5
     end
 
+    R1 -.->|"'Pendiente en el panel' (organizer)"| S2
     R1 -.->|open a tile or a ranking row| DET
     R2 -.->|open a card| DET
     S3 -.->|open matrix cell| DET

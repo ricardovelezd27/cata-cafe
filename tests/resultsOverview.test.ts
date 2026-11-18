@@ -386,3 +386,48 @@ describe("the overview holds no colour, threshold or gate of its own", () => {
     expect(labels.fruity).toBe("Frutal");
   });
 });
+
+// Package R5: what waits for the organizer in the Panel is announced by one
+// tile, the first of the overview. Whether it exists is the page's (the counts
+// are lengths of lists only the organizer's page holds): the overview draws it.
+describe("the organizer's \"Pendiente en el panel\" tile", () => {
+  const draw = (pending: { title: string; text: string; action: string; onOpen: () => void } | null) => {
+    const s = overviewScenario("closed-owner");
+    const { parts, t } = stringsOf("es", s);
+    return html(
+      createElement(SessionOverview, {
+        samples: s.samples,
+        ctx: s.ctx,
+        referenceId: s.referenceId,
+        data: s.data,
+        myAlignment: s.myAlignment,
+        preliminary: s.preliminary,
+        referencePinned: s.referencePinned,
+        familyLabels: wheelFamilyLabels("es"),
+        parts,
+        t,
+        pending,
+        onOpenSample: () => {},
+      }),
+    );
+  };
+
+  it("is the first tile, with what waits and the way to the Panel", () => {
+    const markup = draw({
+      title: "Pendiente en el panel",
+      text: "1 evaluación tardía por decidir y 2 notas después del cierre",
+      action: "Abrir el panel",
+      onOpen: () => {},
+    });
+    const titles = [...markup.matchAll(/<h2[^>]*>([^<]*)</g)].map((m) => m[1]);
+    expect(titles[0]).toBe("Pendiente en el panel");
+    const tile = markup.slice(markup.indexOf("data-overview-pending"), markup.indexOf("</section>", markup.indexOf("data-overview-pending")));
+    expect(text(tile)).toContain("1 evaluación tardía por decidir y 2 notas después del cierre");
+    expect(tile).toMatch(/<button[^>]*type="button"[^>]*>Abrir el panel<\/button>/);
+  });
+
+  it("is absent when nothing waits, and for every viewer the page gives no tile", () => {
+    expect(draw(null)).not.toContain("data-overview-pending");
+    expect(render(overviewScenario("closed"))).not.toContain("data-overview-pending");
+  });
+});
