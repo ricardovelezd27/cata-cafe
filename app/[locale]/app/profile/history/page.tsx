@@ -78,6 +78,8 @@ export default async function HistoryPage({
       prev: tc("prev"),
       next: tc("next"),
       clearFilters: tc("clearFilters"),
+      caption: t("title"),
+      actions: tc("tableActions"),
       all: tc("all"),
     },
     colCoffee: tSession("newForm.coffeeCard"),

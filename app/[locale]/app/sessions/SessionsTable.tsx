@@ -37,6 +37,8 @@ export type SessionsTableTranslations = {
     prev: string;
     next: string;
     clearFilters: string;
+    caption: string;
+    actions?: string;
     all: string;
   };
   colName: string;
@@ -146,13 +148,13 @@ export function SessionsTable({
     {
       key: "samples",
       label: t.colSamples,
-      align: "center",
+      numeric: true,
       render: (row) => <span className="tabular-nums">{row.samplesCount}</span>,
     },
     {
       key: "participants",
       label: t.colParticipants,
-      align: "center",
+      numeric: true,
       render: (row) =>
         row.isGroup ? (
           <span className="tabular-nums">{row.participantsCount}</span>
@@ -233,12 +235,16 @@ export function SessionsTable({
         ) : null
       }
       renderMobileCard={(row, actions) => (
-        <div className="space-y-2 rounded-card border border-outline-variant bg-surface-container-lowest p-4">
+        // D-13 (Q1): the whole card is the session's link (one target): the title's link
+        // stretches over the card through an ::after layer. The owner's three 44 px
+        // actions stay as a row above that layer (DESIGN.md: an interactive card is the
+        // link itself, so the actions cannot live inside a second, nested control).
+        <div className="relative space-y-2 rounded-card border border-outline-variant bg-surface-container-lowest p-4">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 space-y-1">
               <Link
                 href={row.href}
-                className="block min-h-[24px] truncate font-semibold text-on-surface transition-colors hover:text-primary-container"
+                className="block min-h-[24px] truncate font-semibold text-on-surface transition-colors hover:text-primary-container after:absolute after:inset-0 after:rounded-card after:content-['']"
               >
                 {row.name}
               </Link>
@@ -265,7 +271,7 @@ export function SessionsTable({
                 </p>
               )}
             </div>
-            {actions && <div className="flex shrink-0 items-center gap-1">{actions}</div>}
+            {actions && <div className="relative z-10 flex shrink-0 items-center gap-1">{actions}</div>}
           </div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-on-surface-variant">
             <span className="tabular-nums">{row.date ? new Date(row.date).toLocaleDateString(locale) : "—"}</span>

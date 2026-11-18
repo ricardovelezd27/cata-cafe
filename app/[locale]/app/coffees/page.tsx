@@ -73,6 +73,8 @@ export default async function CoffeesPage({
     prev: tc("prev"),
     next: tc("next"),
     clearFilters: tc("clearFilters"),
+    caption: t("list"),
+    actions: tc("tableActions"),
     all: tc("all"),
     noResults: tc("noResults"),
     // Facets

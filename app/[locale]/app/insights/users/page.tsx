@@ -28,6 +28,7 @@ export default async function InsightsUsersPage({
     getTranslations("insights.access"),
     listAnalyticsUsers(),
   ]);
+  const tTabs = await getTranslations("insights.tabs");
 
   const registered = users.filter((u) => !u.isAnonymous).length;
   const guests = users.length - registered;
@@ -50,6 +51,8 @@ export default async function InsightsUsersPage({
             prev: tc("prev"),
             next: tc("next"),
             clearFilters: tc("clearFilters"),
+            caption: tTabs("users"),
+            actions: tc("tableActions"),
             all: tc("all"),
           },
           colName: t("colName"),

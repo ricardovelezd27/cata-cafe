@@ -22,4 +22,5 @@ export const CHART_CAPTION_PX = 12.25;
 /** The legend and the tooltip: HTML beside the drawing, at the caption size. */
 export const CHART_HTML_PX = CHART_CAPTION_PX;
 
-export const chartTick = (fill: string) => ({ fontSize: CHART_TICK_PX, fill });
+// B-06 (Q1): axis numbers line up, in tabular figures.
+export const chartTick = (fill: string) => ({ fontSize: CHART_TICK_PX, fill, style: { fontVariantNumeric: "tabular-nums" } });

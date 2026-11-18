@@ -19,6 +19,9 @@ export type Column<T> = {
   /** Default: String((row as Record<string, unknown>)[key] ?? "—") */
   render?: (row: T) => ReactNode;
   align?: "left" | "center" | "right";
+  /** B-06 (Q1): a column of numbers: right-aligned (unless `align` says otherwise) and in
+   *  tabular figures, header included, so digits line up from row to row. */
+  numeric?: boolean;
   /** Reserved — mobile rendering is fully caller-controlled via renderMobileCard. */
   hideOnMobile?: boolean;
   headerClassName?: string;
@@ -239,6 +242,11 @@ export function DataTable<T>({
     next: string;
     clearFilters: string;
     all: string;
+    /** H-10 (Q1): the table's name for screen readers, a visually hidden <caption>
+     *  (the page's title). Required: every table is named. */
+    caption: string;
+    /** H-10 (Q1): the visually hidden name of the actions column ("Acciones"). */
+    actions?: string;
   };
 }) {
   const prefix = addressKey === false ? "" : addressKey;
@@ -423,6 +431,7 @@ export function DataTable<T>({
           {/* Desktop table */}
           <div className="hidden overflow-x-auto rounded-card border border-outline-variant md:block">
             <table className="w-full text-caption">
+              <caption className="sr-only">{translations.caption}</caption>
               <thead className="border-b border-outline-variant bg-surface-container">
                 <tr>
                   {selection && (
@@ -442,7 +451,7 @@ export function DataTable<T>({
                       <Th
                         key={col.key}
                         label={col.label}
-                        align={col.align}
+                        align={col.align ?? (col.numeric ? "right" : undefined)}
                         sortable={col.sortable}
                         active={active}
                         dir={dir}
@@ -451,7 +460,11 @@ export function DataTable<T>({
                       />
                     );
                   })}
-                  {hasTrailingColumn && <th className="px-4 py-3" scope="col" />}
+                  {hasTrailingColumn && (
+                    <th className="px-4 py-3" scope="col">
+                      {translations.actions && <span className="sr-only">{translations.actions}</span>}
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/50">
@@ -479,15 +492,20 @@ export function DataTable<T>({
                           )}
                         </td>
                       )}
-                      {columns.map((col) => {
+                      {columns.map((col, ci) => {
                         const content = col.render
                           ? col.render(row)
                           : String((row as Record<string, unknown>)[col.key] ?? "—");
-                        return (
-                          <td
-                            key={col.key}
-                            className={`px-4 py-3 text-on-surface ${alignToClass(col.align)} ${col.cellClassName ?? ""}`}
-                          >
+                        const cls = `px-4 py-3 text-on-surface ${alignToClass(col.align ?? (col.numeric ? "right" : undefined))} ${
+                          col.numeric ? "tabular-nums" : ""
+                        } ${col.cellClassName ?? ""}`;
+                        // H-10 (Q1): the first column names the row, as a row header.
+                        return ci === 0 ? (
+                          <th key={col.key} scope="row" className={`${cls} font-normal`}>
+                            {content}
+                          </th>
+                        ) : (
+                          <td key={col.key} className={cls}>
                             {content}
                           </td>
                         );

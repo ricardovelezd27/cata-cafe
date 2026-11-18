@@ -78,6 +78,8 @@ export type CoffeesTableTranslations = {
   prev: string;
   next: string;
   clearFilters: string;
+  caption: string;
+  actions?: string;
   all: string;
   noResults: string;
   // Facets
@@ -234,13 +236,14 @@ export default function CoffeesTable({
       {
         key: "sessions",
         label: t.colSessions,
-        align: "center",
+        numeric: true,
         sortable: true,
         sortValue: (row) => row._count.sessionSamples,
         render: (row) => row._count.sessionSamples,
       },
       {
         key: "score",
+        numeric: true,
         label: t.colLastScore,
         sortable: true,
         sortValue: (row) => row.coffeeHistory[0]?.individualScore ?? -1,
@@ -480,6 +483,8 @@ export default function CoffeesTable({
         prev: t.prev,
         next: t.next,
         clearFilters: t.clearFilters,
+        caption: t.caption,
+        actions: t.actions,
         all: t.all,
       }}
     />

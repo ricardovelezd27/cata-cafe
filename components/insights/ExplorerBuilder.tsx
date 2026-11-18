@@ -17,6 +17,8 @@ import { isAccessError } from "@/lib/actionResult";
 import { InsightChart } from "@/components/insights/InsightChart";
 import { AiSummaryPanel, type AiSummaryTranslations } from "@/components/insights/AiSummaryPanel";
 import { cardClasses } from "@/components/ui/cardRecipe";
+import { Notice } from "@/components/ui/Notice";
+import { TextAction } from "@/components/ui/TextAction";
 
 export interface ExplorerTranslations {
   dataset: string;
@@ -28,6 +30,8 @@ export interface ExplorerTranslations {
   running: string;
   noResults: string;
   error: string;
+  /** J-06 (Q1): the failed-load notice's action ("Reintentar"). */
+  retry?: string;
   datasets: Record<Dataset, string>;
   dimensions: Record<DimensionId, string>;
   measures: Record<MeasureId, string>;
@@ -60,6 +64,8 @@ export function ExplorerBuilder({ locale, t, loadedConfig, loadKey, onConfigChan
 
   const [rows, setRows] = useState<InsightRow[] | null>(null);
   const [error, setError] = useState(false);
+  // J-06 (Q1): bumping this re-runs the same request (the notice's "Reintentar").
+  const [attempt, setAttempt] = useState(0);
   const [isPending, startTransition] = useTransition();
   const { notifyError } = useActionFeedback();
 
@@ -100,20 +106,27 @@ export function ExplorerBuilder({ locale, t, loadedConfig, loadKey, onConfigChan
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       startTransition(async () => {
-        const result = await runInsight(config, locale);
-        if (result.ok) {
-          setRows(result.data);
-          setError(false);
-        } else {
+        // J-06 (Q1): a request that fails outright (a dropped connection, a blocked
+        // request) throws here. It is caught so the page stays: the person's choices
+        // and the last chart are kept, and a notice offers to try again.
+        try {
+          const result = await runInsight(config, locale);
+          if (result.ok) {
+            setRows(result.data);
+            setError(false);
+          } else {
+            setError(true);
+            if (isAccessError(result.error)) notifyError(result.error);
+          }
+        } catch {
           setError(true);
-          if (isAccessError(result.error)) notifyError(result.error);
         }
       });
     }, 400);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [buildConfig, locale, onConfigChange, notifyError]);
+  }, [buildConfig, locale, onConfigChange, notifyError, attempt]);
 
   // Applies a saved config pushed down by the workspace. Keyed on loadKey
   // (not loadedConfig identity) so re-opening the same saved item retriggers.
@@ -265,9 +278,20 @@ export function ExplorerBuilder({ locale, t, loadedConfig, loadKey, onConfigChan
           )}
         </div>
 
-        {error ? (
-          <div className="text-caption text-error py-8 text-center">{t.error}</div>
-        ) : rows === null ? (
+        {error && (
+          <Notice
+            tone="error"
+            className="mb-3"
+            action={
+              t.retry ? (
+                <TextAction onClick={() => setAttempt((n) => n + 1)}>{t.retry}</TextAction>
+              ) : undefined
+            }
+          >
+            {t.error}
+          </Notice>
+        )}
+        {error && rows === null ? null : rows === null ? (
           <div className="flex items-center justify-center h-40 text-caption text-on-surface-variant">
             <Loader2 size={16} className="animate-spin mr-2" />
             {t.running}
