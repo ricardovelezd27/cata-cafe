@@ -42,6 +42,8 @@ export interface WelcomeModalTranslations {
   close: string;
   /** Raw ICU template with a {label} placeholder, replaced client-side. */
   goTo: string;
+  /** Raw template "Paso {n} de {total}", replaced client-side. */
+  stepOf: string;
   roles: Record<(typeof ROLE_VALUES)[number], string>;
   paths: Record<(typeof PATH_DEFS)[number]["id"], { label: string; description: string }>;
 }
@@ -123,11 +125,11 @@ export default function WelcomeModal({ locale, initialDisplayName, translations:
               </p>
             </div>
 
-            <Dots current={1} />
+            <Steps current={1} label={t.stepOf} />
 
             <button
               onClick={() => setStep(2)}
-              className="w-full bg-primary-container text-on-primary rounded-pill py-3 font-medium flex items-center justify-center gap-2 hover:bg-primary transition-colors"
+              className="w-full bg-primary-container text-on-primary rounded-pill min-h-[44px] py-3 font-medium flex items-center justify-center gap-2 hover:bg-primary transition-colors"
             >
               {t.start} <ChevronRight className="w-4 h-4" />
             </button>
@@ -155,7 +157,7 @@ export default function WelcomeModal({ locale, initialDisplayName, translations:
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   placeholder={t.namePlaceholder}
-                  className={inputClass}
+                  className={`${inputClass} min-h-[44px]`}
                 />
               </label>
 
@@ -166,7 +168,7 @@ export default function WelcomeModal({ locale, initialDisplayName, translations:
                 <select
                   value={role}
                   onChange={(e) => setRole(e.target.value)}
-                  className={inputClass}
+                  className={`${inputClass} min-h-[44px]`}
                 >
                   <option value="" disabled>{t.selectRole}</option>
                   {ROLES.map((r) => (
@@ -182,7 +184,7 @@ export default function WelcomeModal({ locale, initialDisplayName, translations:
                 <select
                   value={country}
                   onChange={(e) => setCountry(e.target.value)}
-                  className={inputClass}
+                  className={`${inputClass} min-h-[44px]`}
                 >
                   <option value="" disabled>{t.selectCountry}</option>
                   {COUNTRIES.map((c) => (
@@ -192,19 +194,19 @@ export default function WelcomeModal({ locale, initialDisplayName, translations:
               </label>
             </div>
 
-            <Dots current={2} />
+            <Steps current={2} label={t.stepOf} />
 
             <div className="flex gap-3">
               <button
                 onClick={() => setStep(1)}
-                className="flex items-center gap-1 px-4 py-3 text-caption text-on-surface border border-outline-variant rounded-pill hover:bg-surface-container transition-colors"
+                className="flex min-h-[44px] items-center gap-1 px-4 text-caption text-on-surface border border-outline rounded-pill hover:bg-surface-container transition-colors"
               >
                 <ChevronLeft className="w-4 h-4" /> {t.back}
               </button>
               <button
                 onClick={() => setStep(3)}
                 disabled={!displayName || !role || !country}
-                className="flex-1 bg-primary-container text-on-primary rounded-pill py-3 font-medium flex items-center justify-center gap-2 hover:bg-primary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex-1 bg-primary-container text-on-primary rounded-pill min-h-[44px] py-3 font-medium flex items-center justify-center gap-2 hover:bg-primary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {t.next} <ChevronRight className="w-4 h-4" />
               </button>
@@ -256,19 +258,19 @@ export default function WelcomeModal({ locale, initialDisplayName, translations:
               })}
             </div>
 
-            <Dots current={3} />
+            <Steps current={3} label={t.stepOf} />
 
             <div className="flex gap-3">
               <button
                 onClick={() => setStep(2)}
-                className="flex items-center gap-1 px-4 py-3 text-caption text-on-surface border border-outline-variant rounded-pill hover:bg-surface-container transition-colors"
+                className="flex min-h-[44px] items-center gap-1 px-4 text-caption text-on-surface border border-outline rounded-pill hover:bg-surface-container transition-colors"
               >
                 <ChevronLeft className="w-4 h-4" /> {t.back}
               </button>
               <button
                 onClick={handleFinish}
                 disabled={!selectedPath || isPending}
-                className="flex-1 bg-primary-container text-on-primary rounded-pill py-3 font-medium flex items-center justify-center gap-2 hover:bg-primary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex-1 bg-primary-container text-on-primary rounded-pill min-h-[44px] py-3 font-medium flex items-center justify-center gap-2 hover:bg-primary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {isPending ? t.saving : t.goTo.replace("{label}", selectedPathLabel)}
                 {!isPending && <ChevronRight className="w-4 h-4" />}
@@ -281,17 +283,25 @@ export default function WelcomeModal({ locale, initialDisplayName, translations:
   );
 }
 
-function Dots({ current }: { current: 1 | 2 | 3 }) {
+/**
+ * Where the person is in the three steps (audit D-04): numbered steps, the app's
+ * one paper recipe (`.step-mark`), with the step said in words ("Paso 2 de 3").
+ * They run left to right because the dialog is advanced with a "next" button.
+ * Not tappable: going back is the "Atrás" button.
+ */
+function Steps({ current, label }: { current: 1 | 2 | 3; label: string }) {
+  const total = 3;
+  const said = label.replace("{n}", String(current)).replace("{total}", String(total));
   return (
-    <div className="flex gap-2 justify-center">
-      {[1, 2, 3].map((n) => (
-        <div
-          key={n}
-          className={`w-2 h-2 rounded-full transition-colors ${
-            n === current ? "bg-primary-container" : "bg-outline-variant"
-          }`}
-        />
-      ))}
+    <div className="flex flex-col items-center gap-[8px]" data-onboarding-steps="">
+      <ol className="m-0 flex list-none items-center gap-[8px] p-0" aria-hidden="true">
+        {[1, 2, 3].map((n) => (
+          <li key={n} className="step-mark" data-on={n === current ? "1" : undefined}>
+            {n}
+          </li>
+        ))}
+      </ol>
+      <p className="text-caption text-on-surface-variant">{said}</p>
     </div>
   );
 }

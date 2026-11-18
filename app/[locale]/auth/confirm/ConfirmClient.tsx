@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { announceSignedIn } from "@/lib/identityChange";
 import { acceptPendingSignIn, confirmEmailToken, rejectPendingSignIn } from "@/app/actions/auth";
 import { Button, ButtonLink } from "@/components/ui";
+import { ArrivalCard } from "@/components/arrival/ArrivalCard";
 
 type Labels = {
   title: string;
@@ -126,71 +127,88 @@ export function ConfirmClient({
 
   if (identity && identityStatus === "rejected") {
     return (
-      <div className="space-y-3">
-        <h1 className="page-title">{labels.rejectedTitle}</h1>
-        <p className="text-body text-on-surface-variant">{labels.rejectedBody}</p>
-        <ButtonLink href={newLinkHref} size="sm">
-          {labels.toLogin}
-        </ButtonLink>
-      </div>
+      <ArrivalCard
+        tone="info"
+        title={labels.rejectedTitle}
+        lead={labels.rejectedBody}
+        actions={
+          <ButtonLink href={newLinkHref} className="w-full">
+            {labels.toLogin}
+          </ButtonLink>
+        }
+      />
     );
   }
 
   if (identity && identityStatus === "expired") {
     return (
-      <div role="alert" className="space-y-3">
-        <h1 className="page-title">{labels.identityExpiredTitle}</h1>
-        <p className="text-body text-on-surface-variant">{labels.identityExpiredBody}</p>
-        <ButtonLink href={newLinkHref} size="sm">
-          {labels.newLink}
-        </ButtonLink>
-      </div>
+      <ArrivalCard
+        role="alert"
+        tone="warning"
+        title={labels.identityExpiredTitle}
+        lead={labels.identityExpiredBody}
+        actions={
+          <ButtonLink href={newLinkHref} className="w-full">
+            {labels.newLink}
+          </ButtonLink>
+        }
+      />
     );
   }
 
   if (identity) {
     return (
-      <div className="space-y-3">
-        <h1 className="page-title">{labels.identityTitle}</h1>
-        <p className="text-body text-on-surface-variant">{labels.identityBody.replace("{email}", identity)}</p>
+      <ArrivalCard
+        title={labels.identityTitle}
+        // The full address, on its own line so it can be read whole and never cut.
+        lead={<p className="break-words">{labels.identityBody.replace("{email}", identity)}</p>}
+        actions={
+          <>
+            <Button type="button" className="w-full" onClick={onAccept} disabled={busy} aria-busy={busy}>
+              {labels.identityYes}
+            </Button>
+            <Button type="button" variant="secondary" className="w-full" onClick={onNotMe} disabled={busy} aria-busy={busy}>
+              {labels.identityNo}
+            </Button>
+          </>
+        }
+      >
         {identityFailed && (
           <p role="alert" className="text-caption text-error">
             {labels.identityError}
           </p>
         )}
-        <div className="flex flex-wrap gap-2">
-          <Button type="button" onClick={onAccept} disabled={busy} aria-busy={busy}>
-            {labels.identityYes}
-          </Button>
-          <Button type="button" variant="secondary" onClick={onNotMe} disabled={busy} aria-busy={busy}>
-            {labels.identityNo}
-          </Button>
-        </div>
-      </div>
+      </ArrivalCard>
     );
   }
 
   if (failed) {
     return (
-      <div role="alert" className="space-y-3">
-        <h1 ref={headingRef} tabIndex={-1} className="page-title outline-none">
-          {labels.failedTitle}
-        </h1>
-        <p className="text-body text-on-surface-variant">{labels.failedBody}</p>
-        <ButtonLink href={newLinkHref} size="sm">
-          {labels.newLink}
-        </ButtonLink>
-      </div>
+      <ArrivalCard
+        role="alert"
+        tone="warning"
+        title={labels.failedTitle}
+        titleRef={headingRef}
+        titleFocusable
+        lead={labels.failedBody}
+        actions={
+          <ButtonLink href={newLinkHref} className="w-full">
+            {labels.newLink}
+          </ButtonLink>
+        }
+      />
     );
   }
 
   return (
-    <div className="space-y-3">
-      <h1 className="page-title">{labels.title}</h1>
-      <p className="text-body text-on-surface-variant">{labels.body}</p>
-      <Button type="button" onClick={onConfirm} disabled={busy} aria-busy={busy}>
-        {busy ? labels.working : labels.button}
-      </Button>
-    </div>
+    <ArrivalCard
+      title={labels.title}
+      lead={labels.body}
+      actions={
+        <Button type="button" className="w-full" onClick={onConfirm} disabled={busy} aria-busy={busy}>
+          {busy ? labels.working : labels.button}
+        </Button>
+      }
+    />
   );
 }

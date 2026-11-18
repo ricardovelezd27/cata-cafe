@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { confirmGuestClaim } from "@/app/actions/guestClaim";
 import { switchAccount } from "@/app/actions/auth";
 import { Button, ButtonLink } from "@/components/ui";
+import { ArrivalCard } from "@/components/arrival/ArrivalCard";
 import { useActionFeedback } from "@/components/ui/Toast";
 import { useConnectivity } from "@/hooks/useConnectivity";
 import { announceSignedIn } from "@/lib/identityChange";
@@ -120,57 +121,69 @@ export function ClaimCard({
 
   if (phase === "retry") {
     return (
-      <>
-        <h1 className="page-title">{t.retryTitle}</h1>
-        <p role="alert" className="text-caption text-on-surface-variant">
-          {t.retryBody}
-        </p>
-        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-          <ButtonLink href={home} variant="secondary" size="sm">
-            {t.skipBack}
-          </ButtonLink>
-          <Button size="sm" onClick={confirm} disabled={pending}>
-            {pending ? t.confirming : t.retry}
-          </Button>
-        </div>
-      </>
+      <ArrivalCard
+        tone="error"
+        title={t.retryTitle}
+        lead={<p role="alert">{t.retryBody}</p>}
+        actions={
+          <>
+            <Button className="w-full" onClick={confirm} disabled={pending}>
+              {pending ? t.confirming : t.retry}
+            </Button>
+            <ButtonLink href={home} variant="secondary" className="w-full">
+              {t.skipBack}
+            </ButtonLink>
+          </>
+        }
+      />
     );
   }
 
   if (phase === "skip") {
     return (
-      <>
-        <h1 className="page-title">{t.skipTitle}</h1>
-        <p className="text-body text-on-surface">{t.skipBody}</p>
-        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-          <Button variant="secondary" size="sm" onClick={() => setPhase("idle")}>
-            {t.skipBack}
-          </Button>
-          <ButtonLink href={home} variant="danger" size="sm">
-            {t.skipConfirm}
-          </ButtonLink>
-        </div>
-      </>
+      <ArrivalCard
+        tone="warning"
+        title={t.skipTitle}
+        lead={t.skipBody}
+        actions={
+          <>
+            {/* the safe way first: going back keeps the choice open */}
+            <Button variant="secondary" className="w-full" onClick={() => setPhase("idle")}>
+              {t.skipBack}
+            </Button>
+            <ButtonLink href={home} variant="danger" className="w-full">
+              {t.skipConfirm}
+            </ButtonLink>
+          </>
+        }
+      />
     );
   }
 
   return (
-    <>
-      <h1 className="page-title">{t.title}</h1>
-      <p className="text-body text-on-surface">{t.body}</p>
-      <p className="text-caption text-on-surface-variant">{t.note}</p>
-      {!online && <p className="text-caption text-on-surface-variant">{t.offline}</p>}
-      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-        <Button variant="ghost" size="sm" onClick={() => setPhase("skip")} disabled={pending}>
-          {t.skip}
-        </Button>
-        <Button variant="secondary" size="sm" onClick={switchToOther} disabled={pending}>
-          {t.useOther}
-        </Button>
-        <Button size="sm" onClick={confirm} disabled={pending || !online} aria-busy={pending}>
-          {pending ? t.confirming : t.confirm}
-        </Button>
-      </div>
-    </>
+    <ArrivalCard
+      title={t.title}
+      lead={
+        <>
+          <p className="break-words text-on-surface">{t.body}</p>
+          <p className="text-caption">{t.note}</p>
+          {!online && <p className="text-caption">{t.offline}</p>}
+        </>
+      }
+      actions={
+        <>
+          {/* the next step first; the two other ways out under it, quieter */}
+          <Button className="w-full" onClick={confirm} disabled={pending || !online} aria-busy={pending}>
+            {pending ? t.confirming : t.confirm}
+          </Button>
+          <Button variant="secondary" className="w-full" onClick={switchToOther} disabled={pending}>
+            {t.useOther}
+          </Button>
+          <Button variant="ghost" className="w-full" onClick={() => setPhase("skip")} disabled={pending}>
+            {t.skip}
+          </Button>
+        </>
+      }
+    />
   );
 }

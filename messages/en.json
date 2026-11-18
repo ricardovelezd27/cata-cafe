@@ -1801,6 +1801,7 @@
     "saving": "Saving…",
     "close": "Close",
     "goTo": "Go to {label}",
+    "stepOf": "Step {n} of {total}",
     "roles": {
       "q_grader": "Q Grader",
       "barista": "Barista",

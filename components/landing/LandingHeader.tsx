@@ -2,6 +2,7 @@
 import { getTranslations } from "next-intl/server";
 import { localeHref, loginHref } from "./locale-href";
 import LocaleSwitch from "./LocaleSwitch";
+import { Wordmark } from "@/components/brand/Wordmark";
 
 export default async function LandingHeader({ locale }: { locale: string }) {
   const t = await getTranslations("landing.header");
@@ -12,15 +13,8 @@ export default async function LandingHeader({ locale }: { locale: string }) {
       {/* Pixel heights on purpose: the root font size is 14px, so rem-based
           h-11 would paint 38.5px, under the 44px touch target. */}
       <div className="mx-auto flex h-[60px] max-w-6xl items-center justify-between px-5 sm:px-8">
-        <Link
-          href={localeHref(locale, "/")}
-          className="inline-flex min-h-[44px] items-center font-serif text-xl tracking-tight text-surface"
-        >
-          {t("wordmark")}
-          <span aria-hidden="true" className="text-secondary-container">
-            .ai
-          </span>
-        </Link>
+        {/* The one mark (K-05), shared with the arrival screens. */}
+        <Wordmark href={localeHref(locale, "/")} tone="stage" />
         <nav className="flex items-center gap-1 sm:gap-3">
           {/* Switching language keeps the reader's place (LocaleSwitch). */}
           <LocaleSwitch locale={locale} labels={{ es: tl("es"), en: tl("en") }} />

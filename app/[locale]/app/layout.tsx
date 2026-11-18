@@ -76,6 +76,7 @@ export default async function AppLayout({
     saving: tOnb("saving"),
     close: tOnb("close"),
     goTo: tOnb.raw("goTo"),
+    stepOf: tOnb.raw("stepOf"),
     roles: {
       q_grader: tOnb("roles.q_grader"),
       barista: tOnb("roles.barista"),

@@ -1801,6 +1801,7 @@
     "saving": "Guardando…",
     "close": "Cerrar",
     "goTo": "Ir a {label}",
+    "stepOf": "Paso {n} de {total}",
     "roles": {
       "q_grader": "Catador/a Certificado/a Q",
       "barista": "Barista",

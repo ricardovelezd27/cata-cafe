@@ -170,6 +170,13 @@ const SWEPT_AREAS: { area: string; paths: string[] }[] = [
       "app/[locale]/app/warmup/[slug]", // the exercise page outside the player, and the reflections list
     ],
   },
+  {
+    // S8: the arrival shell and the mark. What sits on the dark ground (the bar,
+    // the footer) is set in ArrivalStage.module.css from the same named tokens
+    // (var(--text-caption)); the card's content is paper and is scanned as paper.
+    area: "S8: the arrival stage and the wordmark",
+    paths: ["components/arrival", "components/brand"],
+  },
 ];
 
 /** A size outside the six roles that a swept file keeps, and why. May only shrink. */

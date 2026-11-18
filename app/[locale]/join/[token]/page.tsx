@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
@@ -9,6 +8,9 @@ import { evaluateJoin, joinScreenFor } from "@/lib/joinRules";
 import { GuestIdentityChoice } from "@/components/join/GuestIdentityChoice";
 import { JoinSessionForm } from "@/components/join/JoinSessionForm";
 import { DeadlineBanner } from "@/components/session/DeadlineBanner";
+import { ArrivalCard } from "@/components/arrival/ArrivalCard";
+import { ArrivalStage } from "@/components/arrival/ArrivalStage";
+import { ButtonLink } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -107,16 +109,15 @@ export default async function JoinPage({
     const errorCodes = tErrors.raw("codes") as Record<string, string>;
     const member = decision.kind === "redirect";
     return (
-      <main className="flex flex-1 items-center justify-center px-6 py-16">
-        <div className="w-full max-w-md bg-surface-container-lowest border border-outline-variant rounded-card p-8 space-y-6">
-          <div>
-            <h1 className="page-title break-words">
-              {invite.session.name}
-            </h1>
-            {!member && decision.kind === "ok" && decision.late && (
-              <p className="mt-1 text-body font-medium text-on-surface">{t("joinLateNote")}</p>
-            )}
-          </div>
+      <ArrivalStage locale={locale}>
+        <ArrivalCard
+          title={invite.session.name}
+          lead={
+            !member && decision.kind === "ok" && decision.late ? (
+              <p className="font-medium text-on-surface">{t("joinLateNote")}</p>
+            ) : undefined
+          }
+        >
           {!member && deadline}
           <GuestIdentityChoice
             mode={member ? "member" : "newcomer"}
@@ -141,8 +142,8 @@ export default async function JoinPage({
               joining: t("joining"),
             }}
           />
-        </div>
-      </main>
+        </ArrivalCard>
+      </ArrivalStage>
     );
   }
 
@@ -166,28 +167,29 @@ export default async function JoinPage({
       ? `/${locale}/auth/login`
       : `/${locale}/auth/login?next=${encodeURIComponent(`/${locale}/join/${token}`)}`;
     return (
-      <main className="flex flex-1 items-center justify-center px-6 py-16">
-        <div className="w-full max-w-md bg-surface-container-lowest border border-outline-variant rounded-card p-8 text-center space-y-4">
-          <p className="text-card font-semibold text-error">{copy[0]}</p>
-          <p className="text-body text-on-surface-variant">{copy[1]}</p>
-          <div className="flex flex-col gap-2 text-caption">
-            <Link href={`/${locale}/app`} className="flex min-h-[44px] items-center justify-center text-on-surface-variant underline hover:text-primary-container">
-              {t("joinHome")}
-            </Link>
-            <Link
-              href={loginHref}
-              className="flex min-h-[44px] items-center justify-center text-on-surface-variant underline hover:text-primary-container"
-            >
-              {tAuth("loginTitle")}
-            </Link>
-          </div>
-        </div>
-      </main>
+      <ArrivalStage locale={locale}>
+        <ArrivalCard
+          tone="warning"
+          title={copy[0]}
+          lead={copy[1]}
+          actions={
+            <>
+              {/* Signed out, signing in is the way back to the results; signed in, home. */}
+              <ButtonLink href={user ? `/${locale}/app` : loginHref} className="w-full">
+                {user ? t("joinHome") : tAuth("loginTitle")}
+              </ButtonLink>
+              <ButtonLink href={user ? loginHref : `/${locale}/app`} variant="secondary" className="w-full">
+                {user ? tAuth("loginTitle") : t("joinHome")}
+              </ButtonLink>
+            </>
+          }
+        />
+      </ArrivalStage>
     );
   }
 
   const lateNote = decision.late ? (
-    <p className="text-body text-primary-container font-medium">{t("joinLateNote")}</p>
+    <p className="font-medium text-on-surface">{t("joinLateNote")}</p>
   ) : null;
 
   // Valid token, no user yet: offer guest (anonymous) join instead of forcing
@@ -195,15 +197,16 @@ export default async function JoinPage({
   if (!user) {
     const loginHref = `/${locale}/auth/login?next=${encodeURIComponent(`/${locale}/join/${token}`)}`;
     return (
-      <main className="flex flex-1 items-center justify-center px-6 py-16">
-        <div className="w-full max-w-md bg-surface-container-lowest border border-outline-variant rounded-card p-8 space-y-6">
-          <div>
-            <h1 className="page-title">
-              {invite.session.name}
-            </h1>
-            <p className="text-caption text-on-surface-variant mt-1">{t("joinSession")}</p>
-            {lateNote}
-          </div>
+      <ArrivalStage locale={locale}>
+        <ArrivalCard
+          title={invite.session.name}
+          lead={
+            <>
+              <p>{t("joinSession")}</p>
+              {lateNote}
+            </>
+          }
+        >
           {deadline}
           <div>
             <p className="label-caps mb-2">
@@ -227,13 +230,11 @@ export default async function JoinPage({
               }}
             />
           </div>
-          <div className="text-center">
-            <Link href={loginHref} className="text-caption text-on-surface-variant underline hover:text-primary-container">
-              {t("orSignIn")}
-            </Link>
-          </div>
-        </div>
-      </main>
+          <ButtonLink href={loginHref} variant="secondary" className="w-full">
+            {t("orSignIn")}
+          </ButtonLink>
+        </ArrivalCard>
+      </ArrivalStage>
     );
   }
 
@@ -241,15 +242,8 @@ export default async function JoinPage({
   const joinErrors = { ...errorCodes, session_closed: t("sessionClosed") };
 
   return (
-    <main className="flex flex-1 items-center justify-center px-6 py-16">
-      <div className="w-full max-w-md bg-surface-container-lowest border border-outline-variant rounded-card p-8 space-y-6">
-        <div>
-          <h1 className="page-title">
-            {invite.session.name}
-          </h1>
-          <p className="text-caption text-on-surface-variant mt-1">{t("joinSession")}</p>
-          {lateNote}
-        </div>
+    <ArrivalStage locale={locale}>
+      <ArrivalCard title={invite.session.name} lead={lateNote ?? undefined}>
         {deadline}
         <JoinSessionForm
           token={token}
@@ -261,7 +255,7 @@ export default async function JoinPage({
             home: tErrors("home"),
           }}
         />
-      </div>
-    </main>
+      </ArrivalCard>
+    </ArrivalStage>
   );
 }

@@ -346,7 +346,7 @@ export function CoffeeCards<S extends CardSampleProps>({
               tabIndex={index === current ? 0 : -1}
               onClick={() => goTo(index, false)}
             >
-              <span className={styles.stepMark} data-on={index === current ? "1" : undefined}>
+              <span className="step-mark" data-on={index === current ? "1" : undefined}>
                 {index + 1}
               </span>
             </button>

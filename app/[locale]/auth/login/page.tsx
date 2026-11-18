@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
@@ -6,8 +5,9 @@ import { safeNext } from "@/lib/safeNext";
 import { loginErrorFromParam } from "@/lib/authErrors";
 import { supportMailto } from "@/lib/siteContact";
 import { authErrorCopy, emailSentCopy } from "@/components/auth/authCopy";
-import { LEGAL_PAGES_PUBLISHED } from "@/lib/legal/config";
-import { localeHref } from "@/components/landing/locale-href";
+import { ArrivalCard } from "@/components/arrival/ArrivalCard";
+import { ArrivalStage } from "@/components/arrival/ArrivalStage";
+import { Notice } from "@/components/ui/Notice";
 import { LoginForm } from "./LoginForm";
 
 export default async function LoginPage({
@@ -34,26 +34,25 @@ export default async function LoginPage({
   }
 
   const t = await getTranslations("auth");
-  const tl = await getTranslations("landing.footer");
 
   const errorKey = loginErrorFromParam(error);
   const linkFailed = errorKey === "link_failed";
 
   return (
-    <main className="flex flex-1 items-center justify-center px-6 py-16">
-      <div className="w-full max-w-md bg-surface-container-lowest border border-outline-variant rounded-card p-8 space-y-5">
-        <h1 className="page-title">{t("loginTitle")}</h1>
-        {/* Guest arriving from the results-page "save your results" banner:
-            same login flow, one line of context (see lib/guestClaim.ts). */}
-        {intent === "claim" && (
-          <p role="status" className="text-body text-on-surface-variant">
-            {t("claimIntro")}
-          </p>
-        )}
+    <ArrivalStage locale={locale}>
+      <ArrivalCard
+        title={t("loginTitle")}
+        // Guest arriving from the results-page "save your results" banner:
+        // same login flow, one line of context (see lib/guestClaim.ts).
+        lead={intent === "claim" ? <p role="status">{t("claimIntro")}</p> : undefined}
+      >
+        {/* The emailed link did not work: said as a notice (an alert, as before),
+            with the way out right under it (the form asks for the address again). */}
         {linkFailed && (
-          <div role="alert" className="rounded-card border border-error/30 bg-error/5 p-3 text-body">
-            <p className="font-semibold">{t("linkFailedTitle")}</p>
-            <p>{t("linkFailedBody")}</p>
+          <div role="alert">
+            <Notice tone="warning" live={false} label={t("linkFailedTitle")}>
+              {t("linkFailedBody")}
+            </Notice>
           </div>
         )}
         <LoginForm
@@ -77,23 +76,8 @@ export default async function LoginPage({
           initialError={linkFailed ? null : errorKey}
           autoFocusEmail={linkFailed}
         />
-        {/* F-landing-1: hidden until the owner publishes the final text. */}
-        {LEGAL_PAGES_PUBLISHED && (
-          <p className="text-caption text-on-surface-variant">
-            <Link href={localeHref(locale, "/privacidad")} className="underline underline-offset-2">
-              {tl("privacy")}
-            </Link>
-            {" · "}
-            <Link href={localeHref(locale, "/terminos")} className="underline underline-offset-2">
-              {tl("terms")}
-            </Link>
-            {" · "}
-            <Link href={localeHref(locale, "/aviso-legal")} className="underline underline-offset-2">
-              {tl("legalNotice")}
-            </Link>
-          </p>
-        )}
-      </div>
-    </main>
+        {/* The legal links (F-landing-1) are the stage's footer now: `ArrivalStage`. */}
+      </ArrivalCard>
+    </ArrivalStage>
   );
 }
