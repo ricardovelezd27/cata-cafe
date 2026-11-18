@@ -179,12 +179,16 @@ describe("the recipe count (what the later P2 steps take to zero)", () => {
     },
     SCAN_TIMEOUT_MS,
   );
-  it("the adopted places are no longer counted", () => {
-    const { hits } = countRecipes();
-    const at = (f: string) => (hits as { file: string; kind: string }[]).filter((x) => x.file === f).map((x) => x.kind);
-    expect(at("components/groups/GroupEmailOptOutNotice.tsx")).toEqual([]);
-    expect(at("app/[locale]/app/groups/page.tsx")).toEqual([]);
-  });
+  it(
+    "the adopted places are no longer counted",
+    () => {
+      const { hits } = countRecipes();
+      const at = (f: string) => (hits as { file: string; kind: string }[]).filter((x) => x.file === f).map((x) => x.kind);
+      expect(at("components/groups/GroupEmailOptOutNotice.tsx")).toEqual([]);
+      expect(at("app/[locale]/app/groups/page.tsx")).toEqual([]);
+    },
+    SCAN_TIMEOUT_MS, // scans the whole source tree, like its neighbour
+  );
   it("sorts a path into its area", () => {
     expect(areaOf("app/[locale]/app/sessions/[id]/cup/CupClient.tsx")).toBe("cupping");
     expect(areaOf("components/results/CoffeeCards.tsx")).toBe("results");
