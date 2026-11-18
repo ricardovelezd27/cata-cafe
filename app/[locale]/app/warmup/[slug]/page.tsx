@@ -6,6 +6,7 @@ import { requireAppUser } from "@/lib/auth";
 import { isRegisteredUser } from "@/lib/guestScope";
 import { getWarmupReflections } from "@/lib/warmup/reflectionsData";
 import { WarmupExerciseRoute } from "./WarmupExerciseRoute";
+import { PageContainer } from "@/components/ui/PageContainer";
 
 // Auth'd page with a dynamic [slug] segment: must render per-request. With
 // generateStaticParams present, production attempts on-demand static
@@ -33,6 +34,7 @@ export default async function WarmupExercisePage({
   const reflections = canSave ? await getWarmupReflections(user.id, exercise.id) : [];
 
   return (
+    <PageContainer>
     <WarmupExerciseRoute
       exerciseId={exercise.id}
       locale={locale}
@@ -53,5 +55,6 @@ export default async function WarmupExercisePage({
         deleteFailed: t("reflections.deleteFailed"),
       }}
     />
+    </PageContainer>
   );
 }

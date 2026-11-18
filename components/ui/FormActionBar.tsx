@@ -23,8 +23,9 @@ import styles from "./FormActionBar.module.css";
  *  - `status` is the form's own line (an error, "saved", "offline", a pending
  *    note): a polite live region, read when it changes.
  *
- * It lives inside the app shell's `<main>` (padding `p-4 lg:p-6`) and bleeds to
- * that padding so its hairline runs to the edges of the scroll area.
+ * It bleeds to the edges of the scroll area so its hairline runs to them: inside
+ * `PageContainer` by the frame's outer margin (`--paper-margin`, 16 / 24 / 32 px),
+ * elsewhere by the app shell's `<main>` padding (`p-4 lg:p-6`).
  */
 export function FormActionBar({
   children,

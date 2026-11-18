@@ -355,7 +355,10 @@ html, body {
      section 32 / 40 px; a section's heading to its content 12 / 16 px. No section sets its
      own margin or padding. */
   .paper-container {
-    padding: 16px 16px 0;
+    /* The frame's outer margin, the ONE source: the docked form bar
+       (FormActionBar.module.css) bleeds by the same value. */
+    --paper-margin: 16px;
+    padding: var(--paper-margin) var(--paper-margin) 0;
   }
   .paper-page {
     display: flex;
@@ -379,7 +382,7 @@ html, body {
   }
   @media (min-width: 768px) {
     .paper-container {
-      padding: 24px 24px 0;
+      --paper-margin: 24px;
     }
     .paper-page {
       row-gap: 40px;
@@ -396,7 +399,7 @@ html, body {
   }
   @media (min-width: 1280px) {
     .paper-container {
-      padding: 32px 32px 0;
+      --paper-margin: 32px;
     }
   }
   .label-caps {

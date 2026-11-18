@@ -11,6 +11,7 @@ import type { UsableCoffee } from "@/components/coffees/CoffeePicker";
 import { normalizeReferenceMode } from "@/lib/referenceRules";
 import { shouldNotifyOnBecomingAsync } from "@/lib/groupNotify";
 import { EditSessionForm, type EditSessionFormTranslations } from "./EditSessionForm";
+import { PageContainer } from "@/components/ui/PageContainer";
 
 // Authed page with an extra [id] dynamic segment: force-dynamic, never
 // generateStaticParams — see CLAUDE.md "authed pages with an extra dynamic
@@ -168,7 +169,7 @@ export default async function EditSessionPage({
   };
 
   return (
-    <div className="space-y-6">
+    <PageContainer width="form">
       <PageHeader
         title={t("edit.title")}
         description={t("edit.subtitle")}
@@ -227,6 +228,6 @@ export default async function EditSessionPage({
         evalCount={evalCount}
         translations={translations}
       />
-    </div>
+    </PageContainer>
   );
 }

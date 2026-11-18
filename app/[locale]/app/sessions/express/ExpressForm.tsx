@@ -133,13 +133,13 @@ export function ExpressForm({
 
   return (
     <>
-    <form onSubmit={submit} noValidate className="max-w-md mx-auto space-y-6">
-      <PageHeader
-        title={t.title}
-        description={t.subtitle}
-        backHref={`/${locale}/app/sessions`}
-        backLabel={t.back}
-      />
+    <PageHeader
+      title={t.title}
+      description={t.subtitle}
+      backHref={`/${locale}/app/sessions`}
+      backLabel={t.back}
+    />
+    <form onSubmit={submit} noValidate className="space-y-6">
 
       <div className="space-y-2">
         <label htmlFor="express-name" className="block text-body font-medium text-on-surface">

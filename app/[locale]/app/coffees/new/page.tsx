@@ -2,6 +2,8 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { requireAppUser } from "@/lib/auth";
 import { COFFEE_COUNTRIES } from "@/lib/analytics/normalize";
 import { CoffeeForm } from "@/components/coffees/CoffeeForm";
+import { PageContainer } from "@/components/ui/PageContainer";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 export function generateStaticParams() {
   return [{ locale: "es" }, { locale: "en" }];
@@ -18,6 +20,7 @@ export default async function NewCoffeePage({
   const user = await requireAppUser(locale, `/${locale}/app/coffees/new`);
 
   const t = await getTranslations("coffee");
+  const ta = await getTranslations("actions");
 
   const translations = {
     title: t("newPage.title"),
@@ -57,14 +60,14 @@ export default async function NewCoffeePage({
   const countries = COFFEE_COUNTRIES.map((c) => (locale === "en" ? c.nameEn : c.nameEs));
 
   return (
-    <div className="max-w-2xl space-y-6">
-      <div>
-        <h1 className="page-title">
-          {t("newPage.title")}
-        </h1>
-        <p className="text-caption text-on-surface-variant mt-1">{t("newPage.subtitle")}</p>
-      </div>
+    <PageContainer width="form">
+      <PageHeader
+        title={t("newPage.title")}
+        description={t("newPage.subtitle")}
+        backHref={`/${locale}/app/coffees`}
+        backLabel={ta("back")}
+      />
       <CoffeeForm locale={locale} translations={translations} countries={countries} />
-    </div>
+    </PageContainer>
   );
 }

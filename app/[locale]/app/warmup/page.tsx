@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { WARMUP_EXERCISES, WARMUP_SHARED, lw } from "@/lib/warmup/exercises";
 import { WarmupFigure } from "@/components/warmup/figures";
 import { previewSpec } from "@/lib/warmup/preview";
+import { PageContainer } from "@/components/ui/PageContainer";
 
 // Library of Kim's five sensory warm-ups. Sole dynamic segment is [locale]
 // → static params are fine here (the per-exercise page is NOT static).
@@ -24,7 +25,7 @@ export default async function WarmupLibraryPage({
   const shared = [WARMUP_SHARED.safety, WARMUP_SHARED.fifteenSeconds, WARMUP_SHARED.evolution];
 
   return (
-    <div className="space-y-10 max-w-5xl">
+    <PageContainer>
       <PageHeader
         title={lw(WARMUP_SHARED.title, locale)}
         description={lw(WARMUP_SHARED.subtitle, locale)}
@@ -111,6 +112,6 @@ export default async function WarmupLibraryPage({
           {lw(WARMUP_SHARED.closing.questions[0], locale)} {lw(WARMUP_SHARED.closing.questions[1], locale)}
         </em>
       </p>
-    </div>
+    </PageContainer>
   );
 }

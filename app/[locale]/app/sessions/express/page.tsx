@@ -2,6 +2,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { defaultExpressName } from "@/lib/expressSession";
 import { warmupPlayerStrings } from "@/components/warmup/playerStrings";
 import { ExpressForm, type ExpressFormTranslations } from "./ExpressForm";
+import { PageContainer } from "@/components/ui/PageContainer";
 
 export function generateStaticParams() {
   return [{ locale: "es" }, { locale: "en" }];
@@ -50,11 +51,13 @@ export default async function ExpressSessionPage({
   };
 
   return (
-    <ExpressForm
-      locale={locale}
-      defaultName={defaultName}
-      translations={translations}
-      warmupStrings={warmupPlayerStrings(tw)}
-    />
+    <PageContainer width="form">
+      <ExpressForm
+        locale={locale}
+        defaultName={defaultName}
+        translations={translations}
+        warmupStrings={warmupPlayerStrings(tw)}
+      />
+    </PageContainer>
   );
 }

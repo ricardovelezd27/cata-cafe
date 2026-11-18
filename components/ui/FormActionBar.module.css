@@ -18,14 +18,17 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  /* Bleeds to the padding of the shell's <main> (p-4) so the hairline runs to
-     the edges of the scroll area. */
-  margin: 24px -1rem 0;
+  /* Bleeds to the edges of the scroll area so the hairline runs to them: by the
+     frame's outer margin (--paper-margin, set by .paper-container) inside
+     PageContainer, by the shell's <main> padding (p-4) outside it. Its padding
+     is the same value, so its buttons line up with the form's column. */
+  --bar-bleed: var(--paper-margin, 1rem);
+  margin: 24px calc(-1 * var(--bar-bleed)) 0;
   /* At the end of the scroll the bar rests under the last field: the shell's
      70 px bottom padding clears a 60 px tab bar, and this margin clears the
      home indicator on top of it. */
   margin-bottom: env(safe-area-inset-bottom, 0px);
-  padding: 10px 1rem;
+  padding: 10px var(--bar-bleed);
   background: var(--color-surface-container-lowest);
   border-top: 1px solid var(--color-outline-variant);
 }
@@ -34,8 +37,10 @@
   .bar {
     /* the shell's lg:pb-6 bottom padding, taken back */
     bottom: -1.5rem;
-    margin: 32px -1.5rem 0;
-    padding: 12px 1.5rem;
+    /* inside the frame its margin; outside, the shell's lg:p-6 */
+    --bar-bleed: var(--paper-margin, 1.5rem);
+    margin: 32px calc(-1 * var(--bar-bleed)) 0;
+    padding: 12px var(--bar-bleed);
   }
 }
 
