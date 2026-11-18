@@ -14,6 +14,8 @@ import { Badge, ScorePill, StatusPill } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Card } from "@/components/ui/Card";
 import { PaperSectionHeading } from "@/components/ui/PaperSectionHeading";
+import { PageContainer } from "@/components/ui/PageContainer";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 function timeAgo(date: Date, locale: string): string {
   const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
@@ -172,15 +174,11 @@ export default async function Dashboard({
   };
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="page-title leading-tight">
-            {t("welcome", { name: profile?.displayName ?? "" })}
-          </h1>
-          <p className="text-caption text-on-surface-variant mt-1 max-w-[68ch]">{t("subtitle")}</p>
-        </div>
+    <PageContainer>
+      <PageHeader
+        title={t("welcome", { name: profile?.displayName ?? "" })}
+        description={t("subtitle")}
+        action={
         <div className="flex shrink-0 flex-col items-stretch gap-2 sm:flex-row sm:items-center">
           <GuestGateLink
             href={`/${locale}/app/sessions/express`}
@@ -195,7 +193,8 @@ export default async function Dashboard({
             {t("fullWizardCta")}
           </GuestGateLink>
         </div>
-      </header>
+        }
+      />
 
       {/* How it works + scoring methodology: collapsed for a returning user (S6, F-15) */}
       <DashboardIntro
@@ -314,7 +313,12 @@ export default async function Dashboard({
       )}
 
       {/* Stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* F-11: a stat card is never as wide as the row. On a phone two cards share the
+          width and the third (the average, whose "Sin datos" needs the room) spans both;
+          from 768 px the three sit on one row, each capped at 240 px. Not auto-fill: with
+          a 240 px maximum, auto-fill counts columns by the maximum, so a 343 px phone
+          column got one card per row and a 720 px tablet column two. */}
+      <div className="grid grid-cols-2 gap-[12px] [&>:last-child]:col-span-2 md:grid-cols-[repeat(3,minmax(0,240px))] md:gap-[16px] md:[&>:last-child]:col-span-1">
         <StatCard
           label={t("statSessions")}
           value={String(sessionCount)}
@@ -408,6 +412,6 @@ export default async function Dashboard({
           )}
         </section>
       )}
-    </div>
+    </PageContainer>
   );
 }

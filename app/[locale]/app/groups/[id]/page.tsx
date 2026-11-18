@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireAppUser } from "@/lib/auth";
 import Link from "next/link";
-import { CheckCircle2, ChevronLeft, Clipboard, Plus, UserCheck, Users } from "lucide-react";
+import { CheckCircle2, Clipboard, Plus, UserCheck, Users } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { prisma } from "@/lib/prisma";
 import { maskEmail, memberLabel } from "@/lib/maskEmail";
@@ -10,7 +10,7 @@ import { getCoCupperCandidates } from "@/lib/coCuppers";
 import { claimGroupMembershipsByEmail } from "@/lib/groupMembership";
 import { sessionHref } from "@/lib/sessionRouting";
 import { StatCard } from "@/components/dashboard/StatCard";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { PageBackLink, PageHeader } from "@/components/ui/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusPill } from "@/components/ui/Badge";
 import { GroupNameControls } from "@/components/groups/GroupNameControls";
@@ -27,6 +27,7 @@ import { GroupEmailOptOutNotice } from "@/components/groups/GroupEmailOptOutNoti
 import { profileDisplayName } from "@/lib/accountDeletion/deletedProfile";
 import { Card } from "@/components/ui/Card";
 import { PaperSectionHeading } from "@/components/ui/PaperSectionHeading";
+import { PageContainer } from "@/components/ui/PageContainer";
 
 // Auth'd page with a dynamic [id] segment: must render per-request. With
 // generateStaticParams present, prod attempts on-demand static generation and
@@ -232,7 +233,7 @@ export default async function GroupDetailPage({
     };
 
     return (
-      <div className="max-w-3xl space-y-8">
+      <PageContainer width="form">
         <PageHeader
           backHref={`/${locale}/app/groups`}
           backLabel={t("backToGroups")}
@@ -271,7 +272,7 @@ export default async function GroupDetailPage({
         <div className="pt-2">
           <LeaveGroupButton groupId={group.id} locale={locale} t={leaveT} />
         </div>
-      </div>
+      </PageContainer>
     );
   }
 
@@ -394,15 +395,9 @@ export default async function GroupDetailPage({
   };
 
   return (
-    <div className="max-w-3xl space-y-8">
+    <PageContainer width="form">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Link
-          href={`/${locale}/app/groups`}
-          className="inline-flex min-h-[44px] w-fit items-center gap-1 text-caption text-on-surface-variant transition-colors hover:text-on-surface"
-        >
-          <ChevronLeft size={16} aria-hidden />
-          {t("backToGroups")}
-        </Link>
+        <PageBackLink href={`/${locale}/app/groups`} label={t("backToGroups")} />
         <div className="flex flex-wrap items-center gap-2">
           <DuplicateButton
             kind="group"
@@ -584,6 +579,6 @@ export default async function GroupDetailPage({
           }}
         />
       </div>
-    </div>
+    </PageContainer>
   );
 }

@@ -178,7 +178,7 @@ export default async function AppLayout({
         </ShellCoverable>
         <main
           id={MAIN_CONTENT_ID}
-          className="relative flex-1 overflow-y-auto bg-surface p-4 lg:p-6 pb-20 lg:pb-6"
+          className="app-main relative flex-1 overflow-y-auto bg-surface p-4 lg:p-6 pb-20 lg:pb-6"
         >
           {children}
         </main>
