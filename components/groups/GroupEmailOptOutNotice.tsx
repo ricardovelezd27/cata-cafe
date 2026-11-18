@@ -8,6 +8,8 @@ import { useRouter } from "next/navigation";
 import { MailCheck } from "lucide-react";
 import { setGroupEmailOptOut } from "@/app/actions/groups";
 import { useActionFeedback } from "@/components/ui/Toast";
+import { Button } from "@/components/ui/Button";
+import { Notice } from "@/components/ui/Notice";
 
 export type GroupEmailOptOutTranslations = {
   note: string;
@@ -30,17 +32,19 @@ export function GroupEmailOptOutNotice({
       await feedback.run(setGroupEmailOptOut(groupId, false), () => router.refresh());
     });
 
+  // P2a: a notice, not a card (DESIGN.md "A notice is not a card"). Part of the page
+  // from the start, so it is not announced (`live={false}`).
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-card border border-outline-variant bg-surface-container-lowest px-4 py-3 text-sm text-on-surface-variant">
-      <p className="min-w-0 flex-1">{t.note}</p>
-      <button
-        type="button"
-        onClick={resume}
-        disabled={pending}
-        className="inline-flex min-h-[44px] items-center gap-1.5 rounded-pill border border-outline-variant px-4 py-2 text-sm font-medium text-primary-container transition-colors hover:bg-surface-container-high disabled:opacity-50"
-      >
-        <MailCheck size={16} aria-hidden /> {t.resume}
-      </button>
-    </div>
+    <Notice
+      tone="info"
+      live={false}
+      action={
+        <Button variant="secondary" size="sm" onClick={resume} disabled={pending} icon={<MailCheck size={16} aria-hidden />}>
+          {t.resume}
+        </Button>
+      }
+    >
+      {t.note}
+    </Notice>
   );
 }
