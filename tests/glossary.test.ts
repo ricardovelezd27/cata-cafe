@@ -5,7 +5,8 @@ import { describe, expect, it } from "vitest";
 // audit I-01 and I-05). One word for each thing, in both languages:
 //   - the person who runs a session is the organizer ("organizador", "quien
 //     organiza"), never maestro / dueño / master / owner / host;
-//   - the number is "puntaje" / "score", never puntuación / calificación;
+//   - the number is "puntaje" / "score", never puntuación; a 1 to 9 rating of
+//     one attribute is "calificación" / "rating", never "nota" (a tasting note);
 //   - signing out is "Salir" / "Sign out": "Cerrar sesión" is free for closing
 //     a cupping session (a key that closes a session may say it);
 //   - no "Bienvenido" (a neutral "Hola"), no "roster", no emoji, no em dash.
@@ -33,7 +34,10 @@ const RULES: { name: string; re: RegExp; lang?: "es" | "en" }[] = [
   { name: "owner", re: /\bowners?\b/i, lang: "en" },
   { name: "host", re: /\bhosts?\b/i, lang: "en" },
   { name: "puntuación", re: /\bpuntuaci[oó]n(es)?\b/i, lang: "es" },
-  { name: "calificación", re: /\bcalificaci[oó]n(es)?\b/i, lang: "es" },
+  // "calificación" is NOT banned: it is the right word for a 1 to 9 rating of one
+  // attribute (DESIGN.md glossary, "A 1 to 9 rating of one attribute"; the owner's
+  // decision of 2026-11-19). A test cannot tell it from the overall number, so only
+  // "puntuación" is banned for the number; "nota" stays free for a tasting note.
   { name: "Cerrar sesión", re: /cerrar sesi[oó]n/i, lang: "es" },
   { name: "Bienvenido", re: /\bbienvenid[oa]s?\b/i, lang: "es" },
   { name: "roster", re: /\broster\b/i },
@@ -95,5 +99,6 @@ describe("the glossary and the copy rules", () => {
     expect(design).toMatch(/\| organizador \| organizer \|/);
     expect(design).toMatch(/\| puntaje \| score \|/);
     expect(design).toMatch(/\| Salir \| Sign out \|/);
+    expect(design).toMatch(/\| calificación \| rating \|/);
   });
 });

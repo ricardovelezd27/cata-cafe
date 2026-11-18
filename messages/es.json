@@ -392,13 +392,13 @@
       "sessionExpired": "La fecha de cierre de esta cata ya pasó: se cerrará en las próximas horas y ya no se puede editar.",
       "warmupLocked": "El ejercicio no se puede cambiar una vez iniciada la cata.",
       "repinTitle": "¿Fijar esta muestra como referencia?",
-      "repinBody": "{n} catadores ya evaluaron esta muestra. Al marcarla como referencia, sus notas de calidad se reemplazan por los 79.00 de la referencia fija. Sus notas anteriores de esta muestra se guardan y vuelven si quitas la referencia.",
+      "repinBody": "{n} catadores ya evaluaron esta muestra. Al marcarla como referencia, sus calificaciones de calidad se reemplazan por los 79.00 de la referencia fija. Sus calificaciones anteriores de esta muestra se guardan y vuelven si quitas la referencia.",
       "sampleHasData": "Tiene datos físicos o de origen: no se puede eliminar",
       "removeRepinTitle": "¿Quitar la referencia activa?",
-      "removeRepinBody": "Al quitarla, {label} vuelve a ser la referencia y {n} catadores verán sus notas de calidad reemplazadas por los 79.00 de la referencia fija. Sus notas anteriores de esta muestra se guardan y vuelven si quitas la referencia.",
-      "ratingsRestored": "Se recuperaron las notas anteriores de {n} evaluaciones.",
+      "removeRepinBody": "Al quitarla, {label} vuelve a ser la referencia y {n} catadores verán sus calificaciones de calidad reemplazadas por los 79.00 de la referencia fija. Sus calificaciones anteriores de esta muestra se guardan y vuelven si quitas la referencia.",
+      "ratingsRestored": "Se recuperaron las calificaciones anteriores de {n} evaluaciones.",
       "removeRepinConfirm": "Quitar referencia",
-      "referenceRepinBlocked": "Quitar esta muestra reactivaría una referencia anterior y reemplazaría las notas de sus catadores. Cambia primero la referencia.",
+      "referenceRepinBlocked": "Quitar esta muestra reactivaría una referencia anterior y reemplazaría las calificaciones de sus catadores. Cambia primero la referencia.",
       "referenceRevealed": "revelada, no puede ser referencia fija",
       "formatLockedStarted": "El formato y las tazas por muestra se bloquean cuando la cata ya empezó o tiene evaluaciones.",
       "referenceHelperFree": "Las demás muestras se comparan contra su promedio en los resultados. Todos la puntúan como cualquier otra muestra. Si eliges otra, se añade como Referencia 2.",
@@ -1160,7 +1160,7 @@
       },
       "tabla": {
         "title": "Tabla de resultados",
-        "body": "Todas tus notas por muestra: intensidades descriptivas, notas afectivas (1 a 9) y el puntaje. En sesiones grupales, cada atributo muestra también el promedio de la comunidad debajo de tu valor. Toca el nombre de una muestra para ver su detalle."
+        "body": "Todas tus calificaciones por muestra: intensidades descriptivas, calificaciones afectivas (1 a 9) y el puntaje. En sesiones grupales, cada atributo muestra también el promedio de la comunidad debajo de tu valor. Toca el nombre de una muestra para ver su detalle."
       },
       "grafico": {
         "title": "Gráfico radar",
@@ -2464,7 +2464,7 @@
       "session_not_started": "La cata aún no empezó. Espera a que quien organiza la inicie.",
       "session_closed": "Esta cata ya está cerrada; sus resultados son definitivos. Ábrelos desde tus sesiones.",
       "busy_retry": "La cata está ocupada en este momento. Inténtalo de nuevo en unos segundos.",
-      "reference_revealed": "Esta acción cambiaría las notas de una muestra ya revelada. Puedes marcar otra muestra como referencia o dejar la referencia como está.",
+      "reference_revealed": "Esta acción cambiaría las calificaciones de una muestra ya revelada. Puedes marcar otra muestra como referencia o dejar la referencia como está.",
       "sample_revealed": "Esta muestra ya fue revelada y no se puede seguir evaluando. Pasa a otra muestra o abre los resultados.",
       "invalid_token": "Este enlace de invitación no es válido. Pide al organizador que te envíe el enlace o el QR otra vez.",
       "token_expired": "Este enlace de invitación caducó. Pide al organizador un enlace nuevo.",
