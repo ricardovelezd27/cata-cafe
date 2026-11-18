@@ -313,8 +313,12 @@ export default async function Dashboard({
       )}
 
       {/* Stat cards */}
-      {/* F-11: a stat card is as wide as its content needs (capped at 240 px, auto-fill). */}
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,240px))] gap-[12px] md:gap-[16px]">
+      {/* F-11: a stat card is never as wide as the row. On a phone two cards share the
+          width and the third (the average, whose "Sin datos" needs the room) spans both;
+          from 768 px the three sit on one row, each capped at 240 px. Not auto-fill: with
+          a 240 px maximum, auto-fill counts columns by the maximum, so a 343 px phone
+          column got one card per row and a 720 px tablet column two. */}
+      <div className="grid grid-cols-2 gap-[12px] [&>:last-child]:col-span-2 md:grid-cols-[repeat(3,minmax(0,240px))] md:gap-[16px] md:[&>:last-child]:col-span-1">
         <StatCard
           label={t("statSessions")}
           value={String(sessionCount)}

@@ -87,6 +87,18 @@ describe("P1a: the framed pages open the same way", () => {
     expect(s).not.toMatch(/<h1\b/);
     expect(read("components/groups/GroupNameControls.tsx").match(/<h1\b/g)).toHaveLength(1);
   });
+  it("F-11: the dashboard's stat cards share a phone's width and are capped at 240 px from 768 px", () => {
+    const grid = /<div className="(grid [^"]*)">\s*<StatCard/.exec(read(`${APP}/page.tsx`))![1].split(/\s+/);
+    // a phone: two columns, the third card (the average) across both
+    expect(grid).toContain("grid-cols-2");
+    expect(grid).toContain("[&>:last-child]:col-span-2");
+    // from 768 px: the three on one row, each at most 240 px
+    expect(grid).toContain("md:grid-cols-[repeat(3,minmax(0,240px))]");
+    expect(grid).toContain("md:[&>:last-child]:col-span-1");
+    // not auto-fill: with a definite 240 px maximum it counts columns by the maximum
+    // (one card per row on a 343 px phone, two on a 720 px tablet)
+    expect(grid.join(" ")).not.toMatch(/auto-fill/);
+  });
   it("the coffee page keeps its single h1 in its identity card", () => {
     expect(read(`${APP}/coffees/[id]/page.tsx`).match(/<h1\b/g)).toHaveLength(1);
   });
