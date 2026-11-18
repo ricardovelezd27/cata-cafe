@@ -278,8 +278,8 @@ export default async function CoffeeProfilePage({
             <div className="mt-3">
               <h1 className="page-title">{coffee.name}</h1>
               {coffee.code && (
-                <span className="mt-1 inline-block rounded-pill border border-outline-variant bg-surface-container px-2.5 py-0.5 font-mono text-caption text-on-surface-variant">
-                  {formatCoffeeCode(coffee.code)}
+                <span className="mt-1 inline-block">
+                  <Badge tone="outline">{formatCoffeeCode(coffee.code)}</Badge>
                 </span>
               )}
               {metaLine && (
@@ -377,7 +377,7 @@ export default async function CoffeeProfilePage({
             {!showResults ? (
               privateNotice
             ) : !hasResults ? (
-              <p className="text-caption text-on-surface-variant">{t("noResults")}</p>
+              <EmptyState title={t("noResults")} />
             ) : (
               <>
                 {Object.keys(aggregate.attrAverages).length > 0 && (
@@ -574,12 +574,9 @@ export default async function CoffeeProfilePage({
                 <p className={`${FIELD_LABEL} mb-1`}>{t("certifications")}</p>
                 <div className="flex flex-wrap gap-2">
                   {coffee.certifications.map((c) => (
-                    <span
-                      key={c}
-                      className="rounded-pill border border-secondary/40 bg-secondary/20 px-2 py-0.5 text-caption text-on-surface"
-                    >
+                    <Badge key={c} tone="accent">
                       {c}
-                    </span>
+                    </Badge>
                   ))}
                 </div>
               </div>
@@ -608,6 +605,7 @@ export default async function CoffeeProfilePage({
                     recordPrivate: t("recordPrivate"),
                     recordShared: t("recordShared"),
                     confirmMakePublic: t("confirmMakePublic"),
+                    makePublic: t("makePublic"),
                     returnTitle: t("share.returnTitle"),
                     returnBody: t("share.returnBody"),
                     returnKeep: t("share.returnKeep"),
@@ -630,6 +628,8 @@ export default async function CoffeeProfilePage({
                     publish: t("publish"),
                     unpublish: t("unpublish"),
                     confirmPublish: t("confirmPublish"),
+                    dialogCancel: t("share.dialogCancel"),
+                    dialogClose: t("share.dialogClose"),
                   }}
                 />
                 <p className="text-caption text-on-surface-variant">{t("resultsHint")}</p>

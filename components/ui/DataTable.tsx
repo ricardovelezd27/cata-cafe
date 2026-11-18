@@ -174,7 +174,7 @@ function Th({
     <th
       scope="col"
       aria-sort={sortable ? (active ? (dir === "asc" ? "ascending" : "descending") : "none") : undefined}
-      className={`px-4 py-3 text-label font-semibold uppercase tracking-wide text-on-surface-variant whitespace-nowrap ${alignToClass(align)} ${className ?? ""}`}
+      className={`label-caps px-4 py-3 whitespace-nowrap ${alignToClass(align)} ${className ?? ""}`}
     >
       {sortable ? (
         <button

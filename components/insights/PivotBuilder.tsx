@@ -19,6 +19,8 @@ import { PivotTable } from "@/components/insights/PivotTable";
 import { PivotChart } from "@/components/insights/PivotChart";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
 import { cardClasses } from "@/components/ui/cardRecipe";
+import { Button } from "@/components/ui/Button";
+import { TextAction } from "@/components/ui/TextAction";
 
 export interface PivotTranslations {
   rows: string;
@@ -76,8 +78,6 @@ const selectClass =
   "w-full rounded-input border border-outline-variant bg-surface-container-lowest px-3 py-2 text-body text-on-surface focus:border-primary-container";
 const pickerSelectClass =
   "rounded-input border border-outline-variant bg-surface-container-lowest px-2 py-1 text-caption text-on-surface focus:border-primary-container";
-const addFieldButtonClass =
-  "inline-flex items-center gap-1 rounded-pill border border-dashed border-outline-variant px-3 py-1 text-caption font-semibold text-primary-container hover:border-primary-container hover:bg-surface-container transition-colors";
 const shelfLabelClass = "label-caps";
 
 function FieldChip({
@@ -404,14 +404,13 @@ export function PivotBuilder({ locale, t, loadedConfig, loadKey, onConfigChange 
                   ))}
                 </select>
               ) : (
-                <button
+                <Button variant="secondary" size="sm"
                   type="button"
                   onClick={() => setRowsPickerOpen(true)}
-                  className={addFieldButtonClass}
                 >
                   <Plus size={12} />
                   {t.addField}
-                </button>
+                </Button>
               ))}
           </div>
         </div>
@@ -451,14 +450,13 @@ export function PivotBuilder({ locale, t, loadedConfig, loadKey, onConfigChange 
                   ))}
                 </select>
               ) : (
-                <button
+                <Button variant="secondary" size="sm"
                   type="button"
                   onClick={() => setColumnsPickerOpen(true)}
-                  className={addFieldButtonClass}
                 >
                   <Plus size={12} />
                   {t.addField}
-                </button>
+                </Button>
               ))}
           </div>
         </div>
@@ -528,14 +526,13 @@ export function PivotBuilder({ locale, t, loadedConfig, loadKey, onConfigChange 
                   ))}
                 </select>
               ) : (
-                <button
+                <Button variant="secondary" size="sm"
                   type="button"
                   onClick={() => setFilterPickerOpen(true)}
-                  className={addFieldButtonClass}
                 >
                   <Plus size={12} />
                   {t.addField}
-                </button>
+                </Button>
               ))}
           </div>
         </div>
@@ -653,20 +650,18 @@ export function PivotBuilder({ locale, t, loadedConfig, loadKey, onConfigChange 
             </div>
           )}
           <div className="flex items-center justify-between pt-2 border-t border-outline-variant">
-            <button
+            <TextAction tone="quiet"
               type="button"
               onClick={() => setFilterDialogSelected(new Set())}
-              className="text-caption text-on-surface-variant hover:text-error"
             >
               {t.clearFilter}
-            </button>
-            <button
+            </TextAction>
+            <Button size="sm"
               type="button"
               onClick={applyFilterDialog}
-              className="rounded-pill bg-primary-container text-on-primary text-caption font-semibold px-4 py-2"
             >
               {t.apply}
-            </button>
+            </Button>
           </div>
         </div>
       </ResponsiveDialog>

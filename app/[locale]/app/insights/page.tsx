@@ -10,6 +10,7 @@ import { DescriptorBarList } from "@/components/insights/DescriptorBarList";
 import { AiSummaryPanel } from "@/components/insights/AiSummaryPanel";
 import type { ReactNode } from "react";
 import { cardClasses } from "@/components/ui/cardRecipe";
+import { ButtonLink } from "@/components/ui/Button";
 
 export function generateStaticParams() {
   return [{ locale: "es" }, { locale: "en" }];
@@ -55,13 +56,14 @@ export default async function InsightsDashboardPage({
   return (
     <div className="flex flex-col gap-5 pb-8">
       <div className="flex items-center justify-end">
-        <a
+        <ButtonLink
           href={`/api/insights/report?locale=${locale}`}
-          className="inline-flex items-center gap-1.5 rounded-pill border border-outline-variant bg-surface-container-lowest px-3 py-1.5 text-caption font-semibold text-on-surface hover:border-primary-container hover:text-primary-container transition-colors"
+          variant="secondary"
+          size="sm"
+          icon={<Download size={16} aria-hidden />}
         >
-          <Download size={16} />
           {t("report.download")}
-        </a>
+        </ButtonLink>
       </div>
 
       {/* F-11 (P1c): a stat card is never as wide as the row. Two per row on a phone; from

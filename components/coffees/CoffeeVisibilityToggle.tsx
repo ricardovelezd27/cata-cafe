@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setCoffeeVisibility } from "@/app/actions/coffees";
 import { useActionFeedback } from "@/components/ui";
@@ -17,6 +17,7 @@ type Props = {
     recordShared: string;
     recordPublic: string;
     confirmMakePublic: string;
+    makePublic: string;
     returnTitle: string;
     returnBody: string;
     returnKeep: string;
@@ -28,13 +29,10 @@ type Props = {
   };
 };
 
-const ARM_TIMEOUT_MS = 3000;
-
 // Owner-only control on the coffee profile page: a three-option segmented
-// control (private / shared / public). Switching TO public keeps the inline
-// two-step confirm from the old boolean toggle (first click "arms" the option
-// for 3s, second click within that window commits) rather than
-// window.confirm(), which breaks automated browser testing. Private and
+// control (private / shared / public). Switching TO public asks first, in the
+// kit's ConfirmDialog (C-09, P3b; it replaced a "tap twice within 3 seconds"
+// arm); confirming runs the same requestCommit("public") as before. Private and
 // shared are single-click — non-destructive, they only narrow who can see the
 // record. Note: switching a shared coffee to private keeps its CoffeeShare
 // rows but makes them inert (see lib/coffeeAccess.ts).
@@ -47,18 +45,11 @@ export function CoffeeVisibilityToggle({
   const router = useRouter();
   const feedback = useActionFeedback();
   const [isPending, startTransition] = useTransition();
-  const [armed, setArmed] = useState(false);
-  const armTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [askPublic, setAskPublic] = useState(false);
   // Returning from private to shared/public: show who would regain access and
   // let the owner keep or clear them first (S8-12, F-cafes-5).
   const [returning, setReturning] = useState<CoffeeVisibility | null>(null);
   const [clearPrevious, setClearPrevious] = useState(false);
-
-  useEffect(() => {
-    return () => {
-      if (armTimeout.current) clearTimeout(armTimeout.current);
-    };
-  }, []);
 
   function commit(next: CoffeeVisibility, clearShares = false) {
     startTransition(async () => {
@@ -80,31 +71,16 @@ export function CoffeeVisibilityToggle({
   function handleSelect(next: CoffeeVisibility) {
     if (next === visibility) return;
     if (next !== "public") {
-      if (armTimeout.current) clearTimeout(armTimeout.current);
-      setArmed(false);
       requestCommit(next);
       return;
     }
-    if (!armed) {
-      setArmed(true);
-      armTimeout.current = setTimeout(() => setArmed(false), ARM_TIMEOUT_MS);
-      return;
-    }
-    if (armTimeout.current) clearTimeout(armTimeout.current);
-    setArmed(false);
-    requestCommit("public");
+    setAskPublic(true);
   }
 
   const options: Array<{ value: CoffeeVisibility; label: string }> = [
     { value: "private", label: translations.recordPrivate },
     { value: "shared", label: translations.recordShared },
-    {
-      value: "public",
-      label:
-        armed && visibility !== "public"
-          ? translations.confirmMakePublic
-          : translations.recordPublic,
-    },
+    { value: "public", label: translations.recordPublic },
   ];
 
   return (
@@ -115,7 +91,6 @@ export function CoffeeVisibilityToggle({
     >
       {options.map((opt, i) => {
         const active = visibility === opt.value;
-        const armedPublic = opt.value === "public" && armed && !active;
         return (
           <button
             key={opt.value}
@@ -129,9 +104,7 @@ export function CoffeeVisibilityToggle({
             } ${
               active
                 ? "bg-primary-container text-white"
-                : armedPublic
-                  ? "bg-secondary/20 text-on-surface"
-                  : "bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container"
+                : "bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container"
             }`}
           >
             {opt.label}
@@ -139,6 +112,19 @@ export function CoffeeVisibilityToggle({
         );
       })}
     </div>
+    <ConfirmDialog
+      open={askPublic}
+      onOpenChange={setAskPublic}
+      title={translations.makePublic}
+      body={translations.confirmMakePublic}
+      confirmLabel={translations.makePublic}
+      cancelLabel={translations.dialogCancel}
+      closeLabel={translations.dialogClose}
+      destructive={false}
+      onConfirm={() => {
+        requestCommit("public");
+      }}
+    />
     <ConfirmDialog
       open={returning !== null}
       onOpenChange={(o) => {

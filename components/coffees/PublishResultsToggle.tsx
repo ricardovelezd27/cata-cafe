@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setCoffeeResultsPublished } from "@/app/actions/coffees";
 import { useActionFeedback } from "@/components/ui";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 type Props = {
   coffeeId: string;
@@ -14,28 +17,21 @@ type Props = {
     publish: string;
     unpublish: string;
     confirmPublish: string;
+    dialogCancel: string;
+    dialogClose: string;
   };
 };
 
-const ARM_TIMEOUT_MS = 3000;
-
-// Owner-only control on the coffee profile page. Publishing requires an
-// inline two-step confirm (first click "arms" the button for 3s, second
-// click within that window commits) rather than window.confirm(), which
-// breaks automated browser testing. Unpublishing is a single click — it's
-// non-destructive to data, just hides the section from non-owners again.
+// Owner-only control on the coffee profile page. Publishing asks first, in the
+// kit's ConfirmDialog (C-09, P3b; it replaced a "tap twice within 3 seconds"
+// arm). Unpublishing is a single click: it is non-destructive to data, it only
+// hides the section from non-owners again. The action and its arguments are
+// the same as before.
 export function PublishResultsToggle({ coffeeId, resultsPublished, translations }: Props) {
   const router = useRouter();
   const feedback = useActionFeedback();
   const [isPending, startTransition] = useTransition();
-  const [armed, setArmed] = useState(false);
-  const armTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (armTimeout.current) clearTimeout(armTimeout.current);
-    };
-  }, []);
+  const [askPublish, setAskPublish] = useState(false);
 
   function commit(next: boolean) {
     startTransition(async () => {
@@ -48,39 +44,30 @@ export function PublishResultsToggle({ coffeeId, resultsPublished, translations 
       commit(false);
       return;
     }
-    if (!armed) {
-      setArmed(true);
-      armTimeout.current = setTimeout(() => setArmed(false), ARM_TIMEOUT_MS);
-      return;
-    }
-    if (armTimeout.current) clearTimeout(armTimeout.current);
-    setArmed(false);
-    commit(true);
+    setAskPublish(true);
   }
-
-  const badgeClass = resultsPublished
-    ? "bg-primary-container/10 text-primary-container border-primary-container/30"
-    : "bg-surface-container text-on-surface-variant border-outline-variant";
 
   return (
     <div className="flex items-center gap-3">
-      <span
-        className={`text-caption font-semibold px-2.5 py-1 rounded-pill border ${badgeClass}`}
-      >
+      <Badge tone={resultsPublished ? "success" : "neutral"}>
         {resultsPublished ? translations.published : translations.unpublished}
-      </span>
-      <button
-        type="button"
-        onClick={handleClick}
-        disabled={isPending}
-        className="min-h-[44px] text-caption font-semibold px-3 py-1.5 rounded-pill border border-outline-variant text-on-surface hover:bg-surface-container transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {resultsPublished
-          ? translations.unpublish
-          : armed
-            ? translations.confirmPublish
-            : translations.publish}
-      </button>
+      </Badge>
+      <Button variant="secondary" size="sm" onClick={handleClick} disabled={isPending}>
+        {resultsPublished ? translations.unpublish : translations.publish}
+      </Button>
+      <ConfirmDialog
+        open={askPublish}
+        onOpenChange={setAskPublish}
+        title={translations.publish}
+        body={translations.confirmPublish}
+        confirmLabel={translations.publish}
+        cancelLabel={translations.dialogCancel}
+        closeLabel={translations.dialogClose}
+        destructive={false}
+        onConfirm={() => {
+          commit(true);
+        }}
+      />
     </div>
   );
 }

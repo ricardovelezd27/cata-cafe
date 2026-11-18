@@ -6,6 +6,7 @@ import { Pencil, Check, Trash2 } from "lucide-react";
 import { updateGroup, deleteGroup } from "@/app/actions/groups";
 import { useActionFeedback } from "@/components/ui/Toast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { Button } from "@/components/ui/Button";
 
 export function GroupNameControls({
   groupId,
@@ -94,13 +95,12 @@ export function GroupNameControls({
             maxLength={500}
           />
         </div>
-        <button
+        <Button size="sm"
           type="submit"
           disabled={pending || !value.trim()}
-          className="inline-flex min-h-[44px] items-center gap-1.5 px-3 py-2 rounded-pill bg-primary-container text-white text-caption font-semibold disabled:opacity-50"
         >
           <Check size={16} /> {t.saveDetails}
-        </button>
+        </Button>
         {error && <p className="text-caption text-error">{error}</p>}
       </form>
     );
@@ -128,14 +128,13 @@ export function GroupNameControls({
             <Pencil size={16} aria-hidden />
           </button>
         </div>
-        <button
+        <Button variant="danger" size="sm"
           type="button"
           onClick={() => setDeleteOpen(true)}
           disabled={pending}
-          className="inline-flex min-h-[44px] items-center gap-1.5 px-3 py-1.5 rounded-pill border border-outline-variant text-caption font-semibold text-error hover:bg-error-container transition-colors disabled:opacity-50 shrink-0"
         >
           <Trash2 size={16} aria-hidden /> {t.delete}
-        </button>
+        </Button>
       </div>
       {error && <p className="text-caption text-error">{error}</p>}
 

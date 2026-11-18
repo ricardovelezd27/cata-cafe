@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { leaveGroup } from "@/app/actions/groups";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { Button } from "@/components/ui/Button";
 
 export type LeaveGroupTranslations = {
   cta: string;
@@ -37,13 +38,12 @@ export function LeaveGroupButton({
 
   return (
     <>
-      <button
+      <Button variant="danger"
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex min-h-[44px] items-center gap-1.5 rounded-pill border border-outline-variant px-4 py-2 text-caption font-medium text-error transition-colors hover:bg-error-container"
       >
         <LogOut size={16} /> {t.cta}
-      </button>
+      </Button>
 
       <ConfirmDialog
         open={open}

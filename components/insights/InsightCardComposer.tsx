@@ -23,6 +23,8 @@ import { PivotChart } from "@/components/insights/PivotChart";
 import { useContainerWidth } from "@/hooks/useContainerWidth";
 import { downloadFile } from "@/lib/platform/files";
 import { cardClasses } from "@/components/ui/cardRecipe";
+import { Button } from "@/components/ui/Button";
+import { TextAction } from "@/components/ui/TextAction";
 
 export interface ShareComposerTranslations {
   headline: string;
@@ -216,24 +218,22 @@ export function InsightCardComposer({ locale, config, citationLines, t }: Insigh
           </label>
 
           <div className="flex flex-wrap items-center gap-3 pt-1">
-            <button
+            <Button size="sm"
               type="button"
               onClick={handleDownloadPng}
               disabled={exporting}
-              className="flex items-center gap-1.5 rounded-pill bg-primary-container text-on-primary text-caption font-semibold px-4 py-2 disabled:opacity-50"
             >
               {exporting ? <Loader2 size={15} className="animate-spin" /> : <ImageDown size={15} />}
               {t.downloadPng}
-            </button>
-            <button
+            </Button>
+            <Button variant="secondary" size="sm"
               type="button"
               onClick={() => generateTexts(false)}
               disabled={liPending}
-              className="flex items-center gap-1.5 rounded-pill border border-outline-variant bg-surface-container-lowest text-caption font-semibold text-on-surface px-4 py-2 disabled:opacity-50 hover:border-primary-container hover:text-primary-container"
             >
               <Sparkles size={15} />
               {t.generateTexts}
-            </button>
+            </Button>
           </div>
           {exportError && <p className="text-caption text-error">{t.exportError}</p>}
         </div>
@@ -275,14 +275,13 @@ export function InsightCardComposer({ locale, config, citationLines, t }: Insigh
                     {t.ai.disclaimer}
                     {liResult?.ok ? ` · ${liResult.model}` : ""}
                   </span>
-                  <button
+                  <TextAction
                     type="button"
                     onClick={() => generateTexts(true)}
-                    className="flex items-center gap-1 text-caption font-semibold text-primary-container hover:underline shrink-0"
                   >
                     <RefreshCw size={12} />
                     {t.ai.regenerate}
-                  </button>
+                  </TextAction>
                 </div>
               </div>
             ) : liSkipped ? (
@@ -290,13 +289,12 @@ export function InsightCardComposer({ locale, config, citationLines, t }: Insigh
             ) : liErrored ? (
               <div className="flex items-center justify-between gap-3">
                 <span className="text-caption text-error">{t.ai.error}</span>
-                <button
+                <TextAction
                   type="button"
                   onClick={() => generateTexts(false)}
-                  className="text-caption font-semibold text-primary-container hover:underline shrink-0"
                 >
                   {t.ai.regenerate}
-                </button>
+                </TextAction>
               </div>
             ) : null}
           </div>
@@ -423,14 +421,13 @@ function PostBlock({
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center justify-between">
         <span className="label-caps">{label}</span>
-        <button
+        <TextAction
           type="button"
           onClick={() => onCopy(lang, text)}
-          className="flex items-center gap-1 text-caption font-semibold text-primary-container hover:underline"
         >
           {copied ? <Check size={13} /> : <Copy size={13} />}
           {copied ? copiedLabel : copyLabel}
-        </button>
+        </TextAction>
       </div>
       <pre className="whitespace-pre-wrap font-sans text-body text-on-surface bg-surface-container-lowest border border-outline-variant rounded-card p-3">
         {text}

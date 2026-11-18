@@ -6,6 +6,7 @@ import { generateDashboardNarrative, generateInsightNarrative } from "@/app/acti
 import type { CachedAiResult } from "@/lib/ai/cache";
 import type { NarrativeContent } from "@/lib/ai/narratives";
 import { cardClasses } from "@/components/ui/cardRecipe";
+import { TextAction } from "@/components/ui/TextAction";
 
 export interface AiSummaryTranslations {
   generate: string;
@@ -92,14 +93,13 @@ export function AiSummaryPanel({ locale, target, translations: t }: AiSummaryPan
               {t.disclaimer}
               {result?.ok ? ` · ${result.model}` : ""}
             </span>
-            <button
+            <TextAction
               type="button"
               onClick={() => generate(true)}
-              className="flex items-center gap-1 text-caption font-semibold text-primary-container hover:underline shrink-0"
             >
               <RefreshCw size={12} />
               {t.regenerate}
-            </button>
+            </TextAction>
           </div>
         </div>
       ) : skipped ? (
@@ -107,23 +107,21 @@ export function AiSummaryPanel({ locale, target, translations: t }: AiSummaryPan
       ) : errored ? (
         <div className="flex items-center justify-between gap-3">
           <span className="text-caption text-error">{t.error}</span>
-          <button
+          <TextAction
             type="button"
             onClick={() => generate(false)}
-            className="text-caption font-semibold text-primary-container hover:underline shrink-0"
           >
             {t.regenerate}
-          </button>
+          </TextAction>
         </div>
       ) : (
-        <button
+        <TextAction
           type="button"
           onClick={() => generate(false)}
-          className="flex items-center gap-2 text-caption font-semibold text-primary-container hover:underline"
         >
           <Sparkles size={16} />
           {t.generate}
-        </button>
+        </TextAction>
       )}
     </div>
   );

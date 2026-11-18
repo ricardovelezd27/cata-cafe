@@ -13,6 +13,7 @@ import { createGroupPost } from "@/app/actions/groups";
 import { useActionFeedback } from "@/components/ui/Toast";
 import { cardClasses } from "@/components/ui/cardRecipe";
 import { PaperSectionHeading } from "@/components/ui/PaperSectionHeading";
+import { Button } from "@/components/ui/Button";
 
 export type PostComposerTranslations = {
   composerTitle: string;
@@ -157,14 +158,13 @@ export function PostComposer({
         </p>
       )}
 
-      <button
+      <Button
         type="submit"
         disabled={pending || !body.trim()}
-        className="inline-flex min-h-[44px] items-center gap-2 rounded-pill bg-primary-container px-5 py-2.5 text-caption font-medium text-on-primary hover:bg-primary transition-colors disabled:opacity-50"
       >
         <Send size={16} aria-hidden />
         {pending ? t.publishing : t.publish}
-      </button>
+      </Button>
     </form>
   );
 }

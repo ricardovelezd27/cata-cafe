@@ -14,6 +14,8 @@ import {
 } from "@/components/insights/InsightCardComposer";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
 import { cardClasses } from "@/components/ui/cardRecipe";
+import { Button } from "@/components/ui/Button";
+import { TextAction } from "@/components/ui/TextAction";
 
 export interface SavedInsightItem {
   id: string;
@@ -171,23 +173,21 @@ export function ExplorerWorkspace({
           </button>
         </div>
         <div className="flex items-center gap-4">
-          <button
+          <TextAction
             type="button"
             onClick={() => setSaveOpen(true)}
-            className="flex items-center gap-1.5 text-caption text-primary-container font-semibold hover:underline"
           >
             <Save size={15} />
             {t.save}
-          </button>
-          <button
+          </TextAction>
+          <TextAction
             type="button"
             onClick={openShare}
             disabled={!hasConfig}
-            className="flex items-center gap-1.5 text-caption text-primary-container font-semibold hover:underline disabled:opacity-50 disabled:pointer-events-none"
           >
             <Share2 size={15} />
             {t.shareButton}
-          </button>
+          </TextAction>
         </div>
       </div>
 
@@ -227,23 +227,21 @@ export function ExplorerWorkspace({
                 <span className="text-caption text-on-surface-variant hidden sm:block">
                   {new Date(item.createdAt).toLocaleDateString(locale)}
                 </span>
-                <button
+                <TextAction
                   type="button"
                   onClick={() => loadSaved(item)}
-                  className="flex items-center gap-1 text-caption text-primary-container font-semibold hover:underline"
                 >
                   <FolderOpen size={14} />
                   {t.load}
-                </button>
+                </TextAction>
                 {item.isMine && (
-                  <button
+                  <TextAction tone="quiet"
                     type="button"
                     onClick={() => handleDelete(item.id)}
-                    className="flex items-center gap-1 text-caption text-on-surface-variant hover:text-error"
                     aria-label={t.delete}
                   >
                     <Trash2 size={14} />
-                  </button>
+                  </TextAction>
                 )}
               </li>
             ))}
@@ -266,14 +264,13 @@ export function ExplorerWorkspace({
               autoFocus
             />
           </label>
-          <button
+          <Button size="sm" className="self-end"
             type="button"
             disabled={saving || saveName.trim().length === 0}
             onClick={handleSave}
-            className="self-end rounded-pill bg-primary-container text-on-primary text-caption font-semibold px-4 py-2 disabled:opacity-50"
           >
             {saving ? t.running : t.saveConfirm}
-          </button>
+          </Button>
         </div>
       </ResponsiveDialog>
 

@@ -7,6 +7,7 @@ import { useActionFeedback } from "@/components/ui";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { buildCoffeeInviteUrl } from "@/lib/inviteUrl";
 import { PaperSectionHeading } from "@/components/ui/PaperSectionHeading";
+import { Button } from "@/components/ui/Button";
 
 type Share = { userId: string; displayName: string };
 
@@ -142,30 +143,17 @@ export function CoffeeShareManager({
             onFocus={(e) => e.target.select()}
             className="min-h-[44px] flex-1 border border-outline-variant rounded-input px-3 py-2 text-caption font-mono truncate bg-surface-container-lowest"
           />
-          <button
-            type="button"
-            onClick={handleCopy}
-            className="min-h-[44px] rounded-pill border border-outline-variant text-caption font-semibold px-3 py-1.5 hover:bg-surface-container whitespace-nowrap"
-          >
+          <Button variant="secondary" size="sm" onClick={handleCopy}>
             {copied ? t.copied : t.copyLink}
-          </button>
-          <button
-            type="button"
-            onClick={() => setAskRotate(true)}
-            className="min-h-[44px] rounded-pill border border-outline-variant text-caption font-semibold px-3 py-1.5 hover:bg-surface-container whitespace-nowrap"
-          >
+          </Button>
+          <Button variant="secondary" size="sm" onClick={() => setAskRotate(true)}>
             {t.rotate}
-          </button>
+          </Button>
         </div>
       ) : (
-        <button
-          type="button"
-          disabled={isPending}
-          onClick={handleGenerate}
-          className="min-h-[44px] rounded-pill bg-primary-container text-white text-caption font-semibold px-3 py-1.5 hover:bg-primary-muted transition disabled:opacity-60"
-        >
+        <Button size="sm" disabled={isPending} onClick={handleGenerate} className="self-start">
           {isPending ? t.generating : t.generateLink}
-        </button>
+        </Button>
       )}
 
       {token && (
@@ -188,17 +176,17 @@ export function CoffeeShareManager({
                 className="flex items-center justify-between gap-3 text-caption text-on-surface"
               >
                 <span>{s.displayName}</span>
-                <button
-                  type="button"
+                <Button
+                  variant="secondary"
+                  size="sm"
                   disabled={isPending && revokingId === s.userId}
                   onClick={() => {
                     setAlsoRotate(true);
                     setAskRevoke(s);
                   }}
-                  className="min-h-[44px] rounded-pill border border-outline-variant text-caption font-semibold px-3 py-1.5 hover:bg-surface-container disabled:opacity-60"
                 >
                   {t.revoke}
-                </button>
+                </Button>
               </li>
             ))}
           </ul>
