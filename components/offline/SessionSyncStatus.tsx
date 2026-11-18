@@ -8,6 +8,7 @@ import { useOfflineSync } from "@/hooks/useOfflineSync";
 import { loadSession } from "@/lib/offline/store";
 import { SyncConflictModal, type SyncConflictTranslations } from "@/components/offline/SyncConflictModal";
 import { Notice, type NoticeTone } from "@/components/ui/Notice";
+import { TextAction } from "@/components/ui";
 
 export type SessionSyncStatusTranslations = SyncConflictTranslations & {
   // RAW templates containing the literal "{count}" — substituted client-side
@@ -142,13 +143,13 @@ export function SessionSyncStatus({
           className="mx-4 mt-4 lg:mx-6"
           action={
             line.retry ? (
-              <button
+              <TextAction tone="none"
                 type="button"
                 onClick={() => void retrySync()}
-                className="inline-flex min-h-[44px] items-center font-semibold underline underline-offset-2 hover:opacity-80"
+                className="font-semibold underline underline-offset-2 hover:opacity-80"
               >
                 {t.retry}
-              </button>
+              </TextAction>
             ) : undefined
           }
         >

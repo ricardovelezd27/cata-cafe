@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
 import type { SyncConflict } from "@/lib/offline/types";
+import { Button } from "@/components/ui";
 
 export type SyncConflictTranslations = {
   conflictTitle: string;
@@ -50,22 +51,20 @@ export function SyncConflictModal({
           {t.conflictBody.replace("{sample}", conflict.sampleLabel)}
         </p>
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-          <button
+          <Button variant="secondary"
             type="button"
             disabled={busy}
             onClick={() => resolve(false)}
-            className="px-4 py-2 rounded-pill border border-outline-variant font-sans text-caption text-on-surface hover:bg-surface-container disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2"
           >
             {t.conflictKeep}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             disabled={busy}
             onClick={() => resolve(true)}
-            className="px-4 py-2 rounded-pill bg-primary-container font-sans text-caption font-semibold text-white hover:opacity-90 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2"
           >
             {t.conflictReplace}
-          </button>
+          </Button>
         </div>
       </div>
     </ResponsiveDialog>

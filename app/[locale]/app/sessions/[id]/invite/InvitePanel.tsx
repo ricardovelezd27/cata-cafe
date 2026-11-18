@@ -4,6 +4,7 @@ import { useState } from "react";
 import { InviteQR } from "@/components/ui/InviteQR";
 import { Card } from "@/components/ui/Card";
 import { buildInviteUrl } from "@/lib/inviteUrl";
+import { Button } from "@/components/ui";
 
 export type InvitePanelTranslations = {
   inviteLink: string;
@@ -57,13 +58,12 @@ export function InvitePanel({
           onFocus={(e) => e.target.select()}
           className="w-full flex-1 select-all border border-outline-variant rounded-input px-3.5 py-2.5 text-caption text-on-surface bg-surface-container-lowest"
         />
-        <button
+        <Button variant="secondary"
           type="button"
           onClick={copy}
-          className="border border-primary-container text-primary-container rounded-pill px-5 py-2.5 text-caption font-medium hover:bg-primary-fixed transition-colors whitespace-nowrap"
         >
           {copied ? t.copied : t.copyLink}
-        </button>
+        </Button>
       </div>
     </Card>
   );

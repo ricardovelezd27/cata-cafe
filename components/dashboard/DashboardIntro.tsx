@@ -4,6 +4,7 @@ import { useState, useSyncExternalStore } from "react";
 import { X, ChevronDown, Sigma, HelpCircle } from "lucide-react";
 import { introStartsCollapsed } from "@/lib/dashboardIntro";
 import { PaperSectionHeading } from "@/components/ui/PaperSectionHeading";
+import { TextAction } from "@/components/ui";
 
 export type IntroTranslations = {
   eyebrow: string;
@@ -81,15 +82,15 @@ export function DashboardIntro({
 
   if (!expanded && introStartsCollapsed({ sessionCount, dismissed })) {
     return (
-      <button
+      <TextAction tone="none"
         onClick={reopen}
-        className="min-h-[44px] group inline-flex items-center gap-2 text-caption text-on-surface-variant hover:text-primary-container transition-colors"
+        className="group gap-2 text-caption text-on-surface-variant hover:text-primary-container transition-colors"
       >
         <HelpCircle size={15} className="text-primary-muted" />
         <span className="underline decoration-outline-variant decoration-1 underline-offset-4 group-hover:decoration-primary-container">
           {t.reopen}
         </span>
-      </button>
+      </TextAction>
     );
   }
 
@@ -160,10 +161,10 @@ export function DashboardIntro({
 
         {/* actions */}
         <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-3">
-          <button
+          <TextAction tone="none"
             onClick={() => setShowCalc((v) => !v)}
             aria-expanded={showCalc}
-            className="min-h-[44px] inline-flex items-center gap-2 text-caption font-semibold text-primary-container transition-colors hover:text-primary-muted"
+            className="gap-2 text-caption font-semibold text-primary-container transition-colors hover:text-primary-muted"
           >
             <Sigma size={15} className="text-secondary" />
             {t.ctaCalc}
@@ -172,7 +173,7 @@ export function DashboardIntro({
               className="transition-transform duration-200"
               style={{ transform: showCalc ? "rotate(180deg)" : "none" }}
             />
-          </button>
+          </TextAction>
         </div>
 
         {/* methodology — progressive disclosure, animated via grid-rows */}
@@ -232,12 +233,12 @@ export function DashboardIntro({
 
         {/* clear completion action (onboarding best practice) */}
         <div className="mt-5">
-          <button
+          <TextAction tone="none"
             onClick={dismiss}
-            className="min-h-[44px] min-w-[44px] text-caption font-medium text-on-surface-variant underline decoration-outline-variant decoration-1 underline-offset-4 transition-colors hover:text-primary-container hover:decoration-primary-container"
+            className="text-caption font-medium text-on-surface-variant underline decoration-outline-variant decoration-1 underline-offset-4 transition-colors hover:text-primary-container hover:decoration-primary-container"
           >
             {t.dismiss}
-          </button>
+          </TextAction>
         </div>
       </div>
     </section>

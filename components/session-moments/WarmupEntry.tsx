@@ -6,6 +6,7 @@ import { lw, warmupById } from "@/lib/warmup/exercises";
 import { shouldOfferWarmupEntry } from "@/lib/warmup/overlayGate";
 import { WarmupPlayer, type WarmupPlayerStrings } from "@/components/warmup/WarmupPlayer";
 import { SessionMomentOverlay } from "./SessionMomentOverlay";
+import { TextAction } from "@/components/ui";
 
 const subscribeNoop = () => () => {};
 
@@ -50,13 +51,13 @@ export function WarmupEntry({
   return (
     <>
       {offered && (
-        <button
+        <TextAction tone="none"
           type="button"
           onClick={() => setOpen(true)}
-          className="inline-flex min-h-[44px] items-center text-left text-body text-on-surface-variant underline-offset-4 transition-colors hover:text-on-surface hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-container"
+          className="text-left text-body text-on-surface-variant underline-offset-4 transition-colors hover:text-on-surface hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-container"
         >
           {label.replace("{min}", String(exercise.durationMin))}
-        </button>
+        </TextAction>
       )}
       {open && mounted &&
         createPortal(
