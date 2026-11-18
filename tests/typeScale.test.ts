@@ -154,6 +154,7 @@ const SWEPT_AREAS: { area: string; paths: string[] }[] = [
       "components/offline",
       "components/errors",
       "components/session",
+      "components/DuplicateButton.tsx", // the sessions list's duplicate action (also on coffees and groups)
     ],
   },
 ];
