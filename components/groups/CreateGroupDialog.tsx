@@ -292,7 +292,7 @@ export function CreateGroupDialog({
                       className={
                         "inline-flex min-h-[44px] items-center gap-1 px-3 py-1.5 rounded-pill text-caption font-semibold border transition-colors " +
                         (selected
-                          ? "bg-primary-container text-white border-primary-container"
+                          ? "bg-primary-container text-on-primary border-primary-container"
                           : "bg-surface-container-lowest text-on-surface border-outline-variant hover:border-primary-container")
                       }
                     >

@@ -45,7 +45,7 @@ export function LevelBadge({
       </span>
 
       <div className="flex items-center gap-3">
-        <span className="flex items-center justify-center h-8 w-8 rounded-full bg-primary-container text-white text-caption font-bold shrink-0">
+        <span className="flex items-center justify-center h-8 w-8 rounded-full bg-primary-container text-on-primary text-caption font-bold shrink-0">
           {level}
         </span>
         <span className="font-display text-card text-primary-container font-bold">

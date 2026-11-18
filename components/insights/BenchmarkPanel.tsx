@@ -195,7 +195,6 @@ function StatBlock({
   nLabel,
   avgLabel,
   avg,
-  color,
   subLabel,
   subValue,
 }: {
@@ -204,7 +203,8 @@ function StatBlock({
   nLabel: string;
   avgLabel: string;
   avg: number | null;
-  color: string;
+  /** No longer paints the score (A-04, H-01, Q2: a score is ink); the bars keep their colour. */
+  color?: string;
   subLabel: string;
   subValue: string;
 }) {
@@ -219,7 +219,7 @@ function StatBlock({
         </span>
       </div>
       <span className="label-caps mt-2">{avgLabel}</span>
-      <span className="font-display text-page leading-none tabular-nums" style={{ color }}>
+      <span className="font-display text-page leading-none tabular-nums text-on-surface">
         {fmtScore(avg)}
       </span>
       <span className="text-caption text-on-surface-variant mt-1">
