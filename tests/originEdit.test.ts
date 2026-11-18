@@ -7,6 +7,10 @@ import {
 } from "@/lib/originEdit";
 import { COFFEE_ORIGIN_FIELDS, originFieldsChanged } from "@/lib/coffeeOrigin";
 import { buildStampLines } from "@/lib/pdf/stampText";
+// Loaded with the file, not inside a test: a module loaded in a test body counts
+// against that test's 5 s limit, and on a loaded machine the load alone took longer (L3).
+import { sheetSampleRecords } from "@/lib/pdf/sheetSource";
+import { buildCvaFormData } from "@/lib/pdf/cvaFormData";
 
 const closed = new Date("2026-11-01T10:00:00Z");
 const before = new Date("2026-10-30T10:00:00Z");
@@ -133,8 +137,7 @@ describe("sheetSampleRecords origin note gate", () => {
     coffee: { originEditedAt: later },
   });
 
-  it("a revealed sample carries the latest edit; a blind one for a participant carries none", async () => {
-    const { sheetSampleRecords } = await import("@/lib/pdf/sheetSource");
+  it("a revealed sample carries the latest edit; a blind one for a participant carries none", () => {
     const s = { closedAt: closed };
     expect(sheetSampleRecords(sample(true), false, s).originEditedAt).toBe(later.toISOString());
     expect(sheetSampleRecords(sample(false), false, s).originEditedAt).toBeNull();
@@ -142,8 +145,7 @@ describe("sheetSampleRecords origin note gate", () => {
     expect(sheetSampleRecords(sample(false), true, s).originEditedAt).toBe(after.toISOString());
   });
 
-  it("the CVA sheet prints the note as one origin field, in both languages", async () => {
-    const { buildCvaFormData } = await import("@/lib/pdf/cvaFormData");
+  it("the CVA sheet prints the note as one origin field, in both languages", () => {
     const base = {
       ownerView: true,
       format: "affective",

@@ -19,6 +19,7 @@ import {
   type LearningSample,
   type LearningsInput,
 } from "@/lib/reports/learnings";
+import { HEAVY_TEST_TIMEOUT_MS } from "./helpers/timeouts";
 
 // Package R4a: the fourteen learnings as data
 // (docs/audits/app-ui-ux-2026-11-15/RESULTS-DESIGN.md, section 7).
@@ -721,7 +722,7 @@ describe("on generated sessions", () => {
       const once = list.filter((l) => l.rule !== "P6").map((l) => l.rule);
       expect(new Set(once).size).toBe(once.length);
     }
-  });
+  }, HEAVY_TEST_TIMEOUT_MS);
 
   it("nothing identifies a cupper: no key, and every string is a rule, a sample, a wheel node, an attribute or a defect type", () => {
     const allowed = new Set<string>([...LEARNING_RULES, ...NODE_IDS, ...ATTR_IDS, ...SENSORY_DEFECTS]);

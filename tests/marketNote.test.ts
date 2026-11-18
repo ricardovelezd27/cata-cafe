@@ -8,6 +8,8 @@ import { calcIndividualScore } from "@/lib/scoring";
 import { stepMissing } from "@/lib/completeness";
 import { AFFECTIVE_ATTRIBUTES, CUPPING_STEPS } from "@/lib/constants";
 import { MARKET_COPY_FALLBACK } from "@/components/cupping/MarketNote";
+// Loaded with the file, not inside the test, so the load never counts against a test's limit (L3).
+import { CVA_TEXT } from "@/lib/pdf/cvaFormData";
 import es from "../messages/es.json";
 import en from "../messages/en.json";
 
@@ -114,8 +116,7 @@ describe("no quality bands remain", () => {
     const src = readFileSync(join(process.cwd(), "lib", "scoring.ts"), "utf8");
     expect(src).not.toMatch(/scoreBand|scoreToCategory|SCORE_CATEGORY_LABELS/);
   });
-  it("the score legend sentence is the same in the PDF map and the message files", async () => {
-    const { CVA_TEXT } = await import("@/lib/pdf/cvaFormData");
+  it("the score legend sentence is the same in the PDF map and the message files", () => {
     expect(CVA_TEXT.es.scoreLegend).toBe(es.common.scoreLegend);
     expect(CVA_TEXT.en.scoreLegend).toBe(en.common.scoreLegend);
   });

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { readSource as read, walkSource } from "./helpers/sourceTree";
+import { SCAN_TIMEOUT_MS } from "./helpers/timeouts";
 
 // T5 (finding E-01 of the 2026-11-15 audit): no hex literal in a component.
 // The app paints with the role tokens of app/globals.css. This scan fails on a
@@ -92,7 +93,7 @@ describe("T5: no hex literal in a component (E-01)", () => {
       for (const h of hexesIn(read(f))) offenders.push(`${f}:${h.line} ${h.hex}`);
     }
     expect(offenders).toEqual([]);
-  });
+  }, SCAN_TIMEOUT_MS);
 
   it("the allowlist only shrinks: every entry exists and still holds a hex", () => {
     for (const p of Object.keys(ALLOWLIST)) {
@@ -101,7 +102,7 @@ describe("T5: no hex literal in a component (E-01)", () => {
       const total = holders.reduce((n, f) => n + hexesIn(read(f)).length, 0);
       expect(total, `${p} holds no hex any more: remove it from the allowlist`).toBeGreaterThan(0);
     }
-  });
+  }, SCAN_TIMEOUT_MS);
 
   it("a file that must be literal uses only the tokens' own values", () => {
     const tokens = tokenValues();

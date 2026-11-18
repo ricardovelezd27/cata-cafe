@@ -11,6 +11,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { FIXTURE_FINE, FIXTURE_HTML, FIXTURE_UNNAMED, classifyAxNode, collectControls, summarizeNames } from "../scripts/ux-capture/lib/axnames.mjs";
+import { HEAVY_TEST_TIMEOUT_MS } from "./helpers/timeouts";
 
 const TOOL = join(__dirname, "..", "scripts", "ux-capture");
 
@@ -130,5 +131,5 @@ describe("the fixtures, through real Chrome (skipped when the tool's playwright-
     } finally {
       await browser.close();
     }
-  }, 60_000);
+  }, HEAVY_TEST_TIMEOUT_MS);
 });

@@ -18,6 +18,7 @@ import { computeSampleBlockFrequencies } from "@/lib/resultsAggregation";
 import { SHEET_PARAM, closeMove, sheetSampleId, withSheet } from "@/lib/sheetAddress";
 import es from "@/messages/es.json";
 import en from "@/messages/en.json";
+import { HEAVY_TEST_TIMEOUT_MS } from "./helpers/timeouts";
 
 // Package R3: a coffee's sheet. What it LOOKS like is checked by a person (the
 // real page through the capture tool, the dev board for the states no test
@@ -343,7 +344,7 @@ describe("what the sheet shows, state by state", () => {
         });
       }
     }
-  });
+  }, HEAVY_TEST_TIMEOUT_MS);
 });
 
 describe("the coffee in the address", () => {

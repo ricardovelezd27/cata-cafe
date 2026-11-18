@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { dateInZone, endOfDayInZone } from "@/lib/closeRules";
+import { HEAVY_TEST_TIMEOUT_MS } from "./helpers/timeouts";
 
 // S8-22 B-06 / D-07: the end of a local day, in every zone, on every day.
 const ZONES = [
@@ -36,7 +37,7 @@ describe("endOfDayInZone sweep", () => {
       }
     }
     expect(bad).toEqual([]);
-  }, 60_000);
+  }, HEAVY_TEST_TIMEOUT_MS);
 
   it("America/Santiago falls back at midnight: the day is 25 hours long", () => {
     // The old result was 02:59:59.999Z, one hour early (the first 23:59:59.999).
