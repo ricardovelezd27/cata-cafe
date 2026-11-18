@@ -4,14 +4,14 @@ import { localeHref } from "@/components/landing/locale-href";
 import { LEGAL_PAGES_PUBLISHED } from "@/lib/legal/config";
 import type { LegalBlock, LegalDocs } from "@/lib/legal/types";
 
-const TEXT = "text-sm leading-relaxed text-on-surface-variant";
+const TEXT = "text-body leading-relaxed text-on-surface-variant";
 
 function Block({ block }: { block: LegalBlock }) {
   if (typeof block === "string") {
     return <p className={`mt-2 ${TEXT}`}>{block}</p>;
   }
   if ("sub" in block) {
-    return <h3 className="text-base">{block.sub}</h3>;
+    return <h3 className="text-body">{block.sub}</h3>;
   }
   if ("list" in block) {
     return (
@@ -27,7 +27,7 @@ function Block({ block }: { block: LegalBlock }) {
     <dl className="mt-3 divide-y divide-outline-variant rounded-card border border-outline-variant">
       {block.rows.map(([term, description], i) => (
         <div key={i} className="px-4 py-3 md:grid md:grid-cols-[minmax(0,14rem)_minmax(0,1fr)] md:gap-6">
-          <dt className="break-words text-sm font-semibold text-on-surface">{term}</dt>
+          <dt className="break-words text-body font-semibold text-on-surface">{term}</dt>
           <dd className={`mt-1 break-words md:mt-0 ${TEXT}`}>{description}</dd>
         </div>
       ))}
@@ -52,14 +52,14 @@ export default async function LegalPage({
       {!LEGAL_PAGES_PUBLISHED && (
         <div
           role="note"
-          className="mb-8 rounded-card border border-secondary/40 bg-secondary-container/30 px-4 py-3 text-sm text-on-surface"
+          className="mb-8 rounded-card border border-secondary/40 bg-secondary-container/30 px-4 py-3 text-body text-on-surface"
         >
           <p className="font-semibold">{t("draftTitle")}</p>
           <p className="mt-1">{t("draftBody")}</p>
         </div>
       )}
-      <h1 className="font-serif text-3xl text-primary">{doc.title}</h1>
-      <p className="mt-2 text-sm text-on-surface-variant">{doc.version}</p>
+      <h1 className="font-serif text-page text-primary">{doc.title}</h1>
+      <p className="mt-2 text-caption text-on-surface-variant">{doc.version}</p>
       {doc.intro && doc.intro.length > 0 && (
         <div className="mt-6">
           {doc.intro.map((block, i) => (
@@ -70,14 +70,14 @@ export default async function LegalPage({
       <div className="mt-8 space-y-8">
         {doc.sections.map((s) => (
           <section key={s.heading}>
-            <h2 className="text-xl">{s.heading}</h2>
+            <h2 className="text-card">{s.heading}</h2>
             {s.body.map((block, i) => (
               <Block key={i} block={block} />
             ))}
           </section>
         ))}
       </div>
-      <p className="mt-12 text-sm">
+      <p className="mt-12 text-caption">
         <Link href={localeHref(locale, "/")} className="text-primary underline underline-offset-2">
           {t("back")}
         </Link>

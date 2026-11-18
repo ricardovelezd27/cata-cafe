@@ -64,7 +64,10 @@ export default async function InsightsDashboardPage({
         </a>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+      {/* F-11 (P1c): a stat card is never as wide as the row. Two per row on a phone; from
+          768 px three per row, each capped at 240 px: the dashboard's grid. Not auto-fill: with
+          a 240 px maximum, auto-fill counts columns by the maximum (see app/[locale]/app/page.tsx). */}
+      <div className="grid grid-cols-2 gap-[12px] md:grid-cols-[repeat(3,minmax(0,240px))] md:gap-[16px]">
         <StatCard
           label={t("kpi.coffeesCupped")}
           value={String(data.coffeesCupped)}

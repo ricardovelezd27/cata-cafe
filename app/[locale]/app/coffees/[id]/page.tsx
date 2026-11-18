@@ -42,6 +42,7 @@ import { Card } from "@/components/ui/Card";
 import { Notice } from "@/components/ui/Notice";
 import { PaperSectionHeading } from "@/components/ui/PaperSectionHeading";
 import { PageContainer } from "@/components/ui/PageContainer";
+import { PageBackLink } from "@/components/ui/PageHeader";
 
 // Auth'd page with a dynamic [id] segment: must render per-request. With
 // generateStaticParams present, prod attempts on-demand static generation and
@@ -73,6 +74,7 @@ export default async function CoffeeProfilePage({
   const th = await getTranslations("history");
   const tattr = await getTranslations("attributes");
   const tc = await getTranslations("common");
+  const ta = await getTranslations("actions");
   const tProfile = await getTranslations("profile");
 
   const isAdmin = isSuperAdminEmail(user.email);
@@ -211,6 +213,9 @@ export default async function CoffeeProfilePage({
 
   return (
     <PageContainer>
+    {/* D-06 (P1c): the back link every detail page opens with. The banner layout stays,
+        as on the profile: the identity card holds the page's one h1. */}
+    <PageBackLink href={`/${locale}/app/coffees`} label={ta("back")} />
     <div>
       {/* Banner — same brand-toned strip as the user profile */}
       <div className="h-32 rounded-card bg-gradient-to-r from-primary via-primary-container to-primary shadow-card sm:h-40" />

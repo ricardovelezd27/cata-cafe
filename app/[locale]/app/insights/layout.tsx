@@ -34,6 +34,7 @@ export default async function InsightsLayout({
         isSuperAdmin={access.isSuperAdmin}
         isAiAdmin={access.isAiAdmin}
         labels={{
+          nav: t("title"),
           dashboard: t("tabs.dashboard"),
           explorer: t("tabs.explorer"),
           benchmark: t("tabs.benchmark"),
