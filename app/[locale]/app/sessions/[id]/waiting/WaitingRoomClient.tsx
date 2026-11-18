@@ -17,6 +17,8 @@ import { START_EXIT_CAP_MS, exitMarksSeen, onCuppingStarted } from "@/lib/warmup
 import { previewSpec } from "@/lib/warmup/preview";
 import { WarmupPlayer, type WarmupPlayerStrings } from "@/components/warmup/WarmupPlayer";
 import { WarmupFigure } from "@/components/warmup/figures";
+import { GatheringMark, StagePanel } from "@/components/arrival/StagePanel";
+import { Button } from "@/components/ui";
 
 export interface WaitingWarmupProps {
   /** CuppingSession.warmupExerciseId — the master's pick, or null. */
@@ -340,55 +342,40 @@ export function WaitingRoomClient({
   const others = chosen ? WARMUP_EXERCISES.filter((ex) => ex.id !== chosen.id) : WARMUP_EXERCISES;
 
   return (
-    <main className="flex flex-1 items-center justify-center px-6 py-16">
-      <div className="w-full max-w-md space-y-8 text-center">
-        <div className="text-6xl select-none" aria-hidden>
-          ☕
-        </div>
-
-        <div className="space-y-3">
-          <h1 className="page-title">
-            {translations.title}
-          </h1>
-          <p className="text-card font-medium text-on-surface">{sessionName}</p>
-          <p className="text-body text-on-surface-variant leading-relaxed">
-            {translations.description}
-          </p>
-          {isAsync && (
-            <p className="text-body text-on-surface-variant leading-relaxed">
-              {translations.asyncDetail}
-            </p>
-          )}
-          {referenceLine && (
-            <p
-              role="status"
-              className="inline-block rounded-pill bg-secondary-fixed px-3 py-1 text-caption font-medium text-secondary"
-            >
-              {referenceLine}
-            </p>
-          )}
-        </div>
-
-        {!isAsync && (
-          <div className="flex items-center justify-center gap-2">
-            <span className="text-caption text-on-surface-variant">{translations.waiting}</span>
-            <span className="flex gap-1">
-              {[0, 1, 2].map((i) => (
-                <span
-                  key={i}
-                  className="inline-block w-1.5 h-1.5 rounded-full bg-primary-container/60 animate-bounce"
-                  style={{ animationDelay: `${i * 0.2}s` }}
-                />
-              ))}
-            </span>
+    // The app layout already renders the page's <main>: this is a plain box (it nested a second <main>).
+    <div className="flex flex-1 justify-center px-4 py-6 lg:px-6 lg:py-8">
+      <div className="flex w-full max-w-md flex-col gap-[16px]">
+        {/* K-02: the stage behind the status only (StagePanel, the arrival stage's
+            ground in a box); the actions and the warm-up card stay on paper. */}
+        <StagePanel>
+          <div className="flex flex-col items-center gap-[12px] text-center">
+            <GatheringMark />
+            <h1 className="page-title text-surface">{translations.title}</h1>
+            <p className="text-card font-medium text-surface">{sessionName}</p>
+            <p className="text-body leading-relaxed text-surface/80">{translations.description}</p>
+            {isAsync && <p className="text-body leading-relaxed text-surface/80">{translations.asyncDetail}</p>}
+            {referenceLine && (
+              <p
+                role="status"
+                className="inline-block rounded-pill border border-surface/40 px-3 py-1 text-caption font-medium text-surface"
+              >
+                {referenceLine}
+              </p>
+            )}
+            {/* Waiting: said in words, with one still mint mark. Nothing bounces. */}
+            {!isAsync && (
+              <p className="inline-flex items-center gap-2 text-caption text-surface/80">
+                <span aria-hidden="true" className="inline-block h-2 w-2 rounded-full bg-primary-fixed" />
+                {translations.waiting}
+              </p>
+            )}
+            {!isAsync && connectionLost && (
+              <p role="status" className="text-caption text-secondary-container">
+                {translations.connectionLost}
+              </p>
+            )}
           </div>
-        )}
-
-        {!isAsync && connectionLost && (
-          <p role="status" className="text-caption text-secondary">
-            {translations.connectionLost}
-          </p>
-        )}
+        </StagePanel>
 
         {/* Only an async session has something to start here: it opens the cup page at
             once. A live session starts when the owner says so, and this page already
@@ -396,26 +383,14 @@ export function WaitingRoomClient({
             "start" button that only asked the server whether it had started was a
             button that did not do what it said (audit C-03). */}
         {isAsync && (
-          <div className="space-y-2">
-            <button
-              onClick={goToCup}
-              className="w-full rounded-pill py-3 px-6 text-caption font-semibold text-white"
-              style={{
-                background: "linear-gradient(135deg, #3D5A3E 0%, #2A4430 100%)",
-                border: "none",
-                cursor: "pointer",
-                fontFamily: "inherit",
-                transition: "background 0.2s",
-              }}
-            >
-              {translations.buttonLabel}
-            </button>
-          </div>
+          <Button className="w-full" onClick={goToCup}>
+            {translations.buttonLabel}
+          </Button>
         )}
 
         <Link
           href={`/${locale}/app/sessions`}
-          className="inline-block text-caption text-on-surface-variant underline hover:text-primary-container transition-colors"
+          className="inline-flex min-h-[44px] items-center self-center text-caption text-on-surface-variant underline transition-colors hover:text-primary-container"
         >
           {translations.backToSessions}
         </Link>
@@ -453,7 +428,7 @@ export function WaitingRoomClient({
               <div className="mt-4 border-t border-outline-variant pt-1">
                 <button
                   type="button"
-                  className="flex min-h-11 w-full items-center justify-between text-caption font-medium text-on-surface"
+                  className="flex min-h-[44px] w-full items-center justify-between text-caption font-medium text-on-surface"
                   aria-expanded={othersOpen}
                   onClick={() => setOthersOpen((v) => !v)}
                 >
@@ -492,7 +467,7 @@ export function WaitingRoomClient({
           onExit={(info) => closePlayer(exitMarksSeen(info))}
         />
       )}
-    </main>
+    </div>
   );
 }
 
@@ -548,7 +523,7 @@ function HeroCard({
           <button
             type="button"
             onClick={onJoin}
-            className="min-h-11 flex-1 rounded-pill bg-secondary px-5 text-caption font-medium text-on-secondary hover:opacity-90 sm:flex-none"
+            className="min-h-[44px] flex-1 rounded-pill bg-secondary px-5 text-caption font-medium text-on-secondary hover:opacity-90 sm:flex-none"
           >
             {warmup.synced.inProgress.split(" ·")[0]} · {warmup.synced.join}
           </button>
@@ -558,8 +533,8 @@ function HeroCard({
           onClick={onStart}
           className={
             seen
-              ? "min-h-11 rounded-pill border border-outline-variant px-5 text-caption font-medium text-on-surface hover:bg-surface-container"
-              : "min-h-11 flex-1 rounded-pill bg-primary-container px-5 text-caption font-medium text-on-primary hover:bg-primary sm:flex-none"
+              ? "min-h-[44px] rounded-pill border border-outline-variant px-5 text-caption font-medium text-on-surface hover:bg-surface-container"
+              : "min-h-[44px] flex-1 rounded-pill bg-primary-container px-5 text-caption font-medium text-on-primary hover:bg-primary sm:flex-none"
           }
         >
           {seen ? warmup.heroRepeat : warmup.heroStart}

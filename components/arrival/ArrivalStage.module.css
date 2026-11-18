@@ -8,19 +8,39 @@
    reset. An arrival screen is a form on a card: it keeps all three. The ground
    is painted here from the same tokens. */
 
-.ground {
+.ground,
+.panel {
   position: relative;
   isolation: isolate;
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  min-height: 100vh;
-  min-height: 100dvh;
   overflow: hidden;
   overflow: clip;
   background-color: var(--color-stage);
   background-image: linear-gradient(180deg, var(--color-stage) 0%, var(--color-stage-deep) 100%);
   color: var(--color-surface);
+}
+.ground {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* The same ground as a PANEL inside the app (S7b, the waiting room, audit
+   K-02): the stage behind the status only, while the page around it stays
+   paper (the app shell, the actions, the warm-up card). One ground, two
+   shapes: never a second copy of the gradient. */
+.panel {
+  border-radius: var(--radius-card);
+  padding: 28px 20px;
+}
+.panelLight {
+  z-index: -1;
+  left: 50%;
+  top: 50%;
+  width: min(560px, 150%);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
 }
 
 /* One still pool of the stage's mint light behind the card (the global
@@ -120,7 +140,8 @@
 /* Focus on the dark ground: the paper ring is the app's dark green, which
    cannot be seen here. Outside the card the ring is the stage's mint; inside
    the card (cream) it is the paper ring again. Same 2 px, same 2 px offset. */
-.ground :focus-visible:where(:not([tabindex="-1"])) {
+.ground :focus-visible:where(:not([tabindex="-1"])),
+.panel :focus-visible:where(:not([tabindex="-1"])) {
   outline: 2px solid var(--color-primary-fixed);
   outline-offset: 2px;
 }
