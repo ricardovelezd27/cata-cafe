@@ -135,8 +135,8 @@ describe("F-04: the kit's controls reach 44 px", () => {
   });
   it("SegmentedControl: the track paints 44 px and each segment has a 44 px hit area", () => {
     const src = read("components/ui/SegmentedControl.tsx");
-    expect(reaches44(classAfter(src, 'role="tablist"'))).toBe(true);
-    expect(reaches44(classAfter(src, 'role="tab"'))).toBe(true);
+    expect(reaches44(classAfter(src, 'role="radiogroup"'))).toBe(true);
+    expect(reaches44(classAfter(src, 'role="radio"'))).toBe(true);
   });
   it("the dialog close is 44 x 44", () => {
     const close = cssRule(read("components/ui/ResponsiveDialog.module.css"), ".close");

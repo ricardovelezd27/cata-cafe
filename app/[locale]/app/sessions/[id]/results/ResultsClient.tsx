@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { RESULTS_TAB_PARAM, resultsTabFrom, resultsTabParam, withParams } from "@/lib/viewAddress";
+import { tabIds } from "@/lib/rovingFocus";
 import { createBrowserClient } from "@supabase/ssr";
 import { subscribeWithSessionAuth } from "@/lib/supabase/realtimeAuth";
 import { revealSample, refreshAggregateScores, resendCloseEmails, finishSoloSession, closeSession } from "@/app/actions/community";
@@ -385,7 +387,15 @@ export function ResultsClient({
   };
 }) {
   const router = useRouter();
-  const [tab, setTab] = useState<Tab>("resumen");
+  // The tab lives in the address (`?tab=panel`, audit D-01, P5a) beside R3's
+  // `?sample=`: a reload, "back" and a language switch keep it.
+  const rawTab = useSearchParams().get(RESULTS_TAB_PARAM);
+  const [tab, setTabState] = useState<Tab>(() => resultsTabFrom(rawTab));
+  const setTab = (next: Tab) => {
+    setTabState(next);
+    const search = withParams(window.location.search, { [RESULTS_TAB_PARAM]: resultsTabParam(next) });
+    window.history.replaceState(null, "", `${window.location.pathname}${search}${window.location.hash}`);
+  };
   const compareChoice = useSyncExternalStore(
     subscribeCompareRef,
     getCompareRefSnapshot,
@@ -748,6 +758,12 @@ export function ResultsClient({
 
   // Defensive: fall back to the results if the Panel is selected without access.
   const effectiveTab: Tab = tab === "panel" && !canViewIndividual ? "resumen" : tab;
+  // A `tab` the viewer cannot have (unknown, or the Panel without access) leaves the address.
+  useEffect(() => {
+    if (rawTab === null || rawTab === resultsTabParam(effectiveTab)) return;
+    const search = withParams(window.location.search, { [RESULTS_TAB_PARAM]: resultsTabParam(effectiveTab) });
+    window.history.replaceState(null, "", `${window.location.pathname}${search}${window.location.hash}`);
+  }, [rawTab, effectiveTab]);
 
   // "Comparar con: Referencia 1 · Referencia 2" — only when there are several.
   const compareSelector =
@@ -930,14 +946,19 @@ export function ResultsClient({
             value={effectiveTab}
             onChange={(id) => setTab(id as Tab)}
             ariaLabel={translations.title}
+            idBase="results"
           />
         </div>
       ) : (
         <div className="border-b border-outline-variant" />
       )}
 
-      {/* Content — scrolls with the page (no inner scroller, S1) */}
-      <div>
+      {/* Content — scrolls with the page (no inner scroller, S1); the tab's panel when there are tabs */}
+      <div
+        {...(tabItems.length > 1
+          ? { role: "tabpanel", id: tabIds("results", effectiveTab).panel, "aria-labelledby": tabIds("results", effectiveTab).tab }
+          : {})}
+      >
       {adminViewNotice && (
         <div
           role="status"
