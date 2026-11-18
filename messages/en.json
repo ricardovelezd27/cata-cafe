@@ -411,8 +411,8 @@
     "sample": "Sample",
     "ofTotal": "of {total}",
     "next": "Next",
-    "nextSample": "Next Sample",
-    "nextPhase": "Next Step",
+    "nextSample": "Next sample",
+    "nextPhase": "Go to",
     "viewResults": "View Results",
     "submitting": "Submitting...",
     "prev": "Previous",
@@ -487,15 +487,22 @@
       "body": "One free-text impression per sample. Optional — you can submit without writing anything.",
       "placeholder": "What did this cup leave you? Aromas, flavors, sensations…",
       "optional": "Optional",
-      "open": "Quick notes →",
-      "back": "Back to cupping",
-      "submit": "Submit and see results"
+      "open": "Quick notes",
+      "back": "Back",
+      "submit": "Submit evaluation"
     },
     "phases": {
       "fragrance": "Fragrance",
       "aroma": "Aroma",
       "taste_aftertaste": "Flavor & Aftertaste",
       "acidity_sweetness_mouthfeel": "Acidity, Sweetness & Mouthfeel",
+      "overall": "Overall"
+    },
+    "phasesShort": {
+      "fragrance": "Fragrance",
+      "aroma": "Aroma",
+      "taste_aftertaste": "Flavor",
+      "acidity_sweetness_mouthfeel": "Acidity",
       "overall": "Overall"
     },
     "guard": {

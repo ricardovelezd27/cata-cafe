@@ -411,8 +411,8 @@
     "sample": "Muestra",
     "ofTotal": "de {total}",
     "next": "Siguiente",
-    "nextSample": "Siguiente Muestra",
-    "nextPhase": "Siguiente Etapa",
+    "nextSample": "Siguiente muestra",
+    "nextPhase": "Ir a",
     "viewResults": "Ver Resultados",
     "submitting": "Enviando...",
     "prev": "Anterior",
@@ -487,15 +487,22 @@
       "body": "Una impresión libre por muestra. Opcional: puedes enviar sin escribir nada.",
       "placeholder": "¿Qué te dejó esta taza? Aromas, sabores, sensaciones…",
       "optional": "Opcional",
-      "open": "Notas rápidas →",
-      "back": "Volver a la cata",
-      "submit": "Enviar y ver resultados"
+      "open": "Notas rápidas",
+      "back": "Volver",
+      "submit": "Enviar evaluación"
     },
     "phases": {
       "fragrance": "Fragancia",
       "aroma": "Aroma",
       "taste_aftertaste": "Sabor y Regusto",
       "acidity_sweetness_mouthfeel": "Acidez, Dulzor y Sensación",
+      "overall": "Global"
+    },
+    "phasesShort": {
+      "fragrance": "Fragancia",
+      "aroma": "Aroma",
+      "taste_aftertaste": "Sabor",
+      "acidity_sweetness_mouthfeel": "Acidez",
       "overall": "Global"
     },
     "guard": {

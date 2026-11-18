@@ -24,9 +24,8 @@ export function CanvasFooter({
   nextDisabled = false,
   nextVariant = "next-sample",
 }: CanvasFooterProps) {
-  const nextClass =
-    nextVariant === "next-phase" ? styles.nextPhase : styles.next;
-
+  // C-10: one green primary for every "next" (sample, stage, notes, submit). The stage
+  // change is said in the label; the variant stays only as a data attribute.
   return (
     <div className={styles.bar} role="navigation" aria-label="Step navigation">
       <button
@@ -45,7 +44,8 @@ export function CanvasFooter({
         type="button"
         onClick={onNext}
         disabled={nextDisabled}
-        className={`${styles.button} ${nextClass}`}
+        className={`${styles.button} ${styles.next}`}
+        data-variant={nextVariant}
       >
         {nextLabel}
         <ArrowRight size={14} aria-hidden />

@@ -27,7 +27,7 @@ import { shouldShowWarmupOverlay } from "@/lib/warmup/overlayGate";
 import { formatTimeLeft, isRunning as isWarmupRunning, parseDbTimestamp, resyncPositionMs, runLengthMs, seekFor, skewMs, timeLeftMs } from "@/lib/warmup/syncedRun";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
-import { Coffee, Scale, FileText, BarChart3 } from "lucide-react";
+import { Coffee, Scale, FileText, BarChart3, Timer } from "lucide-react";
 import { DescriptiveForm } from "@/components/cupping/DescriptiveForm";
 import { AffectiveForm } from "@/components/cupping/AffectiveForm";
 import { CombinedForm } from "@/components/cupping/CombinedForm";
@@ -110,7 +110,7 @@ import { useKeyboardOpen } from "@/hooks/useKeyboardOpen";
 import { isEvaluationReadOnly, isModuleFrozenForRevealed } from "@/lib/revealFreeze";
 import type { MarketCopy } from "@/components/cupping/MarketNote";
 import { PARTIAL_COPY_FALLBACK, type PartialCopy } from "@/components/cupping/AttributeExtras";
-import { CuppingTimer, TIMER_COPY_FALLBACK, type TimerCopy } from "@/components/cupping/CuppingTimer";
+import { CuppingTimer, TIMER_COPY_FALLBACK, useCuppingTimerRunning, type TimerCopy } from "@/components/cupping/CuppingTimer";
 import { isAffectiveDeclaredPartial } from "@/lib/affectivePartial";
 import { backupEntryFor, planHydration } from "@/lib/pinnedViewHydration";
 import { indexAfterReconcile, reconcileSamples, reconcileUnpinned } from "@/lib/sampleReconcile";
@@ -400,6 +400,8 @@ export function CupClient({
     downloadQr: string;
     formatLabel: string;
     phaseLabels: Record<string, string>;
+    /** C-10 (S5b): short stage names for the footer's one-line label. Optional for cached blobs. */
+    phasesShort?: Record<string, string>;
     attrLabels: Record<string, string>;
     guard: {
       nextTitle: string;
@@ -955,6 +957,9 @@ export function CupClient({
   const leaveTargetRef = useRef<CupExitTarget>("sessions");
   const closedNoticeShownRef = useRef(false);
   const closedNoticeRef = useRef<() => void>(() => {});
+  // F-05 (S5b): the timer's open state is shared by its row and the phone's header-row link.
+  const [timerOpen, setTimerOpen] = useState(false);
+  const timerRunning = useCuppingTimerRunning(session.id, userId);
   // IndexedDB has proven unreliable (quota, Safari private mode, …) — the
   // OfflineBanner surfaces this so the cupper knows local drafts aren't safe.
   // S10 WP8b: the OfflineBanner notice sits at the top of the scroll area; toast
@@ -2518,18 +2523,18 @@ export function CupClient({
         body: "One free-text impression per sample. Optional — you can submit without writing anything.",
         placeholder: "What did this cup leave you? Aromas, flavors, sensations…",
         optional: "Optional",
-        open: "Quick notes →",
-        back: "Back to cupping",
-        submit: "Submit and see results",
+        open: "Quick notes",
+        back: "Back",
+        submit: "Submit evaluation",
       }
     : {
         title: "Notas rápidas",
         body: "Una impresión libre por muestra. Opcional: puedes enviar sin escribir nada.",
         placeholder: "¿Qué te dejó esta taza? Aromas, sabores, sensaciones…",
         optional: "Opcional",
-        open: "Notas rápidas →",
-        back: "Volver a la cata",
-        submit: "Enviar y ver resultados",
+        open: "Notas rápidas",
+        back: "Volver",
+        submit: "Enviar evaluación",
       });
 
   const nextLabel = notesStage
@@ -2537,7 +2542,7 @@ export function CupClient({
     : isLastSampleOverall
     ? expressNotesCopy.open
     : nextStep
-    ? `${translations.nextPhase} → ${translations.phaseLabels[nextStep]}`
+    ? `${translations.nextPhase} ${translations.phasesShort?.[nextStep] ?? translations.phaseLabels[nextStep]}`
     : translations.nextSample;
 
   const nextVariant: "next-sample" | "next-phase" | "view-results" =
@@ -2665,6 +2670,17 @@ export function CupClient({
       )}
       {referenceContext && <div className="flex items-center">{referenceContext}</div>}
       {editSampleButton && <div className="flex items-center pt-1">{editSampleButton}</div>}
+      {/* F-05 (S5b): on a phone the owner's letter -> coffee key lives here, not above the form. */}
+      {isOwner && translations.sampleKey && !notesStage && (
+        <SampleKey
+          rows={viewSamples.map((s) => ({
+            id: s.id,
+            label: s.label,
+            coffee: s.coffee?.name?.trim() || null,
+          }))}
+          translations={translations.sampleKey}
+        />
+      )}
     </>
   );
 
@@ -2800,6 +2816,7 @@ export function CupClient({
   );
 
   // ─── Top bar content ──────────────────────────────────────────
+  const timerCopy = translations.timer ?? TIMER_COPY_FALLBACK[locale === "en" ? "en" : "es"];
   const phaseStepper = (
     <PhaseStepper
       phases={stepsForFormat}
@@ -2876,7 +2893,10 @@ export function CupClient({
         <CuppingTimer
           sessionId={session.id}
           userId={userId}
-          copy={translations.timer ?? TIMER_COPY_FALLBACK[locale === "en" ? "en" : "es"]}
+          copy={timerCopy}
+          open={timerOpen}
+          onOpenChange={setTimerOpen}
+          phoneLinkInHeader
         />
       </>
     ) : (
@@ -2949,6 +2969,11 @@ export function CupClient({
       navLabels={translations.openNav && translations.navTitle ? { open: translations.openNav, title: translations.navTitle } : undefined}
       onMobileExit={() => void requestLeave("sessions")}
       mobileExitLabel={translations.exitToSessions}
+      mobileTool={
+        !notesStage && activeTab === "cupping" && !timerRunning
+          ? { label: timerCopy.show, icon: <Timer size={18} aria-hidden />, onClick: () => setTimerOpen((v) => !v), expanded: timerOpen }
+          : undefined
+      }
     >
       <OfflineBanner
         online={online}
@@ -3041,7 +3066,7 @@ export function CupClient({
           collapsed letter -> coffee key. Participants never receive coffee
           names (cup/page.tsx ships `coffee` to the owner only). */}
       {isOwner && translations.sampleKey && !notesStage && (
-        <div className="mx-4 mt-3 lg:mx-6">
+        <div className="mx-4 mt-3 lg:mx-6 hidden min-[641px]:block">
           <SampleKey
             rows={viewSamples.map((s) => ({
               id: s.id,

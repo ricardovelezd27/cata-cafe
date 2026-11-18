@@ -526,6 +526,13 @@ export default async function CupPage({
           acidity_sweetness_mouthfeel: t("cupping.phases.acidity_sweetness_mouthfeel"),
           overall: t("cupping.phases.overall"),
         },
+        phasesShort: {
+          fragrance: t("cupping.phasesShort.fragrance"),
+          aroma: t("cupping.phasesShort.aroma"),
+          taste_aftertaste: t("cupping.phasesShort.taste_aftertaste"),
+          acidity_sweetness_mouthfeel: t("cupping.phasesShort.acidity_sweetness_mouthfeel"),
+          overall: t("cupping.phasesShort.overall"),
+        },
         attrLabels: {
           fragancia_af: t("attributes.fragancia_af"),
           aroma_af: t("attributes.aroma_af"),

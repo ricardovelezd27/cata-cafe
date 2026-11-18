@@ -49,6 +49,8 @@ interface SessionShellProps {
   /** J-04: the phone's way out, in the header row (the page's guarded exit). */
   onMobileExit?: () => void;
   mobileExitLabel?: string;
+  /** F-05 (S5b): one tool in the phone's header row (the cupping timer's link). */
+  mobileTool?: { label: string; icon: ReactNode; onClick: () => void; expanded?: boolean };
 }
 
 export function SessionShell({
@@ -70,6 +72,7 @@ export function SessionShell({
   navLabels,
   onMobileExit,
   mobileExitLabel,
+  mobileTool,
 }: SessionShellProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -145,6 +148,17 @@ export function SessionShell({
                   {mobileTitle}
                 </span>
               )
+            )}
+            {mobileTool && (
+              <button
+                type="button"
+                className={styles.toolButton}
+                onClick={mobileTool.onClick}
+                aria-label={mobileTool.label}
+                aria-expanded={mobileTool.expanded}
+              >
+                {mobileTool.icon}
+              </button>
             )}
             {mobileBar && mobileDetails && (
               <button
