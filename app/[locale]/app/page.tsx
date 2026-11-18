@@ -17,17 +17,15 @@ import { PaperSectionHeading } from "@/components/ui/PaperSectionHeading";
 import { PageContainer } from "@/components/ui/PageContainer";
 import { PageHeader } from "@/components/ui/PageHeader";
 
-function timeAgo(date: Date, locale: string): string {
+/** How long ago, in the reader's language (the words are `dashboard.timeAgo.*`, P4a: no inline dictionary). */
+function timeAgo(date: Date, t: (key: string, values?: Record<string, number>) => string): string {
   const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (seconds < 60) return locale === "es" ? "hace un momento" : "just now";
+  if (seconds < 60) return t("timeAgo.now");
   const minutes = Math.floor(seconds / 60);
-  if (minutes < 60)
-    return locale === "es" ? `hace ${minutes} min` : `${minutes}m ago`;
+  if (minutes < 60) return t("timeAgo.minutes", { n: minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24)
-    return locale === "es" ? `hace ${hours} h` : `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return locale === "es" ? `hace ${days} día${days > 1 ? "s" : ""}` : `${days}d ago`;
+  if (hours < 24) return t("timeAgo.hours", { n: hours });
+  return t("timeAgo.days", { n: Math.floor(hours / 24) });
 }
 
 export default async function Dashboard({
@@ -248,7 +246,7 @@ export default async function Dashboard({
                         <span className="font-semibold text-on-surface text-caption truncate">
                           {s.name}
                         </span>
-                        <FormatBadge format={s.format} />
+                        <FormatBadge label={tSession.has(`formats.${s.format}`) ? tSession(`formats.${s.format}`) : s.format} />
                         {s.createdBy !== user.id && (
                           <Badge tone="outline">{tSession("table.participantBadge")}</Badge>
                         )}
@@ -403,7 +401,7 @@ export default async function Dashboard({
                   </span>
                   <span className="text-caption text-on-surface-variant shrink-0">
                     {item.submittedAt
-                      ? timeAgo(new Date(item.submittedAt), locale)
+                      ? timeAgo(new Date(item.submittedAt), t)
                       : ""}
                   </span>
                 </li>

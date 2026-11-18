@@ -183,7 +183,13 @@
     "fullWizardCta": "New session",
     "statSamplesSubEvals": "with your evaluation submitted",
     "activityEvalSample": "You evaluated {sample} in {session}",
-    "emptyBody": "Start with “Cup now”, above."
+    "emptyBody": "Start with “Cup now”, above.",
+    "timeAgo": {
+      "now": "just now",
+      "minutes": "{n} min ago",
+      "hours": "{n} h ago",
+      "days": "{n, plural, one {# day} other {# days}} ago"
+    }
   },
   "session": {
     "list": "Sessions",

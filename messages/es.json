@@ -183,7 +183,13 @@
     "fullWizardCta": "Nueva sesión",
     "statSamplesSubEvals": "con tu evaluación enviada",
     "activityEvalSample": "Evaluaste {sample} en {session}",
-    "emptyBody": "Empieza con «Catar ahora», arriba."
+    "emptyBody": "Empieza con «Catar ahora», arriba.",
+    "timeAgo": {
+      "now": "hace un momento",
+      "minutes": "hace {n} min",
+      "hours": "hace {n} h",
+      "days": "hace {n, plural, one {# día} other {# días}}"
+    }
   },
   "session": {
     "list": "Sesiones",
