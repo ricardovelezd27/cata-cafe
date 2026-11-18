@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { edgeHint, type EdgeHint } from "@/lib/viewAddress";
 
@@ -54,10 +55,14 @@ export function RouteTabs({ tabs, ariaLabel, className = "" }: { tabs: RouteTab[
         ))}
       </div>
       {hint.start ? (
-        <span aria-hidden className="pointer-events-none absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-surface to-transparent" data-edge="start" />
+        <span aria-hidden className="pointer-events-none absolute inset-y-0 left-0 flex w-12 items-center bg-gradient-to-r from-surface via-surface to-transparent text-on-surface-variant" data-edge="start">
+          <ChevronLeft size={16} />
+        </span>
       ) : null}
       {hint.end ? (
-        <span aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-surface to-transparent" data-edge="end" />
+        <span aria-hidden className="pointer-events-none absolute inset-y-0 right-0 flex w-12 items-center justify-end bg-gradient-to-l from-surface via-surface to-transparent text-on-surface-variant" data-edge="end">
+          <ChevronRight size={16} />
+        </span>
       ) : null}
     </nav>
   );
