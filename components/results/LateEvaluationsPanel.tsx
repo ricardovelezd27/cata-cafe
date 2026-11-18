@@ -52,12 +52,15 @@ const signed = (n: number) => `${n > 0 ? "+" : ""}${num(n)}`;
 
 function Label({ row, t }: { row: OwnerLateRow; t: LateEvaluationsTranslations }) {
   return row.receivedLate ? (
-    <p className="flex items-start gap-1.5 font-sans text-xs font-medium text-warning">
+    <p className="flex items-start gap-1.5 font-sans text-[12.25px] font-medium text-warning">
       <AlertTriangle size={13} aria-hidden className="mt-0.5 shrink-0" />
       <span>{t.receivedLate}</span>
     </p>
   ) : (
-    <Badge tone="neutral">{t.savedBeforeClose}</Badge>
+    // in its own box: a badge is as wide as its words, not as the row
+    <div>
+      <Badge tone="neutral">{t.savedBeforeClose}</Badge>
+    </div>
   );
 }
 
@@ -68,7 +71,7 @@ function Numbers({ row, t }: { row: OwnerLateRow; t: LateEvaluationsTranslations
         {row.individualScore === null ? t.scorePartial : t.score.replace("{score}", num(row.individualScore))}
       </p>
       {row.diff !== null && (
-        <p className="font-sans text-xs text-on-surface-variant">{t.diff.replace("{diff}", signed(row.diff))}</p>
+        <p className="font-sans text-[12.25px] text-on-surface-variant">{t.diff.replace("{diff}", signed(row.diff))}</p>
       )}
     </>
   );
@@ -78,10 +81,13 @@ export function LateEvaluationsPanel({
   rows,
   locale,
   translations: t,
+  embedded = false,
 }: {
   rows: OwnerLateRow[];
   locale: string;
   translations: LateEvaluationsTranslations;
+  /** Inside the organizer's Panel (R5): a card of the Panel, with no margins of its own. */
+  embedded?: boolean;
 }) {
   const router = useRouter();
   const [target, setTarget] = useState<OwnerLateRow | null>(null);
@@ -92,7 +98,14 @@ export function LateEvaluationsPanel({
   });
 
   return (
-    <section className="mx-4 mt-4 flex flex-col gap-3 rounded-card border border-secondary/30 bg-secondary-container/20 p-4 lg:mx-6">
+    <section
+      className={
+        embedded
+          ? "flex flex-col gap-3 rounded-card border border-outline-variant bg-surface-container-lowest p-4"
+          : "mx-4 mt-4 flex flex-col gap-3 rounded-card border border-secondary/30 bg-secondary-container/20 p-4 lg:mx-6"
+      }
+      data-panel-section="late"
+    >
       <h2 className="section-title text-xl">{t.title}</h2>
       <p className="font-sans text-sm text-on-surface-variant">{t.intro}</p>
       <ul className="flex flex-col gap-2">
@@ -106,7 +119,7 @@ export function LateEvaluationsPanel({
                 <p className="font-sans text-sm font-semibold text-on-surface">
                   {r.cupperName} · {r.sampleLabel}
                 </p>
-                <p className="font-sans text-xs text-on-surface-variant" suppressHydrationWarning>
+                <p className="font-sans text-[12.25px] text-on-surface-variant" suppressHydrationWarning>
                   {t.savedAt.replace("{date}", dateFmt.format(new Date(r.savedAt)))}
                 </p>
               </div>
@@ -120,7 +133,7 @@ export function LateEvaluationsPanel({
               type="button"
               aria-expanded={open === r.evaluationId}
               onClick={() => setOpen(open === r.evaluationId ? null : r.evaluationId)}
-              className="min-h-[44px] w-fit text-left font-sans text-xs font-medium text-primary-container underline underline-offset-2"
+              className="min-h-[44px] w-fit text-left font-sans text-[12.25px] font-medium text-primary-container underline underline-offset-2"
             >
               {open === r.evaluationId ? t.hideRatings : t.showRatings}
             </button>

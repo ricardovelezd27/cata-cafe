@@ -291,6 +291,15 @@
   white-space: nowrap;
 }
 
+/* ── What waits for the organizer in the Panel ─────────────────────────────── */
+.pending {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
 /* ── The reader against the panel ─────────────────────────────────────────── */
 .alignment {
   display: flex;

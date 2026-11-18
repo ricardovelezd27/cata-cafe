@@ -3,6 +3,8 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { buildCardsStrings } from "@/components/results/cardsStrings";
 import type { SampleDetailTranslations, SheetCompareTranslations } from "@/components/results/SampleDetail";
 import { buildSheetStrings } from "@/components/results/sheetStrings";
+import { buildPanelStrings } from "@/components/results/panelStrings";
+import type { PanelWords } from "./PanelFixtureView";
 import { buildLearningsStrings } from "@/components/results/learningsStrings";
 import { buildOverviewStrings, type OverviewStrings } from "@/components/results/overviewStrings";
 import { buildResultsPartsStrings } from "@/components/results/partsStrings";
@@ -34,6 +36,37 @@ export default async function ResultsPartsDevPage({
   const tAttr = await getTranslations("attributes");
   const tg = await getTranslations("group");
   const tBlocks = await getTranslations("blocks");
+  const tAlign = await getTranslations("alignment");
+  const tDesc = await getTranslations("descriptors");
+  // The Panel's words, read whole from the messages (the board has no session to shape them).
+  const matrixWords = t.raw("matrix") as Record<string, string> & { exclusionReasons: Record<string, string> };
+  const panelWords: PanelWords = {
+    matrixTitle: matrixWords.ownerSection,
+    referenceBadge: t("referenceBadge"),
+    matrix: {
+      ...matrixWords,
+      title: matrixWords.matrixTitle,
+      partialLabel: t("partial.label"),
+      oldRuleNote: null,
+      closedNote: matrixWords.closedNote,
+      reasons: matrixWords.exclusionReasons,
+    } as unknown as PanelWords["matrix"],
+    panel: buildPanelStrings(t),
+    late: {
+      ...(t.raw("late") as Record<string, string>),
+      attributeLabels: Object.fromEntries(
+        AFFECTIVE_ATTRIBUTES.map((a) => [a.id, tAttr(a.id as Parameters<typeof tAttr>[0])]),
+      ),
+    } as unknown as PanelWords["late"],
+    note: t.raw("postCloseNote") as PanelWords["note"],
+    align: {
+      title: tAlign("title"),
+      subtitle: tAlign("subtitle"),
+      excluded: tAlign("excluded"),
+      noData: tAlign("noData"),
+      all: tDesc("filterSampleAll"),
+    },
+  };
   // The words of each invented cupping, chosen as the results page chooses them
   // (the reference's title and explanation depend on the format and the mode).
   const overviewStrings: Record<string, OverviewStrings> = Object.fromEntries(
@@ -84,6 +117,7 @@ export default async function ResultsPartsDevPage({
         ),
       })}
       learningsStrings={buildLearningsStrings(t)}
+      panelWords={panelWords}
       // the sheet's words, read whole from the messages (the board has no session to shape them)
       sheetWords={{
         detail: {

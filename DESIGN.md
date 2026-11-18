@@ -120,7 +120,7 @@ All tokens are CSS custom properties in `app/globals.css`, exposed as Tailwind u
 | `--color-warning-container` | `#f6e388` | `bg-warning-container` | Deviation/consensus warning signal — NOT for quality scoring or accents |
 | `--color-on-warning-container` | `#574600` | `text-on-warning-container` | Text on warning-container |
 
-> **Terracotta rule:** `secondary` (#9d4326) replaces amber as the accent. It signals energy and emphasis, never quality, and it is not a notice colour (a notice is `Notice`, under "Component Patterns"). No colour signals quality: see "No quality bands". The owner CVA deviation matrix (`OwnerParticipantSection`) is a consensus signal, not a quality score: it uses `primary-fixed` (within 1 SD), `warning-container` (> 1 SD), and `error-container` (≥ 2 SD).
+> **Terracotta rule:** `secondary` (#9d4326) replaces amber as the accent. It signals energy and emphasis, never quality, and it is not a notice colour (a notice is `Notice`, under "Component Patterns"). No colour signals quality: see "No quality bands". The owner CVA deviation matrix (`OwnerParticipantSection`) is a consensus signal, not a quality score: it uses `primary-fixed` (within 1 SD), `warning-container` (1 SD or more), and `warning` (2 SD or more: "far from the group" is not an error, so never an error token); the two far tones also carry a mark (a triangle, a diamond).
 
 ### Backward-Compat Aliases (legacy code)
 
@@ -155,7 +155,7 @@ Colour may still say three other things about a number, none of them quality:
 | Meaning | Tokens | Example |
 |---|---|---|
 | **Which series it is** | `primary` for one's own, `secondary` / `secondary-container` for the group | The two scores on the landing's score card; group markers on a bar |
-| **How far from the group** | `primary-fixed` (within 1 SD), `warning-container` (over 1 SD), `error-container` (2 SD or more) | The owner's deviation matrix (the cell also carries a marker: colour is never alone) |
+| **How far from the group** | `primary-fixed` (within 1 SD), `warning-container` (1 SD or more), `warning` (2 SD or more; never an error token: far is not an error) | The owner's deviation matrix (a far cell also carries a mark, a triangle or a diamond: colour is never alone) |
 | **A defect or an error** | `error`, `error-container` | A defective cup, a failed save |
 
 Anything else that tints a number or a rating by its value is a finding.

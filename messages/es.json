@@ -1054,6 +1054,28 @@
       "excludedToast": "Catador excluido de los resultados",
       "restoredToast": "Catador incluido de nuevo en los resultados"
     },
+    "panel": {
+      "pendingTitle": "Pendiente en el panel",
+      "pendingLateOne": "1 evaluación tardía por decidir",
+      "pendingLateMany": "{n} evaluaciones tardías por decidir",
+      "pendingNotesOne": "1 nota después del cierre",
+      "pendingNotesMany": "{n} notas después del cierre",
+      "pendingBoth": "{a} y {b}",
+      "pendingOpen": "Abrir el panel",
+      "matrixCaption": "Puntaje de cada catador en cada café, con el puntaje del grupo y la dispersión.",
+      "matrixRegion": "Tabla de puntajes por catador",
+      "group": "Grupo",
+      "spread": "Dispersión (DE)",
+      "cell": "{cupper}, {coffee}: {value}",
+      "distOver1": "a 1 DE o más de la media",
+      "distOver2": "lejos del grupo, 2 DE o más",
+      "noTotal": "sin puntaje",
+      "scrollHint": "La tabla sigue hacia la derecha: deslízala para ver el resto.",
+      "pickCoffee": "Café que se muestra",
+      "phoneGroup": "Grupo {score}",
+      "phoneSpread": "DE {sd}",
+      "alignCount": "{k} de {o}"
+    },
     "breakdown": {
       "how": "¿Cómo se calculó?",
       "formula": "Fórmula (base CVA)",

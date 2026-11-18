@@ -405,8 +405,10 @@ describe("what the sheet replaces is gone", () => {
 
   it("the alignment table is still reachable: on the organizer's Panel", () => {
     const client = read("app", "[locale]", "app", "sessions", "[id]", "results", "ResultsClient.tsx");
-    expect(client).toMatch(/canViewIndividual && cupperAlignment && cupperAlignment\.length > 0/);
-    expect(client).toMatch(/<CupperAlignment/);
+    // since R5 the Panel is one view, mounted under `canViewIndividual`, and the alignment is one of its parts
+    expect(client).toMatch(/canViewIndividual && participants \? \(\s*<PanelView/);
+    expect(client).toMatch(/cupperAlignment && cupperAlignment\.length > 0/);
+    expect(read("components", "results", "PanelView.tsx")).toMatch(/<CupperAlignment/);
     expect(existsSync(path.join(process.cwd(), "components", "results", "CupperAlignment.tsx"))).toBe(true);
   });
 

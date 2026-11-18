@@ -30,9 +30,12 @@ import { countedDescriptors, countedFamilies } from "@/lib/flavorWheel";
 import { wheelHeadline } from "@/lib/flavorWheelLayout";
 import { INTENSITY_SCALE, QUALITY_SCALE, countBar } from "@/lib/resultsScales";
 import { LEARNINGS_REPEAT_SCENARIO, OVERVIEW_SCENARIOS } from "@/lib/dev/overviewFixtures";
+import { PANEL_CLASS, PANEL_DESCRIPTIVE, PANEL_LARGE, PANEL_TWO } from "@/lib/dev/panelFixtures";
+import { pendingSentence } from "@/components/results/panelStrings";
 import css from "./gallery.module.css";
 import type { LearningsStrings } from "@/components/results/learningsStrings";
 import { LearningsSwitchFixture, OverviewFixture } from "./OverviewFixture";
+import { PanelFixtureView, type PanelWords } from "./PanelFixtureView";
 import { SheetFixture, type SheetWords } from "./SheetFixture";
 
 // The board's own words (a dev page: they are not product copy and are not in
@@ -42,6 +45,11 @@ const COPY = {
     dev: "Página de desarrollo. Datos inventados; no lee la base de datos ni necesita una cuenta.",
     title: "Partes de resultados",
     overview: "El resumen de una cata",
+    panelSection: "El panel de quien organiza",
+    panelNote: "La segunda pestaña de la página, con catas inventadas: lo que espera una decisión, la matriz con el puntaje del grupo y una marca en las celdas lejanas, quién cuenta, las notas después del cierre y la alineación en una barra neutra. Los interruptores y \"Incluir\" son los controles reales: aquí no se pulsan.",
+    panelBuilt: "Construido: una fila por catador (PANEL_MATRIX_ROWS = \"cuppers\")",
+    panelOther: "Alternativa: una fila por café, como estaba (PANEL_MATRIX_ROWS = \"coffees\")",
+    panelLens: "La vista de solo lectura del administrador: sin interruptores ni evaluaciones tardías",
     learnings: "Aprendizajes: el tope de cinco frases propias",
     learningsNote: "Cuando hay un café repetido, el catador tiene seis frases propias y la sección muestra cinco. Arriba, lo construido: la del café repetido va primero. Abajo, la alternativa: el orden de la tabla aprobada, donde esa frase es la que se corta.",
     learningsFirst: "Construido: el café repetido primero (REPEATED_COFFEE_FIRST = true)",
@@ -108,6 +116,11 @@ const COPY = {
     dev: "Development page. Invented data; it reads no database and needs no account.",
     title: "Results parts",
     overview: "The overview of a cupping",
+    panelSection: "The organizer's panel",
+    panelNote: "The page's second tab, with invented cuppings: what waits for a decision, the matrix with the group's score and a mark on the far cells, who counts, the notes after the close and the alignment on one neutral bar. The switches and \"Include\" are the real controls: they are not pressed here.",
+    panelBuilt: "Built: a row per cupper (PANEL_MATRIX_ROWS = \"cuppers\")",
+    panelOther: "Alternative: a row per coffee, as it was (PANEL_MATRIX_ROWS = \"coffees\")",
+    panelLens: "The admin's read-only lens: no switches, no late evaluations",
     learnings: "Learnings: the cap of five sentences of your own",
     learningsNote: "With a repeated coffee the cupper has six sentences of their own and the section shows five. Above, what is built: the repeated coffee comes first. Below, the alternative: the approved table's order, where that sentence is the one cut.",
     learningsFirst: "Built: the repeated coffee first (REPEATED_COFFEE_FIRST = true)",
@@ -196,7 +209,7 @@ function Card({ title, note, option, children }: { title?: string; note?: string
 }
 
 /** The groups of parts the board can show, in the order of the page. */
-export const GALLERY_SECTIONS = ["overview", "learnings", "sheet", "wheel", "minis", "compare", "rank", "dots", "score", "narrow"] as const;
+export const GALLERY_SECTIONS = ["overview", "learnings", "panel", "sheet", "wheel", "minis", "compare", "rank", "dots", "score", "narrow"] as const;
 export type GallerySection = (typeof GALLERY_SECTIONS)[number];
 
 /** Scenario and coffee (by its index) of each sheet shown on the board. */
@@ -219,6 +232,7 @@ export function ResultsPartsGallery({
   overviewStrings,
   cardsStrings,
   learningsStrings,
+  panelWords,
   sheetWords,
   only,
 }: {
@@ -229,6 +243,8 @@ export function ResultsPartsGallery({
   cardsStrings: CardsStrings;
   /** The words of "Aprendizajes" (package R4b). */
   learningsStrings: LearningsStrings;
+  /** The words of the organizer's Panel (package R5). */
+  panelWords: PanelWords;
   /** The words of a coffee's sheet (package R3). */
   sheetWords: SheetWords;
   /** Show only these groups (`?only=wheel,compare`); everything without it. */
@@ -350,7 +366,41 @@ export function ResultsPartsGallery({
                 t={overviewStrings[scenario.id]}
                 cards={cardsStrings}
                 learningsT={learningsStrings}
+                // the organizer's tile: what waits for them in the Panel
+                pending={
+                  scenario.id === "closed-owner"
+                    ? {
+                        title: panelWords.panel.pendingTitle,
+                        text: pendingSentence({ late: 1, notes: 2 }, panelWords.panel),
+                        action: panelWords.panel.pendingOpen,
+                      }
+                    : null
+                }
               />
+            </div>
+          ))}
+        </section>
+      ) : null}
+
+      {show("panel") ? (
+        <section className={css.section}>
+          <h2 className={css.sectionTitle}>{c.panelSection}</h2>
+          <p className={css.sectionNote}>{c.panelNote}</p>
+          {(
+            [
+              [PANEL_CLASS, "cuppers", false, c.panelBuilt],
+              [PANEL_CLASS, "coffees", false, c.panelOther],
+              [PANEL_LARGE, "cuppers", false, c.panelBuilt],
+              [PANEL_LARGE, "coffees", false, c.panelOther],
+              [PANEL_TWO, "cuppers", true, c.panelLens],
+              [PANEL_DESCRIPTIVE, "cuppers", false, c.panelBuilt],
+            ] as const
+          ).map(([fixture, rows, readOnly, label]) => (
+            <div key={`${fixture.id}-${rows}`} className={css.scenario} data-panel-case={`${fixture.id}-${rows}`}>
+              <p className={css.listTitle}>
+                {fixture.title[locale]} · {label}
+              </p>
+              <PanelFixtureView fixture={fixture} locale={locale} rows={rows} readOnly={readOnly} words={panelWords} />
             </div>
           ))}
         </section>

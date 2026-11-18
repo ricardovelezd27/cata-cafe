@@ -1054,6 +1054,28 @@
       "excludedToast": "Cupper excluded from the results",
       "restoredToast": "Cupper included in the results again"
     },
+    "panel": {
+      "pendingTitle": "Waiting in the panel",
+      "pendingLateOne": "1 late evaluation to decide",
+      "pendingLateMany": "{n} late evaluations to decide",
+      "pendingNotesOne": "1 note after the close",
+      "pendingNotesMany": "{n} notes after the close",
+      "pendingBoth": "{a} and {b}",
+      "pendingOpen": "Open the panel",
+      "matrixCaption": "Each cupper's score for each coffee, with the group's score and the spread.",
+      "matrixRegion": "Scores by cupper",
+      "group": "Group",
+      "spread": "Spread (SD)",
+      "cell": "{cupper}, {coffee}: {value}",
+      "distOver1": "1 SD or more from the mean",
+      "distOver2": "far from the group, 2 SD or more",
+      "noTotal": "no score",
+      "scrollHint": "The table continues to the right: scroll it to see the rest.",
+      "pickCoffee": "Coffee shown",
+      "phoneGroup": "Group {score}",
+      "phoneSpread": "SD {sd}",
+      "alignCount": "{k} of {o}"
+    },
     "breakdown": {
       "how": "How was this calculated?",
       "formula": "Formula (CVA-based)",

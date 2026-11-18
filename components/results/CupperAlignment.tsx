@@ -1,24 +1,24 @@
 "use client";
 
-import { type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
+import { PillTabs } from "@/components/ui";
+import { fillPattern } from "@/lib/fillPattern";
+import { alignmentBars, type AlignmentInput } from "@/lib/reports/panel";
 
 /**
- * Owner-only cupper alignment panel (N15, Step 4). Shows how closely each
- * cupper's descriptor selections match the group consensus (majority sets),
- * ranked most → least aligned. Informational only — never affects scores.
- * Excluded cuppers are dropped from the consensus (upstream) but still shown,
- * flagged, at the bottom.
+ * Organizer only: of the descriptors most of the panel chose, how many each
+ * cupper chose too, for the whole cupping or for one coffee. Informational: it
+ * never touches a score. Excluded cuppers are outside the consensus (upstream)
+ * and are listed last, marked.
+ *
+ * One neutral bar for everyone (audit A-05): a share is a length and a number,
+ * never a traffic light. A low share is not a fault, it is a different palate
+ * or a different vocabulary.
  */
 
-export type CupperAlignmentRow = {
-  id: string;
-  name: string;
-  excluded: boolean;
-  alignment: number; // 0..1, across every sample
-  matches: number;
-  opportunities: number;
-  /** Per-sample split of the same matches/opportunities (sums to the totals above). */
-  bySample: Record<string, { matches: number; opportunities: number }>;
+export type CupperAlignmentRow = AlignmentInput & {
+  /** 0..1 across every sample (kept for the callers that sort by it). */
+  alignment: number;
 };
 
 export type AlignmentTranslations = {
@@ -26,97 +26,84 @@ export type AlignmentTranslations = {
   subtitle: string;
   excluded: string;
   noData: string;
+  /** "Todas las muestras": the filter's first option. */
+  all: string;
 };
-
-function barToneClass(excluded: boolean, pct: number): string {
-  if (excluded) return "bg-surface-container-high";
-  if (pct >= 75) return "bg-primary-container";
-  if (pct >= 50) return "bg-secondary";
-  return "bg-error";
-}
 
 export function CupperAlignment({
   rows,
-  sampleFilter,
+  samples,
   t,
+  countPattern,
   titleAction,
 }: {
   rows: CupperAlignmentRow[];
-  /** Scope the displayed pct/bar to one sample's matches/opportunities; null/undefined = totals. */
-  sampleFilter?: string | null;
+  /** The session's coffees, for the filter; with one coffee there is no filter. */
+  samples: { id: string; label: string }[];
   t: AlignmentTranslations;
-  /** Optional node rendered inline after the title (e.g. an InfoHint). */
+  /** RAW "{k} de {o}". */
+  countPattern: string;
+  /** Rendered after the title (the help button). */
   titleAction?: ReactNode;
 }) {
-  // Resolve the DISPLAYED matches/opportunities per row (either the session
-  // totals, or one sample's split), then rank by that same displayed value —
-  // a sample-scoped view can reorder rows relative to the session-wide one.
-  const displayed = rows.map((r) => {
-    const source = sampleFilter ? (r.bySample[sampleFilter] ?? { matches: 0, opportunities: 0 }) : r;
-    return {
-      ...r,
-      displayMatches: source.matches,
-      displayOpportunities: source.opportunities,
-      displayAlignment: source.opportunities > 0 ? source.matches / source.opportunities : 0,
-    };
-  });
-
-  const sorted = [...displayed].sort((a, b) => {
-    // Included cuppers first (by displayed alignment desc), excluded last.
-    if (a.excluded !== b.excluded) return a.excluded ? 1 : -1;
-    return b.displayAlignment - a.displayAlignment;
-  });
-
-  const hasData = sorted.some((r) => r.displayOpportunities > 0);
+  const titleId = useId();
+  const [sampleId, setSampleId] = useState<"all" | string>("all");
+  const bars = alignmentBars(rows, sampleId === "all" ? null : sampleId);
+  const hasData = bars.some((bar) => bar.opportunities > 0);
 
   return (
-    <div className="rounded-card border border-outline-variant bg-surface-container-lowest p-4">
-      <div className="mb-1 inline-flex items-center gap-1.5 font-display text-[15px] font-semibold text-primary-container">
-        {t.title}
-        {titleAction}
+    <section className="flex flex-col gap-3" aria-labelledby={titleId} data-panel-section="alignment">
+      <div className="flex flex-col gap-0.5">
+        <h2 id={titleId} className="section-title inline-flex items-center gap-1.5 text-xl">
+          {t.title}
+          {titleAction}
+        </h2>
+        <p className="m-0 text-[12.25px] leading-snug text-on-surface-variant">{t.subtitle}</p>
       </div>
-      <div className="mb-3.5 text-[11px] leading-snug text-on-surface-variant">
-        {t.subtitle}
-      </div>
-
-      {!hasData ? (
-        <div className="text-xs italic text-on-surface-variant">{t.noData}</div>
-      ) : (
-        <div className="flex flex-col gap-2.5">
-          {sorted.map((r) => {
-            const pct = Math.round(r.displayAlignment * 100);
-            return (
-              <div key={r.id}>
-                <div className="mb-1 flex items-baseline justify-between gap-2">
-                  <span
-                    className={`truncate text-sm font-semibold ${
-                      r.excluded ? "text-on-surface-variant" : "text-on-surface"
-                    }`}
-                  >
-                    {r.name}
-                    {r.excluded && (
-                      <span className="font-normal text-on-surface-variant"> {t.excluded}</span>
+      {samples.length > 1 ? (
+        <PillTabs
+          items={[{ id: "all", label: t.all }, ...samples.map((sample) => ({ id: sample.id, label: sample.label }))]}
+          value={sampleId}
+          onChange={(id) => setSampleId(id)}
+          ariaLabel={t.title}
+          size="sm"
+        />
+      ) : null}
+      <div className="rounded-card border border-outline-variant bg-surface-container-lowest p-4">
+        {!hasData ? (
+          <p className="m-0 text-[14px] text-on-surface-variant">{t.noData}</p>
+        ) : (
+          <ul className="m-0 flex list-none flex-col gap-3 p-0">
+            {bars.map((bar) => (
+              <li key={bar.id} className="flex flex-col gap-1" data-alignment-row="">
+                <div className="flex items-baseline justify-between gap-3 text-[14px]">
+                  <span className={`min-w-0 truncate font-semibold ${bar.excluded ? "text-on-surface-variant" : "text-on-surface"}`}>
+                    {bar.name}
+                    {bar.excluded ? <span className="font-normal"> {t.excluded}</span> : null}
+                  </span>
+                  <span className={`shrink-0 tabular-nums ${bar.excluded ? "text-on-surface-variant" : "text-on-surface"}`}>
+                    {bar.percent === null ? (
+                      "—"
+                    ) : (
+                      <>
+                        {fillPattern(countPattern, { k: bar.matches, o: bar.opportunities })}
+                        <span className="ml-2 font-semibold">{bar.percent} %</span>
+                      </>
                     )}
                   </span>
-                  <span
-                    className={`shrink-0 font-mono text-xs font-bold tabular-nums ${
-                      r.excluded ? "text-on-surface-variant" : "text-on-surface"
-                    }`}
-                  >
-                    {r.displayOpportunities > 0 ? `${pct}%` : "—"}
-                  </span>
                 </div>
-                <div className="h-2 overflow-hidden rounded-pill bg-surface-container-high">
+                {/* one neutral bar: a share, never a grade */}
+                <div className="h-2 overflow-hidden rounded-pill bg-surface-container-highest" aria-hidden="true">
                   <div
-                    className={`h-full rounded-pill transition-[width] duration-300 ${barToneClass(r.excluded, pct)}`}
-                    style={{ width: `${r.displayOpportunities > 0 ? pct : 0}%` }}
+                    className={`h-full rounded-pill ${bar.excluded ? "bg-outline-variant" : "bg-on-surface-variant"}`}
+                    style={{ width: `${bar.percent ?? 0}%` }}
                   />
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
   );
 }

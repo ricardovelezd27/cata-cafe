@@ -7,12 +7,12 @@ import { subscribeWithSessionAuth } from "@/lib/supabase/realtimeAuth";
 import { revealSample, refreshAggregateScores, resendCloseEmails, finishSoloSession, closeSession } from "@/app/actions/community";
 import { planFinish, soloCloseAsIsOffer } from "@/lib/closeRules";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { CupperAlignment, type CupperAlignmentRow } from "@/components/results/CupperAlignment";
+import type { CupperAlignmentRow } from "@/components/results/CupperAlignment";
+import { PanelView } from "@/components/results/PanelView";
+import { pendingSentence, type PanelStrings } from "@/components/results/panelStrings";
+import { panelPending } from "@/lib/reports/panel";
 import { useSheetAddress } from "./useSheetAddress";
-import {
-  OwnerParticipantSection,
-  type ParticipantResult,
-} from "@/components/results/OwnerParticipantSection";
+import type { ParticipantResult } from "@/components/results/OwnerParticipantSection";
 import {
   SampleDetailDialog,
   type SampleDetailDialogTranslations,
@@ -40,7 +40,6 @@ import {
 import {
   PostCloseNoteEditor,
   PostCloseNoteReadOnly,
-  PostCloseNotesOwnerList,
   type PostCloseNoteTranslations,
 } from "@/components/results/PostCloseNote";
 import type { OwnerLateRow, PostCloseNotesPayload } from "@/lib/lateContributions";
@@ -235,6 +234,8 @@ export function ResultsClient({
     t: OverviewStrings;
     /** R2, step 2: the words of the coffee cards and of "Comparar". */
     cards: CardsStrings;
+    /** R5: the words the organizer's Panel added. */
+    panelT: PanelStrings;
     /** R3: per coffee, the panel's descriptors stage by stage (null where this
      *  viewer may not read them), and the words of the sheet. */
     sheets: Record<string, SheetData | null>;
@@ -729,9 +730,21 @@ export function ResultsClient({
     cupsPerSample: session.cupsPerSample,
   };
   const cards = coffeeCards({ samples: session.samples, referenceId, ctx: rankCtx, data: overview.data });
+  // The organizer's Panel (R5): the score each card shows for the GROUP, by sample
+  // (the matrix's "Grupo" line), and what waits for them there.
+  const panelWaiting = canViewIndividual
+    ? panelPending({ lateRows: isAdminViewer ? null : lateRows, notesByCupper: postCloseNotes?.byCupper ?? null })
+    : null;
+  const openPanel = () => {
+    setTab("panel");
+    // the tile that was pressed leaves with the overview: put the reader at the Panel's start
+    requestAnimationFrame(() => document.querySelector<HTMLElement>("[data-panel-view]")?.focus());
+  };
+  const panelGroupScores = Object.fromEntries(
+    cards.map((c) => [c.sample.id, c.context && c.context.basis === "community" ? c.context.score : null]),
+  );
 
   // The alignment table's own filter: one coffee, or all of them.
-  const [alignSampleId, setAlignSampleId] = useState<"all" | string>("all");
 
   // Defensive: fall back to the results if the Panel is selected without access.
   const effectiveTab: Tab = tab === "panel" && !canViewIndividual ? "resumen" : tab;
@@ -986,7 +999,10 @@ export function ResultsClient({
           {line}
         </div>
       ))}
-      {lateRows && lateTranslations && !isAdminViewer && (
+      {/* The late evaluations live in the Panel (R5), announced by the overview's
+          "Pendiente" tile. Kept here only for a page that holds them and has no
+          Panel to show them in, so they can never become unreachable. */}
+      {lateRows && lateRows.length > 0 && lateTranslations && !isAdminViewer && !canViewIndividual && (
         <LateEvaluationsPanel rows={lateRows} locale={locale} translations={lateTranslations} />
       )}
       {closeNow && (
@@ -1137,6 +1153,16 @@ export function ResultsClient({
             parts={overview.parts}
             t={overview.t}
             compare={{ closed: sessionClosed, ground: COMPARE_GROUND, t: overview.cards }}
+            pending={
+              panelWaiting
+                ? {
+                    title: overview.panelT.pendingTitle,
+                    text: pendingSentence(panelWaiting, overview.panelT),
+                    action: overview.panelT.pendingOpen,
+                    onOpen: openPanel,
+                  }
+                : null
+            }
             onOpenSample={(id) => openSheet(id)}
           />
           <CoffeeCards
@@ -1183,76 +1209,64 @@ export function ResultsClient({
           ) : null}
         </div>
       ) : (
-        <div className="p-4 lg:p-6 flex flex-col gap-5">
-          {/* The organizer's working view: every cupper's evaluation, by name. */}
-          {canViewIndividual && (
-            <section className="flex flex-col gap-3">
-              <h2 className="section-title inline-flex items-center gap-1.5 text-xl">
-                {translations.ownerSection}
-                <InfoHint
-                  title={translations.help.porCatador.title}
-                  body={translations.help.porCatador.body}
-                  closeLabel={translations.help.closeLabel}
-                />
-              </h2>
-              <OwnerParticipantSection
-                sessionId={session.id}
-                participants={participants!}
-                format={format ?? asSessionFormat(session.format)}
-                cupsPerSample={session.cupsPerSample}
-                readOnly={isAdminViewer}
-                onOpenDetail={(sampleId, participantId) => openSheet(sampleId, participantId)}
-                referenceBadge={translations.referenceBadge}
-                t={translations.matrix}
+        // The organizer's working view (R5): what waits for a decision, every
+        // cupper's total beside the group's, who counts, the notes after the close
+        // and the alignment. The page holds these rows only in the organizer's lens.
+        canViewIndividual && participants ? (
+          <PanelView
+            sessionId={session.id}
+            participants={participants}
+            format={format ?? asSessionFormat(session.format)}
+            cupsPerSample={session.cupsPerSample}
+            readOnly={isAdminViewer}
+            onOpenDetail={(sampleId, participantId) => openSheet(sampleId, participantId)}
+            referenceBadge={translations.referenceBadge}
+            groupScores={panelGroupScores}
+            matrixTitle={translations.ownerSection}
+            matrixHelp={
+              <InfoHint
+                title={translations.help.porCatador.title}
+                body={translations.help.porCatador.body}
+                closeLabel={translations.help.closeLabel}
               />
-            </section>
-          )}
-          {/* Owner-only: notes the cuppers added after the close (S10 WP4b, Kim C2). */}
-          {canViewIndividual && postCloseNotes?.byCupper && noteTranslations && (
-            <PostCloseNotesOwnerList
-              byCupper={postCloseNotes.byCupper}
-              cupperNames={Object.fromEntries((participants ?? []).map((p) => [p.id, p.name]))}
-              sampleLabels={Object.fromEntries(session.samples.map((s) => [s.id, s.label]))}
-              locale={locale}
-              translations={noteTranslations}
-            />
-          )}
-          {/* Organizer only: how close each cupper's descriptors are to the group's.
-              It came from the Descriptores tab unchanged; package R5 redraws it. */}
-          {canViewIndividual && cupperAlignment && cupperAlignment.length > 0 && (
-            <section className="flex flex-col gap-3">
-              {session.samples.length > 1 && (
-                <PillTabs
-                  items={[
-                    { id: "all", label: translations.filterSampleAll },
-                    ...session.samples.map((sm) => ({ id: sm.id, label: sm.label })),
-                  ]}
-                  value={alignSampleId}
-                  onChange={(id) => setAlignSampleId(id)}
-                  ariaLabel={translations.alignTitle}
-                  size="sm"
-                />
-              )}
-              <CupperAlignment
-                rows={cupperAlignment}
-                sampleFilter={alignSampleId === "all" ? null : alignSampleId}
-                t={{
-                  title: translations.alignTitle,
-                  subtitle: translations.alignSubtitle,
-                  excluded: translations.alignExcluded,
-                  noData: translations.alignNoData,
-                }}
-                titleAction={
-                  <InfoHint
-                    title={translations.help.alineacion.title}
-                    body={translations.help.alineacion.body}
-                    closeLabel={translations.help.closeLabel}
-                  />
-                }
-              />
-            </section>
-          )}
-        </div>
+            }
+            matrixT={translations.matrix}
+            late={lateRows && lateTranslations ? { rows: lateRows, t: lateTranslations } : null}
+            notes={
+              postCloseNotes?.byCupper && noteTranslations
+                ? {
+                    byCupper: postCloseNotes.byCupper,
+                    sampleLabels: Object.fromEntries(session.samples.map((sm) => [sm.id, sm.label])),
+                    t: noteTranslations,
+                  }
+                : null
+            }
+            alignment={
+              cupperAlignment && cupperAlignment.length > 0
+                ? {
+                    rows: cupperAlignment,
+                    samples: session.samples.map((sm) => ({ id: sm.id, label: sm.label })),
+                    t: {
+                      title: translations.alignTitle,
+                      subtitle: translations.alignSubtitle,
+                      excluded: translations.alignExcluded,
+                      noData: translations.alignNoData,
+                      all: translations.filterSampleAll,
+                    },
+                    help: (
+                      <InfoHint
+                        title={translations.help.alineacion.title}
+                        body={translations.help.alineacion.body}
+                        closeLabel={translations.help.closeLabel}
+                      />
+                    ),
+                  }
+                : null
+            }
+            locale={locale}
+            t={overview.panelT}
+          />
+        ) : null
       )}
       </div>
 
