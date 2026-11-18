@@ -86,7 +86,8 @@ describe("S7a: the four forms of C-08 use it, as their last element", () => {
     const numbers = [...src.matchAll(/<SectionTitle n=\{(\d)\}/g)].map((m) => Number(m[1]));
     expect(numbers).toEqual([1, 2, 3, 4]);
     expect(src.match(/<section aria-labelledby=\{`\$\{fid\}-sec-\w+`\}/g)).toHaveLength(4);
-    expect(src).toContain('<h2 id={id} className={`section-title text-2xl ${className}`}>');
+    // T4b: `.section-title` paints the section role (21 px) by itself.
+    expect(src).toContain('<h2 id={id} className={`section-title ${className}`}>');
   });
 
   it("the wizard has ONE add action for samples (D-05): no separate 'add another coffee'", () => {
