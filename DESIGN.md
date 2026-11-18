@@ -640,7 +640,7 @@ As built, the field's focus is a 25 % ring (about 1.5 : 1), which is not a focus
 
 ### `Card` and `Notice`
 
-A card is one component, `Card` (`components/ui/Card.tsx`, built by package P2 of the audit's plan). Until it exists a new card is not hand-written in a new recipe: it follows this contract, and the existing hand-written cards move to it.
+A card is one component, `Card` (`components/ui/Card.tsx`, built by package P2a of the audit's plan, 2026-11). A new card is never hand-written: it is a `Card`, and the existing hand-written cards move to it area by area (`node scripts/ux-recipes/count.mjs` counts what is left). An interactive card is the link (`href`) or the button (`onClick`) itself and takes no `action`; a `Card` inside a `Card` renders without a second frame (cards do not nest).
 
 ```
 +--------------------------------------------------+   rounded-card, 1 px outline-variant, no shadow
@@ -669,7 +669,7 @@ A tinted block that groups the controls of one part of a form (an attribute of t
 
 ### `SectionHeading` (paper)
 
-The paper counterpart of the stage's `components/landing/SectionHeading.tsx` (built by package P2 of the audit's plan). Every section of a paper screen opens with it; a hand-written `h2` or `h3`, or an uppercase label used as a heading, is a finding.
+The paper counterpart of the stage's `components/landing/SectionHeading.tsx`, named **`PaperSectionHeading`** (`components/ui/PaperSectionHeading.tsx`, package P2a) so the two are never imported in each other's place (a test pins it). Every section of a paper screen opens with it; a hand-written `h2` or `h3`, or an uppercase label used as a heading, is a finding. It carries the gap to its content (12 px on a phone, 16 px from 768 px); `flush` drops it.
 
 ```
 SECTION NAME (uppercase label, on-surface-variant)          [action, InfoHint or count]

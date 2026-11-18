@@ -42,7 +42,8 @@
     "view": "View",
     "duplicate": "Duplicate",
     "duplicateError": "Couldn't duplicate. Please try again.",
-    "duplicateDropped": "Session duplicated. Coffees you can no longer use were removed from those samples: {count}."
+    "duplicateDropped": "Session duplicated. Coffees you can no longer use were removed from those samples: {count}.",
+    "dismissNotice": "Dismiss notice"
   },
   "home": {
     "heroTitle": "Professional sensory cupping",

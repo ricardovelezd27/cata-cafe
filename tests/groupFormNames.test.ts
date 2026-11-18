@@ -149,10 +149,13 @@ describe("N2: the group pages' controls paint 44 px or carry a 44 px hit area", 
       ["components/groups/GroupEmailComposer.tsx", 4], // subject, session select, Enviar, retry
       ["components/groups/GroupNameControls.tsx", 3], // name field, save, Eliminar grupo
       ["components/groups/LeaveGroupButton.tsx", 1],
-      ["components/groups/GroupEmailOptOutNotice.tsx", 1],
     ];
     for (const [file, n] of want) {
       expect((read(file).match(/min-h-\[44px\]/g) ?? []).length, file).toBeGreaterThanOrEqual(n);
     }
+    // P2a: the opt-out line is a Notice whose action is the kit's Button (44 px by construction).
+    const optOut = read("components/groups/GroupEmailOptOutNotice.tsx");
+    expect(optOut).toMatch(/<Notice\b/);
+    expect(optOut).toMatch(/<Button\b[^>]*size="sm"/);
   });
 });

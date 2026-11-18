@@ -1,7 +1,8 @@
-import Link from "next/link";
 import { requireAppUser } from "@/lib/auth";
 import { UserPlus, Users } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Card } from "@/components/ui/Card";
+import { PaperSectionHeading } from "@/components/ui/PaperSectionHeading";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { prisma } from "@/lib/prisma";
 import { getCoCupperCandidates } from "@/lib/coCuppers";
@@ -132,24 +133,20 @@ export default async function GroupsPage({
           <EmptyState icon={<Users size={20} aria-hidden />} title={t("empty")} body={t("emptyBody")} />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* P2a: each group is a Card that is a link (one anatomy, one focus ring). */}
             {groups.map((g) => (
-              <Link
-                key={g.id}
-                href={`/${locale}/app/groups/${g.id}`}
-                className="block bg-surface-container-lowest rounded-card border border-outline-variant p-5 transition-all hover:shadow-md hover:border-primary-muted"
-              >
-                <p className="font-semibold text-[15px] text-on-surface truncate">{g.name}</p>
+              <Card key={g.id} href={`/${locale}/app/groups/${g.id}`} title={<span className="block truncate">{g.name}</span>}>
                 {g.description && (
-                  <p className="text-xs text-on-surface-variant mt-1 line-clamp-2">{g.description}</p>
+                  <p className="line-clamp-2 text-caption text-on-surface-variant">{g.description}</p>
                 )}
-                <p className="text-xs text-on-surface-variant mt-2">
+                <p className={`text-caption text-on-surface-variant ${g.description ? "mt-2" : ""}`}>
                   {g._count.members}{" "}
                   {g._count.members === 1
                     ? t("members").toLowerCase().replace(/s$/, "")
                     : t("members").toLowerCase()}{" "}
                   · {formatDate(g.createdAt)}
                 </p>
-              </Link>
+              </Card>
             ))}
           </div>
         )}
@@ -157,40 +154,35 @@ export default async function GroupsPage({
 
       {/* Groups where I'm a member (not owner) */}
       {memberGroups.length > 0 && (
-        <div className="space-y-4">
-          <h2 className="section-title text-xl">{t("memberGroupsTitle")}</h2>
+        <div>
+          <PaperSectionHeading title={t("memberGroupsTitle")} />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {memberGroups.map((g) => (
-              <Link
+              <Card
                 key={g.id}
                 href={`/${locale}/app/groups/${g.id}`}
-                className="block bg-surface-container-lowest rounded-card border border-outline-variant p-5 transition-all hover:shadow-md hover:border-primary-muted"
+                eyebrow={t("memberBadge")}
+                title={<span className="block truncate">{g.name}</span>}
               >
-                <div className="flex items-center justify-between gap-2">
-                  <p className="font-semibold text-[15px] text-on-surface truncate">{g.name}</p>
-                  <span className="shrink-0 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide rounded-full bg-secondary/15 text-secondary">
-                    {t("memberBadge")}
-                  </span>
-                </div>
                 {g.description && (
-                  <p className="text-xs text-on-surface-variant mt-1 line-clamp-2">{g.description}</p>
+                  <p className="line-clamp-2 text-caption text-on-surface-variant">{g.description}</p>
                 )}
-                <p className="text-xs text-on-surface-variant mt-2">
+                <p className={`text-caption text-on-surface-variant ${g.description ? "mt-2" : ""}`}>
                   {g._count.members}{" "}
                   {g._count.members === 1
                     ? t("members").toLowerCase().replace(/s$/, "")
                     : t("members").toLowerCase()}{" "}
                   · {profileDisplayName({ id: g.createdBy, displayName: g.owner.displayName }, locale)}
                 </p>
-              </Link>
+              </Card>
             ))}
           </div>
         </div>
       )}
 
       {/* Co-cuppers */}
-      <div className="space-y-4">
-        <h2 className="section-title text-xl">{t("coCuppersTitle")}</h2>
+      <div>
+        <PaperSectionHeading title={t("coCuppersTitle")} />
         {cuppers.length === 0 ? (
           <EmptyState icon={<UserPlus size={20} aria-hidden />} title={t("noCoCuppers")} />
         ) : (

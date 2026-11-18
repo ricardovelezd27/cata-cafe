@@ -43,3 +43,11 @@ export type { ActionFeedbackTranslations } from './Toast'
 export { TextAction, TextActionLink, textActionClasses } from './TextAction'
 export type { TextActionTone, TextActionProps, TextActionLinkProps } from './TextAction'
 export { HIT_44, HIT_Y44 } from './hitArea'
+
+// Paper primitives (P2a): one card, one notice, one paper section heading
+export { Card } from './Card'
+export type { CardProps, CardTone, CardPadding } from './Card'
+export { Notice } from './Notice'
+export type { NoticeProps, NoticeTone } from './Notice'
+export { PaperSectionHeading } from './PaperSectionHeading'
+export type { PaperSectionHeadingProps } from './PaperSectionHeading'
