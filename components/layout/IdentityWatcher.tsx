@@ -85,7 +85,7 @@ export function IdentityWatcher({
     <div
       role="status"
       aria-live="polite"
-      className="flex items-center gap-2 border-b border-secondary/30 bg-secondary-container/30 px-4 py-2 font-sans text-sm text-on-surface"
+      className="flex items-center gap-2 border-b border-secondary/30 bg-secondary-container/30 px-4 py-2 font-sans text-caption text-on-surface"
     >
       <RefreshCw size={15} aria-hidden className="shrink-0" />
       <span className="flex-1 break-words">{t.notice}</span>

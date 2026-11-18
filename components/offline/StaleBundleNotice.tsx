@@ -32,7 +32,7 @@ export function StaleBundleNotice({
   return (
     <div role="status" aria-live="polite">
       {show && (
-        <div className="mx-4 lg:mx-6 mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-card border border-outline-variant bg-secondary-fixed px-4 py-2 text-sm text-on-secondary-fixed">
+        <div className="mx-4 lg:mx-6 mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-card border border-outline-variant bg-secondary-fixed px-4 py-2 text-caption text-on-secondary-fixed">
           <RefreshCw size={15} aria-hidden className="shrink-0 text-secondary" />
           <span className="flex-1 min-w-[12rem]">{message}</span>
           <Button

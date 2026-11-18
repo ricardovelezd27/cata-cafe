@@ -88,7 +88,7 @@ export function DuplicateButton({
         </button>
         {/* Visible, not just a tooltip (S8-10 T8, F-sesiones-8). */}
         {failed && (
-          <span role="alert" className="text-xs text-error">
+          <span role="alert" className="text-caption text-error">
             {errorText}
           </span>
         )}
@@ -102,12 +102,12 @@ export function DuplicateButton({
         type="button"
         onClick={handleClick}
         disabled={pending}
-        className="inline-flex min-h-[44px] items-center gap-1.5 rounded-pill border border-outline-variant px-4 py-2 text-sm font-semibold text-on-surface transition-colors hover:bg-surface-container disabled:opacity-50"
+        className="inline-flex min-h-[44px] items-center gap-1.5 rounded-pill border border-outline-variant px-4 py-2 text-caption font-semibold text-on-surface transition-colors hover:bg-surface-container disabled:opacity-50"
       >
         <Copy size={15} />
         {label}
       </button>
-      {failed && <span className="text-xs text-error">{errorText}</span>}
+      {failed && <span className="text-caption text-error">{errorText}</span>}
     </span>
   );
 }

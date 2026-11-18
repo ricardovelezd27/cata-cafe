@@ -39,7 +39,7 @@ export default function BottomNav({
               aria-current={active ? "page" : undefined}
               // Labels paint 12 px (F-14); the active tab is marked by weight and a
               // bar along its top edge, not by colour alone.
-              className={`relative flex-1 flex flex-col items-center justify-center gap-1 text-[12px] transition-colors ${
+              className={`relative flex-1 flex flex-col items-center justify-center gap-1 text-caption transition-colors ${
                 active
                   ? "font-semibold text-primary-container before:absolute before:inset-x-3 before:top-0 before:h-[3px] before:rounded-b-pill before:bg-primary-container before:content-['']"
                   : "text-on-surface-variant"

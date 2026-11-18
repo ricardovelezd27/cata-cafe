@@ -42,16 +42,16 @@ export default async function LoginPage({
   return (
     <main className="flex flex-1 items-center justify-center px-6 py-16">
       <div className="w-full max-w-md bg-surface-container-lowest border border-outline-variant rounded-card p-8 space-y-5">
-        <h1 className="page-title text-3xl">{t("loginTitle")}</h1>
+        <h1 className="page-title">{t("loginTitle")}</h1>
         {/* Guest arriving from the results-page "save your results" banner:
             same login flow, one line of context (see lib/guestClaim.ts). */}
         {intent === "claim" && (
-          <p role="status" className="text-sm text-on-surface-variant">
+          <p role="status" className="text-body text-on-surface-variant">
             {t("claimIntro")}
           </p>
         )}
         {linkFailed && (
-          <div role="alert" className="rounded-card border border-error/30 bg-error/5 p-3 text-sm">
+          <div role="alert" className="rounded-card border border-error/30 bg-error/5 p-3 text-body">
             <p className="font-semibold">{t("linkFailedTitle")}</p>
             <p>{t("linkFailedBody")}</p>
           </div>
@@ -79,7 +79,7 @@ export default async function LoginPage({
         />
         {/* F-landing-1: hidden until the owner publishes the final text. */}
         {LEGAL_PAGES_PUBLISHED && (
-          <p className="text-xs text-on-surface-variant">
+          <p className="text-caption text-on-surface-variant">
             <Link href={localeHref(locale, "/privacidad")} className="underline underline-offset-2">
               {tl("privacy")}
             </Link>

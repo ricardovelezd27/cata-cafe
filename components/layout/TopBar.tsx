@@ -21,7 +21,7 @@ export default function TopBar({
       inert={covered}
       className="h-14 flex items-center justify-between px-4 bg-surface border-b border-outline-variant shrink-0 lg:hidden"
     >
-      <span className="font-display text-base text-primary-container leading-tight">
+      <span className="font-display text-body text-primary-container leading-tight">
         {translations.brand.name}
       </span>
       <LocaleSwitchLink
@@ -29,7 +29,7 @@ export default function TopBar({
         // A 44 px box (F-14); the negative margin keeps the label where it was.
         className={textActionClasses(
           "none",
-          "-mr-[15px] text-xs text-on-surface-variant uppercase hover:text-on-surface transition-colors",
+          "label-caps -mr-[15px] hover:text-on-surface transition-colors",
         )}
       >
         {otherLocale}

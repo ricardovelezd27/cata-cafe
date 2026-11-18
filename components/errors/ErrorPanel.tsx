@@ -41,8 +41,8 @@ export function ErrorPanel({
       <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-pill bg-error-container text-error">
         <AlertTriangle size={22} aria-hidden />
       </div>
-      <h1 className="page-title text-2xl">{title}</h1>
-      <p className="mx-auto mt-2 max-w-sm text-sm text-on-surface-variant">{body}</p>
+      <h1 className="page-title">{title}</h1>
+      <p className="mx-auto mt-2 max-w-sm text-body text-on-surface-variant">{body}</p>
 
       <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
         {retryLabel && onRetry && (
@@ -56,9 +56,9 @@ export function ErrorPanel({
       </div>
 
       {digest && (
-        <p className="mt-6 text-xs text-on-surface-variant">
+        <p className="mt-6 text-caption text-on-surface-variant">
           {supportLabel ? `${supportLabel}: ` : ""}
-          <code className="rounded-input bg-surface-container px-1.5 py-0.5 font-mono text-[11px] text-on-surface">
+          <code className="rounded-input bg-surface-container px-1.5 py-0.5 font-mono text-caption text-on-surface">
             {digest}
           </code>
         </p>

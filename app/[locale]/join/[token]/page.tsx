@@ -110,11 +110,11 @@ export default async function JoinPage({
       <main className="flex flex-1 items-center justify-center px-6 py-16">
         <div className="w-full max-w-md bg-surface-container-lowest border border-outline-variant rounded-card p-8 space-y-6">
           <div>
-            <h1 className="page-title break-words text-2xl">
+            <h1 className="page-title break-words">
               {invite.session.name}
             </h1>
             {!member && decision.kind === "ok" && decision.late && (
-              <p className="mt-1 text-sm font-medium text-on-surface">{t("joinLateNote")}</p>
+              <p className="mt-1 text-body font-medium text-on-surface">{t("joinLateNote")}</p>
             )}
           </div>
           {!member && deadline}
@@ -168,9 +168,9 @@ export default async function JoinPage({
     return (
       <main className="flex flex-1 items-center justify-center px-6 py-16">
         <div className="w-full max-w-md bg-surface-container-lowest border border-outline-variant rounded-card p-8 text-center space-y-4">
-          <p className="text-lg font-semibold text-error">{copy[0]}</p>
-          <p className="text-sm text-on-surface-variant">{copy[1]}</p>
-          <div className="flex flex-col gap-2 text-sm">
+          <p className="text-card font-semibold text-error">{copy[0]}</p>
+          <p className="text-body text-on-surface-variant">{copy[1]}</p>
+          <div className="flex flex-col gap-2 text-caption">
             <Link href={`/${locale}/app`} className="flex min-h-[44px] items-center justify-center text-on-surface-variant underline hover:text-primary-container">
               {t("joinHome")}
             </Link>
@@ -187,7 +187,7 @@ export default async function JoinPage({
   }
 
   const lateNote = decision.late ? (
-    <p className="text-sm text-primary-container font-medium">{t("joinLateNote")}</p>
+    <p className="text-body text-primary-container font-medium">{t("joinLateNote")}</p>
   ) : null;
 
   // Valid token, no user yet: offer guest (anonymous) join instead of forcing
@@ -198,15 +198,15 @@ export default async function JoinPage({
       <main className="flex flex-1 items-center justify-center px-6 py-16">
         <div className="w-full max-w-md bg-surface-container-lowest border border-outline-variant rounded-card p-8 space-y-6">
           <div>
-            <h1 className="page-title text-2xl">
+            <h1 className="page-title">
               {invite.session.name}
             </h1>
-            <p className="text-sm text-on-surface-variant mt-1">{t("joinSession")}</p>
+            <p className="text-caption text-on-surface-variant mt-1">{t("joinSession")}</p>
             {lateNote}
           </div>
           {deadline}
           <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant mb-2">
+            <p className="label-caps mb-2">
               {t("continueAsGuest")}
             </p>
             <GuestJoinForm
@@ -228,7 +228,7 @@ export default async function JoinPage({
             />
           </div>
           <div className="text-center">
-            <Link href={loginHref} className="text-sm text-on-surface-variant underline hover:text-primary-container">
+            <Link href={loginHref} className="text-caption text-on-surface-variant underline hover:text-primary-container">
               {t("orSignIn")}
             </Link>
           </div>
@@ -244,10 +244,10 @@ export default async function JoinPage({
     <main className="flex flex-1 items-center justify-center px-6 py-16">
       <div className="w-full max-w-md bg-surface-container-lowest border border-outline-variant rounded-card p-8 space-y-6">
         <div>
-          <h1 className="page-title text-2xl">
+          <h1 className="page-title">
             {invite.session.name}
           </h1>
-          <p className="text-sm text-on-surface-variant mt-1">{t("joinSession")}</p>
+          <p className="text-caption text-on-surface-variant mt-1">{t("joinSession")}</p>
           {lateNote}
         </div>
         {deadline}

@@ -127,8 +127,8 @@ export function ConfirmClient({
   if (identity && identityStatus === "rejected") {
     return (
       <div className="space-y-3">
-        <h1 className="page-title text-2xl">{labels.rejectedTitle}</h1>
-        <p className="text-sm text-on-surface-variant">{labels.rejectedBody}</p>
+        <h1 className="page-title">{labels.rejectedTitle}</h1>
+        <p className="text-body text-on-surface-variant">{labels.rejectedBody}</p>
         <ButtonLink href={newLinkHref} size="sm">
           {labels.toLogin}
         </ButtonLink>
@@ -139,8 +139,8 @@ export function ConfirmClient({
   if (identity && identityStatus === "expired") {
     return (
       <div role="alert" className="space-y-3">
-        <h1 className="page-title text-2xl">{labels.identityExpiredTitle}</h1>
-        <p className="text-sm text-on-surface-variant">{labels.identityExpiredBody}</p>
+        <h1 className="page-title">{labels.identityExpiredTitle}</h1>
+        <p className="text-body text-on-surface-variant">{labels.identityExpiredBody}</p>
         <ButtonLink href={newLinkHref} size="sm">
           {labels.newLink}
         </ButtonLink>
@@ -151,10 +151,10 @@ export function ConfirmClient({
   if (identity) {
     return (
       <div className="space-y-3">
-        <h1 className="page-title text-2xl">{labels.identityTitle}</h1>
-        <p className="text-sm text-on-surface-variant">{labels.identityBody.replace("{email}", identity)}</p>
+        <h1 className="page-title">{labels.identityTitle}</h1>
+        <p className="text-body text-on-surface-variant">{labels.identityBody.replace("{email}", identity)}</p>
         {identityFailed && (
-          <p role="alert" className="text-sm text-error">
+          <p role="alert" className="text-caption text-error">
             {labels.identityError}
           </p>
         )}
@@ -173,10 +173,10 @@ export function ConfirmClient({
   if (failed) {
     return (
       <div role="alert" className="space-y-3">
-        <h1 ref={headingRef} tabIndex={-1} className="page-title text-2xl outline-none">
+        <h1 ref={headingRef} tabIndex={-1} className="page-title outline-none">
           {labels.failedTitle}
         </h1>
-        <p className="text-sm text-on-surface-variant">{labels.failedBody}</p>
+        <p className="text-body text-on-surface-variant">{labels.failedBody}</p>
         <ButtonLink href={newLinkHref} size="sm">
           {labels.newLink}
         </ButtonLink>
@@ -186,8 +186,8 @@ export function ConfirmClient({
 
   return (
     <div className="space-y-3">
-      <h1 className="page-title text-2xl">{labels.title}</h1>
-      <p className="text-sm text-on-surface-variant">{labels.body}</p>
+      <h1 className="page-title">{labels.title}</h1>
+      <p className="text-body text-on-surface-variant">{labels.body}</p>
       <Button type="button" onClick={onConfirm} disabled={busy} aria-busy={busy}>
         {busy ? labels.working : labels.button}
       </Button>

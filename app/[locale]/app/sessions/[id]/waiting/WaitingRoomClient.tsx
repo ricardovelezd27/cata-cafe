@@ -347,22 +347,22 @@ export function WaitingRoomClient({
         </div>
 
         <div className="space-y-3">
-          <h1 className="page-title text-3xl">
+          <h1 className="page-title">
             {translations.title}
           </h1>
-          <p className="text-lg font-medium text-on-surface">{sessionName}</p>
-          <p className="text-sm text-on-surface-variant leading-relaxed">
+          <p className="text-card font-medium text-on-surface">{sessionName}</p>
+          <p className="text-body text-on-surface-variant leading-relaxed">
             {translations.description}
           </p>
           {isAsync && (
-            <p className="text-sm text-on-surface-variant leading-relaxed">
+            <p className="text-body text-on-surface-variant leading-relaxed">
               {translations.asyncDetail}
             </p>
           )}
           {referenceLine && (
             <p
               role="status"
-              className="inline-block rounded-pill bg-secondary-fixed px-3 py-1 text-sm font-medium text-secondary"
+              className="inline-block rounded-pill bg-secondary-fixed px-3 py-1 text-caption font-medium text-secondary"
             >
               {referenceLine}
             </p>
@@ -371,7 +371,7 @@ export function WaitingRoomClient({
 
         {!isAsync && (
           <div className="flex items-center justify-center gap-2">
-            <span className="text-sm text-on-surface-variant">{translations.waiting}</span>
+            <span className="text-caption text-on-surface-variant">{translations.waiting}</span>
             <span className="flex gap-1">
               {[0, 1, 2].map((i) => (
                 <span
@@ -385,7 +385,7 @@ export function WaitingRoomClient({
         )}
 
         {!isAsync && connectionLost && (
-          <p role="status" className="text-xs text-secondary">
+          <p role="status" className="text-caption text-secondary">
             {translations.connectionLost}
           </p>
         )}
@@ -399,7 +399,7 @@ export function WaitingRoomClient({
           <div className="space-y-2">
             <button
               onClick={goToCup}
-              className="w-full rounded-pill py-3 px-6 text-sm font-semibold text-white"
+              className="w-full rounded-pill py-3 px-6 text-caption font-semibold text-white"
               style={{
                 background: "linear-gradient(135deg, #3D5A3E 0%, #2A4430 100%)",
                 border: "none",
@@ -415,7 +415,7 @@ export function WaitingRoomClient({
 
         <Link
           href={`/${locale}/app/sessions`}
-          className="inline-block text-sm text-on-surface-variant underline hover:text-primary-container transition-colors"
+          className="inline-block text-caption text-on-surface-variant underline hover:text-primary-container transition-colors"
         >
           {translations.backToSessions}
         </Link>
@@ -425,7 +425,7 @@ export function WaitingRoomClient({
             aria-label={warmup.title}
             className="rounded-card border border-outline-variant bg-surface-container-lowest p-5 text-left"
           >
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">
+            <p className="label-caps">
               {lw(WARMUP_SHARED.title, locale)}
             </p>
             {chosen ? (
@@ -444,8 +444,8 @@ export function WaitingRoomClient({
               />
             ) : (
               <>
-                <h2 className="section-title mt-1 text-xl">{warmup.title}</h2>
-                <p className="mt-1 text-sm leading-relaxed text-on-surface-variant">{warmup.body}</p>
+                <h2 className="section-title mt-1">{warmup.title}</h2>
+                <p className="mt-1 text-body leading-relaxed text-on-surface-variant">{warmup.body}</p>
               </>
             )}
 
@@ -453,7 +453,7 @@ export function WaitingRoomClient({
               <div className="mt-4 border-t border-outline-variant pt-1">
                 <button
                   type="button"
-                  className="flex min-h-11 w-full items-center justify-between text-sm font-medium text-on-surface"
+                  className="flex min-h-11 w-full items-center justify-between text-caption font-medium text-on-surface"
                   aria-expanded={othersOpen}
                   onClick={() => setOthersOpen((v) => !v)}
                 >
@@ -519,7 +519,7 @@ function HeroCard({
   const closedEyes = exercise.figureKind === "eyes";
   return (
     <div className="mt-2">
-      <p className="text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">{warmup.hero}</p>
+      <p className="label-caps">{warmup.hero}</p>
       <div className="mt-2 flex items-center gap-4">
         <span className="relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-card" aria-hidden>
           <WarmupFigure {...previewSpec(exercise)} frame="tile" />
@@ -530,8 +530,8 @@ function HeroCard({
           )}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block font-display text-xl text-primary-container">{lw(exercise.name, locale)}</span>
-          <span className="mt-1 block text-xs text-on-surface-variant tabular-nums">
+          <span className="block font-display text-card text-primary-container">{lw(exercise.name, locale)}</span>
+          <span className="mt-1 block text-caption text-on-surface-variant tabular-nums">
             {warmup.minutes.replace("{min}", String(exercise.durationMin))} ·{" "}
             {lw(WARMUP_SHARED.posture[exercise.posture], locale)}
             {closedEyes ? ` · ${warmup.eyesClosed}` : ""}
@@ -539,7 +539,7 @@ function HeroCard({
         </span>
       </div>
       {note && (
-        <p role="status" className="mt-3 text-sm text-on-surface-variant">
+        <p role="status" className="mt-3 text-caption text-on-surface-variant">
           {note}
         </p>
       )}
@@ -548,7 +548,7 @@ function HeroCard({
           <button
             type="button"
             onClick={onJoin}
-            className="min-h-11 flex-1 rounded-pill bg-secondary px-5 text-sm font-medium text-on-secondary hover:opacity-90 sm:flex-none"
+            className="min-h-11 flex-1 rounded-pill bg-secondary px-5 text-caption font-medium text-on-secondary hover:opacity-90 sm:flex-none"
           >
             {warmup.synced.inProgress.split(" ·")[0]} · {warmup.synced.join}
           </button>
@@ -558,14 +558,14 @@ function HeroCard({
           onClick={onStart}
           className={
             seen
-              ? "min-h-11 rounded-pill border border-outline-variant px-5 text-sm font-medium text-on-surface hover:bg-surface-container"
-              : "min-h-11 flex-1 rounded-pill bg-primary-container px-5 text-sm font-medium text-on-primary hover:bg-primary sm:flex-none"
+              ? "min-h-11 rounded-pill border border-outline-variant px-5 text-caption font-medium text-on-surface hover:bg-surface-container"
+              : "min-h-11 flex-1 rounded-pill bg-primary-container px-5 text-caption font-medium text-on-primary hover:bg-primary sm:flex-none"
           }
         >
           {seen ? warmup.heroRepeat : warmup.heroStart}
         </button>
         {seen && (
-          <span className="rounded-pill bg-primary-fixed px-3 py-1 text-xs font-semibold text-primary-container">
+          <span className="rounded-pill bg-primary-fixed px-3 py-1 text-caption font-semibold text-primary-container">
             {warmup.heroDone}
           </span>
         )}
@@ -597,8 +597,8 @@ function ExerciseList({
             <span className="h-12 w-12 shrink-0 overflow-hidden rounded-card" aria-hidden>
               <WarmupFigure {...previewSpec(ex)} frame="tile" />
             </span>
-            <span className="min-w-0 flex-1 text-[15px] font-medium text-on-surface">{lw(ex.name, locale)}</span>
-            <span className="shrink-0 text-xs text-on-surface-variant tabular-nums">
+            <span className="min-w-0 flex-1 text-body font-medium text-on-surface">{lw(ex.name, locale)}</span>
+            <span className="shrink-0 text-caption text-on-surface-variant tabular-nums">
               {minutes.replace("{min}", String(ex.durationMin))}
             </span>
           </button>

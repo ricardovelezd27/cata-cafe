@@ -282,11 +282,11 @@ export function GuestIdentityChoice({
           id="identity-title"
           ref={titleRef}
           tabIndex={-1}
-          className="break-words text-xl outline-none"
+          className="break-words text-card outline-none"
         >
           {t.title}
         </h2>
-        <p className="mt-1 break-words text-sm text-on-surface-variant">{t.lead}</p>
+        <p className="mt-1 break-words text-caption text-on-surface-variant">{t.lead}</p>
       </div>
       <div className="flex flex-col gap-2">
         <Button wrap className="w-full" onClick={continueAsThisGuest} disabled={disabled} aria-busy={busy}>

@@ -16,7 +16,8 @@ export function StatCard({ label, value, subtext, accent, icon }: StatCardProps)
           {icon}
         </span>
       )}
-      <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
+      {/* The icon sits in the top-right corner: a label that reaches it wraps instead. */}
+      <span className={`label-caps ${icon ? "pr-7" : ""}`}>
         {label}
       </span>
       <span
@@ -26,7 +27,7 @@ export function StatCard({ label, value, subtext, accent, icon }: StatCardProps)
       >
         {value}
       </span>
-      <span className="text-xs text-on-surface-variant mt-1">{subtext}</span>
+      <span className="text-caption text-on-surface-variant mt-1">{subtext}</span>
     </div>
   );
 }

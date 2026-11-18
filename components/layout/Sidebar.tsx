@@ -29,7 +29,7 @@ export default function Sidebar({
       className="hidden lg:flex flex-col w-60 shrink-0 bg-surface-container border-r border-outline-variant h-full"
     >
       <div className="h-14 flex items-center px-5 border-b border-outline-variant">
-        <span className="font-display text-base text-primary-container leading-tight">
+        <span className="font-display text-body text-primary-container leading-tight">
           {translations.brand.name}
         </span>
       </div>
@@ -45,7 +45,7 @@ export default function Sidebar({
               <GuestGateLink
                 href={`/${locale}${href}`}
                 aria-current={active ? "page" : undefined}
-                className={`flex min-h-[44px] items-center gap-3 px-5 py-2.5 text-sm transition-colors ${
+                className={`flex min-h-[44px] items-center gap-3 px-5 py-2.5 text-caption transition-colors ${
                   active
                     ? "border-l-[3px] border-primary-container bg-primary-fixed text-primary-container font-semibold pl-[17px]"
                     : "border-l-[3px] border-transparent text-on-surface hover:bg-surface-container-high pl-[17px]"
@@ -62,7 +62,7 @@ export default function Sidebar({
       <div className="border-t border-outline-variant py-3 px-5 flex flex-col gap-1">
         <LocaleSwitchLink
           locale={locale}
-          className="flex min-h-[44px] items-center gap-3 py-2 text-sm text-on-surface-variant hover:text-on-surface transition-colors"
+          className="flex min-h-[44px] items-center gap-3 py-2 text-caption text-on-surface-variant hover:text-on-surface transition-colors"
         >
           <Languages size={18} strokeWidth={1.8} />
           {otherLocale.toUpperCase()}
@@ -70,7 +70,7 @@ export default function Sidebar({
         <SignOutButton
           mode="switchAccount"
           locale={locale}
-          className="flex min-h-[44px] items-center gap-3 py-2 text-sm text-on-surface-variant hover:text-on-surface transition-colors w-full text-left"
+          className="flex min-h-[44px] items-center gap-3 py-2 text-caption text-on-surface-variant hover:text-on-surface transition-colors w-full text-left"
         >
           <UserCog size={18} strokeWidth={1.8} />
           {translations.nav.switchAccount}
@@ -78,7 +78,7 @@ export default function Sidebar({
         <SignOutButton
           mode="signOut"
           locale={locale}
-          className="flex min-h-[44px] items-center gap-3 py-2 text-sm text-on-surface-variant hover:text-error transition-colors w-full text-left"
+          className="flex min-h-[44px] items-center gap-3 py-2 text-caption text-on-surface-variant hover:text-error transition-colors w-full text-left"
         >
           <LogOut size={18} strokeWidth={1.8} />
           {translations.nav.logout}

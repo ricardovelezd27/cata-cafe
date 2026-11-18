@@ -45,10 +45,10 @@ export default async function SessionInvitePage({
     return (
       <div className="space-y-6">
         <PageHeader title={session.name} />
-        <p className="text-sm text-on-surface-variant">{t("inviteClosed")}</p>
+        <p className="text-body text-on-surface-variant">{t("inviteClosed")}</p>
         <Link
           href={`/${locale}/app/sessions/${session.id}/results`}
-          className="inline-block rounded-pill bg-primary-container px-6 py-3 text-sm font-medium text-on-primary hover:bg-primary transition-colors"
+          className="inline-block rounded-pill bg-primary-container px-6 py-3 text-caption font-medium text-on-primary hover:bg-primary transition-colors"
         >
           {t("viewResults")}
         </Link>
@@ -74,11 +74,11 @@ export default async function SessionInvitePage({
           }}
         />
       ) : (
-        <p className="text-sm text-on-surface-variant">{t("inviteMissing")}</p>
+        <p className="text-body text-on-surface-variant">{t("inviteMissing")}</p>
       )}
       <Link
         href={`/${locale}/app/sessions/${session.id}/cup`}
-        className="inline-block rounded-pill bg-primary-container px-6 py-3 text-sm font-medium text-on-primary hover:bg-primary transition-colors"
+        className="inline-block rounded-pill bg-primary-container px-6 py-3 text-caption font-medium text-on-primary hover:bg-primary transition-colors"
       >
         {t("masterControls")}
       </Link>

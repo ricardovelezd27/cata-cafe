@@ -44,9 +44,9 @@ export function GuestClaimButton({
       >
         {claim.starting ? t.loading : t.label}
       </Button>
-      {!claim.online && <p className="mt-2 text-xs text-on-surface-variant">{t.offline}</p>}
+      {!claim.online && <p className="mt-2 text-caption text-on-surface-variant">{t.offline}</p>}
       {claim.failed && (
-        <p role="alert" className="mt-2 text-xs text-error">
+        <p role="alert" className="mt-2 text-caption text-error">
           {t.error}
         </p>
       )}

@@ -6,8 +6,8 @@ import { Select } from "@/components/ui/Select";
 import { useActionFeedback } from "@/components/ui/Toast";
 
 const inputCls =
-  "w-full border border-outline-variant rounded-input px-3 py-2 text-sm text-on-surface bg-surface-container-lowest focus:border-primary-container transition-colors";
-const labelCls = "block text-xs text-on-surface-variant font-semibold uppercase tracking-wide mb-1";
+  "w-full border border-outline-variant rounded-input px-3 py-2 text-body text-on-surface bg-surface-container-lowest focus:border-primary-container transition-colors";
+const labelCls = "label-caps block mb-1";
 
 export function ProfileForm({
   initial,
@@ -176,13 +176,13 @@ export function ProfileForm({
           type="submit"
           disabled={pending}
           aria-busy={pending}
-          className="rounded-pill bg-primary-container px-5 py-2 text-sm font-medium text-on-primary transition-colors hover:bg-primary disabled:opacity-50"
+          className="rounded-pill bg-primary-container px-5 py-2 text-caption font-medium text-on-primary transition-colors hover:bg-primary disabled:opacity-50"
         >
           {pending ? t.saving : t.save}
         </button>
         {/* One live region for every state, so a screen reader announces the
             result without moving focus. */}
-        <span role="status" aria-live="polite" className="text-sm">
+        <span role="status" aria-live="polite" className="text-caption">
           {status === "success" && <span className="text-primary-container">{t.saveSuccess}</span>}
           {status === "error" && <span className="text-error">{t.saveError}</span>}
         </span>

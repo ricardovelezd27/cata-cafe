@@ -202,7 +202,7 @@ export function PendingDraftsBadge({
         </>
       )}
       {stale && staleLabel && (
-        <p role="status" className="mt-1 max-w-prose text-xs text-on-surface-variant">
+        <p role="status" className="mt-1 max-w-prose text-caption text-on-surface-variant">
           {staleLabel}
         </p>
       )}

@@ -38,21 +38,21 @@ const TONES = {
     text: "text-on-surface",
     muted: "text-on-surface-variant",
     input:
-     "min-h-[44px] w-full rounded-input border border-outline-variant bg-surface-container-lowest px-3 py-2 text-center text-lg tracking-[0.4em] text-on-surface",
+     "min-h-[44px] w-full rounded-input border border-outline-variant bg-surface-container-lowest px-3 py-2 text-center text-card tracking-[0.4em] text-on-surface",
     primary:
-      "rounded-pill bg-primary-container px-5 min-h-[44px] text-sm font-medium text-on-primary hover:bg-primary disabled:opacity-60",
-    link: "inline-flex min-h-[44px] items-center text-xs font-semibold text-primary underline disabled:no-underline disabled:opacity-60",
-    error: "text-sm text-error",
+      "rounded-pill bg-primary-container px-5 min-h-[44px] text-caption font-medium text-on-primary hover:bg-primary disabled:opacity-60",
+    link: "inline-flex min-h-[44px] items-center text-caption font-semibold text-primary underline disabled:no-underline disabled:opacity-60",
+    error: "text-caption text-error",
   },
   dark: {
     text: "text-surface",
     muted: "text-surface/70",
     input:
-     "min-h-[44px] w-full rounded-input border border-outline-variant bg-surface px-3 py-2 text-center text-lg tracking-[0.4em] text-on-surface",
+     "min-h-[44px] w-full rounded-input border border-outline-variant bg-surface px-3 py-2 text-center text-card tracking-[0.4em] text-on-surface",
     primary:
-      "rounded-pill bg-surface px-5 min-h-[44px] text-sm font-semibold text-primary hover:bg-primary-fixed disabled:opacity-60",
-    link: "inline-flex min-h-[44px] items-center text-xs font-semibold text-surface underline disabled:no-underline disabled:opacity-60",
-    error: "text-sm text-secondary-container",
+      "rounded-pill bg-surface px-5 min-h-[44px] text-caption font-semibold text-primary hover:bg-primary-fixed disabled:opacity-60",
+    link: "inline-flex min-h-[44px] items-center text-caption font-semibold text-surface underline disabled:no-underline disabled:opacity-60",
+    error: "text-caption text-secondary-container",
   },
 } as const;
 
@@ -147,16 +147,16 @@ export function EmailSentState({
   return (
     <div className={`space-y-4 ${s.text}`}>
       <div role="status" className="space-y-1">
-        <h2 ref={headingRef} tabIndex={-1} className="text-base outline-none">
+        <h2 ref={headingRef} tabIndex={-1} className="text-body outline-none">
           {labels.title}
         </h2>
-        <p className={`text-sm ${s.muted}`}>{labels.body.replace("{email}", email)}</p>
-        {resentNotice && <p className={`text-xs ${s.muted}`}>{labels.resent}</p>}
+        <p className={`text-body ${s.muted}`}>{labels.body.replace("{email}", email)}</p>
+        {resentNotice && <p className={`text-body ${s.muted}`}>{labels.resent}</p>}
       </div>
 
       <form onSubmit={submitCode} className="space-y-2">
         <label className="block">
-          <span className={`text-xs font-semibold uppercase tracking-wide ${s.muted}`}>
+          <span className={`label-caps ${s.muted}`}>
             {labels.codeLabel}
           </span>
           <input
@@ -174,7 +174,7 @@ export function EmailSentState({
             className={`mt-1 ${s.input}`}
           />
         </label>
-        <p className={`text-xs ${s.muted}`}>{labels.codeHint}</p>
+        <p className={`text-caption ${s.muted}`}>{labels.codeHint}</p>
         <button type="submit" disabled={verifying || code.length !== 6} className={s.primary}>
           {verifying ? labels.codeSubmitting : labels.codeSubmit}
         </button>

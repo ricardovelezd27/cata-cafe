@@ -256,7 +256,7 @@ export default async function ProfilePage({
             </div>
             <div className="mt-3">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="font-display text-2xl text-on-surface">
+                <span className="font-display text-section text-on-surface">
                   {profile?.displayName || "—"}
                 </span>
                 {isGuest && (
@@ -265,9 +265,9 @@ export default async function ProfilePage({
                   </Badge>
                 )}
               </div>
-              <div className="text-sm text-on-surface-variant">{identityLine}</div>
+              <div className="text-caption text-on-surface-variant">{identityLine}</div>
               {metaLine && (
-                <div className="mt-1 text-xs font-medium text-on-surface-variant">{metaLine}</div>
+                <div className="mt-1 text-caption font-medium text-on-surface-variant">{metaLine}</div>
               )}
               {isGuest && (
                 <GuestClaimButton
@@ -279,7 +279,7 @@ export default async function ProfilePage({
               )}
             </div>
             {profile?.bio && (
-              <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-on-surface">
+              <p className="mt-4 whitespace-pre-wrap text-body leading-relaxed text-on-surface">
                 {profile.bio}
               </p>
             )}
@@ -333,11 +333,11 @@ export default async function ProfilePage({
           />
 
           <div className="space-y-6 rounded-card border border-outline-variant bg-surface-container-lowest p-6 shadow-card">
-            <h2 className="section-title text-xl">{t("recentActivity")}</h2>
+            <h2 className="section-title">{t("recentActivity")}</h2>
 
             <section>
               <div className="mb-2 flex items-center justify-between">
-                <h3 className="font-sans text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+                <h3 className="label-caps font-sans">
                   {t("recentSessions")}
                 </h3>
                 <TextActionLink href={`/${locale}/app/sessions`} className="-my-[15px]">
@@ -364,14 +364,14 @@ export default async function ProfilePage({
                     >
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="truncate text-sm font-semibold text-on-surface">{s.name}</span>
+                          <span className="truncate text-caption font-semibold text-on-surface">{s.name}</span>
                           {s.createdBy !== user.id && (
                             <Badge tone="outline" size="xs">
                               {tSession("table.participantBadge")}
                             </Badge>
                           )}
                         </div>
-                        <div className="mt-0.5 text-xs text-on-surface-variant">{formatDate(s.date)}</div>
+                        <div className="mt-0.5 text-caption text-on-surface-variant">{formatDate(s.date)}</div>
                       </div>
                       <StatusPill status={s.status} labels={statusLabels} />
                     </Link>
@@ -382,7 +382,7 @@ export default async function ProfilePage({
 
             <section>
               <div className="mb-2 flex items-center justify-between">
-                <h3 className="font-sans text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+                <h3 className="label-caps font-sans">
                   {t("recentCoffees")}
                 </h3>
                 <GuestGateLink
@@ -410,7 +410,7 @@ export default async function ProfilePage({
                       href={`/${locale}/app/coffees/${c.id}`}
                       className="min-h-[44px] flex items-center justify-between gap-3 rounded-card border border-outline-variant bg-surface px-4 py-2.5 transition-colors hover:bg-surface-container-low"
                     >
-                      <span className="truncate text-sm font-semibold text-on-surface">{c.name}</span>
+                      <span className="truncate text-caption font-semibold text-on-surface">{c.name}</span>
                       <Badge
                         tone={
                           c.visibility === "public" ? "success" : c.visibility === "shared" ? "accent" : "neutral"
@@ -428,13 +428,13 @@ export default async function ProfilePage({
 
         {/* Account actions — reachable on mobile via the "Perfil" tab */}
         <section>
-          <h2 className="section-title mb-3 text-xl">{t("account")}</h2>
+          <h2 className="section-title mb-3">{t("account")}</h2>
           <div className="rounded-card border border-outline-variant bg-surface-container-lowest p-4">
-            <div className="mb-3 text-sm text-on-surface-variant">{identityLine}</div>
+            <div className="mb-3 text-caption text-on-surface-variant">{identityLine}</div>
             {showInsights && (
               <GuestGateLink
                 href={`/${locale}/app/insights`}
-                className="mb-3 flex min-h-[44px] items-center gap-3 rounded-input border border-outline-variant px-4 text-sm font-semibold text-on-surface transition-colors hover:bg-surface-container"
+                className="mb-3 flex min-h-[44px] items-center gap-3 rounded-input border border-outline-variant px-4 text-caption font-semibold text-on-surface transition-colors hover:bg-surface-container"
               >
                 <BarChart3 size={18} strokeWidth={1.8} aria-hidden />
                 <span className="flex-1">{tInsights("title")}</span>
@@ -442,12 +442,12 @@ export default async function ProfilePage({
               </GuestGateLink>
             )}
             {pendingEmail && (
-              <p role="status" className="mb-3 text-sm text-on-surface">
+              <p role="status" className="mb-3 text-body text-on-surface">
                 {t("changeEmailPending", { email: pendingEmail })}
               </p>
             )}
             {isGuest && (
-              <p className="mb-3 text-sm leading-relaxed text-on-surface">{tGate("accountBody")}</p>
+              <p className="mb-3 text-body leading-relaxed text-on-surface">{tGate("accountBody")}</p>
             )}
             <div className="flex flex-col gap-2 sm:flex-row">
               {isGuest && (
@@ -462,14 +462,14 @@ export default async function ProfilePage({
               <SignOutButton
                 mode="switchAccount"
                 locale={locale}
-                className="min-h-[44px] w-full rounded-pill border border-outline-variant px-4 py-2 text-sm font-semibold text-on-surface transition-colors hover:bg-surface-container sm:w-auto"
+                className="min-h-[44px] w-full rounded-pill border border-outline-variant px-4 py-2 text-caption font-semibold text-on-surface transition-colors hover:bg-surface-container sm:w-auto"
               >
                 {t("switchAccount")}
               </SignOutButton>
               <SignOutButton
                 mode="signOut"
                 locale={locale}
-                className="min-h-[44px] w-full rounded-pill border border-outline-variant px-4 py-2 text-sm font-semibold text-error transition-colors hover:bg-error-container sm:w-auto"
+                className="min-h-[44px] w-full rounded-pill border border-outline-variant px-4 py-2 text-caption font-semibold text-error transition-colors hover:bg-error-container sm:w-auto"
               >
                 {t("logout")}
               </SignOutButton>
@@ -494,7 +494,7 @@ export default async function ProfilePage({
               <SignOutButton
                 mode="signOutEverywhere"
                 locale={locale}
-                className="min-h-[44px] w-full rounded-pill border border-outline-variant px-4 py-2 text-sm font-semibold text-on-surface-variant transition-colors hover:bg-surface-container sm:w-auto"
+                className="min-h-[44px] w-full rounded-pill border border-outline-variant px-4 py-2 text-caption font-semibold text-on-surface-variant transition-colors hover:bg-surface-container sm:w-auto"
               >
                 {t("logoutEverywhere")}
               </SignOutButton>

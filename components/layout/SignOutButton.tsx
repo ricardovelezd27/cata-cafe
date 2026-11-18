@@ -107,7 +107,7 @@ export function SignOutButton({
           closeLabel={t.close}
         >
           <div className="space-y-4">
-            <p className="text-sm leading-relaxed text-on-surface-variant">
+            <p className="text-body leading-relaxed text-on-surface-variant">
               {guestWarning ? t.guestBody : t.everywhereBody}
             </p>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -150,9 +150,9 @@ function SaveResultsButton({
       <Button onClick={() => claim.start(backPath)} disabled={disabled || claim.starting || !claim.online}>
         {claim.starting ? t.saving : t.save}
       </Button>
-      {!claim.online && <p className="text-xs text-on-surface-variant">{t.offline}</p>}
+      {!claim.online && <p className="text-caption text-on-surface-variant">{t.offline}</p>}
       {claim.failed && (
-        <p role="alert" className="text-xs text-error">
+        <p role="alert" className="text-caption text-error">
           {t.saveError}
         </p>
       )}

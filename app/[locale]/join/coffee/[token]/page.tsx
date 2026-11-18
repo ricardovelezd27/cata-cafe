@@ -42,8 +42,8 @@ export default async function JoinCoffeePage({
     return (
       <main className="flex flex-1 items-center justify-center px-6 py-16">
         <div className="w-full max-w-md bg-surface-container-lowest border border-outline-variant rounded-card p-8 text-center space-y-4">
-          <p className="text-lg font-semibold text-error">{t("share.invalidToken")}</p>
-          <div className="flex flex-col gap-2 text-sm">
+          <p className="text-card font-semibold text-error">{t("share.invalidToken")}</p>
+          <div className="flex flex-col gap-2 text-caption">
             <Link href={`/${locale}/app`} className="flex min-h-[44px] items-center justify-center text-on-surface-variant underline hover:text-primary-container">
               {tErrors("home")}
             </Link>
@@ -67,10 +67,10 @@ export default async function JoinCoffeePage({
       <main className="flex flex-1 items-center justify-center px-6 py-16">
         <div className="w-full max-w-md bg-surface-container-lowest border border-outline-variant rounded-card p-8 space-y-6">
           <div>
-            <h1 className="page-title text-2xl">
+            <h1 className="page-title">
               {invite.coffee.name}
             </h1>
-            <p className="text-sm text-on-surface-variant mt-1">{t("share.joinTitle")}</p>
+            <p className="text-caption text-on-surface-variant mt-1">{t("share.joinTitle")}</p>
           </div>
           <Link
             href={loginHref}
@@ -89,10 +89,10 @@ export default async function JoinCoffeePage({
     <main className="flex flex-1 items-center justify-center px-6 py-16">
       <div className="w-full max-w-md bg-surface-container-lowest border border-outline-variant rounded-card p-8 space-y-6">
         <div>
-          <h1 className="page-title text-2xl">
+          <h1 className="page-title">
             {invite.coffee.name}
           </h1>
-          <p className="text-sm text-on-surface-variant mt-1">
+          <p className="text-caption text-on-surface-variant mt-1">
             {t("share.joinBody", { name: invite.coffee.name })}
           </p>
         </div>

@@ -121,8 +121,8 @@ export function ClaimCard({
   if (phase === "retry") {
     return (
       <>
-        <h1 className="page-title text-2xl">{t.retryTitle}</h1>
-        <p role="alert" className="text-sm text-on-surface-variant">
+        <h1 className="page-title">{t.retryTitle}</h1>
+        <p role="alert" className="text-caption text-on-surface-variant">
           {t.retryBody}
         </p>
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
@@ -140,8 +140,8 @@ export function ClaimCard({
   if (phase === "skip") {
     return (
       <>
-        <h1 className="page-title text-2xl">{t.skipTitle}</h1>
-        <p className="text-sm text-on-surface">{t.skipBody}</p>
+        <h1 className="page-title">{t.skipTitle}</h1>
+        <p className="text-body text-on-surface">{t.skipBody}</p>
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
           <Button variant="secondary" size="sm" onClick={() => setPhase("idle")}>
             {t.skipBack}
@@ -156,10 +156,10 @@ export function ClaimCard({
 
   return (
     <>
-      <h1 className="page-title text-2xl">{t.title}</h1>
-      <p className="text-sm text-on-surface">{t.body}</p>
-      <p className="text-xs text-on-surface-variant">{t.note}</p>
-      {!online && <p className="text-xs text-on-surface-variant">{t.offline}</p>}
+      <h1 className="page-title">{t.title}</h1>
+      <p className="text-body text-on-surface">{t.body}</p>
+      <p className="text-caption text-on-surface-variant">{t.note}</p>
+      {!online && <p className="text-caption text-on-surface-variant">{t.offline}</p>}
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
         <Button variant="ghost" size="sm" onClick={() => setPhase("skip")} disabled={pending}>
           {t.skip}

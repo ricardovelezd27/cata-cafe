@@ -99,7 +99,7 @@ export function CloseAnnounceBanner({
   return (
     <div role="status" aria-live="polite" aria-atomic="true">
       {text && (
-        <div className="mx-4 mt-3 flex items-start gap-2 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-sm text-on-surface lg:mx-6">
+        <div className="mx-4 mt-3 flex items-start gap-2 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-caption text-on-surface lg:mx-6">
           <Clock size={14} aria-hidden className="mt-0.5 shrink-0 text-secondary" />
           <span className="flex-1">{text}</span>
         </div>
@@ -205,7 +205,7 @@ export function OwnerCloseLine({
   };
 
   return (
-    <div className="mx-4 mt-3 flex flex-wrap items-center gap-2 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-sm text-on-surface lg:mx-6">
+    <div className="mx-4 mt-3 flex flex-wrap items-center gap-2 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-caption text-on-surface lg:mx-6">
       <Clock size={14} aria-hidden className="shrink-0 text-secondary" />
       <span className="min-w-[200px] flex-1">
         {busy === "closing"

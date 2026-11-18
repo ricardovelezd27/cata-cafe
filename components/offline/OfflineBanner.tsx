@@ -117,7 +117,7 @@ export function OfflineBanner({
     <div
       role="status"
       aria-live="polite"
-      className={`flex items-center gap-2 px-4 py-2 mb-3 rounded-card border font-sans text-sm ${palette[tone]}`}
+      className={`flex items-center gap-2 px-4 py-2 mb-3 rounded-card border font-sans text-caption ${palette[tone]}`}
     >
       {icon}
       <span className="flex-1">{message}</span>

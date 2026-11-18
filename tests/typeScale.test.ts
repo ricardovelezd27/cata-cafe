@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import { readSource as read } from "./helpers/sourceTree";
+import { readSource as read, walkSource } from "./helpers/sourceTree";
 
 // T4a (findings B-02 and B-05 of the 2026-11-15 audit; decision 1): the paper
 // type scale is six named sizes, at the sizes the screen paints at the 14 px
@@ -119,6 +119,98 @@ describe("T4a: the kit paints nothing under the floor", () => {
     for (const k of Object.keys(KIT_ALLOWLIST)) {
       const exists = existsSync(join(process.cwd(), KIT, `${k}.tsx`)) || kitFiles.some((f) => f.startsWith(`${k}.`));
       expect(exists, k).toBe(true);
+    }
+  });
+});
+
+// ── T4b onward: the area sweeps ─────────────────────────────────────────────
+// Each sweep of T4 adds its areas to SWEPT_AREAS (one line each). In a swept
+// area every size is a named role: no arbitrary size, no bare Tailwind size,
+// nothing under the 11 px floor, and the uppercase label is the one recipe
+// `.label-caps`. The allowlist may only SHRINK.
+
+const SWEPT_AREAS: { area: string; paths: string[] }[] = [
+  {
+    area: "T4b: sessions + dashboard, arrival + onboarding, profile, the shell",
+    paths: [
+      "app/[locale]/app/page.tsx",
+      "components/dashboard",
+      "app/[locale]/app/sessions/page.tsx",
+      "app/[locale]/app/sessions/SessionsTable.tsx",
+      "app/[locale]/app/sessions/new",
+      "app/[locale]/app/sessions/express",
+      "app/[locale]/app/sessions/[id]/edit",
+      "app/[locale]/app/sessions/[id]/invite",
+      "app/[locale]/app/sessions/[id]/waiting",
+      "app/[locale]/auth",
+      "app/[locale]/join",
+      "components/join",
+      "components/auth",
+      "components/guest",
+      "components/onboarding",
+      "app/[locale]/app/profile",
+      "components/profile",
+      "components/layout",
+      "components/offline",
+      "components/errors",
+      "components/session",
+      "components/DuplicateButton.tsx", // the sessions list's duplicate action (also on coffees and groups)
+    ],
+  },
+];
+
+/** A size outside the six roles that a swept file keeps, and why. May only shrink. */
+const SWEPT_ALLOWLIST: Record<string, { token: string; reason: string }[]> = {
+  "components/dashboard/StatCard.tsx": [{ token: "text-4xl", reason: "a stat's numeral, a display size outside the six roles (31.5 px)" }],
+  "app/[locale]/app/sessions/express/ExpressForm.tsx": [{ token: "text-4xl", reason: "the sample counter's numeral, a display size (31.5 px)" }],
+  "components/onboarding/WelcomeModal.tsx": [{ token: "text-5xl", reason: "the welcome's coffee-cup emoji, used as a picture (42 px)" }],
+  "app/[locale]/app/sessions/[id]/waiting/WaitingRoomClient.tsx": [{ token: "text-6xl", reason: "the waiting room's coffee-cup emoji, used as a picture (52.5 px)" }],
+};
+
+const SIZE_ANY = /(?<![\w-])(?:[a-z-]+:)?text-(?:xs|sm|base|lg|xl|2xl|3xl|4xl|5xl|6xl|\[\d+(?:\.\d+)?(?:px|rem|em)\])(?![\w\]-])/g;
+const HANDMADE_LABEL = /(?<![\w-])uppercase(?![\w-])/;
+
+function sweptFiles(): string[] {
+  const out: string[] = [];
+  for (const { paths } of SWEPT_AREAS) {
+    for (const p of paths) {
+      if (p.endsWith(".tsx")) out.push(p);
+      else out.push(...walkSource(p, `typescale-${p}`, { include: /\.tsx$/ }));
+    }
+  }
+  return [...new Set(out)];
+}
+
+describe("T4b: the swept areas paint only the named sizes", () => {
+  const files = sweptFiles();
+
+  it("every swept path exists, and there are files to scan", () => {
+    for (const { paths } of SWEPT_AREAS) for (const p of paths) expect(existsSync(join(process.cwd(), p)), p).toBe(true);
+    expect(files.length).toBeGreaterThan(40);
+  });
+
+  it("no bare or arbitrary size in a swept file (outside the allowlist)", () => {
+    const offenders: string[] = [];
+    for (const f of files) {
+      const allowed = new Set((SWEPT_ALLOWLIST[f] ?? []).map((a) => a.token));
+      for (const m of read(f).matchAll(SIZE_ANY)) if (!allowed.has(m[0])) offenders.push(`${f}: ${m[0]}`);
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it("the uppercase label is the one recipe: no hand-written `uppercase` in a swept file", () => {
+    const offenders = files.filter((f) => HANDMADE_LABEL.test(read(f).replace(/\/\/.*$/gm, "")));
+    expect(offenders).toEqual([]);
+  });
+
+  it("app/globals.css holds the label recipe: the label size, 600, capitals, the widest tracking", () => {
+    expect(css).toMatch(/\.label-caps\s*\{[^}]*@apply text-label;[^}]*font-weight:\s*600;[^}]*text-transform:\s*uppercase;[^}]*letter-spacing:\s*0\.1em;/);
+  });
+
+  it("the swept allowlist only shrinks: every entry still holds its token", () => {
+    for (const [f, entries] of Object.entries(SWEPT_ALLOWLIST)) {
+      const src = read(f);
+      for (const e of entries) expect(src, `${f} ${e.token}`).toContain(e.token);
     }
   });
 });

@@ -122,14 +122,14 @@ export function SessionsTable({
               </Badge>
             )}
           </div>
-          <p className="text-xs text-on-surface-variant">{formatLabel(row.format, t.formats)}</p>
+          <p className="text-caption text-on-surface-variant">{formatLabel(row.format, t.formats)}</p>
           {row.closesAt && row.status !== "closed" && (
-            <p className="text-xs">
+            <p className="text-caption">
               <DeadlineBanner closesAt={row.closesAt} zone={row.closesAtZone} locale={locale} translations={t.deadline} compact />
             </p>
           )}
           {row.ownerName && (
-            <p className="text-xs text-on-surface-variant">
+            <p className="text-caption text-on-surface-variant">
               {t.adminOwnerPrefix} {row.ownerName}
             </p>
           )}
@@ -260,14 +260,14 @@ export function SessionsTable({
                 )}
               </div>
               {row.ownerName && (
-                <p className="text-xs text-on-surface-variant">
+                <p className="text-caption text-on-surface-variant">
                   {t.adminOwnerPrefix} {row.ownerName}
                 </p>
               )}
             </div>
             {actions && <div className="flex shrink-0 items-center gap-1">{actions}</div>}
           </div>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-on-surface-variant">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-on-surface-variant">
             <span className="tabular-nums">{row.date ? new Date(row.date).toLocaleDateString(locale) : "—"}</span>
             <span>{formatLabel(row.format, t.formats)}</span>
             {row.closesAt && row.status !== "closed" && (
