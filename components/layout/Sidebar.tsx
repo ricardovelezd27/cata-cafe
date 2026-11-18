@@ -7,6 +7,7 @@ import { LogOut, Languages, UserCog } from "lucide-react";
 import { SignOutButton } from "@/components/layout/SignOutButton";
 import { NAV_ITEMS, INSIGHTS_ITEM, isActive, type NavTranslations } from "@/components/layout/navItems";
 import { useShellCovered } from "@/hooks/useShellLayer";
+import { Wordmark, WORDMARK, WORDMARK_SUFFIX } from "@/components/brand/Wordmark";
 
 export default function Sidebar({
   locale,
@@ -29,9 +30,7 @@ export default function Sidebar({
       className="hidden lg:flex flex-col w-60 shrink-0 bg-surface-container border-r border-outline-variant h-full"
     >
       <div className="h-14 flex items-center px-5 border-b border-outline-variant">
-        <span className="font-display text-body text-primary-container leading-tight">
-          {translations.brand.name}
-        </span>
+        <Wordmark href={`/${locale}/app`} label={`${translations.brand.name}, ${WORDMARK}${WORDMARK_SUFFIX}`} />
       </div>
 
       <nav aria-label={translations.nav.mainNavLabel} className="flex-1 py-3 overflow-y-auto">
