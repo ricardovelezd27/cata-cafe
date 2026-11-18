@@ -21,6 +21,7 @@
 //    of the screen (`NARROW_TEXT_BAND`) carries little ink.
 
 import { mulberry32 } from "@/lib/canvas/particles";
+import { BOWL_RINGS, WHEEL_FAMILIES, WHEEL_RINGS } from "@/lib/canvas/shapes";
 
 export const FOLD_COUNT = 6;
 
@@ -149,7 +150,7 @@ function buildBowls(N: number, W: number, H: number, idR: Float32Array, narrow: 
         [d.x1 - R * 0.1, d.y0 - R * 0.6],
       ]
     : [[W * 0.22, H * 0.62], [W * 0.8, H * 0.68], [W * 0.5, H * 0.88]];
-  const rings = [0.34, 0.66, 1];
+  const rings = BOWL_RINGS;
   for (let i = 0; i < N; i++) {
     const [cx, cy] = centres[i % 3];
     const ring = rings[Math.floor(idR[i] * 3) % 3];
@@ -174,7 +175,7 @@ function buildWheel(N: number, W: number, H: number, idR: Float32Array, narrow: 
   let cx = W * 0.5;
   let cy = H * 0.72;
   let R = W * 0.4;
-  let rings = [0.42, 0.7, 1];
+  let rings: readonly number[] = WHEEL_RINGS;
   if (d) {
     const w = d.x1 - d.x0;
     const h = d.y1 - d.y0;
@@ -189,7 +190,7 @@ function buildWheel(N: number, W: number, H: number, idR: Float32Array, narrow: 
     const rr = R * ring + gauss(rng) * R * 0.035;
     a.x[i] = cx + Math.cos(th) * rr;
     a.y[i] = cy + Math.sin(th) * rr;
-    const seg = Math.floor((th / TAU) * 9) % 9;
+    const seg = Math.floor((th / TAU) * WHEEL_FAMILIES) % WHEEL_FAMILIES;
     a.c[i] = PALETTE.FLAVOR0 + seg;
   }
   return { ...a, jitter: Math.min(W, H) * 0.004, alpha: narrow ? 0.55 : 0.9 };
