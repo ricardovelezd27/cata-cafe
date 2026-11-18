@@ -214,12 +214,12 @@ function StatBlock({
         <span className="label-caps">
           {title}
         </span>
-        <span className="text-caption text-on-surface-variant whitespace-nowrap">
+        <span className="text-caption text-on-surface-variant whitespace-nowrap tabular-nums">
           {n} {nLabel}
         </span>
       </div>
       <span className="label-caps mt-2">{avgLabel}</span>
-      <span className="font-display text-page leading-none" style={{ color }}>
+      <span className="font-display text-page leading-none tabular-nums" style={{ color }}>
         {fmtScore(avg)}
       </span>
       <span className="text-caption text-on-surface-variant mt-1">

@@ -33,10 +33,13 @@ export default async function CupLoading() {
           <div className={`h-8 w-28 rounded-pill ${bar}`} />
           <div className={`hidden h-8 w-72 rounded-pill lg:block ${bar}`} />
         </div>
-        <div className="flex-1 space-y-4 overflow-hidden px-4 pt-4 lg:px-12 lg:pt-8">
-          <div className={`h-3 w-24 ${bar}`} />
-          <div className={`h-[34px] w-full max-w-[420px] rounded-pill ${bar}`} />
-          <div className={`h-24 w-full max-w-[640px] ${bar}`} />
+        {/* the form's column: full width on a phone, 720 px centred from 1024 px; its first
+            block is the status notice the page opens with, then the first section's card */}
+        <div className="flex-1 overflow-hidden px-[16px] pt-0 lg:pt-[32px]">
+          <div data-skeleton-first className="mx-auto w-full space-y-3 lg:max-w-[720px]">
+            <div className={`h-[47px] w-full ${bar}`} />
+            <div className={`h-48 w-full ${bar}`} />
+          </div>
         </div>
         <div className="flex h-[64px] items-center justify-between gap-3 border-t border-outline-variant bg-surface px-3">
           <div className={`h-[43px] w-24 rounded-pill ${bar}`} />
