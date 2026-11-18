@@ -88,7 +88,7 @@ export function CupperAlignment({
                   </span>
                   <span className={`shrink-0 tabular-nums ${bar.excluded ? "text-on-surface-variant" : "text-on-surface"}`}>
                     {bar.percent === null ? (
-                      "—"
+                      "–"
                     ) : (
                       <>
                         {fillPattern(countPattern, { k: bar.matches, o: bar.opportunities })}

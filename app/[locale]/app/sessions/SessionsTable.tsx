@@ -143,7 +143,7 @@ export function SessionsTable({
       label: t.colDate,
       sortable: true,
       sortValue: (row) => row.date ?? "",
-      render: (row) => <span className="tabular-nums">{row.date ? new Date(row.date).toLocaleDateString(locale) : "—"}</span>,
+      render: (row) => <span className="tabular-nums">{row.date ? new Date(row.date).toLocaleDateString(locale) : "–"}</span>,
     },
     {
       key: "samples",
@@ -159,7 +159,7 @@ export function SessionsTable({
         row.isGroup ? (
           <span className="tabular-nums">{row.participantsCount}</span>
         ) : (
-          <span className="text-on-surface-variant">—</span>
+          <span className="text-on-surface-variant">–</span>
         ),
     },
     {
@@ -274,7 +274,7 @@ export function SessionsTable({
             {actions && <div className="relative z-10 flex shrink-0 items-center gap-1">{actions}</div>}
           </div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-on-surface-variant">
-            <span className="tabular-nums">{row.date ? new Date(row.date).toLocaleDateString(locale) : "—"}</span>
+            <span className="tabular-nums">{row.date ? new Date(row.date).toLocaleDateString(locale) : "–"}</span>
             <span>{formatLabel(row.format, t.formats)}</span>
             {row.closesAt && row.status !== "closed" && (
               <DeadlineBanner closesAt={row.closesAt} zone={row.closesAtZone} locale={locale} translations={t.deadline} compact />

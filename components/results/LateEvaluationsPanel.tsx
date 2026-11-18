@@ -139,7 +139,7 @@ export function LateEvaluationsPanel({
                 {r.ratings.map((a) => (
                   <li key={a.id} className="flex justify-between font-sans text-caption text-on-surface">
                     <span>{t.attributeLabels[a.id] ?? a.id}</span>
-                    <span className="tabular-nums">{a.value ?? "—"}</span>
+                    <span className="tabular-nums">{a.value ?? "–"}</span>
                   </li>
                 ))}
               </ul>

@@ -25,16 +25,20 @@ export function Wordmark({
   href,
   tone = "paper",
   className = "",
+  label,
 }: {
   href: string;
   tone?: keyof typeof TONE;
   className?: string;
+  /** The product's name for a screen reader ("Café Sensible"); the mark itself reads as the domain. */
+  label?: string;
 }) {
   const t = TONE[tone];
   return (
     <Link
       href={href}
       data-wordmark=""
+      aria-label={label}
       className={`inline-flex min-h-[44px] items-center font-serif text-card tracking-tight no-underline ${t.text} ${className}`}
     >
       {WORDMARK}

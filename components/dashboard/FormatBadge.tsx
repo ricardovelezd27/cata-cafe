@@ -1,18 +1,11 @@
 import { Badge } from "@/components/ui/Badge";
 
-const FORMAT_LABELS: Record<string, string> = {
-  descriptive: "DESCRIPTIVO",
-  affective: "AFECTIVO",
-  combined: "COMBINADO",
-};
-
-interface FormatBadgeProps {
-  format: string;
-}
-
-export function FormatBadge({ format }: FormatBadgeProps) {
-  const label = FORMAT_LABELS[format] ?? format.toUpperCase();
-  // DESIGN.md "Colours for people, processes and formats": a format is a
-  // neutral Badge, with no colour per format (T5, E-01).
+/**
+ * A session's format as a neutral Badge (DESIGN.md "Colours for people,
+ * processes and formats": no colour per format, T5, E-01). The caller passes
+ * the translated name (`session.formats.*`), in sentence case: the old
+ * Spanish-only capitals ("COMBINADO") printed in English too (P4a, I-03).
+ */
+export function FormatBadge({ label }: { label: string }) {
   return <Badge tone="neutral">{label}</Badge>;
 }

@@ -263,7 +263,7 @@ export default async function ProfilePage({
               <div className="flex flex-wrap items-center gap-2">
                 {/* B-03: the person's name is the page's one h1 (the banner layout stays). */}
                 <h1 className="font-display text-section">
-                  {profile?.displayName || "—"}
+                  {profile?.displayName || "–"}
                 </h1>
                 {isGuest && (
                   <Badge tone="neutral" size="xs">
@@ -335,6 +335,7 @@ export default async function ProfilePage({
               levelTitle: t("levelTitle"),
               pointsLabel: t("pointsLabel", { points: activityPoints }),
               howPoints: t("howPoints"),
+              levelOf: t("levelOf", { level: levelInfo.level, total: 6 }),
             }}
           />
 

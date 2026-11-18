@@ -50,6 +50,7 @@ In this order. When two pull against each other, the earlier one wins.
 | The act of cupping | cata | cupping | |
 | What is cupped | muestra | sample | |
 | The number | puntaje | score | puntuación, calificación |
+| A 1 to 9 rating of one attribute | calificación | rating | nota (it is a tasting note: "Notas rápidas", "notas percibidas") |
 | Leaving the account | Salir | Sign out | "Cerrar sesión" (it would also mean closing a session) |
 
 **The copy rules.**
