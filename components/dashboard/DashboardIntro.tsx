@@ -82,7 +82,7 @@ export function DashboardIntro({
     return (
       <button
         onClick={reopen}
-        className="min-h-[44px] group inline-flex items-center gap-2 text-sm text-on-surface-variant hover:text-primary-container transition-colors"
+        className="min-h-[44px] group inline-flex items-center gap-2 text-caption text-on-surface-variant hover:text-primary-container transition-colors"
       >
         <HelpCircle size={15} className="text-primary-muted" />
         <span className="underline decoration-outline-variant decoration-1 underline-offset-4 group-hover:decoration-primary-container">
@@ -125,10 +125,10 @@ export function DashboardIntro({
         </button>
 
         {/* heading */}
-        <p className="mono text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-muted">
+        <p className="label-caps mono text-primary-muted">
           {t.eyebrow}
         </p>
-        <h2 className="section-title mt-1 max-w-xl text-2xl leading-tight sm:text-[26px]">
+        <h2 className="section-title mt-1 max-w-xl leading-tight sm:text-page">
           {t.title}
         </h2>
 
@@ -146,14 +146,14 @@ export function DashboardIntro({
                 />
               )}
               <div className="flex items-baseline gap-2.5">
-                <span className="font-display text-xl leading-none text-primary-fixed-dim tabular-nums">
+                <span className="font-display text-card leading-none text-primary-fixed-dim tabular-nums">
                   {String(i + 1).padStart(2, "0")}
                 </span>
-                <span className="text-[12px] font-semibold uppercase tracking-[0.1em] text-primary-container">
+                <span className="label-caps text-primary-container">
                   {step.label}
                 </span>
               </div>
-              <p className="mt-2 max-w-[68ch] text-sm leading-relaxed text-on-surface-variant">
+              <p className="mt-2 max-w-[68ch] text-body leading-relaxed text-on-surface-variant">
                 {step.body}
               </p>
             </li>
@@ -165,7 +165,7 @@ export function DashboardIntro({
           <button
             onClick={() => setShowCalc((v) => !v)}
             aria-expanded={showCalc}
-            className="min-h-[44px] inline-flex items-center gap-2 text-sm font-semibold text-primary-container transition-colors hover:text-primary-muted"
+            className="min-h-[44px] inline-flex items-center gap-2 text-caption font-semibold text-primary-container transition-colors hover:text-primary-muted"
           >
             <Sigma size={15} className="text-secondary" />
             {t.ctaCalc}
@@ -184,14 +184,14 @@ export function DashboardIntro({
         >
           <div className="overflow-hidden">
             <div className="mt-5 rounded-input border border-outline-variant bg-surface-container/60 p-4 sm:p-5">
-              <h3 className="text-lg">
+              <h3 className="text-card">
                 {t.calcTitle}
               </h3>
-              <p className="mt-1 max-w-[68ch] text-sm text-on-surface-variant">{t.calcLead}</p>
+              <p className="mt-1 max-w-[68ch] text-body text-on-surface-variant">{t.calcLead}</p>
 
               {/* the formula, set apart and scrollable on narrow screens */}
               <div className="mt-3 overflow-x-auto rounded-sm border border-outline-variant bg-surface-container-lowest px-4 py-3">
-                <code className="mono whitespace-nowrap text-[15px] font-semibold text-primary-container">
+                <code className="mono whitespace-nowrap text-body font-semibold text-primary-container">
                   S = 0.65625 × Σhᵢ + 52.75 − 2u − 4d
                 </code>
               </div>
@@ -204,10 +204,10 @@ export function DashboardIntro({
                   { term: "d", body: t.calcD },
                 ].map((row) => (
                   <div key={row.term} className="flex gap-3">
-                    <dt className="mono shrink-0 pt-px text-sm font-bold text-secondary">
+                    <dt className="mono shrink-0 pt-px text-caption font-bold text-secondary">
                       {row.term}
                     </dt>
-                    <dd className="max-w-[68ch] text-sm leading-relaxed text-on-surface-variant">
+                    <dd className="max-w-[68ch] text-body leading-relaxed text-on-surface-variant">
                       {row.body}
                     </dd>
                   </div>
@@ -220,7 +220,7 @@ export function DashboardIntro({
                   (note, i) => (
                     <li
                       key={i}
-                      className="flex max-w-[68ch] gap-2 text-[13px] leading-relaxed text-on-surface-variant"
+                      className="flex max-w-[68ch] gap-2 text-body leading-relaxed text-on-surface-variant"
                     >
                       <span aria-hidden className="text-primary-muted">
                         ·
@@ -238,7 +238,7 @@ export function DashboardIntro({
         <div className="mt-5">
           <button
             onClick={dismiss}
-            className="min-h-[44px] min-w-[44px] text-sm font-medium text-on-surface-variant underline decoration-outline-variant decoration-1 underline-offset-4 transition-colors hover:text-primary-container hover:decoration-primary-container"
+            className="min-h-[44px] min-w-[44px] text-caption font-medium text-on-surface-variant underline decoration-outline-variant decoration-1 underline-offset-4 transition-colors hover:text-primary-container hover:decoration-primary-container"
           >
             {t.dismiss}
           </button>

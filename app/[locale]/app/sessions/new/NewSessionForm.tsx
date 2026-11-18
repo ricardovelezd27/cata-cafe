@@ -194,7 +194,7 @@ type WizardStep = "form" | "invite";
 const DEFAULT_CUPS_PER_SAMPLE = 2;
 
 const inputBase =
-  "w-full border border-outline-variant rounded-input px-3.5 py-2.5 text-sm text-on-surface bg-surface-container-lowest focus:border-primary-container transition-colors";
+  "w-full border border-outline-variant rounded-input px-3.5 py-2.5 text-body text-on-surface bg-surface-container-lowest focus:border-primary-container transition-colors";
 // 44px tap target (root font-size is 14px, so min-h-11 would paint 38.5px).
 const inputCls = inputBase + " min-h-[44px]";
 
@@ -224,7 +224,7 @@ function FieldLabel({
   htmlFor?: string;
 }) {
   return (
-    <label htmlFor={htmlFor} className="block text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant mb-1.5">
+    <label htmlFor={htmlFor} className="label-caps block mb-1.5">
       {children}
       {required && (
         <>
@@ -259,7 +259,7 @@ function SectionTitle({
   children: React.ReactNode;
 }) {
   return (
-    <h2 id={id} className={`section-title text-2xl ${className}`}>
+    <h2 id={id} className={`section-title ${className}`}>
       <span className="tabular-nums">{n}</span>
       <span aria-hidden="true"> · </span>
       <span className="sr-only">. </span>
@@ -715,7 +715,7 @@ export function NewSessionForm({
       : { id: fieldInputId(f) };
   const fieldError = (f: SessionFormField) =>
     errorField === f && errorText ? (
-      <p id={fieldErrorId(f)} role="alert" className="mt-1 text-xs text-error">
+      <p id={fieldErrorId(f)} role="alert" className="mt-1 text-caption text-error">
         {errorText}
       </p>
     ) : null;
@@ -736,7 +736,7 @@ export function NewSessionForm({
     return (
       <div className="space-y-6">
         {refKey && (
-          <p className="flex items-center gap-2 text-sm text-on-surface">
+          <p className="flex items-center gap-2 text-body text-on-surface">
             <Badge tone="accent" size="xs">
               {t.newForm.referenceBadge}
             </Badge>
@@ -747,7 +747,7 @@ export function NewSessionForm({
         <SampleKey rows={sampleKey} translations={t.newForm.sampleKey} />
 
         <div className="bg-surface-container-low border border-outline-variant rounded-card p-5 space-y-3">
-          <p className="text-sm font-semibold text-primary-container">{t.groupInviteLink}</p>
+          <p className="text-body font-semibold text-primary-container">{t.groupInviteLink}</p>
           {inviteUrl && (
             <div className="flex justify-center py-1">
               <InviteQR
@@ -764,13 +764,13 @@ export function NewSessionForm({
             <input
               readOnly
               value={inviteUrl}
-              className={inputCls + " flex-1 text-xs select-all"}
+              className={inputCls + " flex-1 text-caption select-all"}
               onFocus={(e) => e.target.select()}
             />
             <button
               type="button"
               onClick={handleCopy}
-              className="min-h-[44px] border border-primary-container text-primary-container rounded-pill px-5 py-2.5 text-sm font-medium hover:bg-primary-fixed transition-colors whitespace-nowrap"
+              className="min-h-[44px] border border-primary-container text-primary-container rounded-pill px-5 py-2.5 text-caption font-medium hover:bg-primary-fixed transition-colors whitespace-nowrap"
             >
               {copied ? t.groupCopied : t.groupCopyLink}
             </button>
@@ -780,14 +780,14 @@ export function NewSessionForm({
         {inviteBlocked && (
           <div
             role="status"
-            className="bg-secondary/10 border border-secondary/40 rounded-card px-4 py-3 text-sm text-secondary font-medium"
+            className="bg-secondary/10 border border-secondary/40 rounded-card px-4 py-3 text-body text-secondary font-medium"
           >
             {groupsT.autoInviteRateLimited}
           </div>
         )}
 
         {emailSummary && (
-          <div className="bg-primary-fixed border border-primary-container/40 rounded-card px-4 py-3 text-sm text-primary-container font-medium">
+          <div className="bg-primary-fixed border border-primary-container/40 rounded-card px-4 py-3 text-body text-primary-container font-medium">
             {formatTemplate(groupsT.autoInviteSummary, {
               sent: emailSummary.sent,
               skipped: emailSummary.skipped,
@@ -813,7 +813,7 @@ export function NewSessionForm({
         >
           {t.newForm.goToPanel}
         </button>
-        <p className="text-xs text-on-surface-variant text-center">{t.newForm.goToPanelHint}</p>
+        <p className="text-caption text-on-surface-variant text-center">{t.newForm.goToPanelHint}</p>
         {!closesAt && (
           <button
             type="button"
@@ -836,7 +836,7 @@ export function NewSessionForm({
                 router.push(`/${locale}/app/sessions/${sessionId}/cup`);
               });
             }}
-            className="w-full rounded-pill py-2.5 text-sm font-medium text-primary-container hover:bg-primary-fixed transition-colors disabled:opacity-50"
+            className="w-full rounded-pill py-2.5 text-caption font-medium text-primary-container hover:bg-primary-fixed transition-colors disabled:opacity-50"
           >
             {t.newForm.startNow}
           </button>
@@ -853,14 +853,14 @@ export function NewSessionForm({
   const renderCoffee = (coffee: CoffeeEntry) =>
     coffee.existingCoffeeId ? (
       <div className="space-y-2">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">
+        <p className="label-caps">
           {t.picker.linked}
         </p>
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-semibold text-sm text-on-surface">{coffee.name}</span>
+          <span className="font-semibold text-body text-on-surface">{coffee.name}</span>
           {coffee.linkedOrigin && (
             <span
-              className={`rounded-pill border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${
+              className={`label-caps rounded-pill border px-2 py-0.5 ${
                 originBadgeCls[coffee.linkedOrigin]
               }`}
             >
@@ -871,7 +871,7 @@ export function NewSessionForm({
         {[coffee.country, coffee.region, coffee.variety, coffee.altitude]
           .filter(Boolean)
           .join(" · ") && (
-          <p className="text-xs text-on-surface-variant">
+          <p className="text-caption text-on-surface-variant">
             {[coffee.country, coffee.region, coffee.variety, coffee.altitude]
               .filter(Boolean)
               .join(" · ")}
@@ -880,7 +880,7 @@ export function NewSessionForm({
         <button
           type="button"
           onClick={() => unlinkCoffee(coffee.id)}
-          className="min-h-[44px] rounded-pill border border-outline-variant px-3 py-1.5 text-xs font-medium text-on-surface hover:bg-surface-container transition-colors"
+          className="min-h-[44px] rounded-pill border border-outline-variant px-3 py-1.5 text-caption font-medium text-on-surface hover:bg-surface-container transition-colors"
         >
           {t.picker.unlink}
         </button>
@@ -947,7 +947,7 @@ export function NewSessionForm({
                 onChange={(e) => updateCoffee(coffee.id, "altitude", e.target.value)}
                 placeholder="1800"
               />
-              <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-on-surface-variant pointer-events-none">
+              <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-caption text-on-surface-variant pointer-events-none">
                 msnm
               </span>
             </div>
@@ -974,7 +974,7 @@ export function NewSessionForm({
 
         {/* Optional fields — collapsed accordion keeps the card light */}
         <details className="group rounded-input border border-outline-variant bg-surface-container-low/50">
-          <summary className="flex cursor-pointer select-none items-center justify-between px-3.5 py-2.5 text-xs font-semibold uppercase tracking-widest text-on-surface-variant [&::-webkit-details-marker]:hidden">
+          <summary className="label-caps flex cursor-pointer select-none items-center justify-between px-3.5 py-2.5 [&::-webkit-details-marker]:hidden">
             {t.newForm.moreDetails}
             <ChevronDown
               size={14}
@@ -1077,8 +1077,8 @@ export function NewSessionForm({
                       aria-pressed={active}
                       className={
                         active
-                          ? `${HIT_Y44} min-h-[30px] rounded-pill bg-primary-container px-3 py-1 text-xs font-semibold text-on-primary transition-colors`
-                          : `${HIT_Y44} min-h-[30px] rounded-pill border border-outline-variant px-3 py-1 text-xs font-medium text-on-surface transition-colors hover:bg-surface-container`
+                          ? `${HIT_Y44} min-h-[30px] rounded-pill bg-primary-container px-3 py-1 text-caption font-semibold text-on-primary transition-colors`
+                          : `${HIT_Y44} min-h-[30px] rounded-pill border border-outline-variant px-3 py-1 text-caption font-medium text-on-surface transition-colors hover:bg-surface-container`
                       }
                     >
                       {cert}
@@ -1169,7 +1169,7 @@ export function NewSessionForm({
           )}
         </div>
         {format !== "descriptive" && (
-          <p className="-mt-2 text-xs text-on-surface-variant">{t.newForm.cupsHint}</p>
+          <p className="-mt-2 text-caption text-on-surface-variant">{t.newForm.cupsHint}</p>
         )}
 
         <div>
@@ -1201,8 +1201,8 @@ export function NewSessionForm({
               onKeyDown={(e) => radioKeyDown(e, i, all.length, (n) => setFormat(all[n]))}
               className={
                 format === v
-                  ? "min-h-[44px] bg-primary-container text-on-primary rounded-pill px-5 py-2.5 text-sm font-medium"
-                  : "min-h-[44px] border border-outline-variant text-on-surface rounded-pill px-5 py-2.5 text-sm hover:bg-surface-container transition-colors"
+                  ? "min-h-[44px] bg-primary-container text-on-primary rounded-pill px-5 py-2.5 text-caption font-medium"
+                  : "min-h-[44px] border border-outline-variant text-on-surface rounded-pill px-5 py-2.5 text-caption hover:bg-surface-container transition-colors"
               }
             >
               {{ descriptive: t.formatDescriptive, affective: t.formatAffective, combined: t.formatCombined }[v]}
@@ -1238,7 +1238,7 @@ export function NewSessionForm({
                 />
               </span>
             </button>
-            <span id={`${fid}-warmup`} className="text-sm text-on-surface font-medium">{t.warmup.toggle}</span>
+            <span id={`${fid}-warmup`} className="text-body text-on-surface font-medium">{t.warmup.toggle}</span>
           </div>
           {warmupOn && (
             <div className="bg-surface-container-low rounded-card p-4 space-y-2">
@@ -1253,7 +1253,7 @@ export function NewSessionForm({
                   label: `${ex.order}. ${lw(ex.name, locale)} · ${t.warmup.minutes.replace("{min}", String(ex.durationMin))}`,
                 }))}
               />
-              <p className="text-xs text-on-surface-variant">{t.warmup.hint}</p>
+              <p className="text-caption text-on-surface-variant">{t.warmup.hint}</p>
             </div>
           )}
         </div>
@@ -1265,7 +1265,7 @@ export function NewSessionForm({
           <SectionTitle n={3} id={`${fid}-sec-samples`} className="mb-1">
             {t.newForm.samplesTitle}
           </SectionTitle>
-          <p className="text-xs text-on-surface-variant">{t.newForm.samplesHelper}</p>
+          <p className="text-caption text-on-surface-variant">{t.newForm.samplesHelper}</p>
         </div>
 
         <datalist id="cata-coffee-countries">
@@ -1276,16 +1276,16 @@ export function NewSessionForm({
 
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">
+            <p className="label-caps">
               {t.newForm.referenceTitle}
             </p>
-            <p className="text-xs text-on-surface-variant">{t.newForm.referenceHelper}</p>
+            <p className="text-caption text-on-surface-variant">{t.newForm.referenceHelper}</p>
           </div>
           {referenceId !== null && (
             <button
               type="button"
               onClick={() => setReferenceId(null)}
-              className="text-xs font-medium text-primary-container hover:underline shrink-0"
+              className="text-caption font-medium text-primary-container hover:underline shrink-0"
             >
               {t.newForm.referenceClear}
             </button>
@@ -1296,11 +1296,11 @@ export function NewSessionForm({
         {referenceId !== null && referenceExplanation({ mode: referenceMode, moduleKey: format }) === "descriptive" && (
           // S10 WP6 fix round (2): a descriptive session has no quality ratings, so nothing is pinned
           // and the mode choice does not exist: say only what the reference is for.
-          <p className="text-xs text-on-surface-variant">{t.newForm.referenceMode.descriptiveHelp}</p>
+          <p className="text-caption text-on-surface-variant">{t.newForm.referenceMode.descriptiveHelp}</p>
         )}
         {referenceId !== null && referenceExplanation({ mode: referenceMode, moduleKey: format }) !== "descriptive" && (
           <fieldset className="space-y-1.5 border-0 p-0">
-            <legend className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">
+            <legend className="label-caps mb-1">
               {t.newForm.referenceMode.legend}
             </legend>
             <div
@@ -1322,15 +1322,15 @@ export function NewSessionForm({
                   onClick={() => setReferenceMode(opt.v)}
                   className={
                     referenceMode === opt.v
-                      ? "min-h-[44px] bg-primary-container text-on-primary rounded-pill px-4 py-2 text-sm font-medium"
-                      : "min-h-[44px] border border-outline-variant text-on-surface rounded-pill px-4 py-2 text-sm hover:bg-surface-container transition-colors"
+                      ? "min-h-[44px] bg-primary-container text-on-primary rounded-pill px-4 py-2 text-caption font-medium"
+                      : "min-h-[44px] border border-outline-variant text-on-surface rounded-pill px-4 py-2 text-caption hover:bg-surface-container transition-colors"
                   }
                 >
                   {opt.l}
                 </button>
               ))}
             </div>
-            <p className="text-xs text-on-surface-variant">
+            <p className="text-caption text-on-surface-variant">
               {referenceMode === "free"
                 ? t.newForm.referenceMode.freeHelp
                 : t.newForm.referenceMode.anchorHelp}
@@ -1338,7 +1338,7 @@ export function NewSessionForm({
           </fieldset>
         )}
 
-        <p className="text-xs text-on-surface-variant">{t.newForm.samplesBlindHelper}</p>
+        <p className="text-caption text-on-surface-variant">{t.newForm.samplesBlindHelper}</p>
 
         <div className="space-y-4">
           {samples.map((s, si) => {
@@ -1367,11 +1367,11 @@ export function NewSessionForm({
                 }
               >
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="bg-surface-container rounded-pill px-3 py-1 text-xs font-semibold tracking-wide uppercase text-on-surface">
+                  <span className="label-caps bg-surface-container rounded-pill px-3 py-1 text-on-surface">
                     {sampleName}
                   </span>
                   {/* The reference mark: a 44 px row around a 16 px radio. */}
-                  <label className="flex min-h-[44px] cursor-pointer items-center gap-2 px-2 text-xs font-medium text-on-surface">
+                  <label className="flex min-h-[44px] cursor-pointer items-center gap-2 px-2 text-caption font-medium text-on-surface">
                     <input
                       type="radio"
                       name="reference"
@@ -1392,7 +1392,7 @@ export function NewSessionForm({
                     <button
                       type="button"
                       onClick={() => setPickerFor(coffee.id)}
-                      className="min-h-[44px] rounded-pill border border-primary-container px-3 py-1 text-xs font-medium text-primary-container hover:bg-primary-fixed transition-colors"
+                      className="min-h-[44px] rounded-pill border border-primary-container px-3 py-1 text-caption font-medium text-primary-container hover:bg-primary-fixed transition-colors"
                     >
                       {t.picker.useExisting}
                     </button>
@@ -1481,7 +1481,7 @@ export function NewSessionForm({
         />
 
         {sampleWarning && (
-          <p role="status" className="text-xs font-medium text-secondary">
+          <p role="status" className="text-caption font-medium text-secondary">
             {t.newForm.sampleWarning[sampleWarning]}
           </p>
         )}
@@ -1489,7 +1489,7 @@ export function NewSessionForm({
         <button
           type="button"
           onClick={addSample}
-          className="min-h-[44px] border border-primary-container text-primary-container rounded-pill px-5 py-2.5 text-sm font-medium hover:bg-primary-fixed transition-colors"
+          className="min-h-[44px] border border-primary-container text-primary-container rounded-pill px-5 py-2.5 text-caption font-medium hover:bg-primary-fixed transition-colors"
         >
           + {t.addSample}
         </button>
@@ -1526,7 +1526,7 @@ export function NewSessionForm({
               />
             </span>
           </button>
-          <span id={`${fid}-group`} className="text-sm text-on-surface font-medium">{t.groupToggle}</span>
+          <span id={`${fid}-group`} className="text-body text-on-surface font-medium">{t.groupToggle}</span>
         </div>
 
         {isGroup && (
@@ -1546,9 +1546,9 @@ export function NewSessionForm({
                 onChange={(e) => setClosesAt(e.target.value)}
               />
               {fieldError("closesAt")}
-              <p className="mt-1 text-xs text-on-surface-variant">{t.groupClosesAtHint}</p>
+              <p className="mt-1 text-caption text-on-surface-variant">{t.groupClosesAtHint}</p>
               {closesAt && (
-                <p className="mt-1 text-xs font-medium text-secondary">{t.groupClosesAtLiveNotice}</p>
+                <p className="mt-1 text-caption font-medium text-secondary">{t.groupClosesAtLiveNotice}</p>
               )}
             </div>
 
@@ -1570,7 +1570,7 @@ export function NewSessionForm({
             </div>
 
             {linkedGroupId && (
-              <label className="flex min-h-[44px] items-center gap-2.5 text-sm text-on-surface cursor-pointer">
+              <label className="flex min-h-[44px] items-center gap-2.5 text-body text-on-surface cursor-pointer">
                 <input
                   type="checkbox"
                   checked={notifyGroup}
@@ -1585,7 +1585,7 @@ export function NewSessionForm({
                 for; an async one is always announced at creation. */}
             {linkedGroupId && notifyGroup && !closesAt && (
               <fieldset className="space-y-1.5">
-                <legend className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant">
+                <legend className="label-caps">
                   {t.newForm.notifyWhen.legend}
                 </legend>
                 <div role="radiogroup" aria-label={t.newForm.notifyWhen.legend} className="flex flex-wrap gap-2">
@@ -1603,8 +1603,8 @@ export function NewSessionForm({
                       onClick={() => setNotifyGroupWhen(opt.v)}
                       className={
                         notifyGroupWhen === opt.v
-                          ? "min-h-[44px] bg-primary-container text-on-primary rounded-pill px-4 py-2 text-sm font-medium"
-                          : "min-h-[44px] border border-outline-variant text-on-surface rounded-pill px-4 py-2 text-sm hover:bg-surface-container transition-colors"
+                          ? "min-h-[44px] bg-primary-container text-on-primary rounded-pill px-4 py-2 text-caption font-medium"
+                          : "min-h-[44px] border border-outline-variant text-on-surface rounded-pill px-4 py-2 text-caption hover:bg-surface-container transition-colors"
                       }
                     >
                       {opt.l}
@@ -1622,12 +1622,12 @@ export function NewSessionForm({
         status={
           <>
             {stripText && (
-              <div className="bg-error-container text-on-error-container rounded-card px-4 py-3 text-sm">
+              <div className="bg-error-container text-on-error-container rounded-card px-4 py-3 text-body">
                 {stripText}
               </div>
             )}
             {!online && t.newForm.errors.offline && (
-              <p role="status" className="text-center text-sm text-error">
+              <p role="status" className="text-center text-body text-error">
                 {t.newForm.errors.offline}
               </p>
             )}

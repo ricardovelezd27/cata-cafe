@@ -175,21 +175,21 @@ export default async function Dashboard({
       {/* Header */}
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="page-title text-3xl leading-tight">
+          <h1 className="page-title leading-tight">
             {t("welcome", { name: profile?.displayName ?? "" })}
           </h1>
-          <p className="text-sm text-on-surface-variant mt-1 max-w-[68ch]">{t("subtitle")}</p>
+          <p className="text-caption text-on-surface-variant mt-1 max-w-[68ch]">{t("subtitle")}</p>
         </div>
         <div className="flex shrink-0 flex-col items-stretch gap-2 sm:flex-row sm:items-center">
           <GuestGateLink
             href={`/${locale}/app/sessions/express`}
-            className="inline-flex min-h-[44px] items-center justify-center px-4 py-2 rounded-pill bg-primary-container text-white text-sm font-bold hover:bg-primary transition-colors text-center"
+            className="inline-flex min-h-[44px] items-center justify-center px-4 py-2 rounded-pill bg-primary-container text-white text-caption font-bold hover:bg-primary transition-colors text-center"
           >
             {t("expressCta")}
           </GuestGateLink>
           <GuestGateLink
             href={`/${locale}/app/sessions/new`}
-            className="inline-flex min-h-[44px] items-center justify-center px-4 py-2 rounded-pill border border-primary-container text-primary-container text-sm font-semibold hover:bg-primary-fixed transition-colors text-center"
+            className="inline-flex min-h-[44px] items-center justify-center px-4 py-2 rounded-pill border border-primary-container text-primary-container text-caption font-semibold hover:bg-primary-fixed transition-colors text-center"
           >
             {t("fullWizardCta")}
           </GuestGateLink>
@@ -231,7 +231,7 @@ export default async function Dashboard({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Recent sessions */}
           <section className="space-y-3">
-            <h2 className="section-title text-xl">{t("recent")}</h2>
+            <h2 className="section-title">{t("recent")}</h2>
             <ul className="space-y-2">
               {recentSessions.map((s) => (
                 <li key={s.id}>
@@ -241,7 +241,7 @@ export default async function Dashboard({
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-on-surface text-sm truncate">
+                        <span className="font-semibold text-on-surface text-caption truncate">
                           {s.name}
                         </span>
                         <FormatBadge format={s.format} />
@@ -250,7 +250,7 @@ export default async function Dashboard({
                         )}
                         <StatusPill status={s.status} labels={statusLabels} />
                       </div>
-                      <div className="flex items-center gap-2 mt-1 text-xs text-on-surface-variant">
+                      <div className="flex items-center gap-2 mt-1 text-caption text-on-surface-variant">
                         <span>
                           {new Date(s.date).toLocaleDateString(locale)}
                         </span>
@@ -272,9 +272,9 @@ export default async function Dashboard({
 
           {/* Top coffees */}
           <section className="space-y-3">
-            <h2 className="section-title text-xl">{t("bestCoffees")}</h2>
+            <h2 className="section-title">{t("bestCoffees")}</h2>
             {topCoffeeGroups.length === 0 ? (
-              <p className="text-sm text-on-surface-variant">{t("noBestCoffees")}</p>
+              <p className="text-caption text-on-surface-variant">{t("noBestCoffees")}</p>
             ) : (
               <ul className="space-y-2">
                 {topCoffeeGroups.map((g, i) => {
@@ -285,20 +285,20 @@ export default async function Dashboard({
                       key={g.coffeeId}
                       className="flex items-center gap-3 bg-surface-container-lowest border border-outline-variant rounded-card px-4 py-3"
                     >
-                      <span className="font-display text-2xl text-primary-muted w-6 text-center shrink-0">
+                      <span className="font-display text-section text-primary-muted w-6 text-center shrink-0">
                         {i + 1}
                       </span>
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-on-surface text-sm truncate">
+                        <p className="font-semibold text-on-surface text-caption truncate">
                           {coffee ? coffeeDisplayName(coffee, tc("coffeeDeleted")) : "—"}
                         </p>
                         {coffee?.country && (
-                          <p className="text-xs text-on-surface-variant">{coffee.country}</p>
+                          <p className="text-caption text-on-surface-variant">{coffee.country}</p>
                         )}
                       </div>
                       <div className="flex flex-col items-end gap-1 shrink-0">
                         <ScorePill score={avg} />
-                        <span className="text-xs text-on-surface-variant">
+                        <span className="text-caption text-on-surface-variant">
                           {t("cuppingsCount", { count: g._count.coffeeId })}
                         </span>
                       </div>
@@ -349,17 +349,17 @@ export default async function Dashboard({
           />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">
+          <span className="label-caps block">
             {tw("dashboard.eyebrow")}
           </span>
-          <span className="mt-0.5 block font-display text-xl text-primary-container">
+          <span className="mt-0.5 block font-display text-card text-primary-container">
             {tw("dashboard.title")}
           </span>
-          <span className="mt-1 block max-w-[68ch] text-sm leading-relaxed text-on-surface-variant">
+          <span className="mt-1 block max-w-[68ch] text-body leading-relaxed text-on-surface-variant">
             {tw("dashboard.body")}
           </span>
         </span>
-        <span className="hidden shrink-0 items-center gap-1 text-sm font-semibold text-primary-container sm:inline-flex">
+        <span className="hidden shrink-0 items-center gap-1 text-caption font-semibold text-primary-container sm:inline-flex">
           {tw("dashboard.cta")}
           <ChevronRight size={16} className="transition-transform group-hover:translate-x-0.5" aria-hidden />
         </span>
@@ -369,9 +369,9 @@ export default async function Dashboard({
       {/* Activity feed */}
       {hasData && (
         <section className="space-y-3">
-          <h2 className="section-title text-xl">{t("activityFeed")}</h2>
+          <h2 className="section-title">{t("activityFeed")}</h2>
           {recentActivity.length === 0 ? (
-            <p className="text-sm text-on-surface-variant">{t("noActivity")}</p>
+            <p className="text-caption text-on-surface-variant">{t("noActivity")}</p>
           ) : (
             <ul className="space-y-1">
               {recentActivity.map((item, i) => (
@@ -382,7 +382,7 @@ export default async function Dashboard({
                   <span className="text-primary-muted shrink-0">
                     <Clock size={14} />
                   </span>
-                  <span className="text-sm text-on-surface flex-1">
+                  <span className="text-caption text-on-surface flex-1">
                     {item.sessionSample.revealed && item.sessionSample.coffee
                       ? t("activityEval", {
                           coffee: coffeeDisplayName(
@@ -395,7 +395,7 @@ export default async function Dashboard({
                           session: item.sessionSample.session.name,
                         })}
                   </span>
-                  <span className="text-xs text-on-surface-variant shrink-0">
+                  <span className="text-caption text-on-surface-variant shrink-0">
                     {item.submittedAt
                       ? timeAgo(new Date(item.submittedAt), locale)
                       : ""}

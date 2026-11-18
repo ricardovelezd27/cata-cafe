@@ -63,7 +63,7 @@ function CoffeeLabelOnly({ row }: { row: HistoryRow }) {
       {row.sampleLabel && (
         <span className="truncate font-semibold text-on-surface">{row.sampleLabel}</span>
       )}
-      <span className="truncate text-xs italic text-on-surface-variant">{row.coffeeName}</span>
+      <span className="truncate text-caption italic text-on-surface-variant">{row.coffeeName}</span>
     </span>
   );
 }
@@ -117,7 +117,7 @@ export function HistoryTable({
         ) : (
           <span className="inline-flex items-center gap-1.5 text-on-surface-variant">
             {row.sessionName}
-            <span className="rounded-pill border border-outline-variant bg-surface-container px-1.5 py-0.5 text-[10px]">
+            <span className="rounded-pill border border-outline-variant bg-surface-container px-1.5 py-0.5 text-caption">
               {t.sessionDeleted}
             </span>
           </span>
@@ -203,33 +203,33 @@ export function HistoryTable({
               {row.sessionId ? (
                 <Link
                   href={`/${locale}/app/sessions/${row.sessionId}/results`}
-                  className="min-h-[24px] min-w-[24px] block truncate text-xs text-on-surface-variant transition-colors hover:text-primary-container"
+                  className="min-h-[24px] min-w-[24px] block truncate text-caption text-on-surface-variant transition-colors hover:text-primary-container"
                 >
                   {row.sessionName}
                 </Link>
               ) : (
-                <span className="flex items-center gap-1.5 truncate text-xs text-on-surface-variant">
+                <span className="flex items-center gap-1.5 truncate text-caption text-on-surface-variant">
                   {row.sessionName}
-                  <span className="shrink-0 rounded-pill border border-outline-variant bg-surface-container px-1.5 py-0.5 text-[10px]">
+                  <span className="shrink-0 rounded-pill border border-outline-variant bg-surface-container px-1.5 py-0.5 text-caption">
                     {t.sessionDeleted}
                   </span>
                 </span>
               )}
             </div>
-            <span className="shrink-0 text-xs tabular-nums text-on-surface-variant">
+            <span className="shrink-0 text-caption tabular-nums text-on-surface-variant">
               {new Date(row.tastedAt).toLocaleDateString(locale)}
             </span>
           </div>
           <div className="flex items-center gap-3">
             <div className="space-y-0.5">
-              <div className="text-[10px] font-semibold uppercase tracking-wide text-on-surface-variant">
+              <div className="label-caps">
                 {t.yourScore}
               </div>
               <ScorePill score={row.individualScore} />
               {row.quickImpression && <Badge tone="outline" size="xs">{t.quickImpression}</Badge>}
             </div>
             <div className="space-y-0.5">
-              <div className="text-[10px] font-semibold uppercase tracking-wide text-on-surface-variant">
+              <div className="label-caps">
                 {t.communityScore}
               </div>
               <ScorePill score={row.communityScore} />

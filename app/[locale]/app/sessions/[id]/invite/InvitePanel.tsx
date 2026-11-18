@@ -39,7 +39,7 @@ export function InvitePanel({
 
   return (
     <div className="bg-surface-container-low border border-outline-variant rounded-card p-5 space-y-3">
-      <p className="text-sm font-semibold text-primary-container">{t.inviteLink}</p>
+      <p className="text-body font-semibold text-primary-container">{t.inviteLink}</p>
       {url && (
         <div className="flex justify-center py-1">
           <InviteQR
@@ -53,12 +53,12 @@ export function InvitePanel({
           readOnly
           value={url}
           onFocus={(e) => e.target.select()}
-          className="w-full flex-1 select-all border border-outline-variant rounded-input px-3.5 py-2.5 text-xs text-on-surface bg-surface-container-lowest"
+          className="w-full flex-1 select-all border border-outline-variant rounded-input px-3.5 py-2.5 text-caption text-on-surface bg-surface-container-lowest"
         />
         <button
           type="button"
           onClick={copy}
-          className="border border-primary-container text-primary-container rounded-pill px-5 py-2.5 text-sm font-medium hover:bg-primary-fixed transition-colors whitespace-nowrap"
+          className="border border-primary-container text-primary-container rounded-pill px-5 py-2.5 text-caption font-medium hover:bg-primary-fixed transition-colors whitespace-nowrap"
         >
           {copied ? t.copied : t.copyLink}
         </button>

@@ -137,7 +137,7 @@ export function GuestGateProvider({
             <div className="space-y-4">
               <div className="flex items-start gap-3">
                 <UserRoundPlus size={20} aria-hidden className="mt-0.5 shrink-0 text-secondary" />
-                <p className="text-sm leading-relaxed text-on-surface-variant">{t.body}</p>
+                <p className="text-body leading-relaxed text-on-surface-variant">{t.body}</p>
               </div>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                 <Button
@@ -150,9 +150,9 @@ export function GuestGateProvider({
                   {t.dismiss}
                 </Button>
               </div>
-              {!claim.online && <p className="text-xs text-on-surface-variant">{t.offline}</p>}
+              {!claim.online && <p className="text-caption text-on-surface-variant">{t.offline}</p>}
               {claim.failed && (
-                <p role="alert" className="text-xs text-error">
+                <p role="alert" className="text-caption text-error">
                   {t.error}
                 </p>
               )}

@@ -60,7 +60,7 @@ export function ChangeEmailDialog({
       </Button>
       <ResponsiveDialog open={open} onOpenChange={setOpen} title={t.title} closeLabel={t.close}>
         {sentTo ? (
-          <p role="status" className="text-sm leading-relaxed text-on-surface">
+          <p role="status" className="text-body leading-relaxed text-on-surface">
             {t.sent.replace("{email}", sentTo)}
           </p>
         ) : (
@@ -71,11 +71,11 @@ export function ChangeEmailDialog({
               submit();
             }}
           >
-            <p className="text-sm leading-relaxed text-on-surface-variant">{t.body}</p>
+            <p className="text-body leading-relaxed text-on-surface-variant">{t.body}</p>
             <div>
               <label
                 htmlFor={inputId}
-                className="mb-1 block text-xs font-semibold uppercase tracking-wide text-on-surface-variant"
+                className="label-caps mb-1 block"
               >
                 {t.label}
               </label>
@@ -88,7 +88,7 @@ export function ChangeEmailDialog({
                 maxLength={254}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-input border border-outline-variant bg-surface-container-lowest px-3 py-2 text-sm text-on-surface transition-colors focus:border-primary-container"
+                className="w-full rounded-input border border-outline-variant bg-surface-container-lowest px-3 py-2 text-body text-on-surface transition-colors focus:border-primary-container"
               />
             </div>
             <Button type="submit" disabled={pending || !email.trim()} aria-busy={pending}>

@@ -106,9 +106,9 @@ describe("F-14: the phone's bottom bar has five tabs at most", () => {
     expect(entries.length).toBeGreaterThan(0);
     expect(onPhone.length).toBeLessThanOrEqual(5);
   });
-  it("labels paint 12 px and the active tab is marked by more than colour", () => {
+  it("labels paint the caption size (12.25 px, T4b) and the active tab is marked by more than colour", () => {
     const tab = classAfter(bar, "<GuestGateLink");
-    expect(tokens(tab)).toContain("text-[12px]");
+    expect(tokens(tab)).toContain("text-caption");
     expect(tab).toMatch(/font-semibold/);
     expect(tab).toMatch(/before:h-\[3px\]/);
   });

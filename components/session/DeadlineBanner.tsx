@@ -86,7 +86,7 @@ export function DeadlineBanner({
   return (
     <div
       role="status"
-      className={`flex items-start gap-2 rounded-card border px-4 py-2 font-sans text-sm ${tone}`}
+      className={`flex items-start gap-2 rounded-card border px-4 py-2 font-sans text-caption ${tone}`}
     >
       <Clock size={14} aria-hidden className="mt-0.5 shrink-0 text-secondary" />
       <span className="flex-1">

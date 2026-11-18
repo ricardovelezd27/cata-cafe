@@ -35,20 +35,20 @@ export function LevelBadge({
 
   return (
     <div className="bg-surface-container-lowest border border-outline-variant rounded-card p-5 flex flex-col gap-3">
-      <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
+      <span className="label-caps">
         {t.levelTitle}
       </span>
 
       <div className="flex items-center gap-3">
-        <span className="flex items-center justify-center h-8 w-8 rounded-full bg-primary-container text-white text-sm font-bold shrink-0">
+        <span className="flex items-center justify-center h-8 w-8 rounded-full bg-primary-container text-white text-caption font-bold shrink-0">
           {level}
         </span>
-        <span className="font-display text-xl text-primary-container font-bold">
+        <span className="font-display text-card text-primary-container font-bold">
           {levelLabel}
         </span>
       </div>
 
-      <span className="text-sm text-on-surface">{t.pointsLabel}</span>
+      <span className="text-caption text-on-surface">{t.pointsLabel}</span>
 
       <div
         role="progressbar"
@@ -64,13 +64,13 @@ export function LevelBadge({
         />
       </div>
 
-      <span className="text-xs text-on-surface-variant">{progressText}</span>
+      <span className="text-caption text-on-surface-variant">{progressText}</span>
 
       {topPercentText && (
-        <span className="text-xs font-semibold text-secondary">{topPercentText}</span>
+        <span className="text-caption font-semibold text-secondary">{topPercentText}</span>
       )}
 
-      <p className="text-xs text-on-surface-variant border-t border-outline-variant pt-2 mt-1">
+      <p className="text-caption text-on-surface-variant border-t border-outline-variant pt-2 mt-1">
         {t.howPoints}
       </p>
     </div>

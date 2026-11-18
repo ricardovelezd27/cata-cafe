@@ -116,12 +116,12 @@ export function LoginForm({
   return (
     <div className="space-y-4">
       {inApp ? (
-        <div className="rounded-card border border-outline-variant bg-surface-container-lowest p-3 text-sm text-on-surface space-y-2">
+        <div className="rounded-card border border-outline-variant bg-surface-container-lowest p-3 text-body text-on-surface space-y-2">
           <p>{inAppLabels.hint}</p>
           <button
             type="button"
             onClick={copyPageLink}
-            className="rounded-pill border border-primary-muted px-3.5 py-2 text-xs font-semibold text-primary-container hover:bg-primary-fixed-dim/25 transition-colors"
+            className="rounded-pill border border-primary-muted px-3.5 py-2 text-caption font-semibold text-primary-container hover:bg-primary-fixed-dim/25 transition-colors"
           >
             {linkCopied ? inAppLabels.copied : inAppLabels.copy}
           </button>
@@ -131,7 +131,7 @@ export function LoginForm({
         type="button"
         onClick={onGoogleClick}
         disabled={isPending}
-        className="min-h-[44px] w-full flex items-center justify-center gap-3 py-2.5 rounded-pill border border-outline-variant bg-surface-container-lowest text-on-surface font-semibold text-sm hover:bg-surface-container transition disabled:opacity-50"
+        className="min-h-[44px] w-full flex items-center justify-center gap-3 py-2.5 rounded-pill border border-outline-variant bg-surface-container-lowest text-on-surface font-semibold text-caption hover:bg-surface-container transition disabled:opacity-50"
       >
         <GoogleMark />
         {googleLabel}
@@ -140,14 +140,14 @@ export function LoginForm({
 
       <div className="flex items-center gap-3">
         <div className="flex-1 h-px bg-outline-variant" />
-        <span className="text-xs text-on-surface-variant">{orLabel}</span>
+        <span className="text-caption text-on-surface-variant">{orLabel}</span>
         <div className="flex-1 h-px bg-outline-variant" />
       </div>
 
       <form onSubmit={onSubmit} className="space-y-3">
-        <p className="text-sm text-on-surface-variant">{subtitleLabel}</p>
+        <p className="text-body text-on-surface-variant">{subtitleLabel}</p>
         <label className="block">
-          <span className="text-xs text-on-surface-variant font-semibold uppercase tracking-wide">
+          <span className="label-caps">
             {emailLabel}
           </span>
           <input
@@ -164,7 +164,7 @@ export function LoginForm({
             autoFocus={autoFocusEmail}
             aria-describedby={error ? "login-error" : undefined}
             aria-invalid={error ? true : undefined}
-            className="min-h-[44px] mt-1 w-full px-3 py-2 border border-outline-variant rounded-input text-sm bg-surface-container-lowest text-on-surface focus:border-primary-container"
+            className="min-h-[44px] mt-1 w-full px-3 py-2 border border-outline-variant rounded-input text-body bg-surface-container-lowest text-on-surface focus:border-primary-container"
           />
         </label>
         <button
@@ -175,11 +175,11 @@ export function LoginForm({
           {status === "sending" ? sendingLabel : sendLabel}
         </button>
         {error && (
-          <p id="login-error" role="alert" className="text-error text-sm">
+          <p id="login-error" role="alert" className="text-error text-caption">
             {errors[error]}
           </p>
         )}
-        <p className="text-xs">
+        <p className="text-caption">
           <a href={supportHref} className="font-semibold text-primary-container underline">
             {sentLabels.support}
           </a>

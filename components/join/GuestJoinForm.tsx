@@ -172,7 +172,7 @@ export function GuestJoinForm({ token, locale, translations }: GuestJoinFormProp
         aria-label={translations.namePlaceholder}
         required
         autoComplete="name"
-        className="w-full px-3 py-2.5 border border-outline-variant rounded-input text-sm bg-surface-container-lowest text-on-surface focus:border-primary-container"
+        className="w-full px-3 py-2.5 border border-outline-variant rounded-input text-caption bg-surface-container-lowest text-on-surface focus:border-primary-container"
       />
       <button
         type="submit"
@@ -182,12 +182,12 @@ export function GuestJoinForm({ token, locale, translations }: GuestJoinFormProp
         {isSubmitting ? translations.joining : translations.joinButton}
       </button>
       {error && (
-        <p role="alert" className="text-sm text-error">
+        <p role="alert" className="text-caption text-error">
           {error}
         </p>
       )}
-      <p className="text-xs text-on-surface-variant">{translations.offlineNotice}</p>
-      <p className="text-xs text-on-surface-variant">{translations.dataNotice}</p>
+      <p className="text-caption text-on-surface-variant">{translations.offlineNotice}</p>
+      <p className="text-caption text-on-surface-variant">{translations.dataNotice}</p>
     </form>
   );
 }

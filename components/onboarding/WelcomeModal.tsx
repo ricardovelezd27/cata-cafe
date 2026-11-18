@@ -47,7 +47,7 @@ export interface WelcomeModalTranslations {
 }
 
 const inputClass =
-  "w-full border border-outline-variant rounded-input px-3 py-2 text-sm text-on-surface placeholder:text-on-surface-variant/60 bg-surface-container-lowest focus:border-primary-container transition-colors";
+  "w-full border border-outline-variant rounded-input px-3 py-2 text-body text-on-surface placeholder:text-on-surface-variant/60 bg-surface-container-lowest focus:border-primary-container transition-colors";
 
 interface WelcomeModalProps {
   locale: string;
@@ -115,10 +115,10 @@ export default function WelcomeModal({ locale, initialDisplayName, translations:
           <div className="pb-2 flex flex-col items-center text-center gap-5">
             <span className="text-5xl" aria-hidden>☕</span>
             <div className="space-y-2">
-              <p className="text-sm font-medium text-on-surface">
+              <p className="text-body font-medium text-on-surface">
                 {t.welcomeTagline}
               </p>
-              <p className="text-sm text-on-surface-variant">
+              <p className="text-caption text-on-surface-variant">
                 {t.welcomeBody}
               </p>
             </div>
@@ -135,7 +135,7 @@ export default function WelcomeModal({ locale, initialDisplayName, translations:
               tone="none"
               onClick={handleDismiss}
               disabled={isPending}
-              className="text-sm text-on-surface-variant hover:text-on-surface transition-colors"
+              className="text-caption text-on-surface-variant hover:text-on-surface transition-colors"
             >
               {t.skip}
             </TextAction>
@@ -147,7 +147,7 @@ export default function WelcomeModal({ locale, initialDisplayName, translations:
           <div className="pb-2 flex flex-col gap-5">
             <div className="space-y-4">
               <label className="block">
-                <span className="text-sm font-medium text-on-surface mb-1 block">
+                <span className="text-body font-medium text-on-surface mb-1 block">
                   {t.fullName}
                 </span>
                 <input
@@ -160,7 +160,7 @@ export default function WelcomeModal({ locale, initialDisplayName, translations:
               </label>
 
               <label className="block">
-                <span className="text-sm font-medium text-on-surface mb-1 block">
+                <span className="text-body font-medium text-on-surface mb-1 block">
                   {t.role}
                 </span>
                 <select
@@ -176,7 +176,7 @@ export default function WelcomeModal({ locale, initialDisplayName, translations:
               </label>
 
               <label className="block">
-                <span className="text-sm font-medium text-on-surface mb-1 block">
+                <span className="text-body font-medium text-on-surface mb-1 block">
                   {t.country}
                 </span>
                 <select
@@ -197,7 +197,7 @@ export default function WelcomeModal({ locale, initialDisplayName, translations:
             <div className="flex gap-3">
               <button
                 onClick={() => setStep(1)}
-                className="flex items-center gap-1 px-4 py-3 text-sm text-on-surface border border-outline-variant rounded-pill hover:bg-surface-container transition-colors"
+                className="flex items-center gap-1 px-4 py-3 text-caption text-on-surface border border-outline-variant rounded-pill hover:bg-surface-container transition-colors"
               >
                 <ChevronLeft className="w-4 h-4" /> {t.back}
               </button>
@@ -246,10 +246,10 @@ export default function WelcomeModal({ locale, initialDisplayName, translations:
                       <Icon className="w-4 h-4" />
                     </div>
                     <div>
-                      <p className={`text-sm font-medium ${isSelected ? "text-primary-container" : "text-on-surface"}`}>
+                      <p className={`text-body font-medium ${isSelected ? "text-primary-container" : "text-on-surface"}`}>
                         {path.label}
                       </p>
-                      <p className="text-xs text-on-surface-variant mt-0.5">{path.description}</p>
+                      <p className="text-caption text-on-surface-variant mt-0.5">{path.description}</p>
                     </div>
                   </button>
                 );
@@ -261,7 +261,7 @@ export default function WelcomeModal({ locale, initialDisplayName, translations:
             <div className="flex gap-3">
               <button
                 onClick={() => setStep(2)}
-                className="flex items-center gap-1 px-4 py-3 text-sm text-on-surface border border-outline-variant rounded-pill hover:bg-surface-container transition-colors"
+                className="flex items-center gap-1 px-4 py-3 text-caption text-on-surface border border-outline-variant rounded-pill hover:bg-surface-container transition-colors"
               >
                 <ChevronLeft className="w-4 h-4" /> {t.back}
               </button>

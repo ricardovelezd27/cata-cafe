@@ -108,11 +108,11 @@ export type EditSampleRow = {
 export type EditGroupOption = { id: string; name: string };
 
 const inputCls =
-  "w-full border border-outline-variant rounded-input px-3.5 py-2.5 text-sm text-on-surface bg-surface-container-lowest focus:border-primary-container transition-colors disabled:opacity-60 disabled:cursor-not-allowed";
+  "w-full border border-outline-variant rounded-input px-3.5 py-2.5 text-body text-on-surface bg-surface-container-lowest focus:border-primary-container transition-colors disabled:opacity-60 disabled:cursor-not-allowed";
 
 const cardCls = "bg-surface-container-lowest border border-outline-variant rounded-card p-5 space-y-4";
 
-const labelCls = "block text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant mb-1.5";
+const labelCls = "label-caps block mb-1.5";
 
 const FORMAT_OPTIONS = ["descriptive", "affective", "combined"] as const;
 
@@ -500,8 +500,8 @@ export function EditSessionForm({
                 }
                 className={
                   format === opt
-                    ? "rounded-pill bg-primary-container px-5 py-2.5 text-sm font-medium text-on-primary disabled:cursor-not-allowed disabled:opacity-50"
-                    : "rounded-pill border border-outline-variant px-5 py-2.5 text-sm text-on-surface transition-colors hover:bg-surface-container disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
+                    ? "rounded-pill bg-primary-container px-5 py-2.5 text-caption font-medium text-on-primary disabled:cursor-not-allowed disabled:opacity-50"
+                    : "rounded-pill border border-outline-variant px-5 py-2.5 text-caption text-on-surface transition-colors hover:bg-surface-container disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
                 }
               >
                 {t.formats[opt]}
@@ -526,7 +526,7 @@ export function EditSessionForm({
           />
         </div>
         {locked && (
-          <p className="text-xs text-on-surface-variant">
+          <p className="text-caption text-on-surface-variant">
             {initial.started ? t.formatLockedStarted : t.formatLocked}
           </p>
         )}
@@ -556,7 +556,7 @@ export function EditSessionForm({
                 }
               />
             </button>
-            <span id={`${fid}-warmup`} className="text-sm text-on-surface font-medium">{t.warmup.toggle}</span>
+            <span id={`${fid}-warmup`} className="text-body text-on-surface font-medium">{t.warmup.toggle}</span>
           </div>
           {warmupOn && (
             <div className="space-y-2">
@@ -574,7 +574,7 @@ export function EditSessionForm({
                 }))}
               />
               </fieldset>
-              <p className="text-xs text-on-surface-variant">{warmupLocked ? t.warmupLocked : t.warmup.hint}</p>
+              <p className="text-caption text-on-surface-variant">{warmupLocked ? t.warmupLocked : t.warmup.hint}</p>
             </div>
           )}
         </div>
@@ -599,16 +599,16 @@ export function EditSessionForm({
                 clearSaved();
               }}
             />
-            <p className="mt-1 text-xs text-on-surface-variant">{t.closesAtHint}</p>
+            <p className="mt-1 text-caption text-on-surface-variant">{t.closesAtHint}</p>
             {/* F-sesiones-12: a date turns a live cupping into a self-paced one. */}
             {!closed && !initial.started && !initial.closesAt && closesAt && (
-              <p className="mt-1 text-xs font-medium text-secondary">{t.closesAtLiveNotice}</p>
+              <p className="mt-1 text-caption font-medium text-secondary">{t.closesAtLiveNotice}</p>
             )}
             {!closed &&
               initial.closingDateSendsNotice &&
               closesAt &&
               groupId === (initial.groupId ?? "") && (
-                <p className="mt-1 text-xs font-medium text-secondary">{t.closesAtNotifyNote}</p>
+                <p className="mt-1 text-caption font-medium text-secondary">{t.closesAtNotifyNote}</p>
               )}
           </div>
           <div>
@@ -683,7 +683,7 @@ export function EditSessionForm({
             type="button"
             disabled={addPending}
             onClick={handleAddSample}
-            className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-pill border border-primary-container px-4 py-2.5 text-sm font-medium text-primary-container transition-colors hover:bg-primary-fixed disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-pill border border-primary-container px-4 py-2.5 text-caption font-medium text-primary-container transition-colors hover:bg-primary-fixed disabled:opacity-50"
           >
             <Plus size={16} />
             {t.addSample}
@@ -693,7 +693,7 @@ export function EditSessionForm({
             re-validates the id with usableCoffeeWhere (addSessionSample). */}
         <div className="flex flex-wrap items-center gap-2">
           {newSampleCoffee ? (
-            <span className="inline-flex items-center gap-1.5 rounded-pill border border-outline-variant bg-surface-container px-3 py-1.5 text-xs font-medium text-on-surface">
+            <span className="inline-flex items-center gap-1.5 rounded-pill border border-outline-variant bg-surface-container px-3 py-1.5 text-caption font-medium text-on-surface">
               {newSampleCoffee.name}
               <button
                 type="button"
@@ -709,7 +709,7 @@ export function EditSessionForm({
               type="button"
               disabled={addPending || usableCoffees.length === 0}
               onClick={() => setPickerOpen(true)}
-              className="inline-flex min-h-[44px] items-center rounded-pill border border-outline-variant px-4 text-sm font-medium text-on-surface transition-colors hover:bg-surface-container disabled:opacity-50"
+              className="inline-flex min-h-[44px] items-center rounded-pill border border-outline-variant px-4 text-caption font-medium text-on-surface transition-colors hover:bg-surface-container disabled:opacity-50"
             >
               {t.picker.useExisting}
             </button>
@@ -728,7 +728,7 @@ export function EditSessionForm({
       <div className={cardCls}>
         <div>
           <label className={labelCls}>{t.referenceTitle}</label>
-          <p className="text-xs text-on-surface-variant mb-2">
+          <p className="text-caption text-on-surface-variant mb-2">
             {explanation === "descriptive"
               ? t.referenceHelperDescriptive
               : explanation === "free"
@@ -739,7 +739,7 @@ export function EditSessionForm({
         {/* B1: how the reference is scored. Frozen with the format. */}
         {explanation !== "descriptive" && (
         <fieldset disabled={closed || locked} className="space-y-1.5 border-0 p-0">
-          <legend className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">
+          <legend className="label-caps mb-1">
             {t.referenceModeLegend}
           </legend>
           <div role="radiogroup" aria-label={t.referenceModeLegend} className="flex flex-wrap gap-2">
@@ -760,19 +760,19 @@ export function EditSessionForm({
                 }}
                 className={
                   referenceMode === opt.v
-                    ? "min-h-[44px] rounded-pill bg-primary-container px-4 py-2 text-sm font-medium text-on-primary disabled:cursor-not-allowed disabled:opacity-60"
-                    : "min-h-[44px] rounded-pill border border-outline-variant px-4 py-2 text-sm text-on-surface transition-colors hover:bg-surface-container disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent"
+                    ? "min-h-[44px] rounded-pill bg-primary-container px-4 py-2 text-caption font-medium text-on-primary disabled:cursor-not-allowed disabled:opacity-60"
+                    : "min-h-[44px] rounded-pill border border-outline-variant px-4 py-2 text-caption text-on-surface transition-colors hover:bg-surface-container disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent"
                 }
               >
                 {opt.l}
               </button>
             ))}
           </div>
-          <p className="text-xs text-on-surface-variant">
+          <p className="text-caption text-on-surface-variant">
             {referenceMode === "free" ? t.referenceModeFreeHelp : t.referenceModeAnchorHelp}
           </p>
           {locked && !closed && (
-            <p className="text-xs text-on-surface-variant">{t.referenceModeLocked}</p>
+            <p className="text-caption text-on-surface-variant">{t.referenceModeLocked}</p>
           )}
         </fieldset>
         )}
@@ -857,16 +857,16 @@ export function EditSessionForm({
       <FormActionBar
         status={
           <>
-            {saved && <p className="text-sm text-primary-container">{t.saved}</p>}
-            {errorText && <p className="text-sm text-error">{errorText}</p>}
-            {closed && !errorText && <p className="text-sm text-on-surface-variant">{closedText}</p>}
+            {saved && <p className="text-body text-primary-container">{t.saved}</p>}
+            {errorText && <p className="text-body text-error">{errorText}</p>}
+            {closed && !errorText && <p className="text-body text-on-surface-variant">{closedText}</p>}
           </>
         }
       >
         <button
           type="submit"
           disabled={savePending || closed}
-          className="min-h-[44px] rounded-pill bg-primary-container px-6 py-3 text-sm font-medium text-on-primary transition-colors hover:bg-primary disabled:opacity-50"
+          className="min-h-[44px] rounded-pill bg-primary-container px-6 py-3 text-caption font-medium text-on-primary transition-colors hover:bg-primary disabled:opacity-50"
         >
           {savePending ? t.saving : t.save}
         </button>

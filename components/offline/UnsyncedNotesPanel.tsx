@@ -175,9 +175,9 @@ export function UnsyncedNotesPanel({
     <>
       <ResponsiveDialog open={open} onOpenChange={onOpenChange} title={t.title} closeLabel={t.close}>
         <div className="space-y-4">
-          <p className="font-sans text-sm text-on-surface-variant">{t.intro}</p>
+          <p className="font-sans text-body text-on-surface-variant">{t.intro}</p>
           {entries.length === 0 ? (
-            <p className="font-sans text-sm text-on-surface-variant">{t.empty}</p>
+            <p className="font-sans text-body text-on-surface-variant">{t.empty}</p>
           ) : (
             <ul className="space-y-3">
               {entries.map((e) => {
@@ -189,7 +189,7 @@ export function UnsyncedNotesPanel({
                     className="rounded-card border border-outline-variant bg-surface-container-low p-3"
                   >
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-sans text-sm font-semibold text-on-surface">
+                      <span className="font-sans text-body font-semibold text-on-surface">
                         {e.sampleLabel}
                       </span>
                       <Badge tone="outline">{moduleLabel[e.moduleKey]}</Badge>
@@ -197,14 +197,14 @@ export function UnsyncedNotesPanel({
                         {statusLabel(e)}
                       </Badge>
                     </div>
-                    <p className="mt-1 font-sans text-xs text-on-surface-variant">
+                    <p className="mt-1 font-sans text-caption text-on-surface-variant">
                       {t.savedAt.replace("{date}", dateFmt.format(new Date(e.updatedAt)))}
                     </p>
                     {e.status === "closed_unsent" && isModuleSendable(e.moduleKey, e.data) && (
-                      <p className="mt-1 font-sans text-xs text-on-surface-variant">{t.sendHint}</p>
+                      <p className="mt-1 font-sans text-caption text-on-surface-variant">{t.sendHint}</p>
                     )}
                     {expanded === key && (
-                      <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded-input bg-surface p-2 font-sans text-sm text-on-surface">
+                      <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded-input bg-surface p-2 font-sans text-body text-on-surface">
                         {text}
                       </pre>
                     )}
@@ -233,7 +233,7 @@ export function UnsyncedNotesPanel({
                       {e.status === "closed_unsent" && (
                         <Link
                           href={`/${locale}/app/sessions/${e.sessionId}/results?closed=1`}
-                          className="inline-flex min-h-[44px] items-center px-3.5 font-sans text-xs font-medium text-primary-container underline underline-offset-2"
+                          className="inline-flex min-h-[44px] items-center px-3.5 font-sans text-caption font-medium text-primary-container underline underline-offset-2"
                         >
                           {t.openSession}
                         </Link>

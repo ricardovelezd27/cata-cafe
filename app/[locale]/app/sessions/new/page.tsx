@@ -238,7 +238,7 @@ export default async function NewSessionPage({
 
   return (
     <div className="max-w-2xl">
-      <h1 className="page-title text-3xl mb-6">{translations.title}</h1>
+      <h1 className="page-title mb-6">{translations.title}</h1>
       <NewSessionForm
         locale={locale}
         t={translations}

@@ -58,7 +58,7 @@ export type ExpressFormTranslations = {
 const EXPRESS_WARMUP_ID = "arm-raise";
 
 const inputClass =
-  "w-full min-h-[48px] border border-outline-variant rounded-input px-3.5 py-2.5 text-sm text-on-surface bg-surface-container-lowest focus:border-primary-container transition-colors";
+  "w-full min-h-[48px] border border-outline-variant rounded-input px-3.5 py-2.5 text-body text-on-surface bg-surface-container-lowest focus:border-primary-container transition-colors";
 
 const stepperButtonClass =
   "h-12 w-12 min-h-[44px] min-w-[44px] shrink-0 inline-flex items-center justify-center rounded-full border border-outline-variant text-on-surface bg-surface-container-lowest transition-colors hover:bg-primary-fixed disabled:opacity-40 disabled:cursor-default disabled:hover:bg-surface-container-lowest";
@@ -142,7 +142,7 @@ export function ExpressForm({
       />
 
       <div className="space-y-2">
-        <label htmlFor="express-name" className="block text-sm font-medium text-on-surface">
+        <label htmlFor="express-name" className="block text-body font-medium text-on-surface">
           {t.name}
         </label>
         <input
@@ -160,14 +160,14 @@ export function ExpressForm({
           className={inputClass}
         />
         {nameError && (
-          <p id="express-name-error" role="alert" className="text-sm text-error">
+          <p id="express-name-error" role="alert" className="text-caption text-error">
             {t.nameRequired}
           </p>
         )}
       </div>
 
       <div className="space-y-2">
-        <span id="express-format-label" className="block text-sm font-medium text-on-surface">
+        <span id="express-format-label" className="block text-body font-medium text-on-surface">
           {t.format}
         </span>
         <div
@@ -185,7 +185,7 @@ export function ExpressForm({
                 role="radio"
                 aria-checked={active}
                 onClick={() => setFormat(f)}
-                className={`min-h-[48px] rounded-pill px-2 text-sm font-medium transition-colors ${
+                className={`min-h-[48px] rounded-pill px-2 text-caption font-medium transition-colors ${
                   active
                     ? "bg-primary-container text-on-primary border border-primary-container"
                     : "border border-outline-variant text-on-surface bg-surface-container-lowest hover:bg-primary-fixed"
@@ -196,13 +196,13 @@ export function ExpressForm({
             );
           })}
         </div>
-        <p id="express-format-hint" className="text-xs text-on-surface-variant">
+        <p id="express-format-hint" className="text-caption text-on-surface-variant">
           {t.formatHint[format]}
         </p>
       </div>
 
       <div className="space-y-2">
-        <span id="express-samples-label" className="block text-sm font-medium text-on-surface">
+        <span id="express-samples-label" className="block text-body font-medium text-on-surface">
           {t.samples}
         </span>
         <div
@@ -235,9 +235,9 @@ export function ExpressForm({
             <Plus size={20} aria-hidden />
           </button>
         </div>
-        <p className="text-center text-xs text-on-surface-variant">{t.samplesHint}</p>
+        <p className="text-center text-caption text-on-surface-variant">{t.samplesHint}</p>
         {warning && (
-          <p role="status" className="text-center text-xs font-medium text-secondary">
+          <p role="status" className="text-center text-caption font-medium text-secondary">
             {t.sampleWarning[warning]}
           </p>
         )}
@@ -245,7 +245,7 @@ export function ExpressForm({
 
       <div className="space-y-3">
         {!online && (
-          <p role="status" className="text-center text-sm text-error">
+          <p role="status" className="text-center text-caption text-error">
             {t.offline}
           </p>
         )}
@@ -261,14 +261,14 @@ export function ExpressForm({
           <button
             type="button"
             onClick={() => setWarming(true)}
-            className="block min-h-[44px] w-full text-center text-sm text-on-surface-variant underline-offset-4 hover:text-on-surface hover:underline"
+            className="block min-h-[44px] w-full text-center text-caption text-on-surface-variant underline-offset-4 hover:text-on-surface hover:underline"
           >
             {t.warmup}
           </button>
         )}
         <Link
           href={`/${locale}/app/sessions/new${wizardHandoffQuery({ name, format, sampleCount })}`}
-          className="flex min-h-[44px] items-center justify-center text-sm text-on-surface-variant underline-offset-4 hover:underline text-center"
+          className="flex min-h-[44px] items-center justify-center text-caption text-on-surface-variant underline-offset-4 hover:underline text-center"
         >
           {t.fullWizard}
         </Link>

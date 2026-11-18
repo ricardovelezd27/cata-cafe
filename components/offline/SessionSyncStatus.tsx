@@ -135,7 +135,7 @@ export function SessionSyncStatus({
         <div
           role="status"
           aria-live="polite"
-          className={`mx-4 mt-4 flex items-center gap-2 rounded-card border px-4 py-2 font-sans text-sm lg:mx-6 ${palette[line.tone]}`}
+          className={`mx-4 mt-4 flex items-center gap-2 rounded-card border px-4 py-2 font-sans text-caption lg:mx-6 ${palette[line.tone]}`}
         >
           <span className="shrink-0 text-secondary">{line.icon}</span>
           <span className="flex-1">{line.text}</span>

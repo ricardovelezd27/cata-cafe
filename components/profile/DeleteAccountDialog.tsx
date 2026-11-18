@@ -139,13 +139,13 @@ export function DeleteAccountDialog({
         closeLabel={t.close}
       >
         {loading || !impact ? (
-          <p role="status" className="text-sm text-on-surface-variant">
+          <p role="status" className="text-body text-on-surface-variant">
             {t.loading}
           </p>
         ) : impact.protected ? (
-          <p className="text-sm leading-relaxed text-on-surface">{t.protectedBody}</p>
+          <p className="text-body leading-relaxed text-on-surface">{t.protectedBody}</p>
         ) : impact.tooLarge ? (
-          <p className="text-sm leading-relaxed text-on-surface">{t.tooLargeBody}</p>
+          <p className="text-body leading-relaxed text-on-surface">{t.tooLargeBody}</p>
         ) : (
           <form
             className="space-y-4"
@@ -155,15 +155,15 @@ export function DeleteAccountDialog({
             }}
           >
             {changed && (
-              <p role="alert" className="rounded-card border border-error/40 bg-error/5 p-3 text-sm leading-relaxed text-on-surface">
+              <p role="alert" className="rounded-card border border-error/40 bg-error/5 p-3 text-body leading-relaxed text-on-surface">
                 {t.changed}
               </p>
             )}
-            <p className="text-sm leading-relaxed text-on-surface">{t.intro}</p>
-            <ul className="list-disc space-y-1 pl-5 text-sm text-on-surface">
+            <p className="text-body leading-relaxed text-on-surface">{t.intro}</p>
+            <ul className="list-disc space-y-1 pl-5 text-body text-on-surface">
               {lines.length > 0 ? lines.map((l) => <li key={l}>{l}</li>) : <li>{t.impactNothing}</li>}
             </ul>
-            <div className="space-y-2 rounded-card border border-outline-variant bg-surface-container-low p-3 text-sm leading-relaxed text-on-surface-variant">
+            <div className="space-y-2 rounded-card border border-outline-variant bg-surface-container-low p-3 text-body leading-relaxed text-on-surface-variant">
               <p>{t.keepScores}</p>
               <p>{t.keepCoffees}</p>
               <p className="font-semibold text-error">{t.irreversible}</p>
@@ -171,7 +171,7 @@ export function DeleteAccountDialog({
             <div>
               <label
                 htmlFor={inputId}
-                className="mb-1 block text-xs font-semibold uppercase tracking-wide text-on-surface-variant"
+                className="label-caps mb-1 block"
               >
                 {t.typeLabel.replace("{word}", t.word)}
               </label>
@@ -184,7 +184,7 @@ export function DeleteAccountDialog({
                 value={typed}
                 onChange={(e) => setTyped(e.target.value)}
                 disabled={pending}
-                className="w-full rounded-input border border-outline-variant bg-surface-container-lowest px-3 py-2 text-sm text-on-surface transition-colors focus:border-error"
+                className="w-full rounded-input border border-outline-variant bg-surface-container-lowest px-3 py-2 text-body text-on-surface transition-colors focus:border-error"
               />
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">

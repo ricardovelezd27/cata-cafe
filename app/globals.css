@@ -344,6 +344,19 @@ html, body {
   .section-title {
     @apply text-section;
   }
+  /* The uppercase label (DESIGN.md's type table; B-05, T4b): the ONE recipe
+     for the 11 px role, which is also the floor. It replaces the hand-written
+     mixes of size, weight, capitals and tracking (seven of them in the
+     sessions, arrival, profile and shell area). A colour utility on the
+     element still wins (this layer comes before the utilities). */
+  .label-caps {
+    @apply text-label;
+    font-family: var(--font-ui);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--color-on-surface-variant);
+  }
 }
 
 /* The landing paints exactly as it did before T2. Until T2 the heading rule

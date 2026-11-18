@@ -44,10 +44,10 @@ export function JoinSessionForm({
       </Button>
       {errorMessage && (
         <div className="space-y-2 text-center">
-          <p className="text-sm text-error">{errorMessage}</p>
+          <p className="text-caption text-error">{errorMessage}</p>
           <Link
             href={`/${locale}/app`}
-            className="text-sm text-on-surface-variant underline hover:text-on-surface"
+            className="text-caption text-on-surface-variant underline hover:text-on-surface"
           >
             {t.home}
           </Link>
