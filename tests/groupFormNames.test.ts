@@ -138,7 +138,7 @@ describe("N2: the group pages' controls paint 44 px or carry a 44 px hit area", 
 
   it("the owner's back link and 'create a session' link paint 44 px", () => {
     const page = read("app/[locale]/app/groups/[id]/page.tsx");
-    expect(page).toContain('className="inline-flex min-h-[44px] w-fit items-center gap-1 text-sm text-on-surface-variant');
+    expect(page).toContain('className="inline-flex min-h-[44px] w-fit items-center gap-1 text-caption text-on-surface-variant');
     expect(page).toContain('className="inline-flex min-h-[44px] items-center gap-1.5 rounded-pill bg-primary-container px-4 py-2');
   });
 

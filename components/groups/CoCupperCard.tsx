@@ -44,10 +44,10 @@ export function CoCupperCard({
       <div className="flex items-center gap-4">
         <Avatar name={cupper.displayName} seed={cupper.userId} size={56} />
         <div className="min-w-0">
-          <p className="font-semibold text-[15px] text-on-surface truncate">
+          <p className="font-semibold text-body text-on-surface truncate">
             {cupper.displayName}
           </p>
-          <span className="inline-block mt-1 px-2 py-0.5 text-xs rounded-full bg-surface-container-high text-on-surface-variant">
+          <span className="inline-block mt-1 px-2 py-0.5 text-caption rounded-full bg-surface-container-high text-on-surface-variant">
             {roleLabel}
           </span>
         </div>
@@ -56,13 +56,13 @@ export function CoCupperCard({
       <hr className="border-outline-variant" />
 
       <div className="flex flex-col gap-1.5">
-        <p className="text-sm text-on-surface">
+        <p className="text-caption text-on-surface">
           <span className="font-semibold">{cupper.sessionCount}</span>{" "}
           {cupper.sessionCount === 1 ? t.sessionOne : t.sessionMany} ·{" "}
           <span className="font-semibold">{cupper.evaluationCount}</span>{" "}
           {cupper.evaluationCount === 1 ? t.evaluationOne : t.evaluationMany}
         </p>
-        <p className="text-xs text-on-surface-variant">
+        <p className="text-caption text-on-surface-variant">
           {t.lastSession} {formatRelativeDate(cupper.lastSessionDate, t.relative)} —{" "}
           <span className="italic">{cupper.lastSessionName}</span>
         </p>

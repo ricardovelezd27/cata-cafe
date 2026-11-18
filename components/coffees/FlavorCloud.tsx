@@ -52,7 +52,7 @@ export function FlavorCloud({ descriptive, allDescriptive, isGroup, locale = "es
 
   return (
     <div className="mt-3">
-      <div className="mb-2 font-mono text-[10px] font-medium uppercase tracking-widest text-on-surface-variant">
+      <div className="label-caps mb-2">
         Perfil de Sabor
       </div>
       <div className="flex flex-wrap gap-1.5">
@@ -61,7 +61,7 @@ export function FlavorCloud({ descriptive, allDescriptive, isGroup, locale = "es
           return (
             <span key={d.id} className="relative inline-flex flex-col items-center gap-0.5">
               <span
-                className={`inline-flex items-center gap-1 whitespace-nowrap rounded-pill px-2.5 py-1 font-sans text-xs leading-none text-white ${
+                className={`inline-flex items-center gap-1 whitespace-nowrap rounded-pill px-2.5 py-1 font-sans text-caption leading-none text-white ${
                   isStar ? 'font-bold' : 'font-medium'
                 }`}
                 style={{
@@ -69,12 +69,12 @@ export function FlavorCloud({ descriptive, allDescriptive, isGroup, locale = "es
                   boxShadow: isStar ? `0 0 0 2px ${d.color}66` : undefined,
                 }}
               >
-                {isStar && <span className="text-[10px]" aria-hidden>★</span>}
+                {isStar && <span className="text-caption" aria-hidden>★</span>}
                 {d.label}
               </span>
               {isGroup && totalEvaluators > 0 && d.count > 0 && (
                 <span
-                  className="font-mono text-[9px] font-semibold tracking-wide"
+                  className="font-mono text-caption font-semibold tracking-wide"
                   style={{ color: d.color }}
                 >
                   {d.count}/{totalEvaluators}

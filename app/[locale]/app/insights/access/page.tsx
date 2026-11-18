@@ -32,10 +32,10 @@ export default async function InsightsAccessPage({
 
   return (
     <div className="flex flex-col gap-4 pb-8">
-      <p className="text-sm text-on-surface-variant">{t("lead")}</p>
+      <p className="text-caption text-on-surface-variant">{t("lead")}</p>
       <div className="rounded-card border border-outline-variant bg-surface-container-lowest p-4">
-        <h2 className="text-base">{t("digestTitle")}</h2>
-        <p className="mt-1 text-sm text-on-surface-variant">
+        <h2 className="text-body">{t("digestTitle")}</h2>
+        <p className="mt-1 text-caption text-on-surface-variant">
           {!lastDigest
             ? t("digestNone")
             : lastDigest.status === "running"

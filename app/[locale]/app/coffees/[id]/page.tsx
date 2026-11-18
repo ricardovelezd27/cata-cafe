@@ -51,10 +51,10 @@ export const dynamic = "force-dynamic";
 const GRID_2COL = "grid gap-6 lg:grid-cols-[minmax(320px,380px)_1fr]";
 const CARD = "rounded-card border border-outline-variant bg-surface-container-lowest p-6 shadow-card";
 // Uppercase label headings (DESIGN.md "Uppercase label": UI font, 600, on-surface-variant).
-const SUB_H3 = "font-sans text-xs font-semibold uppercase tracking-wide text-on-surface-variant";
+const SUB_H3 = "label-caps font-sans";
 const LIST_ROW =
   "flex items-center justify-between gap-3 rounded-card border border-outline-variant bg-surface px-4 py-2.5";
-const FIELD_LABEL = "text-xs text-on-surface-variant font-semibold uppercase tracking-wide mb-0.5";
+const FIELD_LABEL = "label-caps mb-0.5";
 
 export default async function CoffeeProfilePage({
   params,
@@ -203,7 +203,7 @@ export default async function CoffeeProfilePage({
   const filledFields = detailFields.filter((f) => !!f.value);
 
   const privateNotice = (
-    <p className="text-sm text-on-surface-variant">{t("resultsPrivate")}</p>
+    <p className="text-caption text-on-surface-variant">{t("resultsPrivate")}</p>
   );
 
   return (
@@ -266,14 +266,14 @@ export default async function CoffeeProfilePage({
             </div>
 
             <div className="mt-3">
-              <h1 className="page-title text-2xl">{coffee.name}</h1>
+              <h1 className="page-title">{coffee.name}</h1>
               {coffee.code && (
-                <span className="mt-1 inline-block rounded-pill border border-outline-variant bg-surface-container px-2.5 py-0.5 font-mono text-xs text-on-surface-variant">
+                <span className="mt-1 inline-block rounded-pill border border-outline-variant bg-surface-container px-2.5 py-0.5 font-mono text-caption text-on-surface-variant">
                   {formatCoffeeCode(coffee.code)}
                 </span>
               )}
               {metaLine && (
-                <div className="mt-1 text-xs font-medium text-on-surface-variant">{metaLine}</div>
+                <div className="mt-1 text-caption font-medium text-on-surface-variant">{metaLine}</div>
               )}
               <div className="mt-2 flex flex-wrap items-center gap-1.5">
                 {(isOwner || isAdmin) && (
@@ -292,7 +292,7 @@ export default async function CoffeeProfilePage({
             </div>
 
             {coffee.notes && (isOwner || isAdmin) && (
-              <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-on-surface">
+              <p className="mt-4 whitespace-pre-wrap text-body leading-relaxed text-on-surface">
                 {coffee.notes}
               </p>
             )}
@@ -325,12 +325,12 @@ export default async function CoffeeProfilePage({
                     {aggregate.recentEvaluations.map((ev, i) => (
                       <li
                         key={i}
-                        className="flex items-baseline justify-between gap-3 py-2 text-sm first:pt-0 last:pb-0"
+                        className="flex items-baseline justify-between gap-3 py-2 text-caption first:pt-0 last:pb-0"
                       >
                         <span className="truncate text-on-surface">{ev.sessionName}</span>
                         <span className="flex shrink-0 items-baseline gap-3">
                           <ScorePill score={ev.individualScore} />
-                          <span className="whitespace-nowrap text-xs text-on-surface-variant">
+                          <span className="whitespace-nowrap text-caption text-on-surface-variant">
                             {formatDate(ev.submittedAt)}
                           </span>
                         </span>
@@ -363,12 +363,12 @@ export default async function CoffeeProfilePage({
             {!showResults ? (
               privateNotice
             ) : !hasResults ? (
-              <p className="text-sm text-on-surface-variant">{t("noResults")}</p>
+              <p className="text-caption text-on-surface-variant">{t("noResults")}</p>
             ) : (
               <>
                 {Object.keys(aggregate.attrAverages).length > 0 && (
                   <div>
-                    <h3 className="mb-3 text-lg">
+                    <h3 className="mb-3 text-card">
                       {t("attrAveragesTitle")}
                     </h3>
                     <div className="flex flex-col gap-3">
@@ -378,7 +378,7 @@ export default async function CoffeeProfilePage({
                         const value = aggregate.attrAverages[attr.label];
                         return (
                           <div key={attr.id} className="flex items-center gap-3">
-                            <span className="w-28 shrink-0 text-xs text-on-surface-variant">
+                            <span className="w-28 shrink-0 text-caption text-on-surface-variant">
                               {tattr(attr.id)}
                             </span>
                             <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface-container">
@@ -387,7 +387,7 @@ export default async function CoffeeProfilePage({
                                 style={{ width: `${scalePct(value, QUALITY_SCALE.min, QUALITY_SCALE.max)}%` }}
                               />
                             </div>
-                            <span className="w-8 text-right text-xs font-semibold text-on-surface">
+                            <span className="w-8 text-right text-caption font-semibold text-on-surface">
                               {value.toFixed(1)}
                             </span>
                           </div>
@@ -398,7 +398,7 @@ export default async function CoffeeProfilePage({
                 )}
                 {aggregate.allDescriptive.length > 0 && (
                   <div className="border-t border-outline-variant/50 pt-4">
-                    <h3 className="mb-2 text-lg">
+                    <h3 className="mb-2 text-card">
                       {t("flavorsTitle")}
                     </h3>
                     <FlavorCloud
@@ -414,12 +414,12 @@ export default async function CoffeeProfilePage({
           </div>
 
           <div className={`space-y-6 ${CARD}`}>
-            <h2 className="section-title text-xl">{t("activityTitle")}</h2>
+            <h2 className="section-title">{t("activityTitle")}</h2>
 
             {showResults && (
               <section>
                 <h3 className={`mb-2 ${SUB_H3}`}>{t("sessionsListTitle")}</h3>
-                <p className="mb-2 font-sans text-xs text-on-surface-variant">{tc("scoreLegend")}</p>
+                <p className="mb-2 font-sans text-caption text-on-surface-variant">{tc("scoreLegend")}</p>
                 {aggregate.sessionRows.length === 0 ? (
                   <EmptyState
                     title={aggregate.sessionsCount > 0 ? t("sessionsOthersNote") : t("noResults")}
@@ -435,10 +435,10 @@ export default async function CoffeeProfilePage({
                         className={`${LIST_ROW} transition-colors hover:bg-surface-container-low`}
                       >
                         <div className="min-w-0">
-                          <div className="truncate text-sm font-semibold text-on-surface">
+                          <div className="truncate text-caption font-semibold text-on-surface">
                             {row.sessionName}
                           </div>
-                          <div className="mt-0.5 text-xs text-on-surface-variant">
+                          <div className="mt-0.5 text-caption text-on-surface-variant">
                             {formatDate(row.sessionDate)}
                           </div>
                           {(() => {
@@ -449,7 +449,7 @@ export default async function CoffeeProfilePage({
                               coffeeOriginEditedAt: coffee.originEditedAt,
                             });
                             return edited ? (
-                              <div className="mt-0.5 text-xs text-secondary">
+                              <div className="mt-0.5 text-caption text-secondary">
                                 {t("originEditedNote", { date: formatDate(edited) })}
                               </div>
                             ) : null;
@@ -483,7 +483,7 @@ export default async function CoffeeProfilePage({
                       <div key={h.id} className={LIST_ROW}>
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-1.5">
-                            <span className="truncate text-sm font-semibold text-on-surface">
+                            <span className="truncate text-caption font-semibold text-on-surface">
                               {sessionName}
                             </span>
                             {!h.session && (
@@ -492,13 +492,13 @@ export default async function CoffeeProfilePage({
                               </Badge>
                             )}
                           </div>
-                          <div className="mt-0.5 text-xs text-on-surface-variant">
+                          <div className="mt-0.5 text-caption text-on-surface-variant">
                             {formatDate(h.tastedAt)}
                           </div>
                         </div>
                         <div className="flex shrink-0 items-start gap-3">
                           <span className="flex flex-col items-end gap-0.5">
-                            <span className="text-[10px] uppercase tracking-wide text-on-surface-variant">
+                            <span className="label-caps">
                               {th("yourScore")}
                             </span>
                             <ScorePill score={h.individualScore} />
@@ -511,7 +511,7 @@ export default async function CoffeeProfilePage({
                           {/* Said once: shown here only for a session the list above does not show. */}
                           {historyCommunityScoreShown(h.sessionId, sessionRowIds) && (
                             <span className="flex flex-col items-end gap-0.5">
-                              <span className="text-[10px] uppercase tracking-wide text-on-surface-variant">
+                              <span className="label-caps">
                                 {th("communityScore")}
                               </span>
                               <ScorePill score={h.communityScore} />
@@ -530,7 +530,7 @@ export default async function CoffeeProfilePage({
         {/* Ficha técnica */}
         <section>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h2 className="section-title text-xl">{t("detailsTitle")}</h2>
+            <h2 className="section-title">{t("detailsTitle")}</h2>
             <ReportLink
               href={`/api/coffees/${coffee.id}/ficha?locale=${locale}&inline=1`}
               filename={`ficha-${coffee.id}.pdf`}
@@ -547,7 +547,7 @@ export default async function CoffeeProfilePage({
             {filledFields.map((f) => (
               <div key={f.label}>
                 <p className={FIELD_LABEL}>{f.label}</p>
-                <p className="text-sm text-on-surface">{f.value}</p>
+                <p className="text-caption text-on-surface">{f.value}</p>
               </div>
             ))}
             {coffee.certifications.length > 0 && (
@@ -557,7 +557,7 @@ export default async function CoffeeProfilePage({
                   {coffee.certifications.map((c) => (
                     <span
                       key={c}
-                      className="rounded-pill border border-secondary/40 bg-secondary/20 px-2 py-0.5 text-xs text-on-surface"
+                      className="rounded-pill border border-secondary/40 bg-secondary/20 px-2 py-0.5 text-caption text-on-surface"
                     >
                       {c}
                     </span>
@@ -566,7 +566,7 @@ export default async function CoffeeProfilePage({
               </div>
             )}
             {filledFields.length === 0 && coffee.certifications.length === 0 && (
-              <p className="col-span-full text-sm text-on-surface-variant">—</p>
+              <p className="col-span-full text-caption text-on-surface-variant">—</p>
             )}
           </div>
         </section>
@@ -574,7 +574,7 @@ export default async function CoffeeProfilePage({
         {/* Visibility & sharing (owner only) — the "Cuenta" slot of the user profile */}
         {isOwner && (
           <section>
-            <h2 className="section-title mb-3 text-xl">
+            <h2 className="section-title mb-3">
               {t("visibilityTitle")}
             </h2>
             <div className="space-y-4 rounded-card border border-outline-variant bg-surface-container-lowest p-5">
@@ -601,7 +601,7 @@ export default async function CoffeeProfilePage({
                     dialogClose: t("share.dialogClose"),
                   }}
                 />
-                <p className="text-xs text-on-surface-variant">{t("recordHint")}</p>
+                <p className="text-caption text-on-surface-variant">{t("recordHint")}</p>
               </div>
               <div className="space-y-1.5">
                 <PublishResultsToggle
@@ -615,10 +615,10 @@ export default async function CoffeeProfilePage({
                     confirmPublish: t("confirmPublish"),
                   }}
                 />
-                <p className="text-xs text-on-surface-variant">{t("resultsHint")}</p>
+                <p className="text-caption text-on-surface-variant">{t("resultsHint")}</p>
               </div>
               {coffee.resultsPublished && coffee.visibility !== "public" && (
-                <p className="text-xs font-medium text-secondary">{t("resultsButPrivateHint")}</p>
+                <p className="text-caption font-medium text-secondary">{t("resultsButPrivateHint")}</p>
               )}
 
               <div className="border-t border-outline-variant/50 pt-4">

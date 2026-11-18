@@ -58,9 +58,9 @@ export function PostComposer({
 
   const uid = useId();
   // The label style of the group forms (GroupNameControls, CreateGroupDialog).
-  const labelCls = "block text-xs text-on-surface-variant font-semibold uppercase tracking-wide";
+  const labelCls = "label-caps block";
   const inputCls =
-    "w-full border border-outline-variant rounded-input px-3.5 py-2.5 text-sm text-on-surface bg-surface-container-lowest focus:border-primary-container transition-colors";
+    "w-full border border-outline-variant rounded-input px-3.5 py-2.5 text-body text-on-surface bg-surface-container-lowest focus:border-primary-container transition-colors";
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,7 +101,7 @@ export function PostComposer({
       onSubmit={onSubmit}
       className="bg-surface-container-lowest border border-outline-variant rounded-card p-5 space-y-4"
     >
-      <h3 className="text-xl">{t.composerTitle}</h3>
+      <h3 className="text-card">{t.composerTitle}</h3>
       <div className="space-y-1.5">
         <label htmlFor={`${uid}-title`} className={labelCls}>
           {t.titleLabel}
@@ -129,7 +129,7 @@ export function PostComposer({
           required
         />
       </div>
-      <label className="flex min-h-[44px] items-center gap-2.5 text-sm text-on-surface cursor-pointer">
+      <label className="flex min-h-[44px] items-center gap-2.5 text-body text-on-surface cursor-pointer">
         <input
           type="checkbox"
           checked={notifyByEmail}
@@ -138,7 +138,7 @@ export function PostComposer({
         />
         <span>
           {t.notifyByEmail}
-          <span className="block text-xs text-on-surface-variant">
+          <span className="block text-caption text-on-surface-variant">
             {recipientCount > 0
               ? formatTemplate(t.notifyRecipientsTemplate, { count: recipientCount })
               : t.notifyNone}
@@ -149,7 +149,7 @@ export function PostComposer({
       {notice && (
         <p
           role="status"
-          className={`text-xs ${notice.tone === "warn" ? "text-secondary" : "text-on-surface-variant"}`}
+          className={`text-caption ${notice.tone === "warn" ? "text-secondary" : "text-on-surface-variant"}`}
         >
           {notice.text}
         </p>
@@ -158,7 +158,7 @@ export function PostComposer({
       <button
         type="submit"
         disabled={pending || !body.trim()}
-        className="inline-flex min-h-[44px] items-center gap-2 rounded-pill bg-primary-container px-5 py-2.5 text-sm font-medium text-on-primary hover:bg-primary transition-colors disabled:opacity-50"
+        className="inline-flex min-h-[44px] items-center gap-2 rounded-pill bg-primary-container px-5 py-2.5 text-caption font-medium text-on-primary hover:bg-primary transition-colors disabled:opacity-50"
       >
         <Send size={16} aria-hidden />
         {pending ? t.publishing : t.publish}

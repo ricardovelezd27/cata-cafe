@@ -17,6 +17,7 @@ import { runOriginContext } from "@/app/actions/analytics";
 import { useActionFeedback } from "@/components/ui/Toast";
 import type { OriginContext } from "@/lib/analytics/benchmarks";
 import { getChartColors } from "@/components/results/chartColors";
+import { chartTick, CHART_HTML_PX } from "./chartText";
 
 const CHART_HEIGHT = 280;
 
@@ -38,7 +39,7 @@ interface OriginContextPanelProps {
 }
 
 const selectClass =
-  "w-full rounded-input border border-outline-variant bg-surface-container-lowest px-3 py-2 text-sm text-on-surface focus:border-primary-container";
+  "w-full rounded-input border border-outline-variant bg-surface-container-lowest px-3 py-2 text-body text-on-surface focus:border-primary-container";
 
 interface OriginRow {
   year: number;
@@ -95,16 +96,16 @@ export function OriginContextPanel({
   return (
     <section className="bg-surface-container-lowest rounded-card border border-outline-variant shadow-card p-5">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg">{t.title}</h2>
+        <h2 className="text-card">{t.title}</h2>
         {isPending && <Loader2 size={16} className="animate-spin text-on-surface-variant" aria-hidden />}
       </div>
 
       {countries.length === 0 ? (
-        <div className="text-sm text-on-surface-variant py-8 text-center">{t.empty}</div>
+        <div className="text-caption text-on-surface-variant py-8 text-center">{t.empty}</div>
       ) : (
         <>
           <label className="flex flex-col gap-1 max-w-xs mb-5">
-            <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
+            <span className="label-caps">
               {t.country}
             </span>
             <select
@@ -121,7 +122,7 @@ export function OriginContextPanel({
           </label>
 
           {production.length === 0 ? (
-            <div className="text-sm text-on-surface-variant py-8 text-center">{t.empty}</div>
+            <div className="text-caption text-on-surface-variant py-8 text-center">{t.empty}</div>
           ) : (
             <>
               <div ref={ref} className="w-full">
@@ -133,17 +134,17 @@ export function OriginContextPanel({
                     margin={{ top: 8, right: 8, bottom: 8, left: 0 }}
                   >
                     <CartesianGrid stroke={colors.grid} vertical={false} />
-                    <XAxis dataKey="year" tick={{ fontSize: 10, fill: colors.axisText }} />
-                    <YAxis yAxisId="left" tick={{ fontSize: 10, fill: colors.axisText }} width={44} />
+                    <XAxis dataKey="year" tick={chartTick(colors.axisText)} />
+                    <YAxis yAxisId="left" tick={chartTick(colors.axisText)} width={44} />
                     <YAxis
                       yAxisId="right"
                       orientation="right"
-                      tick={{ fontSize: 10, fill: colors.axisText }}
+                      tick={chartTick(colors.axisText)}
                       width={36}
                       allowDecimals={false}
                     />
-                    <Tooltip contentStyle={{ fontSize: 12, borderColor: colors.grid }} />
-                    <Legend wrapperStyle={{ fontSize: 11, color: colors.axisText }} />
+                    <Tooltip contentStyle={{ fontSize: CHART_HTML_PX, borderColor: colors.grid }} />
+                    <Legend wrapperStyle={{ fontSize: CHART_HTML_PX, color: colors.axisText }} />
                     <Bar
                       yAxisId="right"
                       dataKey="evaluations"
@@ -166,7 +167,7 @@ export function OriginContextPanel({
               </div>
 
               {scoreLines.length > 0 && (
-                <p className="text-xs text-on-surface-variant mt-3">
+                <p className="text-caption text-on-surface-variant mt-3">
                   {t.avgScore}: {scoreLines.join(" · ")}
                 </p>
               )}

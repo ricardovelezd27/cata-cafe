@@ -68,9 +68,9 @@ export function GroupEmailComposer({
   };
 
   const inputCls =
-    "w-full px-3 py-2 border border-outline-variant rounded-input text-sm bg-surface-container-lowest text-on-surface focus:border-primary-container";
+    "w-full px-3 py-2 border border-outline-variant rounded-input text-caption bg-surface-container-lowest text-on-surface focus:border-primary-container";
   // The label style of the group forms (GroupNameControls, CreateGroupDialog).
-  const labelCls = "block text-xs text-on-surface-variant font-semibold uppercase tracking-wide";
+  const labelCls = "label-caps block";
   const uid = useId();
 
   const submit = () => {
@@ -148,7 +148,7 @@ export function GroupEmailComposer({
 
       {sessions.length > 0 && (
         <div className="space-y-2">
-          <label className="flex min-h-[44px] items-center gap-2 text-sm text-on-surface">
+          <label className="flex min-h-[44px] items-center gap-2 text-body text-on-surface">
             <input
               type="checkbox"
               checked={includeInvite}
@@ -196,27 +196,27 @@ export function GroupEmailComposer({
       </button>
 
       {error && (
-        <p className="text-xs text-error" role="alert">
+        <p className="text-caption text-error" role="alert">
           {error}
         </p>
       )}
 
       {summary && (
         <div className="space-y-3 pt-3 border-t border-outline-variant">
-          <p className="text-sm font-semibold text-on-surface">
+          <p className="text-caption font-semibold text-on-surface">
             {formatTemplate(t.sendSummaryTemplate, {
               sent: summary.sent,
               skipped: summary.skipped,
               failed: summary.failed,
             })}
           </p>
-          {allSkipped && <p className="text-xs text-on-surface-variant">{t.sendSkippedNotice}</p>}
+          {allSkipped && <p className="text-caption text-on-surface-variant">{t.sendSkippedNotice}</p>}
           {retryable && summary.failed > 0 && (
             <button
               type="button"
               onClick={submit}
               disabled={pending}
-              className="inline-flex min-h-[44px] items-center gap-2 px-4 py-1.5 rounded-pill border border-outline text-sm font-semibold text-on-surface hover:bg-surface-container transition-colors disabled:opacity-50"
+              className="inline-flex min-h-[44px] items-center gap-2 px-4 py-1.5 rounded-pill border border-outline text-caption font-semibold text-on-surface hover:bg-surface-container transition-colors disabled:opacity-50"
             >
               <RotateCcw size={14} />
               {pending ? t.retrying : t.retryFailed}
@@ -229,7 +229,7 @@ export function GroupEmailComposer({
               return (
                 <div
                   key={r.memberId}
-                  className="flex items-center justify-between gap-3 text-xs px-3 py-1.5 bg-surface border border-outline-variant rounded-card"
+                  className="flex items-center justify-between gap-3 text-caption px-3 py-1.5 bg-surface border border-outline-variant rounded-card"
                 >
                   <span className="text-on-surface truncate">{r.label}</span>
                   <span

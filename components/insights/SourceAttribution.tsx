@@ -13,7 +13,7 @@ export function SourceAttribution({ lines }: SourceAttributionProps) {
   return (
     <div className="flex flex-col gap-0.5 px-1">
       {lines.map((line) => (
-        <p key={line} className="text-[11px] text-on-surface-variant/70 leading-relaxed">
+        <p key={line} className="text-caption text-on-surface-variant/70 leading-relaxed">
           {line}
         </p>
       ))}

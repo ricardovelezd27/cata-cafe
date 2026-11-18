@@ -51,7 +51,7 @@ interface ExplorerWorkspaceProps {
 }
 
 const inputClass =
-  "w-full rounded-input border border-outline-variant bg-surface-container-lowest px-3 py-2 text-sm text-on-surface focus:border-primary-container";
+  "w-full rounded-input border border-outline-variant bg-surface-container-lowest px-3 py-2 text-body text-on-surface focus:border-primary-container";
 
 type Mode = "simple" | "pivot";
 
@@ -153,7 +153,7 @@ export function ExplorerWorkspace({
           <button
             type="button"
             onClick={() => setMode("simple")}
-            className={`px-4 py-1.5 rounded-pill text-sm font-semibold transition-colors ${
+            className={`px-4 py-1.5 rounded-pill text-caption font-semibold transition-colors ${
               mode === "simple" ? "bg-primary-container text-on-primary" : "text-on-surface-variant hover:text-on-surface"
             }`}
           >
@@ -162,7 +162,7 @@ export function ExplorerWorkspace({
           <button
             type="button"
             onClick={() => setMode("pivot")}
-            className={`px-4 py-1.5 rounded-pill text-sm font-semibold transition-colors ${
+            className={`px-4 py-1.5 rounded-pill text-caption font-semibold transition-colors ${
               mode === "pivot" ? "bg-primary-container text-on-primary" : "text-on-surface-variant hover:text-on-surface"
             }`}
           >
@@ -173,7 +173,7 @@ export function ExplorerWorkspace({
           <button
             type="button"
             onClick={() => setSaveOpen(true)}
-            className="flex items-center gap-1.5 text-sm text-primary-container font-semibold hover:underline"
+            className="flex items-center gap-1.5 text-caption text-primary-container font-semibold hover:underline"
           >
             <Save size={15} />
             {t.save}
@@ -182,7 +182,7 @@ export function ExplorerWorkspace({
             type="button"
             onClick={openShare}
             disabled={!hasConfig}
-            className="flex items-center gap-1.5 text-sm text-primary-container font-semibold hover:underline disabled:opacity-50 disabled:pointer-events-none"
+            className="flex items-center gap-1.5 text-caption text-primary-container font-semibold hover:underline disabled:opacity-50 disabled:pointer-events-none"
           >
             <Share2 size={15} />
             {t.shareButton}
@@ -213,23 +213,23 @@ export function ExplorerWorkspace({
 
       {/* Saved insights */}
       <div className="bg-surface-container-lowest rounded-card border border-outline-variant shadow-card p-5">
-        <h2 className="font-sans text-xs font-semibold text-on-surface-variant uppercase tracking-wide mb-3">
+        <h2 className="label-caps font-sans mb-3">
           {t.savedTitle}
         </h2>
         {saved.length === 0 ? (
-          <p className="text-sm text-on-surface-variant">{t.savedEmpty}</p>
+          <p className="text-caption text-on-surface-variant">{t.savedEmpty}</p>
         ) : (
           <ul className="divide-y divide-outline-variant/50">
             {saved.map((item) => (
               <li key={item.id} className="flex items-center gap-3 py-2.5">
-                <span className="flex-1 text-sm text-on-surface truncate">{item.name}</span>
-                <span className="text-xs text-on-surface-variant hidden sm:block">
+                <span className="flex-1 text-caption text-on-surface truncate">{item.name}</span>
+                <span className="text-caption text-on-surface-variant hidden sm:block">
                   {new Date(item.createdAt).toLocaleDateString(locale)}
                 </span>
                 <button
                   type="button"
                   onClick={() => loadSaved(item)}
-                  className="flex items-center gap-1 text-xs text-primary-container font-semibold hover:underline"
+                  className="flex items-center gap-1 text-caption text-primary-container font-semibold hover:underline"
                 >
                   <FolderOpen size={14} />
                   {t.load}
@@ -238,7 +238,7 @@ export function ExplorerWorkspace({
                   <button
                     type="button"
                     onClick={() => handleDelete(item.id)}
-                    className="flex items-center gap-1 text-xs text-on-surface-variant hover:text-error"
+                    className="flex items-center gap-1 text-caption text-on-surface-variant hover:text-error"
                     aria-label={t.delete}
                   >
                     <Trash2 size={14} />
@@ -253,7 +253,7 @@ export function ExplorerWorkspace({
       <ResponsiveDialog open={saveOpen} onOpenChange={setSaveOpen} title={t.save} closeLabel={t.close}>
         <div className="flex flex-col gap-3 p-1">
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
+            <span className="label-caps">
               {t.saveName}
             </span>
             <input
@@ -269,7 +269,7 @@ export function ExplorerWorkspace({
             type="button"
             disabled={saving || saveName.trim().length === 0}
             onClick={handleSave}
-            className="self-end rounded-pill bg-primary-container text-on-primary text-sm font-semibold px-4 py-2 disabled:opacity-50"
+            className="self-end rounded-pill bg-primary-container text-on-primary text-caption font-semibold px-4 py-2 disabled:opacity-50"
           >
             {saving ? t.running : t.saveConfirm}
           </button>

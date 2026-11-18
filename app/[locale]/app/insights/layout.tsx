@@ -24,8 +24,8 @@ export default async function InsightsLayout({
 
   return (
     <div className="max-w-5xl mx-auto">
-      <h1 className="page-title text-2xl mb-1">{t("title")}</h1>
-      <p className="text-sm text-on-surface-variant mb-4">{t("subtitle")}</p>
+      <h1 className="page-title mb-1">{t("title")}</h1>
+      <p className="text-caption text-on-surface-variant mb-4">{t("subtitle")}</p>
       <InsightsTabs
         locale={locale}
         isSuperAdmin={access.isSuperAdmin}

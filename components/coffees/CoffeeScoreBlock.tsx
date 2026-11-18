@@ -38,22 +38,22 @@ export function CoffeeScoreBlock({
       aria-label={title}
       className="col-span-2 flex flex-col gap-1.5 rounded-card border border-outline-variant bg-surface-container-lowest p-5 shadow-card xl:col-span-4"
     >
-      <span className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">{title}</span>
+      <span className="label-caps">{title}</span>
       <span className="mt-1 font-display text-4xl leading-none tabular-nums text-on-surface">
         {lines.headline ?? "—"}
       </span>
       {showLines && lines.accumulated && (
-        <p className="max-w-[68ch] text-sm text-on-surface-variant">{lines.accumulated}</p>
+        <p className="max-w-[68ch] text-body text-on-surface-variant">{lines.accumulated}</p>
       )}
       {showLines && lines.indicative && (
-        <p className="flex max-w-[68ch] flex-wrap items-center gap-2 text-sm text-on-surface-variant">
+        <p className="flex max-w-[68ch] flex-wrap items-center gap-2 text-caption text-on-surface-variant">
           <Badge tone="accent" size="xs">
             {lines.indicative.badge}
           </Badge>
           {lines.indicative.note}
         </p>
       )}
-      {showLines && lines.noBase && <p className="max-w-[68ch] text-sm text-on-surface-variant">{lines.noBase}</p>}
+      {showLines && lines.noBase && <p className="max-w-[68ch] text-body text-on-surface-variant">{lines.noBase}</p>}
 
       <details className="group mt-1">
         <summary
@@ -65,10 +65,10 @@ export function CoffeeScoreBlock({
           {detailsLabel}
           <ChevronDown size={14} aria-hidden className="transition-transform group-open:rotate-180" />
         </summary>
-        <div className="mt-2 flex max-w-[68ch] flex-col gap-1.5 text-sm text-on-surface">
+        <div className="mt-2 flex max-w-[68ch] flex-col gap-1.5 text-caption text-on-surface">
           {showLines && lines.arithmetic && <p>{lines.arithmetic}</p>}
           {showLines && lines.roundingNote && (
-            <p className="text-xs text-on-surface-variant">{lines.roundingNote}</p>
+            <p className="text-caption text-on-surface-variant">{lines.roundingNote}</p>
           )}
           {showLines && lines.tally && <p>{lines.tally}</p>}
           {showLines && lines.byType && <p className="text-on-surface-variant">{lines.byType}</p>}
@@ -77,7 +77,7 @@ export function CoffeeScoreBlock({
           <p className="text-on-surface-variant tabular-nums">
             {counts.sessionsLabel} {counts.sessions} · {counts.evaluationsLabel} {counts.evaluations}
           </p>
-          {showLines && <p className="text-xs text-on-surface-variant">{lines.note}</p>}
+          {showLines && <p className="text-caption text-on-surface-variant">{lines.note}</p>}
           {children}
         </div>
       </details>

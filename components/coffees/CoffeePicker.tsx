@@ -84,12 +84,12 @@ export function CoffeePicker({ open, onOpenChange, coffees, onSelect, translatio
         placeholder={t.searchPlaceholder}
         aria-label={t.searchPlaceholder}
         autoComplete="off"
-        className="w-full rounded-pill border-[1.5px] border-outline-variant/60 bg-surface px-4 py-2 text-sm text-on-surface placeholder:text-on-surface-variant focus:border-primary-muted"
+        className="w-full rounded-pill border-[1.5px] border-outline-variant/60 bg-surface px-4 py-2 text-body text-on-surface placeholder:text-on-surface-variant focus:border-primary-muted"
       />
 
       <div className="mt-3 max-h-[50vh] overflow-y-auto">
         {results.length === 0 ? (
-          <p className="py-8 text-center text-sm text-on-surface-variant">{t.empty}</p>
+          <p className="py-8 text-center text-caption text-on-surface-variant">{t.empty}</p>
         ) : (
           <div className="flex flex-col gap-1.5">
             {results.map((coffee) => {
@@ -104,22 +104,22 @@ export function CoffeePicker({ open, onOpenChange, coffees, onSelect, translatio
                   className="flex flex-col items-start gap-1 rounded-card border border-outline-variant/40 px-3.5 py-2.5 text-left transition-colors hover:bg-surface-container"
                 >
                   <div className="flex w-full items-center gap-2">
-                    <span className="font-semibold text-[13px] text-on-surface">
+                    <span className="font-semibold text-caption text-on-surface">
                       {coffee.name}
                     </span>
                     {coffee.code && (
-                      <span className="shrink-0 font-mono text-[11px] text-on-surface-variant">
+                      <span className="shrink-0 font-mono text-caption text-on-surface-variant">
                         {formatCoffeeCode(coffee.code)}
                       </span>
                     )}
                     <span
-                      className={`ml-auto shrink-0 rounded-pill border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${badgeCls[coffee.origin]}`}
+                      className={`label-caps ml-auto shrink-0 rounded-pill border px-2 py-0.5 ${badgeCls[coffee.origin]}`}
                     >
                       {badgeLabel(coffee.origin)}
                     </span>
                   </div>
                   {subtitle && (
-                    <span className="text-[12px] text-on-surface-variant">{subtitle}</span>
+                    <span className="text-caption text-on-surface-variant">{subtitle}</span>
                   )}
                 </button>
               );

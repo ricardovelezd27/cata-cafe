@@ -20,18 +20,18 @@ function formatNumber(v: number | null | undefined): string {
 }
 
 const CARD_CLASS = "bg-surface-container-lowest rounded-card border border-outline-variant p-3 mt-2";
-const CAPTION_CLASS = "text-xs font-semibold text-on-surface-variant uppercase tracking-wide mb-2";
+const CAPTION_CLASS = "label-caps mb-2";
 
 function MiniTable({ headers, rows }: { headers: string[]; rows: (string | number)[][] }) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+      <table className="w-full text-caption">
         <thead>
           <tr className="border-b border-outline-variant text-left">
             {headers.map((h, i) => (
               <th
                 key={i}
-                className={`py-1.5 pr-3 text-xs font-semibold text-on-surface-variant uppercase tracking-wide ${
+                className={`label-caps py-1.5 pr-3 ${
                   i > 0 ? "text-right" : ""
                 }`}
               >
@@ -115,7 +115,7 @@ export function ChatBlock({ block, t }: ChatBlockProps) {
       return (
         <div className={CARD_CLASS}>
           <div className={CAPTION_CLASS}>{t.session.candidatesTitle}</div>
-          <ul className="flex flex-col gap-1 text-sm text-on-surface">
+          <ul className="flex flex-col gap-1 text-caption text-on-surface">
             {candidates.map((c) => (
               <li key={c.id}>
                 {c.name} &middot; {c.date} &middot; {c.status}
@@ -187,10 +187,10 @@ export function ChatBlock({ block, t }: ChatBlockProps) {
             key={key}
             className="rounded-pill bg-surface-container border border-outline-variant px-3 py-1.5 flex flex-col items-start gap-0.5"
           >
-            <span className="text-[10px] font-semibold text-on-surface-variant uppercase tracking-wide">
+            <span className="label-caps">
               {t.overview[key] ?? key}
             </span>
-            <span className="text-sm font-semibold text-on-surface tabular-nums">
+            <span className="text-caption font-semibold text-on-surface tabular-nums">
               {formatNumber(value)}
             </span>
           </div>

@@ -68,7 +68,7 @@ export function WarmupExerciseRoute({
     <div className="space-y-4 max-w-5xl">
       <Link
         href={listHref}
-        className="inline-flex w-fit items-center gap-1 text-sm text-on-surface-variant transition-colors hover:text-on-surface"
+        className="inline-flex w-fit items-center gap-1 text-caption text-on-surface-variant transition-colors hover:text-on-surface"
       >
         <ChevronLeft size={16} aria-hidden />
         {backLabel}
@@ -88,24 +88,24 @@ export function WarmupExerciseRoute({
       {canSaveReflections && (
         <section aria-labelledby="warmup-reflections" className="space-y-3 pt-4">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 id="warmup-reflections" className="text-xl">
+            <h2 id="warmup-reflections" className="text-card">
               {reflectionStrings.title}
             </h2>
-            <p className="text-sm text-on-surface-variant">{reflectionStrings.private}</p>
+            <p className="text-caption text-on-surface-variant">{reflectionStrings.private}</p>
           </div>
           {reflections.length === 0 ? (
-            <p className="text-sm text-on-surface-variant">{reflectionStrings.empty}</p>
+            <p className="text-caption text-on-surface-variant">{reflectionStrings.empty}</p>
           ) : (
             <ul className="divide-y divide-outline-variant border-y border-outline-variant">
               {reflections.map((r) => (
                 <li key={r.id} className="flex items-start gap-3 py-3">
                   <div className="min-w-0 flex-1 space-y-2">
-                    <p className="text-xs text-on-surface-variant">{dateFmt.format(new Date(r.createdAt))}</p>
+                    <p className="text-caption text-on-surface-variant">{dateFmt.format(new Date(r.createdAt))}</p>
                     {([r.feel, r.discovery] as const).map((answer, i) =>
                       answer ? (
                         <div key={i}>
-                          <p className="text-xs font-medium text-on-surface-variant">{lw(exercise.closing[i], locale)}</p>
-                          <p className="whitespace-pre-wrap break-words text-sm text-on-surface">{answer}</p>
+                          <p className="text-caption font-medium text-on-surface-variant">{lw(exercise.closing[i], locale)}</p>
+                          <p className="whitespace-pre-wrap break-words text-body text-on-surface">{answer}</p>
                         </div>
                       ) : null,
                     )}

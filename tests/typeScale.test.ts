@@ -157,6 +157,19 @@ const SWEPT_AREAS: { area: string; paths: string[] }[] = [
       "components/DuplicateButton.tsx", // the sessions list's duplicate action (also on coffees and groups)
     ],
   },
+  {
+    area: "T4c: coffees, groups, Insights, the paper parts of the warm-up",
+    paths: [
+      "app/[locale]/app/coffees",
+      "components/coffees",
+      "app/[locale]/app/groups",
+      "components/groups",
+      "app/[locale]/app/insights",
+      "components/insights",
+      "app/[locale]/app/warmup/page.tsx", // the library (paper); the player and the stage are the stage mode
+      "app/[locale]/app/warmup/[slug]", // the exercise page outside the player, and the reflections list
+    ],
+  },
 ];
 
 /** A size outside the six roles that a swept file keeps, and why. May only shrink. */
@@ -165,6 +178,11 @@ const SWEPT_ALLOWLIST: Record<string, { token: string; reason: string }[]> = {
   "app/[locale]/app/sessions/express/ExpressForm.tsx": [{ token: "text-4xl", reason: "the sample counter's numeral, a display size (31.5 px)" }],
   "components/onboarding/WelcomeModal.tsx": [{ token: "text-5xl", reason: "the welcome's coffee-cup emoji, used as a picture (42 px)" }],
   "app/[locale]/app/sessions/[id]/waiting/WaitingRoomClient.tsx": [{ token: "text-6xl", reason: "the waiting room's coffee-cup emoji, used as a picture (52.5 px)" }],
+  "components/coffees/CoffeeScoreBlock.tsx": [{ token: "text-4xl", reason: "the coffee's lifetime score, a display numeral (31.5 px)" }],
+  "app/[locale]/app/warmup/page.tsx": [
+    { token: "text-[28px]", reason: "an exercise's minutes on the library card, a display numeral" },
+    { token: "md:text-[32px]", reason: "the same numeral from 768 px" },
+  ],
 };
 
 const SIZE_ANY = /(?<![\w-])(?:[a-z-]+:)?text-(?:xs|sm|base|lg|xl|2xl|3xl|4xl|5xl|6xl|\[\d+(?:\.\d+)?(?:px|rem|em)\])(?![\w\]-])/g;
@@ -205,6 +223,19 @@ describe("T4b: the swept areas paint only the named sizes", () => {
 
   it("app/globals.css holds the label recipe: the label size, 600, capitals, the widest tracking", () => {
     expect(css).toMatch(/\.label-caps\s*\{[^}]*@apply text-label;[^}]*font-weight:\s*600;[^}]*text-transform:\s*uppercase;[^}]*letter-spacing:\s*0\.1em;/);
+  });
+
+  it("a chart's text in a swept file is at least 12 px (Recharts sizes are props, not classes)", () => {
+    const offenders: string[] = [];
+    for (const f of files) {
+      for (const m of read(f).matchAll(/fontSize(?::\s*|=\{)(\d+(?:\.\d+)?)/g)) {
+        if (Number(m[1]) < 12) offenders.push(`${f}: ${m[0]}`);
+      }
+    }
+    expect(offenders).toEqual([]);
+    const sizes = read("components/insights/chartText.ts");
+    expect(Number(/CHART_TICK_PX = ([\d.]+)/.exec(sizes)![1])).toBeGreaterThanOrEqual(12);
+    expect(Number(/CHART_HTML_PX = ([\d.]+)/.exec(sizes)![1])).toBe(SCALE["text-caption"]);
   });
 
   it("the swept allowlist only shrinks: every entry still holds its token", () => {

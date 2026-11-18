@@ -45,9 +45,9 @@ export function AddByEmailForm({
   const uid = useId();
 
   // The label style of the group forms (GroupNameControls, CreateGroupDialog).
-  const labelCls = "block text-xs text-on-surface-variant font-semibold uppercase tracking-wide";
+  const labelCls = "label-caps block";
   const inputCls =
-    "min-h-[44px] w-full px-3 py-2 border border-outline-variant rounded-input text-sm bg-surface-container-lowest text-on-surface focus:border-primary-container";
+    "min-h-[44px] w-full px-3 py-2 border border-outline-variant rounded-input text-caption bg-surface-container-lowest text-on-surface focus:border-primary-container";
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,12 +101,12 @@ export function AddByEmailForm({
       <button
         type="submit"
         disabled={pending || !email.trim()}
-        className="min-h-[44px] px-4 py-2 rounded-pill bg-primary-container text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+        className="min-h-[44px] px-4 py-2 rounded-pill bg-primary-container text-white text-caption font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
       >
         {t.addMember}
       </button>
       {status && StatusIcon && (
-        <div className={`flex items-center gap-1.5 text-xs font-medium ${STATUS_STYLE[status].className}`}>
+        <div className={`flex items-center gap-1.5 text-caption font-medium ${STATUS_STYLE[status].className}`}>
           <StatusIcon size={14} />
           {status === "sent" && t.added}
           {status === "skipped" && t.sendSkippedNotice}

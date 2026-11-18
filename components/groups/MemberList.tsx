@@ -142,7 +142,7 @@ export function MemberList({
                 <input
                   id={`${uid}-name-${m.id}`}
                   autoFocus
-                  className="min-h-[44px] min-w-0 flex-1 rounded-input border border-outline-variant bg-surface-container-lowest px-2.5 py-1.5 text-sm text-on-surface transition-colors focus:border-primary-container"
+                  className="min-h-[44px] min-w-0 flex-1 rounded-input border border-outline-variant bg-surface-container-lowest px-2.5 py-1.5 text-caption text-on-surface transition-colors focus:border-primary-container"
                   value={editValue}
                   onChange={(e) => setEditValue(e.target.value)}
                   placeholder={t.namePlaceholder}
@@ -171,14 +171,14 @@ export function MemberList({
               </div>
             ) : (
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-on-surface truncate">
+                <p className="text-body font-semibold text-on-surface truncate">
                   {m.displayName || m.email}
                 </p>
-                {m.displayName && <p className="text-xs text-on-surface-variant truncate">{m.email}</p>}
-                {status === "sent" && <p className="text-xs text-primary-container">{t.resent}</p>}
-                {status === "failed" && <p className="text-xs text-error">{t.resendFailed}</p>}
+                {m.displayName && <p className="text-caption text-on-surface-variant truncate">{m.email}</p>}
+                {status === "sent" && <p className="text-caption text-primary-container">{t.resent}</p>}
+                {status === "failed" && <p className="text-caption text-error">{t.resendFailed}</p>}
                 {status === "rate_limited" && (
-                  <p className="text-xs text-secondary" role="status">
+                  <p className="text-caption text-secondary" role="status">
                     {t.resendRateLimited}
                   </p>
                 )}
@@ -192,7 +192,7 @@ export function MemberList({
                   </Badge>
                 )}
                 {!m.userId && (
-                  <span className="px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide rounded-full bg-secondary/15 text-secondary">
+                  <span className="label-caps px-2 py-0.5 rounded-full bg-secondary/15 text-secondary">
                     {t.unregistered}
                   </span>
                 )}
@@ -233,7 +233,7 @@ export function MemberList({
           </div>
         );
       })}
-      {error && <p className="text-xs text-error">{error}</p>}
+      {error && <p className="text-caption text-error">{error}</p>}
       <ConfirmDialog
         open={removeTarget !== null}
         onOpenChange={(o) => !o && setRemoveTarget(null)}

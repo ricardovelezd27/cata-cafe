@@ -66,7 +66,7 @@ export function PivotTable({ result, heatmap, measureLabel, t }: PivotTableProps
 
   if (rowKeys.length === 0) {
     return (
-      <div className="flex items-center justify-center h-40 text-sm text-on-surface-variant">{t.empty}</div>
+      <div className="flex items-center justify-center h-40 text-caption text-on-surface-variant">{t.empty}</div>
     );
   }
 
@@ -88,7 +88,7 @@ export function PivotTable({ result, heatmap, measureLabel, t }: PivotTableProps
 
   return (
     <div className="overflow-auto max-h-[70vh] rounded-input border" style={{ borderColor: BORDER }}>
-      <table className="w-full text-sm border-collapse">
+      <table className="w-full text-caption border-collapse">
         <thead>
           <tr>
             <th
@@ -99,7 +99,7 @@ export function PivotTable({ result, heatmap, measureLabel, t }: PivotTableProps
             {totalOnly ? (
               <th
                 scope="col"
-                className="sticky top-0 z-10 bg-surface-container-lowest px-3 py-2 text-right text-xs font-semibold text-on-surface-variant uppercase tracking-wide border-b whitespace-nowrap"
+                className="label-caps sticky top-0 z-10 bg-surface-container-lowest px-3 py-2 text-right border-b whitespace-nowrap"
                 style={{ borderColor: BORDER }}
               >
                 {measureLabel}
@@ -110,7 +110,7 @@ export function PivotTable({ result, heatmap, measureLabel, t }: PivotTableProps
                   <th
                     key={c.key}
                     scope="col"
-                    className="sticky top-0 z-10 bg-surface-container-lowest px-3 py-2 text-right text-xs font-semibold text-on-surface-variant uppercase tracking-wide border-b whitespace-nowrap"
+                    className="label-caps sticky top-0 z-10 bg-surface-container-lowest px-3 py-2 text-right border-b whitespace-nowrap"
                     style={{ borderColor: BORDER }}
                   >
                     {c.label}
@@ -118,7 +118,7 @@ export function PivotTable({ result, heatmap, measureLabel, t }: PivotTableProps
                 ))}
                 <th
                   scope="col"
-                  className="sticky top-0 z-10 bg-surface-container-lowest px-3 py-2 text-right text-xs font-semibold text-on-surface uppercase tracking-wide border-b border-l whitespace-nowrap"
+                  className="label-caps sticky top-0 z-10 bg-surface-container-lowest px-3 py-2 text-right text-on-surface border-b border-l whitespace-nowrap"
                   style={{ borderColor: BORDER }}
                 >
                   {t.total}
