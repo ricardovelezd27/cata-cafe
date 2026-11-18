@@ -9,6 +9,7 @@ import {
   LEARNING_CAPS,
   LEARNING_RULES,
   LEARNING_THRESHOLDS,
+  REPEATED_COFFEE_FIRST,
   buildDefectSummary,
   buildLearnings,
   learningScope,
@@ -98,8 +99,18 @@ describe("the table of rules", () => {
 
 describe("the mock's cupping", () => {
   it("at most four about the panel and five of the viewer's own, in the table's order", () => {
-    const list = buildLearnings(MOCK());
-    expect(rules(list)).toEqual(["G0", "G1", "G2", "G3", "P1", "P2", "P3", "P5", "P6"]);
+    // the approved order of the table
+    expect(rules(buildLearnings(MOCK(), { repeatedFirst: false }))).toEqual(["G0", "G1", "G2", "G3", "P1", "P2", "P3", "P5", "P6"]);
+  });
+
+  it("the repeated coffee comes first among the viewer's own (the built default), so the cap never cuts it", () => {
+    expect(REPEATED_COFFEE_FIRST).toBe(true);
+    expect(rules(buildLearnings(MOCK()))).toEqual(["G0", "G1", "G2", "G3", "P6", "P1", "P2", "P3", "P5"]);
+    expect(rules(buildLearnings(MOCK(), { repeatedFirst: true }))).toEqual(rules(buildLearnings(MOCK())));
+    // with five others of the viewer's own, the approved order cuts P6; this one cuts the last instead
+    const five = { ...MOCK(), samples: MOCK().samples.map((s) => ({ ...s, attributes: [{ id: "acidez_af", mine: 9, group: 6 }] })) };
+    expect(rules(buildLearnings(five, { repeatedFirst: false })).filter((r) => r.startsWith("P"))).toEqual(["P1", "P2", "P3", "P4", "P5"]);
+    expect(rules(buildLearnings(five)).filter((r) => r.startsWith("P"))).toEqual(["P6", "P1", "P2", "P3", "P4"]);
   });
 
   it("each learning carries the numbers of its sentence", () => {
@@ -579,7 +590,7 @@ describe("the gates", () => {
     const list = buildLearnings({ ...MOCK(), format: "affective" });
     expect(rules(list)).not.toContain("G0");
     expect(rules(list)).not.toContain("P5");
-    expect(rules(list)).toEqual(["G1", "G2", "G3", "G4", "P1", "P2", "P3", "P6"]);
+    expect(rules(list)).toEqual(["G1", "G2", "G3", "G4", "P6", "P1", "P2", "P3"]);
   });
 });
 
@@ -694,9 +705,16 @@ describe("on generated sessions", () => {
 
   it("the order is the table's, and the caps hold", () => {
     for (let seed = 1; seed <= RUNS; seed++) {
-      const list = buildLearnings(generated(seed).input);
-      const index = list.map((l) => LEARNING_RULES.indexOf(l.rule));
+      // the approved order is the table's...
+      const approved = buildLearnings(generated(seed).input, { repeatedFirst: false });
+      const index = approved.map((l) => LEARNING_RULES.indexOf(l.rule));
       expect([...index].sort((a, b) => a - b), `seed ${seed}`).toEqual(index);
+      // ...and the built default only moves the repeated coffee to the head of the viewer's own
+      const list = buildLearnings(generated(seed).input);
+      const own = list.filter((l) => learningScope(l.rule) === "mine");
+      const rest = own.filter((l) => l.rule !== "P6").map((l) => LEARNING_RULES.indexOf(l.rule));
+      expect([...rest].sort((a, b) => a - b), `seed ${seed}`).toEqual(rest);
+      expect(own.findIndex((l) => l.rule !== "P6") === -1 || own.slice(own.findIndex((l) => l.rule !== "P6")).every((l) => l.rule !== "P6"), `seed ${seed}`).toBe(true);
       expect(list.filter((l) => learningScope(l.rule) === "panel").length).toBeLessThanOrEqual(LEARNING_CAPS.panel);
       expect(list.filter((l) => learningScope(l.rule) === "mine").length).toBeLessThanOrEqual(LEARNING_CAPS.mine);
       // one learning per rule, except one P6 per repeated pair

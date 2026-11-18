@@ -21,6 +21,8 @@ import { buildOverviewStrings } from "@/components/results/overviewStrings";
 import { buildCardsStrings } from "@/components/results/cardsStrings";
 import { buildSheetStrings } from "@/components/results/sheetStrings";
 import { buildSheetData } from "@/lib/reports/coffeeSheet";
+import { buildLearningsInput, learningsPayload, type RepeatPair } from "@/lib/reports/learningsInput";
+import { buildLearningsStrings } from "@/components/results/learningsStrings";
 import { isSessionExpired, viewerMayReadGroupResults } from "@/lib/sessionState";
 import { wasClosedSilently } from "@/lib/repairClose";
 import { resultsUpdatedAfterClose } from "@/lib/exclusionReasons";
@@ -830,6 +832,8 @@ export default async function ResultsPage({
   // partner's blind label travels. Never for the admin read view (it holds the
   // owner's rows, not the viewer's).
   const repeatDiffsBySample = new Map<string, RepeatDiff[]>();
+  // The same pairs with the viewer's own two TOTALS, for the learnings (R4b, P6).
+  const repeatPairs: RepeatPair[] = [];
   if (mayBuildRepeatedDiffs({ status: session.status, isAdminViewer })) {
     const partners = repeatedSamplePartners(
       session.samples.map((s) => ({
@@ -858,6 +862,7 @@ export default async function ResultsPage({
           other: ownEval(pid),
           locale: localeStr,
         });
+        if (cmp?.total) repeatPairs.push({ a: sampleId, b: pid, scoreA: cmp.total.mine, scoreB: cmp.total.other });
         if (cmp) {
           diffs.push({
             partnerLabel: session.samples.find((s) => s.id === pid)?.label ?? "",
@@ -1095,102 +1100,9 @@ export default async function ResultsPage({
     ownerIntro: tResults("postCloseNote.ownerIntro"),
   };
 
-  return (
-    <ResultsClient
-      locale={locale}
-      lateRows={lateRows}
-      myLateNotices={myLateNotices}
-      postCloseNotes={postCloseNotes}
-      lateTranslations={lateT}
-      noteTranslations={noteT}
-      usableCoffees={usableCoffees}
-      isOwner={isOwner}
-      isAdminViewer={isAdminViewer}
-      adminViewNotice={adminViewNotice}
-      adminOwnerName={isAdminViewer && adminTarget ? profileDisplayName({ id: adminTarget.createdBy, displayName: adminTarget.createdByUser.displayName }, localeStr) : null}
-      isGroup={session.isGroup}
-      canViewGroup={canViewGroup}
-      cuppingOpen={!sessionOver}
-      sessionClosed={session.status === "closed"}
-      closedOnLabel={closedOnLabel}
-      updatedAfterCloseLabel={updatedAfterCloseLabel}
-      exclusionNotice={exclusionNoticeLabel}
-      closeEmails={closeEmails}
-      currentUserId={user.id}
-      lastUpdatedLabel={lastUpdatedLabel}
-      participants={participantResults}
-      blockLabels={blockLabels}
-      cupperAlignment={cupperAlignment}
-      partialSyncNotice={partialSyncNotice}
-      knownEvalIds={knownEvalIds}
-      overview={{
-        data: overviewData,
-        // The organizer's (or the admin lens') view of a group session that is still open.
-        preliminary: session.isGroup && ownerRead && !sessionOver,
-        referencePinned: refExplanation === "pinned",
-        familyLabels: wheelFamilyLabels(localeStr),
-        parts: buildResultsPartsStrings(tResults),
-        t: {
-          ...buildOverviewStrings(tResults, {
-            referenceTitle: tResults(`dashboard.anchorTitle${refCopy}`),
-            referenceHint: tResults(`dashboard.anchorHint${refCopy}`),
-            notScored: tResults("dashboard.notScored"),
-            rankHelp: tResults("dashboard.rankHelp"),
-            communityPending: tResults("communityPending"),
-            defectTypes: {
-              moldy: tCups("types.moldy"),
-              phenolic: tCups("types.phenolic"),
-              potato: tCups("types.potato"),
-            },
-          }),
-          preliminary: tResults("overview.preliminary", { button: tResults("refresh") }),
-        },
-        // R2, step 2: the words of the coffee cards and of "Comparar".
-        cards: buildCardsStrings(tResults, {
-          inProgress: tResults("table.inProgress"),
-          notEvaluated: tResults("table.notEvaluated"),
-          inProgressLegend: tResults("table.inProgressLegend"),
-          partialLabel: tResults("partial.label"),
-          reveal: tg("reveal"),
-          revealed: tg("revealed"),
-          referenceBadge: tResults("referenceBadge"),
-          attributes: Object.fromEntries(
-            AFFECTIVE_ATTRIBUTES.map((a) => [a.id, tAttr(a.id as Parameters<typeof tAttr>[0])]),
-          ),
-        }),
-        // R3: per coffee, the panel's descriptors stage by stage. Given only where
-        // that coffee's wheel was given to this viewer as the group's counts (the
-        // wheel's own gate, inside `overviewData`); the typed words of the old
-        // roll-up and its sentences never leave the server any more.
-        sheets: buildSheetData({
-          sampleIds: session.samples.map((s) => s.id),
-          overview: overviewData,
-          frequencies: descriptorFrequency,
-        }),
-        sheet: buildSheetStrings(tResults),
-      }}
-      format={format}
-      myAlignment={myAlignment}
-      guestSave={
-        user.is_anonymous
-          ? {
-              title: tGuestCta("title"),
-              body: tGuestCta("body"),
-              cta: tGuestCta("cta"),
-              ctaLoading: tGuestCta("ctaLoading"),
-              dismiss: tGuestCta("dismiss"),
-              offline: tGuestCta("offline"),
-              error: tGuestCta("error"),
-            }
-          : null
-      }
-      session={{
-        id: session.id,
-        name: session.name,
-        format: session.format,
-        cupsPerSample: session.cupsPerSample,
-        date: dateStr,
-        samples: session.samples.map((s) => {
+  // The samples as the page sends them. Built before the return so that the
+  // learnings below read the very rows the overview, the cards and the sheet show.
+  const sampleResults = session.samples.map((s) => {
           const ev = s.evaluations[0];
           const agg = s.aggregateScore;
           // Prefer the TS recompute (complete-only, with the real X-of-Y
@@ -1303,7 +1215,128 @@ export default async function ResultsPage({
             comparison: comparisonBySample.get(s.id) ?? null,
             repeatDiffs: repeatDiffsBySample.get(s.id) ?? [],
           };
+        });
+
+  // R4b: "Aprendizajes". Sentences computed by fixed rules (lib/reports/learnings.ts)
+  // from values this page ALREADY has: nothing new is queried, nothing is stored.
+  // Null while the session is not closed. The group's part needs the page's own
+  // gate (`canViewGroup`) and three included cuppers; the viewer's own part is
+  // built from their own rows and travels only in their page (never in the
+  // admin's lens, whose "mine" slots hold the organizer's evaluations).
+  const learnings = learningsPayload(
+    buildLearningsInput({
+      closed: session.status === "closed",
+      ownerLens: ownerRead,
+      referencePinned: refExplanation === "pinned",
+      samples: sampleResults,
+      referenceId: session.referenceSampleId,
+      ctx: { format, isGroup: session.isGroup, canViewGroup, cupsPerSample: session.cupsPerSample },
+      data: overviewData,
+      alignment: myAlignment,
+      repeats: repeatPairs,
+    }),
+    { ownOnes: !isAdminViewer },
+  );
+
+  return (
+    <ResultsClient
+      locale={locale}
+      lateRows={lateRows}
+      myLateNotices={myLateNotices}
+      postCloseNotes={postCloseNotes}
+      lateTranslations={lateT}
+      noteTranslations={noteT}
+      usableCoffees={usableCoffees}
+      isOwner={isOwner}
+      isAdminViewer={isAdminViewer}
+      adminViewNotice={adminViewNotice}
+      adminOwnerName={isAdminViewer && adminTarget ? profileDisplayName({ id: adminTarget.createdBy, displayName: adminTarget.createdByUser.displayName }, localeStr) : null}
+      isGroup={session.isGroup}
+      canViewGroup={canViewGroup}
+      cuppingOpen={!sessionOver}
+      sessionClosed={session.status === "closed"}
+      closedOnLabel={closedOnLabel}
+      updatedAfterCloseLabel={updatedAfterCloseLabel}
+      exclusionNotice={exclusionNoticeLabel}
+      closeEmails={closeEmails}
+      currentUserId={user.id}
+      lastUpdatedLabel={lastUpdatedLabel}
+      participants={participantResults}
+      blockLabels={blockLabels}
+      cupperAlignment={cupperAlignment}
+      partialSyncNotice={partialSyncNotice}
+      knownEvalIds={knownEvalIds}
+      overview={{
+        data: overviewData,
+        // The organizer's (or the admin lens') view of a group session that is still open.
+        preliminary: session.isGroup && ownerRead && !sessionOver,
+        referencePinned: refExplanation === "pinned",
+        familyLabels: wheelFamilyLabels(localeStr),
+        parts: buildResultsPartsStrings(tResults),
+        t: {
+          ...buildOverviewStrings(tResults, {
+            referenceTitle: tResults(`dashboard.anchorTitle${refCopy}`),
+            referenceHint: tResults(`dashboard.anchorHint${refCopy}`),
+            notScored: tResults("dashboard.notScored"),
+            rankHelp: tResults("dashboard.rankHelp"),
+            communityPending: tResults("communityPending"),
+            defectTypes: {
+              moldy: tCups("types.moldy"),
+              phenolic: tCups("types.phenolic"),
+              potato: tCups("types.potato"),
+            },
+          }),
+          preliminary: tResults("overview.preliminary", { button: tResults("refresh") }),
+        },
+        // R2, step 2: the words of the coffee cards and of "Comparar".
+        cards: buildCardsStrings(tResults, {
+          inProgress: tResults("table.inProgress"),
+          notEvaluated: tResults("table.notEvaluated"),
+          inProgressLegend: tResults("table.inProgressLegend"),
+          partialLabel: tResults("partial.label"),
+          reveal: tg("reveal"),
+          revealed: tg("revealed"),
+          referenceBadge: tResults("referenceBadge"),
+          attributes: Object.fromEntries(
+            AFFECTIVE_ATTRIBUTES.map((a) => [a.id, tAttr(a.id as Parameters<typeof tAttr>[0])]),
+          ),
         }),
+        // R3: per coffee, the panel's descriptors stage by stage. Given only where
+        // that coffee's wheel was given to this viewer as the group's counts (the
+        // wheel's own gate, inside `overviewData`); the typed words of the old
+        // roll-up and its sentences never leave the server any more.
+        sheets: buildSheetData({
+          sampleIds: session.samples.map((s) => s.id),
+          overview: overviewData,
+          frequencies: descriptorFrequency,
+        }),
+        sheet: buildSheetStrings(tResults),
+        // R4b: the learnings (null until the close) and their words.
+        learnings,
+        learningsT: buildLearningsStrings(tResults),
+      }}
+      format={format}
+      myAlignment={myAlignment}
+      guestSave={
+        user.is_anonymous
+          ? {
+              title: tGuestCta("title"),
+              body: tGuestCta("body"),
+              cta: tGuestCta("cta"),
+              ctaLoading: tGuestCta("ctaLoading"),
+              dismiss: tGuestCta("dismiss"),
+              offline: tGuestCta("offline"),
+              error: tGuestCta("error"),
+            }
+          : null
+      }
+      session={{
+        id: session.id,
+        name: session.name,
+        format: session.format,
+        cupsPerSample: session.cupsPerSample,
+        date: dateStr,
+        samples: sampleResults,
       }}
       myDraftNotice={myDraftNotice}
       closedNotice={closedNotice}

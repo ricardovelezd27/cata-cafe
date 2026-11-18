@@ -1182,6 +1182,14 @@ alignment table). A participant has ONE view and no tab bar. The Descriptores
 tab, the word cloud, the roll-up lists with typed words and their sentences are
 gone (R3): what a panel found in a coffee is on that coffee's sheet, counted by
 people.
+Once the session is CLOSED the first view ends with "Aprendizajes" (R4b): sentences
+computed by fixed rules (`lib/reports/learnings.ts`), each with its numbers, in two
+columns: the panel's (group view and three included cuppers; under three, one line
+says why) and the reader's own (built from their own rows; absent in the admin's
+lens). Under them, the REFLECTION: the existing note after the close
+(`setPostCloseNote`, sanctioned post-close write 7 of section 1), one editor per
+coffee the reader sent an evaluation of, with the line that says who reads it. The
+same note is still on each coffee's sheet. Nothing new is stored or queried.
 The coffee whose sheet is open is in the address (`?sample=<id>`,
 `useSheetAddress` over the native History API): opening pushes an entry, so the
 browser's Back closes the sheet and the page under it has not moved; a reload
@@ -1206,10 +1214,16 @@ flowchart TD
         R2["Café por café (CoffeeCards):\none card per coffee, references first;\na sideways row with numbered steps on phones,\na grid from 768 px"]
         R2o{"organizer of an\nopen cupping?"}
         R2r["'Revelar' on the card"]
+        R4{"session closed?"}
+        R4l["Aprendizajes (Learnings): up to 4 sentences about the panel\n(group view, 3 included cuppers) and up to 5 of the reader's own;\nnever a cupper's name"]
+        R4r["Reflexión (Reflection): the note after the close,\none per coffee the reader sent\n(PostCloseNoteEditor, setPostCloseNote)"]
         R1 --> R1b
         R1 --> R2
         R2 --> R2o
         R2o -- yes --> R2r
+        R2 --> R4
+        R4 -- yes --> R4l
+        R4l --> R4r
     end
 
     subgraph T2 ["Panel — the organizer (or the admin's lens) of a group session"]

@@ -64,6 +64,15 @@ export const LEARNING_THRESHOLDS = {
 /** How many learnings are shown: about the panel, and of the viewer's own. (waits on Kim) */
 export const LEARNING_CAPS = { panel: 4, mine: 5 } as const;
 
+/**
+ * Where the repeated-coffee learning (P6) stands among the viewer's own.
+ * `true` (built as the owner's likely answer, his to confirm): FIRST, because a
+ * session that serves a coffee twice is built for that sentence, and at the end
+ * of the approved order it was the one the cap of five cut. `false`: the
+ * approved order, P1 to P5 and then P6. One line.
+ */
+export const REPEATED_COFFEE_FIRST: boolean = true;
+
 // Thresholds that already exist and are only READ here:
 //   G3  the tie rule, RANKING_POLICY (TODO(kim-validar:D3)), through `tiesWithNext`;
 //   P6  REPEAT_TOLERANCE, 2 points (TODO(kim-validar:B6));
@@ -475,17 +484,23 @@ function solo(input: LearningsInput, ranking: LearningSample[]): Learning[] {
 /**
  * The learnings of a cupping for ONE viewer, in the order they are shown: up to
  * four about the panel (G0 to G5), then up to five of the viewer's own (P1 to
- * P6, S1, S2). Empty while the session is not closed.
+ * P6, S1, S2; the repeated coffee first or last among them: `repeatedFirst`).
+ * Empty while the session is not closed.
  */
-export function buildLearnings(input: LearningsInput): Learning[] {
+export function buildLearnings(
+  input: LearningsInput,
+  options: { repeatedFirst?: boolean } = {},
+): Learning[] {
   if (input.closed !== true) return [];
   const ranking = rankingOf(input.samples);
   const group = input.isGroup === true && input.groupVisible === true;
+  const repeatedFirst = options.repeatedFirst ?? REPEATED_COFFEE_FIRST;
 
   const panel = group ? panelLearnings(input, ranking) : [];
   const mine: Learning[] = [];
+  if (repeatedFirst) mine.push(...repeated(input));
   if (group) mine.push(...besideTheGroup(input, ranking));
-  mine.push(...repeated(input));
+  if (!repeatedFirst) mine.push(...repeated(input));
   if (input.isGroup !== true) mine.push(...solo(input, ranking));
 
   return [...panel.slice(0, LEARNING_CAPS.panel), ...mine.slice(0, LEARNING_CAPS.mine)];

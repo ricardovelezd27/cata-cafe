@@ -29,9 +29,10 @@ import {
 import { countedDescriptors, countedFamilies } from "@/lib/flavorWheel";
 import { wheelHeadline } from "@/lib/flavorWheelLayout";
 import { INTENSITY_SCALE, QUALITY_SCALE, countBar } from "@/lib/resultsScales";
-import { OVERVIEW_SCENARIOS } from "@/lib/dev/overviewFixtures";
+import { LEARNINGS_REPEAT_SCENARIO, OVERVIEW_SCENARIOS } from "@/lib/dev/overviewFixtures";
 import css from "./gallery.module.css";
-import { OverviewFixture } from "./OverviewFixture";
+import type { LearningsStrings } from "@/components/results/learningsStrings";
+import { LearningsSwitchFixture, OverviewFixture } from "./OverviewFixture";
 import { SheetFixture, type SheetWords } from "./SheetFixture";
 
 // The board's own words (a dev page: they are not product copy and are not in
@@ -41,6 +42,10 @@ const COPY = {
     dev: "Página de desarrollo. Datos inventados; no lee la base de datos ni necesita una cuenta.",
     title: "Partes de resultados",
     overview: "El resumen de una cata",
+    learnings: "Aprendizajes: el tope de cinco frases propias",
+    learningsNote: "Cuando hay un café repetido, el catador tiene seis frases propias y la sección muestra cinco. Arriba, lo construido: la del café repetido va primero. Abajo, la alternativa: el orden de la tabla aprobada, donde esa frase es la que se corta.",
+    learningsFirst: "Construido: el café repetido primero (REPEATED_COFFEE_FIRST = true)",
+    learningsApproved: "Alternativa: el orden aprobado (REPEATED_COFFEE_FIRST = false)",
     sheet: "La ficha de un café",
     sheetNote: "El cuerpo de la ficha, con las mismas catas inventadas y los mismos filtros que la página: lo que ve un participante ante una cata cerrada, con dos catadores, con la cata abierta, y quien organiza.",
     overviewNote: "La parte de arriba de la página de resultados, con catas inventadas: los estados que ninguna cuenta de prueba puede mostrar (un participante ante una cata cerrada, dos catadores, una referencia libre).",
@@ -103,6 +108,10 @@ const COPY = {
     dev: "Development page. Invented data; it reads no database and needs no account.",
     title: "Results parts",
     overview: "The overview of a cupping",
+    learnings: "Learnings: the cap of five sentences of your own",
+    learningsNote: "With a repeated coffee the cupper has six sentences of their own and the section shows five. Above, what is built: the repeated coffee comes first. Below, the alternative: the approved table's order, where that sentence is the one cut.",
+    learningsFirst: "Built: the repeated coffee first (REPEATED_COFFEE_FIRST = true)",
+    learningsApproved: "Alternative: the approved order (REPEATED_COFFEE_FIRST = false)",
     sheet: "A coffee's sheet",
     sheetNote: "The body of the sheet, with the same invented cuppings and the same gates as the page: what a participant sees at a closed cupping, with two cuppers, at an open cupping, and what the organizer sees.",
     overviewNote: "The top of the results page, with invented cuppings: the states no test account can show (a participant looking at a closed cupping, two cuppers, a free reference).",
@@ -187,7 +196,7 @@ function Card({ title, note, option, children }: { title?: string; note?: string
 }
 
 /** The groups of parts the board can show, in the order of the page. */
-export const GALLERY_SECTIONS = ["overview", "sheet", "wheel", "minis", "compare", "rank", "dots", "score", "narrow"] as const;
+export const GALLERY_SECTIONS = ["overview", "learnings", "sheet", "wheel", "minis", "compare", "rank", "dots", "score", "narrow"] as const;
 export type GallerySection = (typeof GALLERY_SECTIONS)[number];
 
 /** Scenario and coffee (by its index) of each sheet shown on the board. */
@@ -209,6 +218,7 @@ export function ResultsPartsGallery({
   strings,
   overviewStrings,
   cardsStrings,
+  learningsStrings,
   sheetWords,
   only,
 }: {
@@ -217,6 +227,8 @@ export function ResultsPartsGallery({
   /** The overview's words for each invented cupping, by scenario id. */
   overviewStrings: Record<string, OverviewStrings>;
   cardsStrings: CardsStrings;
+  /** The words of "Aprendizajes" (package R4b). */
+  learningsStrings: LearningsStrings;
   /** The words of a coffee's sheet (package R3). */
   sheetWords: SheetWords;
   /** Show only these groups (`?only=wheel,compare`); everything without it. */
@@ -337,9 +349,28 @@ export function ResultsPartsGallery({
                 parts={strings}
                 t={overviewStrings[scenario.id]}
                 cards={cardsStrings}
+                learningsT={learningsStrings}
               />
             </div>
           ))}
+        </section>
+      ) : null}
+
+      {show("learnings") ? (
+        <section className={css.section}>
+          <h2 className={css.sectionTitle}>{c.learnings}</h2>
+          <p className={css.sectionNote}>{c.learningsNote}</p>
+          <div className={css.scenario} data-scenario={LEARNINGS_REPEAT_SCENARIO.id}>
+            <p className={css.listTitle}>{LEARNINGS_REPEAT_SCENARIO.title[locale]}</p>
+            <LearningsSwitchFixture
+              scenario={LEARNINGS_REPEAT_SCENARIO}
+              locale={locale}
+              labels={{ repeatedFirst: c.learningsFirst, approved: c.learningsApproved }}
+              cards={cardsStrings}
+              t={overviewStrings.closed}
+              learningsT={learningsStrings}
+            />
+          </div>
         </section>
       ) : null}
 

@@ -3,6 +3,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { buildCardsStrings } from "@/components/results/cardsStrings";
 import type { SampleDetailTranslations, SheetCompareTranslations } from "@/components/results/SampleDetail";
 import { buildSheetStrings } from "@/components/results/sheetStrings";
+import { buildLearningsStrings } from "@/components/results/learningsStrings";
 import { buildOverviewStrings, type OverviewStrings } from "@/components/results/overviewStrings";
 import { buildResultsPartsStrings } from "@/components/results/partsStrings";
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
@@ -82,6 +83,7 @@ export default async function ResultsPartsDevPage({
           AFFECTIVE_ATTRIBUTES.map((a) => [a.id, tAttr(a.id as Parameters<typeof tAttr>[0])]),
         ),
       })}
+      learningsStrings={buildLearningsStrings(t)}
       // the sheet's words, read whole from the messages (the board has no session to shape them)
       sheetWords={{
         detail: {
