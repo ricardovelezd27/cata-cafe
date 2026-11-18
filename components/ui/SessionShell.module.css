@@ -25,29 +25,40 @@
   .sidebar { width: 220px; }
 }
 
+/* D-12: on a phone the sidebar is not in the page at all (none of its items
+   sits in the tab order while closed); its content opens in a Radix dialog
+   (.drawer), above the cupping layer (z 40). */
 @media (max-width: 640px) {
-  .sidebar {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    z-index: 20;
-    width: 260px;
-    box-shadow: var(--shadow-card-lg);
-    transform: translateX(-100%);
-    transition: transform var(--transition-med);
-  }
-  .sidebar.open { transform: translateX(0); }
-  .backdrop {
-    position: absolute;
-    inset: 0;
-    z-index: 10;
-    background: color-mix(in oklch, var(--color-on-surface) 30%, transparent);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity var(--transition-med);
-  }
-  .backdrop.open { opacity: 1; pointer-events: auto; }
+  .sidebar { display: none; }
+}
+
+.drawerOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: color-mix(in oklch, var(--color-on-surface) 30%, transparent);
+}
+
+.drawer {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 61;
+  width: min(280px, 86vw);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  background: var(--color-surface-container);
+  border-right: 1px solid var(--color-outline-variant);
+  box-shadow: var(--shadow-card-lg);
+}
+
+
+/* The drawer only exists on a phone; from 641 px the sidebar is always shown. */
+@media (min-width: 641px) {
+  .drawerOverlay,
+  .drawer { display: none; }
 }
 
 .identity {
@@ -127,23 +138,19 @@
 /* Persistent label shown only for the "pending" save state — unlike the bare
    dot used for saving/saved, this state needs to be legible: it means the
    cupper's work is sitting in this device only, not on the server yet. */
+/* A-08: in the flow of the header (never over the tabs), 12 px, wraps rather
+   than being cut. Same amber tone as before; never green while pending. */
 .savePendingLabel {
-  position: absolute;
-  top: 22px;
-  right: 14px;
-  z-index: 15;
-  max-width: min(62vw, 280px);
-  padding: 2px 9px;
-  border-radius: 9999px;
+  flex-shrink: 0;
+  padding: 4px 12px;
   background: var(--color-secondary-fixed);
   color: var(--color-on-secondary-fixed);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  line-height: 1.5;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  pointer-events: none;
+  border-bottom: 1px solid var(--color-outline-variant);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  line-height: 1.35;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .topBar {
@@ -222,7 +229,8 @@
     min-width: 0;
   }
   .hamburger,
-  .detailsToggle {
+  .detailsToggle,
+  .exitButton {
     flex-shrink: 0;
     display: inline-flex;
     align-items: center;
@@ -235,13 +243,16 @@
     color: var(--color-on-surface);
     cursor: pointer;
   }
-  /* The docked header stays 50 px: the 36 px buttons get a 44 px hit area. */
+  /* The docked header stays 50 px: the 36 px buttons get a 44 px hit area.
+     J-04: the phone's exit sits in the same row, the same size. */
   .hamburger,
-  .detailsToggle {
+  .detailsToggle,
+  .exitButton {
     position: relative;
   }
   .hamburger::before,
-  .detailsToggle::before {
+  .detailsToggle::before,
+  .exitButton::before {
     content: "";
     position: absolute;
     left: 50%;
@@ -275,7 +286,6 @@
   .collapsed .mobileHeader { padding-block: 2px; }
   /* The status dot/label sit above the chevron corner, not on top of it. */
   .saveIndicator { top: 4px; right: 4px; }
-  .savePendingLabel { top: 48px; right: 8px; }
 }
 
 @media (max-width: 1023px) {
