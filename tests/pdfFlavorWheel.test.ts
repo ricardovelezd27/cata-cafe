@@ -9,6 +9,7 @@ import { PdfCountedList, PdfFlavorCompare, PdfFlavorWheel, type PdfCompareCoffee
 import { registerPdfFonts } from "@/lib/pdf/fonts";
 import { PDF_FLAVOR_FAMILY_COLORS, PDF_PALETTE, type PdfFlavorFamilyColors } from "@/lib/pdf/palette";
 import { WHEEL_FIXTURES, wheelFamilyLabels, wheelNodeLabels, type WheelFixtureName } from "@/lib/dev/wheelFixtures";
+import { HEAVY_TEST_TIMEOUT_MS } from "./helpers/timeouts";
 
 // Package R5a: the flavour wheel and its comparison drawn with react-pdf.
 // What they LOOK like is checked by a person (scripts/render-wheel-preview.tsx);
@@ -83,7 +84,7 @@ describe("the drawings hold no words of their own", () => {
   });
 });
 
-describe("they render for every fixture", { timeout: 120_000 }, () => {
+describe("they render for every fixture", { timeout: HEAVY_TEST_TIMEOUT_MS }, () => {
   it("the wheel, full and small, in both languages", async () => {
     const drawings = NAMES.flatMap((name) => {
       const p = WHEEL_FIXTURES[name];

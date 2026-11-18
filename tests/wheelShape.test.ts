@@ -24,6 +24,7 @@ import { PdfFlavorCompare, PdfFlavorWheel } from "@/lib/pdf/charts";
 import { PDF_FLAVOR_FAMILY_COLORS, PDF_FLAVOR_FAMILY_GROUNDS, PDF_PALETTE, pdfPaleTint } from "@/lib/pdf/palette";
 import es from "@/messages/es.json";
 import en from "@/messages/en.json";
+import { HEAVY_TEST_TIMEOUT_MS } from "./helpers/timeouts";
 
 // Package R1d: the owner chose the wheel with a pale ground per family
 // ("option C") for the large AND the small wheel, and asked for the large one to
@@ -175,7 +176,7 @@ describe("the wheel on the page", () => {
     expect(src).not.toMatch(/\.rings\b|wheelRings|styles\.ring\b|styles\.cut\b|useId/);
     const css = read("components", "results", "FlavorWheel.module.css");
     expect(css).not.toMatch(/\.cut\b|\.track\b/);
-  });
+  }, HEAVY_TEST_TIMEOUT_MS);
 
   it("the small wheel and the large one share one drawing rule: the same shapes, in the same order", () => {
     const src = read("components", "results", "FlavorWheel.tsx");

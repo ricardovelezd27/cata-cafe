@@ -12,6 +12,7 @@ import { validatePlan } from "../scripts/ux-capture/lib/plan.mjs";
 import { MEASURE_EXPECT, MEASURE_FIXTURE_HTML, checkMeasureFixture, describeRequests, reconcileBlocked } from "../scripts/ux-capture/lib/selftest.mjs";
 import { DEFAULT_STEP_TIMEOUT_MS, describeStep, stepTimeout } from "../scripts/ux-capture/lib/steps.mjs";
 import { COMPARED_COUNTS, renderSummary, summarizeMeasure } from "../scripts/ux-capture/lib/summarize.mjs";
+import { HEAVY_TEST_TIMEOUT_MS } from "./helpers/timeouts";
 
 const TOOL = join(__dirname, "..", "scripts", "ux-capture");
 const read = (...p: string[]) => readFileSync(join(TOOL, ...p), "utf8");
@@ -177,7 +178,7 @@ describe("the fixtures, through real Chrome (skipped when the tool's playwright-
     } finally {
       await browser.close();
     }
-  }, 90_000);
+  }, HEAVY_TEST_TIMEOUT_MS);
 });
 
 describe("the safety rules are untouched", () => {

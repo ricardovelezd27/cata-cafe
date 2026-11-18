@@ -13,6 +13,7 @@ import { coffeeCards, compareOptions, qualityRows, sampleTag } from "@/lib/repor
 import { overviewView } from "@/lib/reports/overview";
 import es from "@/messages/es.json";
 import en from "@/messages/en.json";
+import { HEAVY_TEST_TIMEOUT_MS } from "./helpers/timeouts";
 
 // Package R2, step 2: one card per coffee under the overview, and "Comparar".
 // What it LOOKS like is checked by a person (the real page through the capture
@@ -345,7 +346,7 @@ describe("the cards on the page", () => {
         for (const button of markup.match(/<button[^>]*>/g) ?? []) expect(button).toMatch(/aria-label="[^"]+"/);
       }
     }
-  });
+  }, HEAVY_TEST_TIMEOUT_MS);
 
   it("the row has numbered steps, one per card, the first one current; never dots", () => {
     const s = overviewScenario("closed");

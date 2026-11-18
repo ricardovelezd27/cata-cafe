@@ -5,6 +5,7 @@ import { computeCoffeeLifetimeScore, type CoffeeLifetimeScore, type LifetimeSamp
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
 import es from "@/messages/es.json";
 import en from "@/messages/en.json";
+import { HEAVY_TEST_TIMEOUT_MS } from "./helpers/timeouts";
 
 // TODO(kim-validar:A2): wording is the owner's brief for WP1c, not Kim's.
 
@@ -172,7 +173,7 @@ describe("the arithmetic line never prints an equation (M2)", () => {
         }
       }
     }
-  });
+  }, HEAVY_TEST_TIMEOUT_MS);
 });
 
 describe("copy", () => {

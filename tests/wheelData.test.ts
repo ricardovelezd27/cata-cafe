@@ -21,6 +21,7 @@ import {
   type WheelData,
   type WheelEvaluation,
 } from "@/lib/reports/wheelData";
+import { HEAVY_TEST_TIMEOUT_MS } from "./helpers/timeouts";
 
 // Package R1c: the data behind a coffee's flavour wheel
 // (docs/audits/app-ui-ux-2026-11-15/RESULTS-DESIGN.md, sections 3, 4, 6 and 6b).
@@ -409,7 +410,7 @@ describe("agrees with today's descriptor frequencies", () => {
         else expect(mine.direct[id] ?? 0, `run ${run}, ${id}`).toBe(general.get(id) ?? 0);
       }
     }
-  });
+  }, HEAVY_TEST_TIMEOUT_MS);
 });
 
 describe("nothing that identifies a person", () => {

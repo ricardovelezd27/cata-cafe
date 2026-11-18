@@ -17,8 +17,8 @@ import { join, resolve } from "node:path";
 /** The repository root. */
 export const ROOT = resolve(__dirname, "..", "..");
 
-/** Per-test limit for a scan test: generous because a full run slows file reads about tenfold. */
-export const SCAN_TIMEOUT_MS = 30_000;
+/** Per-test limit for a scan test; defined with the other limits in ./timeouts. */
+export { SCAN_TIMEOUT_MS } from "./timeouts";
 
 export interface WalkRule {
   /** Leave out this entry (a folder is not entered). Called for files and folders. */

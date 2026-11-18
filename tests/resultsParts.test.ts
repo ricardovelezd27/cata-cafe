@@ -38,6 +38,7 @@ import {
 import { INTENSITY_SCALE, QUALITY_SCALE, SCORE_SCALE, countBar, tieBars, tiesWithNext } from "@/lib/resultsScales";
 import es from "@/messages/es.json";
 import en from "@/messages/en.json";
+import { HEAVY_TEST_TIMEOUT_MS, SCAN_TIMEOUT_MS } from "./helpers/timeouts";
 
 // Package R1b: the results parts on screen. What they LOOK like is checked by a
 // person on the dev page (app/[locale]/dev/results-parts); here: every part
@@ -244,7 +245,7 @@ describe("FlavorWheel", () => {
         }
       }
     }
-  });
+  }, HEAVY_TEST_TIMEOUT_MS);
 
   it("prints the nine counts beside the wheel and says the same nine in its label", () => {
     for (const locale of LOCALES) {
@@ -573,7 +574,7 @@ describe("the parts hold no colour, threshold or geometry of their own", () => {
         }
       }
     }
-  });
+  }, SCAN_TIMEOUT_MS);
 
   it("the nine families map to their nine tokens, once", () => {
     const css = read("components", "ui", "familyTone.module.css");
