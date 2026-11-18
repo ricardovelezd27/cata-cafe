@@ -44,6 +44,7 @@ import { fieldErrorId, fieldForErrorCode, fieldInputId, type SessionFormField } 
 import { scrollBehavior } from "@/lib/motion";
 import { FormActionBar, dockedFormClass } from "@/components/ui/FormActionBar";
 import { Card } from "@/components/ui/Card";
+import { cardClasses } from "@/components/ui/cardRecipe";
 import { Notice } from "@/components/ui/Notice";
 import { PaperSectionHeading } from "@/components/ui/PaperSectionHeading";
 import {
@@ -1368,10 +1369,9 @@ export function NewSessionForm({
                 }
                 role="group"
                 aria-label={sampleName}
-                className={
-                  "bg-surface-container-lowest border rounded-card shadow-card p-5 space-y-4 " +
-                  (invalid ? "border-error" : "border-outline-variant")
-                }
+                // P2b (D-07): the card recipe (no shadow), through cardClasses() because the
+                // element keeps its ref; an invalid sample takes the error border.
+                className={`${cardClasses({ invalid })} space-y-4`}
               >
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="label-caps bg-surface-container rounded-pill px-3 py-1 text-on-surface">

@@ -103,7 +103,6 @@ export function DashboardIntro({
     <section
       aria-label={t.eyebrow}
       className="relative overflow-hidden rounded-card border border-outline-variant bg-surface-container-lowest"
-      style={{ boxShadow: "var(--shadow-card)" }}
     >
       {/* warm parchment wash so the panel reads as guidance, not data */}
       <div

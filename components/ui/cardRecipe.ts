@@ -18,16 +18,20 @@ export const CARD_PADDING: Record<CardPadding, string> = {
   row: "px-[16px] py-[12px]",
 };
 export const CARD_FRAME = "rounded-card border border-outline-variant text-on-surface";
+/** The frame of a card whose content is invalid (a form card with an error). */
+export const CARD_FRAME_INVALID = "rounded-card border border-error text-on-surface";
 // Only the ground transitions: `transition-colors` would also fade the focus ring in from
 // the text colour (Tailwind v4 includes outline-color), so the ring is green at once.
 export const CARD_INTERACTIVE =
   "block w-full text-left transition-[background-color] hover:bg-surface-container-high disabled:cursor-default disabled:opacity-60";
 
-/** The card recipe for a wrapper that renders its own element (GuestGateLink), as buttonClasses(). */
+/** The card recipe for a wrapper that renders its own element (GuestGateLink, an element that
+ *  needs a ref), as buttonClasses(). `invalid` swaps the border for the error colour. */
 export function cardClasses({
   tone = "default",
   padding = "regular",
   interactive = false,
-}: { tone?: CardTone; padding?: CardPadding; interactive?: boolean } = {}): string {
-  return `${CARD_FRAME} ${CARD_TONE[tone]} ${CARD_PADDING[padding]}${interactive ? ` ${CARD_INTERACTIVE}` : ""}`;
+  invalid = false,
+}: { tone?: CardTone; padding?: CardPadding; interactive?: boolean; invalid?: boolean } = {}): string {
+  return `${invalid ? CARD_FRAME_INVALID : CARD_FRAME} ${CARD_TONE[tone]} ${CARD_PADDING[padding]}${interactive ? ` ${CARD_INTERACTIVE}` : ""}`;
 }
