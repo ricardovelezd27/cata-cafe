@@ -250,7 +250,7 @@ export default async function ProfilePage({
           <div className="rounded-card border border-outline-variant bg-surface-container-lowest p-6 shadow-card">
             <div className="flex items-start justify-between gap-3">
               <div className="-mt-14 shrink-0 rounded-full ring-4 ring-surface-container-lowest">
-                <Avatar name={profile?.displayName || user.email || "?"} size={88} />
+                <Avatar name={profile?.displayName || user.email || "?"} seed={user.id} size={88} />
               </div>
               {editDialog}
             </div>

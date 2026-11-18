@@ -1,6 +1,6 @@
 'use client'
 import styles from './CATAPills.module.css'
-import { shadeForLevel, getContrastTextColor } from '@/lib/constants'
+import { shadeForLevel, getContrastTextColor, L1_GROUP_COLOR } from '@/lib/constants'
 import { resolveDescriptor } from '@/lib/descriptors'
 
 export interface CATASubItem {
@@ -25,9 +25,9 @@ export interface CATAPillsProps {
 }
 
 function getCounterColor(count: number, max: number): string {
-  if (count >= max) return '#A83232'
-  if (count >= max - 1) return '#C17817'
-  return '#3D5A3E'
+  if (count >= max) return 'var(--color-error)'
+  if (count >= max - 1) return 'var(--color-secondary)'
+  return 'var(--color-primary-container)'
 }
 
 export function CATAPills({ options, selected, onChange, maxSelect, showSubItems = false, disabled }: CATAPillsProps) {
@@ -159,7 +159,7 @@ export function CATAPills({ options, selected, onChange, maxSelect, showSubItems
         {legacyIds.map((id) => {
           const resolved = resolveDescriptor(id)
           const legacyLabel = resolved?.label ?? id
-          const legacyColor = resolved?.color ?? '#8A7A6A'
+          const legacyColor = resolved?.color ?? L1_GROUP_COLOR.other
           return (
             <div key={id} className={styles.family}>
               <button

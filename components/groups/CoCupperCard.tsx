@@ -42,12 +42,12 @@ export function CoCupperCard({
   return (
     <div className="bg-surface-container-lowest rounded-card border border-outline-variant p-5 flex flex-col gap-4">
       <div className="flex items-center gap-4">
-        <Avatar name={cupper.displayName} size={56} />
+        <Avatar name={cupper.displayName} seed={cupper.userId} size={56} />
         <div className="min-w-0">
           <p className="font-semibold text-[15px] text-on-surface truncate">
             {cupper.displayName}
           </p>
-          <span className="inline-block mt-1 px-2 py-0.5 text-xs rounded-full bg-[#F0EBE1] text-on-surface-variant">
+          <span className="inline-block mt-1 px-2 py-0.5 text-xs rounded-full bg-surface-container-high text-on-surface-variant">
             {roleLabel}
           </span>
         </div>

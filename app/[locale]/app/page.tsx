@@ -377,7 +377,7 @@ export default async function Dashboard({
               {recentActivity.map((item, i) => (
                 <li
                   key={i}
-                  className="flex items-center gap-3 py-2 border-b border-[#F0EDE6] last:border-0"
+                  className="flex items-center gap-3 py-2 border-b border-outline-variant/50 last:border-0"
                 >
                   <span className="text-primary-muted shrink-0">
                     <Clock size={14} />

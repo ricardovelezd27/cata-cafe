@@ -1,8 +1,4 @@
-const FORMAT_STYLES: Record<string, string> = {
-  descriptive: "bg-primary-fixed text-primary-container border border-[#6B8F71]",
-  affective: "bg-[#FEF3E2] text-secondary border border-secondary",
-  combined: "bg-[#F0EBF8] text-[#7B3FA0] border border-[#7B3FA0]",
-};
+import { Badge } from "@/components/ui/Badge";
 
 const FORMAT_LABELS: Record<string, string> = {
   descriptive: "DESCRIPTIVO",
@@ -15,11 +11,8 @@ interface FormatBadgeProps {
 }
 
 export function FormatBadge({ format }: FormatBadgeProps) {
-  const styles = FORMAT_STYLES[format] ?? "bg-[#F0EDE6] text-on-surface-variant border border-outline-variant";
   const label = FORMAT_LABELS[format] ?? format.toUpperCase();
-  return (
-    <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${styles}`}>
-      {label}
-    </span>
-  );
+  // DESIGN.md "Colours for people, processes and formats": a format is a
+  // neutral Badge, with no colour per format (T5, E-01).
+  return <Badge tone="neutral">{label}</Badge>;
 }

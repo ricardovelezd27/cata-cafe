@@ -42,7 +42,7 @@ export type EditSampleMetadataFormTranslations = {
 };
 
 const inputCls =
-  "w-full px-3 py-2 border border-[#D4C5A9] rounded-input text-sm bg-surface-container-lowest text-on-surface focus:border-primary-container";
+  "w-full px-3 py-2 border border-outline-variant rounded-input text-sm bg-surface-container-lowest text-on-surface focus:border-primary-container";
 const labelCls =
   "block text-xs text-on-surface-variant font-semibold uppercase tracking-wide mb-1";
 

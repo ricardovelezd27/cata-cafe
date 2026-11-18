@@ -136,7 +136,7 @@ export default async function GroupsPage({
               <Link
                 key={g.id}
                 href={`/${locale}/app/groups/${g.id}`}
-                className="block bg-surface-container-lowest rounded-card border border-outline-variant p-5 transition-all hover:shadow-md hover:border-[#6B8F71]"
+                className="block bg-surface-container-lowest rounded-card border border-outline-variant p-5 transition-all hover:shadow-md hover:border-primary-muted"
               >
                 <p className="font-semibold text-[15px] text-on-surface truncate">{g.name}</p>
                 {g.description && (
@@ -164,7 +164,7 @@ export default async function GroupsPage({
               <Link
                 key={g.id}
                 href={`/${locale}/app/groups/${g.id}`}
-                className="block bg-surface-container-lowest rounded-card border border-outline-variant p-5 transition-all hover:shadow-md hover:border-[#6B8F71]"
+                className="block bg-surface-container-lowest rounded-card border border-outline-variant p-5 transition-all hover:shadow-md hover:border-primary-muted"
               >
                 <div className="flex items-center justify-between gap-2">
                   <p className="font-semibold text-[15px] text-on-surface truncate">{g.name}</p>

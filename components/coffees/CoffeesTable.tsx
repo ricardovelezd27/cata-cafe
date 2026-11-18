@@ -18,6 +18,7 @@ import { DeleteCoffeeButton, type DeleteCoffeeTranslations } from "@/components/
 import { formatCoffeeCode } from "@/lib/coffeeCode";
 import { MAX_BULK_COFFEE_DELETE } from "@/lib/coffeeAccess";
 import { normKey } from "@/lib/analytics/normalize";
+import { processToneVar } from "@/lib/processTone";
 
 // Variety facet: free-text varieties are grouped by accent/case-insensitive key
 // ("Caturra" and "caturra " merge)
@@ -108,30 +109,14 @@ type Props = {
   isAdmin?: boolean;
 };
 
-// Category (data-viz-ish) colors per process type — no MD3 token equivalent
-// exists for an open-ended, data-driven category palette, so these hexes are
-// kept deliberately (see DESIGN.md "Flavor Family Colors" for the same
-// pattern). Only the *shape* (pill sizing, weight) borrows from Badge.
-const PROCESS_COLORS: Record<string, string> = {
-  Lavado: "#4A90D9",
-  Natural: "#E8834A",
-  Honey: "#C17817",
-  Anaeróbico: "#8B5CF6",
-  "Maceración Carbónica": "#8B5CF6",
-  Láctico: "#7A6E5F",
-  "Co-fermentación": "#7A6E5F",
-  Otro: "#7A6E5F",
-};
-
 /** Hoisted to module scope — never redeclare components inside render. */
 function ProcessBadge({ type }: { type: string | null }) {
   if (!type) return <span className="text-on-surface-variant text-xs">—</span>;
-  const bg = PROCESS_COLORS[type] ?? "#7A6E5F";
+  // DESIGN.md: a process is its name in ink with a dot in one family tone,
+  // from the one map in lib/processTone.ts (T5, E-01).
   return (
-    <span
-      className="inline-flex items-center rounded-pill px-2 py-0.5 text-xs font-semibold text-white whitespace-nowrap"
-      style={{ backgroundColor: bg }}
-    >
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-medium text-on-surface">
+      <span aria-hidden className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: processToneVar(type) }} />
       {type}
     </span>
   );

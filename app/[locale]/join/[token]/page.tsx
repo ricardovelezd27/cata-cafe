@@ -167,7 +167,7 @@ export default async function JoinPage({
       : `/${locale}/auth/login?next=${encodeURIComponent(`/${locale}/join/${token}`)}`;
     return (
       <main className="flex flex-1 items-center justify-center px-6 py-16">
-        <div className="w-full max-w-md bg-[#FDFBF7] border border-outline-variant rounded-card p-8 text-center space-y-4">
+        <div className="w-full max-w-md bg-surface-container-lowest border border-outline-variant rounded-card p-8 text-center space-y-4">
           <p className="text-lg font-semibold text-error">{copy[0]}</p>
           <p className="text-sm text-on-surface-variant">{copy[1]}</p>
           <div className="flex flex-col gap-2 text-sm">
@@ -196,7 +196,7 @@ export default async function JoinPage({
     const loginHref = `/${locale}/auth/login?next=${encodeURIComponent(`/${locale}/join/${token}`)}`;
     return (
       <main className="flex flex-1 items-center justify-center px-6 py-16">
-        <div className="w-full max-w-md bg-[#FDFBF7] border border-outline-variant rounded-card p-8 space-y-6">
+        <div className="w-full max-w-md bg-surface-container-lowest border border-outline-variant rounded-card p-8 space-y-6">
           <div>
             <h1 className="page-title text-2xl">
               {invite.session.name}
@@ -242,7 +242,7 @@ export default async function JoinPage({
 
   return (
     <main className="flex flex-1 items-center justify-center px-6 py-16">
-      <div className="w-full max-w-md bg-[#FDFBF7] border border-outline-variant rounded-card p-8 space-y-6">
+      <div className="w-full max-w-md bg-surface-container-lowest border border-outline-variant rounded-card p-8 space-y-6">
         <div>
           <h1 className="page-title text-2xl">
             {invite.session.name}

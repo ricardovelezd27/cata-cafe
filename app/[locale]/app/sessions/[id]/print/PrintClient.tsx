@@ -1204,7 +1204,7 @@ export function PrintClient({
   const format = sheets[0]?.format;
 
   return (
-    <div className="sca-shell" style={{ background: "#EFEAE0", minHeight: "100vh", padding: "60px 0 40px" }}>
+    <div className="sca-shell" style={{ background: "var(--color-surface-container-high)", minHeight: "100vh", padding: "60px 0 40px" }}>
       <style dangerouslySetInnerHTML={{ __html: PRINT_STYLE }} />
 
       {/* Mobile-only overlay — A4 sheets are unreadable at phone width. */}
@@ -1217,7 +1217,7 @@ export function PrintClient({
           justifyContent: "center",
           minHeight: "100vh",
           padding: "40px 28px",
-          background: "#FDFBF7",
+          background: "var(--color-surface)",
           gap: 28,
           textAlign: "center",
         }}
