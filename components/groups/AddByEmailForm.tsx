@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Check, Clock, X, type LucideIcon } from "lucide-react";
 import { addMemberByEmail } from "@/app/actions/groups";
 import { useActionFeedback } from "@/components/ui/Toast";
+import { Button } from "@/components/ui/Button";
 
 type EmailStatus = "sent" | "skipped" | "failed" | "rate_limited";
 
@@ -98,13 +99,12 @@ export function AddByEmailForm({
           maxLength={80}
         />
       </div>
-      <button
+      <Button
         type="submit"
         disabled={pending || !email.trim()}
-        className="min-h-[44px] px-4 py-2 rounded-pill bg-primary-container text-white text-caption font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
       >
         {t.addMember}
-      </button>
+      </Button>
       {status && StatusIcon && (
         <div className={`flex items-center gap-1.5 text-caption font-medium ${STATUS_STYLE[status].className}`}>
           <StatusIcon size={14} />

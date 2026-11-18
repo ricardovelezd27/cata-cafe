@@ -4,6 +4,7 @@ import { useId, useRef, useState, useTransition } from "react";
 import { Mail, Check, Clock, X, RotateCcw, type LucideIcon } from "lucide-react";
 import { sendGroupEmail, type GroupEmailSummary } from "@/app/actions/groups";
 import { cardClasses } from "@/components/ui/cardRecipe";
+import { Button } from "@/components/ui/Button";
 
 type SessionOption = { id: string; name: string; status: string };
 
@@ -187,14 +188,13 @@ export function GroupEmailComposer({
         </div>
       )}
 
-      <button
+      <Button className="self-start"
         type="submit"
         disabled={pending || !subject.trim() || !message.trim()}
-        className="inline-flex min-h-[44px] items-center gap-2 px-5 py-2 rounded-pill bg-primary-container text-white font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
       >
         <Mail size={16} aria-hidden />
         {pending ? t.sending : t.send}
-      </button>
+      </Button>
 
       {error && (
         <p className="text-caption text-error" role="alert">
@@ -213,15 +213,14 @@ export function GroupEmailComposer({
           </p>
           {allSkipped && <p className="text-caption text-on-surface-variant">{t.sendSkippedNotice}</p>}
           {retryable && summary.failed > 0 && (
-            <button
+            <Button variant="secondary" size="sm"
               type="button"
               onClick={submit}
               disabled={pending}
-              className="inline-flex min-h-[44px] items-center gap-2 px-4 py-1.5 rounded-pill border border-outline text-caption font-semibold text-on-surface hover:bg-surface-container transition-colors disabled:opacity-50"
             >
               <RotateCcw size={14} />
               {pending ? t.retrying : t.retryFailed}
-            </button>
+            </Button>
           )}
           <div className="space-y-1">
             {summary.results.map((r) => {

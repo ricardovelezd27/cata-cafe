@@ -12,6 +12,7 @@ import { updateGroupPost, deleteGroupPost } from "@/app/actions/groups";
 import { Badge } from "@/components/ui/Badge";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { cardClasses } from "@/components/ui/cardRecipe";
+import { Button } from "@/components/ui/Button";
 
 export type GroupFeedPost = {
   id: string;
@@ -159,22 +160,20 @@ export function GroupFeed({
                   maxLength={5000}
                 />
                 <div className="flex items-center gap-2">
-                  <button
+                  <Button size="sm"
                     type="button"
                     onClick={() => saveEdit(post.id)}
                     disabled={savingId === post.id || !editBody.trim()}
-                    className="inline-flex min-h-[44px] items-center gap-1.5 rounded-pill bg-primary-container px-3 py-1.5 text-caption font-semibold text-on-primary hover:bg-primary transition-colors disabled:opacity-50"
                   >
                     <Check size={14} /> {t.save}
-                  </button>
-                  <button
+                  </Button>
+                  <Button variant="ghost" size="sm"
                     type="button"
                     onClick={cancelEdit}
                     disabled={savingId === post.id}
-                    className="inline-flex min-h-[44px] items-center gap-1.5 rounded-pill px-3 py-1.5 text-caption font-medium text-on-surface-variant hover:text-on-surface transition-colors disabled:opacity-50"
                   >
                     <X size={14} /> {t.cancel}
-                  </button>
+                  </Button>
                 </div>
               </div>
             ) : (

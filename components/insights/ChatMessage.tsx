@@ -6,6 +6,7 @@ import { citationLines } from "@/lib/analytics/referenceSources";
 import type { ReferenceSourceId } from "@/lib/analytics/referenceSources";
 import type { ChatUiMessage } from "@/stores/insightsChatStore";
 import type { ChatTranslations } from "@/components/insights/ChatPanel";
+import { TextAction } from "@/components/ui/TextAction";
 
 interface ChatMessageProps {
   message: ChatUiMessage;
@@ -56,14 +57,13 @@ export function ChatMessage({ message, locale, t, onRetry }: ChatMessageProps) {
           message.blocks?.map((block, i) => <ChatBlock key={i} block={block} t={t} />)}
 
         {onRetry && message.error && (
-          <button
+          <TextAction className="mt-2"
             type="button"
             onClick={onRetry}
-            className="flex items-center gap-1 text-caption font-semibold text-primary-container hover:underline mt-2"
           >
             <RotateCcw size={12} />
             {t.retry}
-          </button>
+          </TextAction>
         )}
 
         {citations.length > 0 && (

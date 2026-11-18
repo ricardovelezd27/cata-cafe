@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 import { requireAppUser } from "@/lib/auth";
-import Link from "next/link";
 import { CheckCircle2, Clipboard, Plus, UserCheck, Users } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { prisma } from "@/lib/prisma";
@@ -28,6 +27,7 @@ import { profileDisplayName } from "@/lib/accountDeletion/deletedProfile";
 import { Card } from "@/components/ui/Card";
 import { PaperSectionHeading } from "@/components/ui/PaperSectionHeading";
 import { PageContainer } from "@/components/ui/PageContainer";
+import { ButtonLink } from "@/components/ui/Button";
 
 // Auth'd page with a dynamic [id] segment: must render per-request. With
 // generateStaticParams present, prod attempts on-demand static generation and
@@ -406,12 +406,9 @@ export default async function GroupDetailPage({
             label={tCommon("duplicate")}
             errorText={tCommon("duplicateError")}
           />
-          <Link
-            href={`/${locale}/app/sessions/new?groupId=${id}`}
-            className="inline-flex min-h-[44px] items-center gap-1.5 rounded-pill bg-primary-container px-4 py-2 text-caption font-medium text-on-primary transition-colors hover:bg-primary"
-          >
-            <Plus size={16} aria-hidden /> {t("createSessionCta")}
-          </Link>
+          <ButtonLink href={`/${locale}/app/sessions/new?groupId=${id}`} icon={<Plus size={16} aria-hidden />}>
+            {t("createSessionCta")}
+          </ButtonLink>
         </div>
       </div>
 

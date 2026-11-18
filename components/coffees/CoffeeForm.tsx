@@ -9,6 +9,7 @@ import { radioKeyDown } from "@/components/radioKeys";
 import { FormActionBar, dockedFormClass } from "@/components/ui/FormActionBar";
 import { cardClasses } from "@/components/ui/cardRecipe";
 import { Notice } from "@/components/ui/Notice";
+import { Button } from "@/components/ui/Button";
 
 type Visibility = "private" | "shared" | "public";
 
@@ -472,13 +473,9 @@ export function CoffeeForm({
               live={false}
               action={
                 errorCode === "conflict" && t.conflictReload ? (
-                  <button
-                    type="button"
-                    onClick={() => window.location.reload()}
-                    className="block min-h-[44px] rounded-input border border-on-error-container px-3 text-caption font-semibold"
-                  >
+                  <Button variant="secondary" size="sm" className="mt-2" onClick={() => window.location.reload()}>
                     {t.conflictReload}
-                  </button>
+                  </Button>
                 ) : undefined
               }
             >
@@ -487,13 +484,9 @@ export function CoffeeForm({
           )
         }
       >
-        <button
-          type="submit"
-          disabled={pending}
-          className="bg-primary-container text-on-primary rounded-pill px-6 py-3.5 font-semibold hover:bg-primary transition-colors disabled:opacity-50"
-        >
+        <Button type="submit" disabled={pending}>
           {pending ? resolvedSubmittingLabel : resolvedSubmitLabel}
-        </button>
+        </Button>
       </FormActionBar>
     </form>
   );

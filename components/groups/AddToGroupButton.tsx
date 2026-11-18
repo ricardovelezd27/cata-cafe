@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Check } from "lucide-react";
 import { addMemberByUserId, createGroupWithMembers } from "@/app/actions/groups";
 import { useActionFeedback } from "@/components/ui/Toast";
+import { Button } from "@/components/ui/Button";
 
 export type GroupOption = { id: string; name: string };
 
@@ -115,13 +116,12 @@ export function AddToGroupButton({
             placeholder={t.namePlaceholder}
             maxLength={80}
           />
-          <button
+          <Button size="sm"
             type="submit"
             disabled={pending || !newName.trim()}
-            className="min-h-[44px] px-3 py-1.5 rounded-pill bg-primary-container text-white text-caption font-semibold disabled:opacity-50 whitespace-nowrap"
           >
             {t.create}
-          </button>
+          </Button>
         </div>
       </form>
     );

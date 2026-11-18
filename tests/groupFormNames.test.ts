@@ -141,7 +141,9 @@ describe("N2: the group pages' controls paint 44 px or carry a 44 px hit area", 
     // P1a (D-06): the back link is the shared PageBackLink, which paints 44 px.
     expect(page).toMatch(/<PageBackLink\b/);
     expect(read("components/ui/PageHeader.tsx")).toContain('className="-my-[6px] inline-flex min-h-[44px] w-fit items-center gap-1 text-caption text-on-surface-variant');
-    expect(page).toContain('className="inline-flex min-h-[44px] items-center gap-1.5 rounded-pill bg-primary-container px-4 py-2');
+    // P3b: the "create a session" link is the kit's ButtonLink, which carries min-h-[44px] itself.
+    expect(page).toContain("<ButtonLink href={`/${locale}/app/sessions/new?groupId=${id}`}");
+    expect(read("components/ui/Button.tsx")).toContain("min-h-[44px]");
   });
 
   it("the text buttons of the composers, the roster form and the dialogs paint 44 px", () => {
@@ -152,8 +154,11 @@ describe("N2: the group pages' controls paint 44 px or carry a 44 px hit area", 
       ["components/groups/GroupNameControls.tsx", 3], // name field, save, Eliminar grupo
       ["components/groups/LeaveGroupButton.tsx", 1],
     ];
+    // P3b: a button may be the kit's Button / TextAction, which carry the 44 px box themselves.
     for (const [file, n] of want) {
-      expect((read(file).match(/min-h-\[44px\]/g) ?? []).length, file).toBeGreaterThanOrEqual(n);
+      const src = read(file);
+      const boxes = (src.match(/min-h-\[44px\]/g) ?? []).length + (src.match(/<(Button|TextAction)\b/g) ?? []).length;
+      expect(boxes, file).toBeGreaterThanOrEqual(n);
     }
     // P2a: the opt-out line is a Notice whose action is the kit's Button (44 px by construction).
     const optOut = read("components/groups/GroupEmailOptOutNotice.tsx");

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { requireAppUser } from "@/lib/auth";
 import { Plus } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
@@ -9,6 +8,7 @@ import { PageHeader } from "@/components/ui";
 import CoffeesTable from "@/components/coffees/CoffeesTable";
 import type { DeleteCoffeeTranslations } from "@/components/coffees/DeleteCoffeeButton";
 import { PageContainer } from "@/components/ui/PageContainer";
+import { ButtonLink } from "@/components/ui/Button";
 
 export function generateStaticParams() {
   return [{ locale: "es" }, { locale: "en" }];
@@ -128,13 +128,9 @@ export default async function CoffeesPage({
           </>
         }
         action={
-          <Link
-            href={`/${locale}/app/coffees/new`}
-            className="min-h-[44px] inline-flex shrink-0 items-center gap-1.5 rounded-pill bg-primary-container px-4 py-2 text-caption font-semibold text-on-primary transition-colors hover:bg-primary"
-          >
-            <Plus size={16} />
+          <ButtonLink href={`/${locale}/app/coffees/new`} icon={<Plus size={16} aria-hidden />} className="shrink-0">
             {t("createCoffee")}
-          </Link>
+          </ButtonLink>
         }
       />
       <CoffeesTable

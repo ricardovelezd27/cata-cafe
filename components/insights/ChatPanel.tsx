@@ -10,6 +10,8 @@ import type { DimensionId, MeasureId } from "@/lib/analytics/types";
 import { scrollBehavior } from "@/lib/motion";
 import { Notice } from "@/components/ui/Notice";
 import { PaperSectionHeading } from "@/components/ui/PaperSectionHeading";
+import { Button } from "@/components/ui/Button";
+import { TextAction } from "@/components/ui/TextAction";
 
 // Orchestrator for the "ask the data" chat: header (title/subtitle + usage
 // counter + clear), scrollable message list with an empty state and example
@@ -195,15 +197,14 @@ export function ChatPanel({ locale, t }: ChatPanelProps) {
             </span>
           )}
           {messages.length > 0 && (
-            <button
+            <TextAction tone="quiet"
               type="button"
               onClick={clear}
               disabled={pending}
-              className="flex items-center gap-1 text-caption text-on-surface-variant hover:text-error disabled:opacity-50"
             >
               <Trash2 size={13} />
               {t.clear}
-            </button>
+            </TextAction>
           )}
         </div>
       </div>
@@ -221,14 +222,13 @@ export function ChatPanel({ locale, t }: ChatPanelProps) {
               <p className="text-caption text-on-surface-variant max-w-sm">{t.emptyHint}</p>
               <div className="flex flex-col gap-2 w-full max-w-sm mt-1">
                 {t.examples.map((example, i) => (
-                  <button
+                  <Button variant="secondary" size="sm" wrap className="text-left"
                     key={i}
                     type="button"
                     onClick={() => void handleSend(example)}
-                    className="rounded-pill border border-outline-variant bg-surface-container px-3 py-2 text-caption text-on-surface hover:border-primary-container hover:text-primary-container transition-colors text-left"
                   >
                     {example}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
@@ -283,7 +283,7 @@ export function ChatPanel({ locale, t }: ChatPanelProps) {
               onClick={() => void handleSend(input)}
               disabled={!canSend}
               aria-label={t.send}
-              className="shrink-0 rounded-pill bg-primary-container text-on-primary p-2.5 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="inline-flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-pill bg-primary-container text-on-primary disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Send size={16} />
             </button>

@@ -23,7 +23,9 @@ import type { ReactNode } from "react";
  */
 
 /** The uppercase label role (11 px, the floor). Shared with `Card`'s eyebrow. */
-export const LABEL_CLASSES = "text-label font-semibold uppercase tracking-widest text-on-surface-variant";
+// B-05 (P3b): the one label recipe, `.label-caps` (app/globals.css): 11 px, 600, capitals, 0.1em,
+// on-surface-variant: the same paint as the class list it replaced.
+export const LABEL_CLASSES = "label-caps";
 
 export type PaperSectionHeadingProps = {
   /** The title (the section heading, or a card's title at level 3). */

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Fuse from "fuse.js";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
 import { formatCoffeeCode, normalizeCoffeeCodeQuery } from "@/lib/coffeeCode";
+import { Badge, type BadgeTone } from "@/components/ui/Badge";
 
 export type UsableCoffee = {
   id: string;
@@ -35,10 +36,10 @@ type Props = {
   };
 };
 
-const badgeCls: Record<UsableCoffee["origin"], string> = {
-  mine: "bg-primary-container/10 text-primary-container border-primary-container/30",
-  shared: "bg-secondary/15 text-on-surface border-secondary/40",
-  public: "bg-surface-container text-on-surface-variant border-outline-variant",
+const badgeTone: Record<UsableCoffee["origin"], BadgeTone> = {
+  mine: "success",
+  shared: "accent",
+  public: "neutral",
 };
 
 export function CoffeePicker({ open, onOpenChange, coffees, onSelect, translations: t }: Props) {
@@ -112,10 +113,10 @@ export function CoffeePicker({ open, onOpenChange, coffees, onSelect, translatio
                         {formatCoffeeCode(coffee.code)}
                       </span>
                     )}
-                    <span
-                      className={`label-caps ml-auto shrink-0 rounded-pill border px-2 py-0.5 ${badgeCls[coffee.origin]}`}
-                    >
-                      {badgeLabel(coffee.origin)}
+                    <span className="ml-auto shrink-0">
+                      <Badge tone={badgeTone[coffee.origin]} size="xs">
+                        {badgeLabel(coffee.origin)}
+                      </Badge>
                     </span>
                   </div>
                   {subtitle && (

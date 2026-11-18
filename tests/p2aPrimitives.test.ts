@@ -83,7 +83,8 @@ describe("PaperSectionHeading renders the level it is given, with the role's loo
     const html = renderToStaticMarkup(
       h(PaperSectionHeading, { title: "T", name: "N", assertion: "A", action: h("button", { type: "button" }, "Ver"), id: "x" }),
     );
-    expect(html).toMatch(/<p class="text-label font-semibold uppercase tracking-widest text-on-surface-variant mb-1">N<\/p>/);
+    // B-05 (P3b): the label is the one recipe, `.label-caps` (same size, weight, capitals, 0.1em and colour).
+    expect(html).toMatch(/<p class="label-caps mb-1">N<\/p>/);
     expect(html).toMatch(/<h2 id="x"/);
     expect(html).toMatch(/<p class="mt-1 text-caption text-on-surface-variant">A<\/p>/);
     expect(html.indexOf("Ver")).toBeGreaterThan(html.indexOf("A</p>"));

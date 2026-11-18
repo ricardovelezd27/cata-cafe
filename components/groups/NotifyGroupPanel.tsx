@@ -14,6 +14,8 @@ import { useId, useState, useTransition } from "react";
 import { sendGroupEmail, type GroupEmailSummary } from "@/app/actions/groups";
 import { useActionFeedback } from "@/components/ui";
 import { cardClasses } from "@/components/ui/cardRecipe";
+import { Button } from "@/components/ui/Button";
+import { TextAction } from "@/components/ui/TextAction";
 
 export type NotifyGroupOption = { id: string; name: string; memberCount: number };
 
@@ -96,13 +98,12 @@ export function NotifyGroupPanel({
     <div className={`${cardClasses({ padding: "compact" })} space-y-3`}>
       <div className="flex items-center justify-between">
         <p className="text-caption font-semibold text-primary-container">{t.notifyGroupTitle}</p>
-        <button
+        <TextAction tone="quiet"
           type="button"
           onClick={() => setDismissed(true)}
-          className="text-caption text-on-surface-variant hover:text-on-surface"
         >
           {t.skip}
-        </button>
+        </TextAction>
       </div>
 
       <div className="space-y-1.5">
@@ -152,14 +153,13 @@ export function NotifyGroupPanel({
         />
       </div>
 
-      <button
+      <Button className="self-start"
         type="button"
         onClick={onSend}
         disabled={pending || !groupId || !subject.trim() || !message.trim()}
-        className="px-4 py-2 rounded-pill bg-primary-container text-white text-caption font-semibold disabled:opacity-50"
       >
         {pending ? t.sending : t.send}
-      </button>
+      </Button>
 
       {rateLimited && (
         <p className="text-caption text-secondary font-semibold" role="status">

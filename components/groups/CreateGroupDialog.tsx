@@ -12,6 +12,8 @@ import { Plus, X, Check } from "lucide-react";
 import { createGroupWithMembers } from "@/app/actions/groups";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
 import { HIT_44 } from "@/components/ui/hitArea";
+import { Button } from "@/components/ui/Button";
+import { TextAction } from "@/components/ui/TextAction";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -180,14 +182,13 @@ export function CreateGroupDialog({
 
   return (
     <>
-      <button
+      <Button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex min-h-[44px] items-center gap-1.5 px-4 py-2 rounded-pill bg-primary-container text-white text-caption font-semibold hover:opacity-90 transition-opacity"
       >
         <Plus size={16} aria-hidden />
         {t.createGroupCta}
-      </button>
+      </Button>
 
       <ResponsiveDialog open={open} onOpenChange={handleOpenChange} title={t.createGroupTitle} closeLabel={t.closeLabel}>
         <form onSubmit={onSubmit} className="space-y-5">
@@ -266,13 +267,12 @@ export function CreateGroupDialog({
                 </div>
               ))}
             </div>
-            <button
+            <TextAction className="self-start"
               type="button"
               onClick={addRow}
-              className="inline-flex min-h-[44px] items-center gap-1.5 text-caption font-semibold text-primary-container hover:opacity-80 transition-opacity"
             >
               <Plus size={14} aria-hidden /> {t.addAnotherMember}
-            </button>
+            </TextAction>
           </div>
 
           {candidates.length > 0 && (
@@ -322,13 +322,12 @@ export function CreateGroupDialog({
           )}
 
           <div className="flex justify-end pt-2 border-t border-outline-variant">
-            <button
+            <Button
               type="submit"
               disabled={pending || navigating || !name.trim()}
-              className="inline-flex min-h-[44px] items-center gap-1.5 px-5 py-2.5 rounded-pill bg-primary-container text-white text-caption font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
             >
               {pending ? t.creating : t.createAndInvite}
-            </button>
+            </Button>
           </div>
         </form>
       </ResponsiveDialog>
