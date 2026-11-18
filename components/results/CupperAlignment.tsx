@@ -3,6 +3,7 @@
 import { useId, useState, type ReactNode } from "react";
 import { PillTabs } from "@/components/ui";
 import { fillPattern } from "@/lib/fillPattern";
+import { tabIds } from "@/lib/rovingFocus";
 import { alignmentBars, type AlignmentInput } from "@/lib/reports/panel";
 
 /**
@@ -47,6 +48,7 @@ export function CupperAlignment({
   titleAction?: ReactNode;
 }) {
   const titleId = useId();
+  const tabsId = `align${useId().replace(/:/g, "")}`;
   const [sampleId, setSampleId] = useState<"all" | string>("all");
   const bars = alignmentBars(rows, sampleId === "all" ? null : sampleId);
   const hasData = bars.some((bar) => bar.opportunities > 0);
@@ -67,9 +69,15 @@ export function CupperAlignment({
           onChange={(id) => setSampleId(id)}
           ariaLabel={t.title}
           size="sm"
+          idBase={tabsId}
         />
       ) : null}
-      <div className="rounded-card border border-outline-variant bg-surface-container-lowest p-4">
+      <div
+        className="rounded-card border border-outline-variant bg-surface-container-lowest p-4"
+        {...(samples.length > 1
+          ? { role: "tabpanel", id: tabIds(tabsId, sampleId).panel, "aria-labelledby": tabIds(tabsId, sampleId).tab }
+          : {})}
+      >
         {!hasData ? (
           <p className="m-0 text-body text-on-surface-variant">{t.noData}</p>
         ) : (

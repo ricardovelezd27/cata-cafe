@@ -8,6 +8,7 @@ import { FilterBar, type FacetOption } from "./FilterBar";
 import { Pagination } from "./Pagination";
 import { Button } from "./Button";
 import { pageState, pruneSelection, togglePage } from "@/lib/tableSelection";
+import { useTablePlace, useWriteTablePlace } from "./useTablePlace";
 
 export type Column<T> = {
   key: string;
@@ -205,6 +206,7 @@ export function DataTable<T>({
   noResults,
   perPage = 10,
   initialSort,
+  addressKey = "",
   locale,
   translations,
 }: {
@@ -222,6 +224,13 @@ export function DataTable<T>({
   noResults: string;
   perPage?: number;
   initialSort?: SortState;
+  /**
+   * Where this table keeps its search, filters, sort and page in the address
+   * (audit D-01, P5a): "" (default) = the keys `q`, `sort`, `page`, `f-<facet>`;
+   * a name = the same keys under that prefix (a page with two tables gives one
+   * a name); `false` = nowhere (a table inside a dialog).
+   */
+  addressKey?: string | false;
   locale: string;
   translations: {
     searchPlaceholder: string;
@@ -232,10 +241,17 @@ export function DataTable<T>({
     all: string;
   };
 }) {
-  const [search, setSearch] = useState("");
-  const [facetValues, setFacetValues] = useState<Record<string, string>>({});
-  const [sort, setSort] = useState<SortState | null>(initialSort ?? null);
-  const [page, setPage] = useState(1);
+  const prefix = addressKey === false ? "" : addressKey;
+  const { place, setPlace, owner } = useTablePlace({
+    prefix,
+    enabled: addressKey !== false,
+    spec: {
+      sortKeys: columns.filter((c) => c.sortable).map((c) => c.key),
+      facets: (facets ?? []).map((f) => ({ key: f.key, values: f.options.map((o) => o.value) })),
+    },
+    initialSort: initialSort ?? null,
+  });
+  const { q: search, facets: facetValues, sort, page } = place;
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
 
   // Prune selected ids that vanished from `rows` (deleted elsewhere / after a
@@ -297,6 +313,7 @@ export function DataTable<T>({
   const totalPages = Math.max(1, Math.ceil(sorted.length / perPage));
   const safePage = Math.min(page, totalPages);
   const pageItems = sorted.slice((safePage - 1) * perPage, safePage * perPage);
+  useWriteTablePlace({ owner, prefix, place, shownPage: safePage, initialSort: initialSort ?? null });
   const from = sorted.length === 0 ? 0 : (safePage - 1) * perPage + 1;
   const to = Math.min(safePage * perPage, sorted.length);
 
@@ -305,24 +322,26 @@ export function DataTable<T>({
     .replace("{to}", String(to))
     .replace("{total}", String(sorted.length));
 
+  const setPage = (p: number) => setPlace((prev) => ({ ...prev, page: p }));
+
   const handleSort = (key: string) => {
-    setSort((prev) => (prev && prev.key === key ? { key, dir: prev.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
-    setPage(1);
+    setPlace((prev) => ({
+      ...prev,
+      sort: prev.sort && prev.sort.key === key ? { key, dir: prev.sort.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" },
+      page: 1,
+    }));
   };
 
   const handleSearchChange = (v: string) => {
-    setSearch(v);
-    setPage(1);
+    setPlace((prev) => ({ ...prev, q: v, page: 1 }));
   };
 
   const handleFacetChange = (key: string, value: string) => {
-    setFacetValues((prev) => ({ ...prev, [key]: value }));
-    setPage(1);
+    setPlace((prev) => ({ ...prev, facets: { ...prev.facets, [key]: value }, page: 1 }));
   };
 
   const handleClearFacets = () => {
-    setFacetValues({});
-    setPage(1);
+    setPlace((prev) => ({ ...prev, facets: {}, page: 1 }));
   };
 
   if (rows.length === 0) {

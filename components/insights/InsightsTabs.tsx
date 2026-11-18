@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { isActive } from "@/components/layout/navItems";
+import { RouteTabs } from "@/components/ui/RouteTabs";
 
 interface InsightsTabsProps {
   locale: string;
@@ -15,6 +15,8 @@ interface InsightsTabsProps {
     chat: string;
     access: string;
     users: string;
+    /** The row's name for a screen reader (optional; the layout can pass it). */
+    nav?: string;
   };
 }
 
@@ -37,23 +39,14 @@ export function InsightsTabs({ locale, isSuperAdmin, isAiAdmin, labels }: Insigh
   ];
 
   return (
-    <nav className="flex gap-1 border-b border-outline-variant mb-5 overflow-x-auto">
-      {tabs.map(({ href, path: tabPath, label, exact }) => {
-        const active = isActive(pathname, locale, tabPath, exact);
-        return (
-          <Link
-            key={href}
-            href={href}
-            className={`px-4 py-2.5 text-caption whitespace-nowrap border-b-2 -mb-px transition-colors ${
-              active
-                ? "border-primary-container text-primary-container font-semibold"
-                : "border-transparent text-on-surface-variant hover:text-on-surface"
-            }`}
-          >
-            {label}
-          </Link>
-        );
-      })}
-    </nav>
+    <RouteTabs
+      className="mb-5"
+      ariaLabel={labels.nav}
+      tabs={tabs.map(({ href, path: tabPath, label, exact }) => ({
+        href,
+        label,
+        active: isActive(pathname, locale, tabPath, exact),
+      }))}
+    />
   );
 }
