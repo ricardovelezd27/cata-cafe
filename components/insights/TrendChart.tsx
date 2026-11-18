@@ -11,7 +11,7 @@ import {
 } from "recharts";
 import { useContainerWidth } from "@/hooks/useContainerWidth";
 import { getChartColors } from "@/components/results/chartColors";
-import { chartTick, CHART_HTML_PX } from "./chartText";
+import { chartTick, CHART_HTML_PX } from "@/lib/chartText";
 
 const CHART_HEIGHT = 260;
 

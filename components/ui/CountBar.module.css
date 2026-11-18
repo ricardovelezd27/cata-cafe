@@ -7,7 +7,7 @@
   column-gap: 8px;
   min-height: 28px;
   font-family: var(--font-ui);
-  font-size: 12.25px;
+  font-size: var(--text-caption);
   line-height: 1.25;
   color: var(--color-on-surface);
 }

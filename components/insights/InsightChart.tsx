@@ -17,7 +17,7 @@ import {
 import { useContainerWidth } from "@/hooks/useContainerWidth";
 import type { ChartType, InsightRow } from "@/lib/analytics/types";
 import { getChartColors, seriesColor } from "@/components/results/chartColors";
-import { chartTick, CHART_HTML_PX, CHART_TICK_PX } from "./chartText";
+import { chartTick, CHART_HTML_PX, CHART_TICK_PX } from "@/lib/chartText";
 
 const CHART_HEIGHT = 300;
 

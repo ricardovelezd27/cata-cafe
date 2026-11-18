@@ -71,16 +71,16 @@ export function ExclusionDialog({
       title={`${t.title}: ${cupperName}`}
       body={
         <fieldset className="flex flex-col gap-3">
-          <legend className="text-sm text-on-surface-variant">{t.body}</legend>
-          {t.note && <p className="text-sm text-on-surface-variant">{t.note}</p>}
-          {t.closedNote && <p className="text-sm text-on-surface-variant">{t.closedNote}</p>}
-          <span className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+          <legend className="text-caption text-on-surface-variant">{t.body}</legend>
+          {t.note && <p className="text-caption text-on-surface-variant">{t.note}</p>}
+          {t.closedNote && <p className="text-caption text-on-surface-variant">{t.closedNote}</p>}
+          <span className="label-caps">
             {t.reasonLabel}
           </span>
           {EXCLUSION_REASONS.map((r) => (
             <label
               key={r}
-              className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-input border border-outline-variant px-3 text-sm text-on-surface has-[:checked]:border-primary-container has-[:checked]:bg-primary-fixed"
+              className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-input border border-outline-variant px-3 text-caption text-on-surface has-[:checked]:border-primary-container has-[:checked]:bg-primary-fixed"
             >
               <input
                 type="radio"
@@ -94,14 +94,14 @@ export function ExclusionDialog({
             </label>
           ))}
           {reason === "other" && (
-            <label className="flex flex-col gap-1 text-sm text-on-surface">
-              <span className="text-xs font-semibold text-on-surface-variant">{t.otherLabel}</span>
+            <label className="flex flex-col gap-1 text-caption text-on-surface">
+              <span className="text-caption font-semibold text-on-surface-variant">{t.otherLabel}</span>
               <input
                 type="text"
                 value={otherText}
                 maxLength={EXCLUSION_OTHER_MAX}
                 onChange={(e) => setOtherText(e.target.value)}
-                className="min-h-[44px] rounded-input border border-outline-variant bg-surface px-3 text-sm text-on-surface"
+                className="min-h-[44px] rounded-input border border-outline-variant bg-surface px-3 text-caption text-on-surface"
               />
             </label>
           )}

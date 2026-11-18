@@ -11,6 +11,7 @@ import {
   wheelPoint,
   type WheelCounts,
 } from "@/lib/flavorWheel";
+import { CHART_CAPTION_PX } from "@/lib/chartText";
 import { fitWheelLabels } from "@/lib/flavorWheelLayout";
 import { familyGrounds } from "@/lib/flavorWheelShape";
 import { familyToneClass } from "@/components/ui/familyTone";
@@ -38,7 +39,7 @@ type LineStyle = { line: string; fill: string | null };
 
 /** Painted radius of the disc that carries a coffee's letter, and its text size. */
 const TAG_RADIUS_PX = 10;
-const TAG_TEXT_PX = 12.25;
+const TAG_TEXT_PX = CHART_CAPTION_PX;
 
 /**
  * Coffees compared on one wheel. With `base`, that coffee keeps its coloured

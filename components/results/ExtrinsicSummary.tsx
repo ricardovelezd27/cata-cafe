@@ -78,16 +78,16 @@ export function ExtrinsicSummary({ data }: { data: Data }) {
   return (
     <div className="mt-2.5 rounded-input border border-outline-variant bg-surface-container-low px-3 py-2.5">
       <div className="mb-1.5 flex items-center gap-1.5">
-        <span className="font-display text-[11px] font-bold text-primary-container">
+        <span className="font-display text-caption font-bold text-primary-container">
           Datos de la muestra (extrínseco)
         </span>
-        <span className="inline-flex items-center rounded-pill border border-secondary bg-surface-container px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest text-secondary">
+        <span className="label-caps inline-flex items-center rounded-pill border border-secondary bg-surface-container px-1.5 py-0.5 text-secondary">
           Beta
         </span>
       </div>
       <div className="flex flex-col gap-0.5">
         {rows.map((row) => (
-          <div key={row.label} className="flex gap-1.5 text-[11.5px] leading-snug">
+          <div key={row.label} className="flex gap-1.5 text-caption leading-snug">
             <span className="shrink-0 font-semibold text-on-surface-variant">{row.label}:</span>
             <span className="min-w-0 text-on-surface">{row.value}</span>
           </div>

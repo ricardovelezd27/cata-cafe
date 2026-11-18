@@ -17,7 +17,7 @@ import { runOriginContext } from "@/app/actions/analytics";
 import { useActionFeedback } from "@/components/ui/Toast";
 import type { OriginContext } from "@/lib/analytics/benchmarks";
 import { getChartColors } from "@/components/results/chartColors";
-import { chartTick, CHART_HTML_PX } from "./chartText";
+import { chartTick, CHART_HTML_PX } from "@/lib/chartText";
 import { cardClasses } from "@/components/ui/cardRecipe";
 
 const CHART_HEIGHT = 280;

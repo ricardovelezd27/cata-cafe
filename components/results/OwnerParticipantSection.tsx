@@ -186,7 +186,7 @@ export function OwnerParticipantSection({
     <div className="flex flex-col gap-5">
       {/* The matrix: every cell opens that cupper's evaluation of that coffee. */}
       <div className="flex flex-col gap-3 rounded-card border border-outline-variant bg-surface-container-lowest p-4">
-        <h3 className="text-[17.5px] leading-tight">{t.title}</h3>
+        <h3 className="text-card leading-tight">{t.title}</h3>
         <PanelMatrix
           matrix={matrix}
           rows={matrixRows}
@@ -219,9 +219,9 @@ export function OwnerParticipantSection({
       {/* Who counts: include or exclude each cupper from the group's numbers. */}
       {!readOnly && (
         <div className="rounded-card border border-outline-variant bg-surface-container-lowest p-4" data-panel-section="who-counts">
-          <h3 className="mb-1 text-[17.5px] leading-tight">{t.manageTitle}</h3>
-          <p className="m-0 mb-1 text-[12.25px] leading-snug text-on-surface-variant">{t.manageHint}</p>
-          <p className="m-0 mb-3 text-[12.25px] font-semibold tabular-nums text-on-surface-variant">
+          <h3 className="mb-1 text-card leading-tight">{t.manageTitle}</h3>
+          <p className="m-0 mb-1 text-caption leading-snug text-on-surface-variant">{t.manageHint}</p>
+          <p className="m-0 mb-3 text-caption font-semibold tabular-nums text-on-surface-variant">
             {fill(t.includedCount, { n: String(includedN), total: String(participants.length) })}
           </p>
           <ul className="m-0 flex list-none flex-col p-0">
@@ -235,14 +235,14 @@ export function OwnerParticipantSection({
                   }`}
                 >
                   <span
-                    className={`min-w-0 flex-1 truncate text-[14px] font-semibold ${
+                    className={`min-w-0 flex-1 truncate text-body font-semibold ${
                       excluded ? "text-on-surface-variant" : "text-on-surface"
                     }`}
                   >
                     <span className={excluded ? "line-through" : ""}>{p.name}</span>
                     {excluded && <span className="ml-1.5 font-normal">{t.excludedTag}</span>}
                   </span>
-                  <span className="text-[12.25px] text-on-surface-variant">{excluded ? t.excluded : t.included}</span>
+                  <span className="text-caption text-on-surface-variant">{excluded ? t.excluded : t.included}</span>
                   <ToggleSwitch
                     on={!excluded}
                     disabled={pendingIds.has(p.id)}
@@ -250,7 +250,7 @@ export function OwnerParticipantSection({
                     ariaLabel={`${excluded ? t.included : t.excluded}: ${p.name}`}
                   />
                   {excluded && p.trail && (p.trail.by || p.trail.at || p.trail.reason) && (
-                    <span className="basis-full text-[12.25px] text-on-surface-variant">
+                    <span className="basis-full text-caption text-on-surface-variant">
                       {fill(t.excludedTrail, {
                         who: p.trail.by ?? "—",
                         date: p.trail.at ?? "—",

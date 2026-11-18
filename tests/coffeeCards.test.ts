@@ -401,9 +401,10 @@ describe("the styles of the cards hold no colour or grade of their own", () => {
   });
 
   it("no text under 12.25 px, and nothing moves by itself", () => {
-    const sizes = [...css.matchAll(/font-size: ([0-9.]+)px/g)].map((m) => Number(m[1]));
+    // T4d: the sizes are named by the scale's variables; none is under the caption (12.25 px).
+    const sizes = [...css.matchAll(/font-size: ([^;]+);/g)].map((m) => m[1].trim());
     expect(sizes.length).toBeGreaterThan(5);
-    expect(Math.min(...sizes)).toBeGreaterThanOrEqual(12.25);
+    for (const s of sizes) expect(s).toMatch(/^var\(--text-(caption|body|card|section|page)\)$/);
     expect(css).not.toMatch(/animation|@keyframes|transition/);
   });
 

@@ -110,7 +110,7 @@ function fmt(n: number, digits = 2): string {
 function FormulaLine() {
   return (
     <div className="mb-1 overflow-x-auto rounded-input border border-primary-fixed-dim/50 bg-primary-fixed/15 px-2.5 py-2">
-      <code className="whitespace-nowrap font-mono text-[13px] font-bold tabular-nums text-on-surface">
+      <code className="whitespace-nowrap font-mono text-caption font-bold tabular-nums text-on-surface">
         S = 0.65625 × Σhᵢ + 52.75 − 2u − 4d
       </code>
     </div>
@@ -133,8 +133,8 @@ function SetupStamp({ setup, t }: { setup: ScoreSetup; t: ScoreBreakdownTranslat
   parts.push(setup.roundingEnforced ? t.rounding025 : t.roundingOff);
 
   return (
-    <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-outline-variant pt-2 text-[11px] text-on-surface-variant">
-      <span className="font-bold uppercase tracking-wide">{t.setupStamp}</span>
+    <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-outline-variant pt-2 text-caption text-on-surface-variant">
+      <span className="label-caps">{t.setupStamp}</span>
       <span aria-hidden>·</span>
       <span>{parts.join(" · ")}</span>
     </div>
@@ -162,8 +162,8 @@ function TallyRow({
   );
 }
 
-const sectionLabel = "mb-1 mt-2.5 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant first:mt-0";
-const partLabel = "mb-1 mt-3 text-[12.25px] font-semibold text-on-surface first:mt-0";
+const sectionLabel = "label-caps mb-1 mt-2.5 first:mt-0";
+const partLabel = "mb-1 mt-3 text-caption font-semibold text-on-surface first:mt-0";
 
 export function ScoreBreakdownPanel({ individual, group, setup, t }: Props) {
   if (!individual && !group) return null;
@@ -174,21 +174,21 @@ export function ScoreBreakdownPanel({ individual, group, setup, t }: Props) {
   return (
     <>
       {line && (
-        <p className="m-0 text-[12.25px] tabular-nums leading-relaxed text-on-surface" data-score-line>
+        <p className="m-0 text-caption tabular-nums leading-relaxed text-on-surface" data-score-line>
           {line}
         </p>
       )}
       {scope && (
-        <p className="m-0 text-[12.25px] leading-relaxed text-on-surface-variant" data-score-scope>
+        <p className="m-0 text-caption leading-relaxed text-on-surface-variant" data-score-scope>
           {scope}
         </p>
       )}
       <details className="overflow-hidden rounded-input border border-outline-variant bg-surface-container-lowest">
-        <summary className="flex min-h-[44px] cursor-pointer list-none items-center gap-1.5 px-3 py-2 text-[12.25px] font-semibold text-on-surface select-none [&::-webkit-details-marker]:hidden [&::marker]:content-none">
+        <summary className="flex min-h-[44px] cursor-pointer list-none items-center gap-1.5 px-3 py-2 text-caption font-semibold text-on-surface select-none [&::-webkit-details-marker]:hidden [&::marker]:content-none">
           <Calculator size={14} aria-hidden />
           {t.how}
         </summary>
-        <div className="px-3 pb-3 pt-1 text-[12.25px] text-on-surface-variant">
+        <div className="px-3 pb-3 pt-1 text-caption text-on-surface-variant">
           {individual ? (
             <>
               {group ? <div className={partLabel}>{individual.label}</div> : null}
@@ -219,14 +219,14 @@ function renderIndividual(
     <>
       <div className={sectionLabel}>{t.formula}</div>
       <FormulaLine />
-      <div className="text-[11px] leading-relaxed text-on-surface-variant">
+      <div className="text-caption leading-relaxed text-on-surface-variant">
         {t.sigma}
         <br />
         {t.u} · {t.d}
       </div>
 
       <div className={sectionLabel}>{t.values}</div>
-      <div className="text-[11px] leading-relaxed text-on-surface">
+      <div className="text-caption leading-relaxed text-on-surface">
         Σhᵢ = <strong>{b.affectiveSum}</strong> &nbsp;·&nbsp; u = <strong>{b.u}</strong>{" "}
         &nbsp;·&nbsp; d = <strong>{b.d}</strong>
       </div>
@@ -252,12 +252,12 @@ function renderIndividual(
       </div>
 
       {b.rule === "v1" ? (
-        <div className="mt-2 text-[11px] leading-relaxed text-on-surface-variant">
+        <div className="mt-2 text-caption leading-relaxed text-on-surface-variant">
           {t.previousRule}
         </div>
       ) : (
         !b.uniformityTracked && (
-          <div className="mt-2 text-[11px] leading-relaxed text-on-surface-variant">
+          <div className="mt-2 text-caption leading-relaxed text-on-surface-variant">
             {t.notTrackedNote}
           </div>
         )
@@ -300,7 +300,7 @@ function renderGroup(
       {/* N6: when remote sessions switch to mean-of-individual-rounded scores,
           revisit this explanatory copy — the data still arrives via the
           aggregate, so only the wording changes. */}
-      <div className="mb-1 text-[11px] leading-relaxed text-on-surface-variant">
+      <div className="mb-1 text-caption leading-relaxed text-on-surface-variant">
         {previous ? t.previousRule : t.groupExplain}
       </div>
 
@@ -320,7 +320,7 @@ function renderGroup(
         <TallyRow label={t.communityScore} value={fmt(community)} strong />
       </div>
 
-      <div className="mt-2 text-[11px] leading-relaxed text-on-surface-variant">
+      <div className="mt-2 text-caption leading-relaxed text-on-surface-variant">
         {t.includedNote
           .replace("{n}", String(g.participantCount))
           .replace("{total}", String(g.totalSubmitted ?? g.submittedCount))}
