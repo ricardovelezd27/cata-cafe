@@ -25,14 +25,14 @@ export function AffectiveBubbles({ value, onChange, label, disabled, showFinal =
       <div className={styles.row}>
         {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => {
           const selected = value === n
-          const tone = selected ? (n >= 7 ? 'high' : n <= 3 ? 'low' : 'mid') : ''
           return (
             <button
               key={n}
               type="button"
               disabled={disabled}
               onClick={() => onChange(n)}
-              className={`${styles.bubble} ${selected ? styles.selected : ''} ${tone ? styles[tone] : ''}`}
+              // A-06 (decision 5, TODO(kim-validar:A-06)): one selected colour for every value; a score has no band.
+              className={`${styles.bubble} ${selected ? styles.selected : ''}`}
               aria-label={`${n} — ${AFFECTIVE_LABELS[n]}`}
               aria-pressed={selected}
             >

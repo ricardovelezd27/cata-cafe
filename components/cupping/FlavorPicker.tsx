@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { ChevronRight, ChevronLeft, Plus, X, Search, CornerDownLeft } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronLeft, Plus, X, Search, CornerDownLeft } from "lucide-react";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
 import {
   flavorChildren,
@@ -37,6 +37,8 @@ const T: Record<Locale, Record<string, string>> = {
     otherNudge: "Has puesto {n} en «Otros» — ¿en qué categoría van?",
     otherNudgeCta: "Archivar",
     close: "Cerrar",
+    showAll: "Ver todos",
+    showLess: "Ocultar",
   },
   en: {
     add: "Add descriptors",
@@ -57,6 +59,8 @@ const T: Record<Locale, Record<string, string>> = {
     otherNudge: 'You put {n} under "Other" — which category do they go in?',
     otherNudgeCta: "File them",
     close: "Close",
+    showAll: "Show all",
+    showLess: "Hide",
   },
 };
 
@@ -147,6 +151,9 @@ export function FlavorPicker({
   const notesEnabled = notes !== undefined;
   const notesMap = notes ?? {};
   const [open, setOpen] = useState(false);
+  // F-06 (S5b): on a phone the picked chips fold to one line so the step's quality
+  // row is in the first fold. Display only: the chips and what they write are unchanged.
+  const [chipsOpen, setChipsOpen] = useState(false);
   const [navId, setNavId] = useState<string | null>(null); // current parent being viewed
   // "File under" mode: the modal is picking a category for a typed word. `from`
   // is the generic node the word currently sits under when re-filing.
@@ -386,13 +393,41 @@ export function FlavorPicker({
               </span>
             )}
           </span>
+          {value.length > 0 && chipsOpen && (
+            <button
+              type="button"
+              onClick={() => setChipsOpen(false)}
+              aria-expanded
+              className={`${HIT_Y44} min-[641px]:hidden text-[12px] font-medium text-primary-container underline underline-offset-2`}
+            >
+              {t.showLess}
+            </button>
+          )}
         </div>
         {value.length === 0 ? (
           <p className="text-[12px] text-on-surface-variant italic">{t.none}</p>
         ) : (
-          // Chips paint 30 px, 15 px apart in height: each one's 44 px hit area
-          // (HIT_Y44) meets the next row's at the midpoint (F-03).
-          <div className="flex flex-wrap gap-x-1.5 gap-y-[15px]">
+          <>
+          {!chipsOpen && (
+            // Phones: one line, the count is above; the first names, then "Ver todos".
+            <button
+              type="button"
+              onClick={() => setChipsOpen(true)}
+              aria-expanded={false}
+              className={`${HIT_Y44} min-[641px]:hidden flex w-full min-h-[30px] items-center gap-2 text-left text-[13px] text-on-surface`}
+            >
+              <span className="min-w-0 flex-1 truncate">
+                {value.map((id) => resolveDescriptor(id, locale)?.label ?? id).join(", ")}
+              </span>
+              <span className="inline-flex shrink-0 items-center gap-0.5 text-[12px] font-medium text-primary-container underline underline-offset-2">
+                {t.showAll}
+                <ChevronDown size={13} aria-hidden />
+              </span>
+            </button>
+          )}
+          {/* Chips paint 30 px, 15 px apart in height: each one's 44 px hit area
+              (HIT_Y44) meets the next row's at the midpoint (F-03). */}
+          <div className={`${chipsOpen ? "flex" : "hidden min-[641px]:flex"} flex-wrap gap-x-1.5 gap-y-[15px]`}>
             {value.map((id) => {
               const info = resolveDescriptor(id, locale);
               const color = info?.color ?? flavorNodeColor(id);
@@ -417,6 +452,7 @@ export function FlavorPicker({
               );
             })}
           </div>
+          </>
         )}
       </div>
 

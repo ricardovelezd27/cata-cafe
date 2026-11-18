@@ -12,10 +12,9 @@
 .bubble::before { content: ""; position: absolute; left: 50%; top: 50%; width: var(--hit-w, 44px); height: 44px; transform: translate(-50%, -50%); }
 .bubble:hover:not(:disabled) { border-color: var(--color-primary-muted); }
 .bubble:disabled { cursor: not-allowed; opacity: 0.6; }
-.selected { color: var(--color-surface); }
-.mid  { background: var(--color-primary-container); border-color: var(--color-primary-container); box-shadow: 0 0 0 4px rgba(61, 90, 62, 0.10); }
-.high { background: var(--color-secondary);      border-color: var(--color-secondary);      box-shadow: 0 0 0 4px rgba(193, 120, 23, 0.15); }
-.low  { background: var(--color-error); border-color: var(--color-error); box-shadow: 0 0 0 4px rgba(168, 50, 50, 0.12); }
+/* A-06: ONE selected look for every value (the kit's primary pair). Terracotta for
+   high and red for low read as a quality band, which a score never has. */
+.selected { background: var(--color-primary-container); border-color: var(--color-primary-container); color: var(--color-on-primary); box-shadow: 0 0 0 4px color-mix(in oklch, var(--color-primary-container) 12%, transparent); }
 .final { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-left: 16px; }
 .finalCap { font-family: var(--font-mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.18em; color: var(--color-on-surface-variant); font-weight: 600; }
 .finalSet .finalCap { color: var(--color-secondary); }
@@ -51,12 +50,11 @@
   .scaleSpacer { display: none; }
 }
 /* A column that cannot hold nine 34 px bubbles with 4 px between them
-   (9 x 34 + 8 x 4 = 338 px; the column is 313 px on a 375 px phone and about
-   300 px in the two-column layout): the row and its scale reach 12 px into the
-   card's own padding on each side (FormSection: 14 px on phones, 20 px wider),
-   never past the card, which clips. Under 352 px wide the page's side margin
-   gives way too (SessionShell .canvasInner), the one case where nine 34 px
-   bubbles cannot fit otherwise. */
+   (9 x 34 + 8 x 4 = 338 px): the row and its scale reach 12 px into the
+   section's own padding on each side (FormSection: 16 px on a phone, where the
+   form is flush to the screen since S5b; 20 px wider), never past it. On a
+   375 px phone the column is 343 px and this never applies; at 320 px it is
+   288 px and the row spans 312 px. The page's side margin no longer gives way. */
 @container (max-width: 337.98px) {
   .row, .scale { width: calc(100% + 24px); margin-inline: -12px; }
   .row { --row-w: calc(100cqw + 24px); }
