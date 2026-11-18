@@ -727,7 +727,8 @@
       "submit": "Eliminar mi cuenta",
       "deleting": "Eliminando…",
       "cancel": "Cancelar"
-    }
+    },
+    "levelOf": "Nivel {level} de {total}"
   },
   "actions": {
     "save": "Guardar",

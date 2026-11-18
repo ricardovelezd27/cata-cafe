@@ -335,6 +335,7 @@ export default async function ProfilePage({
               levelTitle: t("levelTitle"),
               pointsLabel: t("pointsLabel", { points: activityPoints }),
               howPoints: t("howPoints"),
+              levelOf: t("levelOf", { level: levelInfo.level, total: 6 }),
             }}
           />
 

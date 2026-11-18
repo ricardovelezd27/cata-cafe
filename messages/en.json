@@ -727,7 +727,8 @@
       "submit": "Delete my account",
       "deleting": "Deleting…",
       "cancel": "Cancel"
-    }
+    },
+    "levelOf": "Level {level} of {total}"
   },
   "actions": {
     "save": "Save",

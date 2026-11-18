@@ -13,10 +13,11 @@ export type LevelBadgeTranslations = {
   levelTitle: string;
   pointsLabel: string; // finished, e.g. "128 puntos"
   howPoints: string;
+  /** "Nivel 3 de 6", finished (`profile.levelOf`; P4a: no inline dictionary). */
+  levelOf: string;
 };
 
 export function LevelBadge({
-  locale,
   level,
   levelLabel,
   progress,
@@ -24,7 +25,8 @@ export function LevelBadge({
   topPercentText,
   t,
 }: {
-  locale: "es" | "en";
+  /** Kept for callers; the words arrive finished in `t`. */
+  locale?: "es" | "en";
   level: number; // 1-6
   levelLabel: string; // already resolved for locale (LevelInfo.label.es/en)
   progress: number; // 0..1
@@ -33,7 +35,7 @@ export function LevelBadge({
   t: LevelBadgeTranslations;
 }) {
   const progressPct = Math.round(Math.max(0, Math.min(1, progress)) * 100);
-  const levelOfLabel = locale === "es" ? `Nivel ${level} de 6` : `Level ${level} of 6`;
+  const levelOfLabel = t.levelOf;
 
   return (
     // P2b (D-07): a Card.
