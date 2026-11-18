@@ -8,7 +8,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button, useActionFeedback } from "@/components/ui";
+import { Button, Card, PaperSectionHeading, useActionFeedback } from "@/components/ui";
 import { setPostCloseNote } from "@/app/actions/community";
 import {
   POST_CLOSE_NOTE_MAX,
@@ -77,7 +77,8 @@ export function PostCloseNoteEditor({
 
   if (!editing) {
     return (
-      <div className="flex flex-col gap-2 rounded-card border border-outline-variant bg-surface-container-low p-3">
+      <Card tone="quiet" padding="compact">
+      <div className="flex flex-col gap-2">
         {saved.text ? (
           <>
             <p className="font-sans text-caption text-on-surface-variant" suppressHydrationWarning>
@@ -99,11 +100,13 @@ export function PostCloseNoteEditor({
           </Button>
         )}
       </div>
+      </Card>
     );
   }
 
   return (
-    <div className="flex flex-col gap-2 rounded-card border border-outline-variant bg-surface-container-low p-3">
+    <Card tone="quiet" padding="compact">
+    <div className="flex flex-col gap-2">
       <label className="flex flex-col gap-1">
         <span className="font-sans text-caption text-on-surface-variant">{t.hint}</span>
         <textarea
@@ -127,6 +130,7 @@ export function PostCloseNoteEditor({
         </span>
       </div>
     </div>
+    </Card>
   );
 }
 
@@ -156,8 +160,10 @@ export function PostCloseNotesOwnerList({
   items.sort((a, b) => a.who.localeCompare(b.who) || a.sample.localeCompare(b.sample));
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="section-title">{t.ownerTitle}</h2>
-      <p className="font-sans text-caption text-on-surface-variant">{t.ownerIntro}</p>
+      <div>
+        <PaperSectionHeading title={t.ownerTitle} flush />
+        <p className="mt-1 font-sans text-caption text-on-surface-variant">{t.ownerIntro}</p>
+      </div>
       <ul className="flex flex-col gap-2">
         {items.map((i) => (
           <li key={i.key} className="flex flex-col gap-1">
@@ -185,11 +191,11 @@ export function PostCloseNoteReadOnly({
   translations: PostCloseNoteTranslations;
 }) {
   return (
-    <div className="flex flex-col gap-1 rounded-card border border-outline-variant bg-surface-container-low p-3">
+    <Card tone="quiet" padding="compact">
       <p className="font-sans text-caption text-on-surface-variant" suppressHydrationWarning>
         {t.added.replace("{date}", formatAt(at, locale))}
       </p>
-      <p className="whitespace-pre-wrap font-sans text-body text-on-surface">{text}</p>
-    </div>
+      <p className="mt-1 whitespace-pre-wrap font-sans text-body text-on-surface">{text}</p>
+    </Card>
   );
 }

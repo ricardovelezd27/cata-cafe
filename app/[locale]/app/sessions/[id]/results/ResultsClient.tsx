@@ -51,6 +51,7 @@ import {
   SegmentedControl,
   InfoHint,
   Button,
+  Notice,
   useActionFeedback,
 } from "@/components/ui";
 import { ResultsExportSheet } from "@/components/results/ResultsExportSheet";
@@ -928,9 +929,7 @@ export function ResultsClient({
 
         {exclusionNotice && (
           <div className="px-4 pb-2">
-            <p role="status" className="rounded-card border border-outline-variant bg-surface-container px-3 py-2 text-caption text-on-surface-variant">
-              {exclusionNotice}
-            </p>
+            <Notice tone="info">{exclusionNotice}</Notice>
           </div>
         )}
 
@@ -960,12 +959,9 @@ export function ResultsClient({
           : {})}
       >
       {adminViewNotice && (
-        <div
-          role="status"
-          className="mx-4 mt-4 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-caption text-on-surface lg:mx-6"
-        >
+        <Notice tone="info" className="mx-4 mt-4 lg:mx-6">
           {adminViewNotice}
-        </div>
+        </Notice>
       )}
       {/* Device-pending sync pill + conflict modal (renders nothing when idle). */}
       {sync && !isAdminViewer && (
@@ -974,23 +970,22 @@ export function ResultsClient({
       {/* The viewer's own evaluation is still a draft: "—" cells are unrated
           attributes, not lost data. Offer the way back into the tasting. */}
       {closedNotice && (
-        <div
-          role="status"
-          className="mx-4 mt-4 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-caption text-on-surface lg:mx-6"
-        >
+        <Notice tone="info" className="mx-4 mt-4 lg:mx-6">
           {closedNotice}
-        </div>
+        </Notice>
       )}
       {closeAsIs && showCloseAsIs && (
-        <div
-          role="status"
-          className="mx-4 mt-4 flex flex-wrap items-center gap-2 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-caption text-on-surface lg:mx-6"
+        <Notice
+          tone="info"
+          className="mx-4 mt-4 lg:mx-6"
+          action={
+            <Button size="sm" variant="secondary" onClick={() => setCloseAsIsOpen(true)}>
+              {closeAsIs.button}
+            </Button>
+          }
         >
-          <span className="flex-1 min-w-[200px]">{closeAsIs.line}</span>
-          <Button size="sm" variant="secondary" onClick={() => setCloseAsIsOpen(true)}>
-            {closeAsIs.button}
-          </Button>
-        </div>
+          {closeAsIs.line}
+        </Notice>
       )}
       {closeAsIs && showCloseAsIs && (
         <ConfirmDialog
@@ -1012,13 +1007,9 @@ export function ResultsClient({
         />
       )}
       {myLateNotices.map((line) => (
-        <div
-          key={line}
-          role="status"
-          className="mx-4 mt-4 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-caption text-on-surface lg:mx-6"
-        >
+        <Notice key={line} tone="info" className="mx-4 mt-4 lg:mx-6">
           {line}
-        </div>
+        </Notice>
       ))}
       {/* The late evaluations live in the Panel (R5), announced by the overview's
           "Pendiente" tile. Kept here only for a page that holds them and has no
@@ -1027,15 +1018,17 @@ export function ResultsClient({
         <LateEvaluationsPanel rows={lateRows} locale={locale} translations={lateTranslations} />
       )}
       {closeNow && (
-        <div
-          role="status"
-          className="mx-4 mt-4 flex flex-wrap items-center gap-2 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-caption text-on-surface lg:mx-6"
+        <Notice
+          tone="warning"
+          className="mx-4 mt-4 lg:mx-6"
+          action={
+            <Button size="sm" variant="secondary" onClick={() => setCloseNowOpen(true)}>
+              {closeNow.button}
+            </Button>
+          }
         >
-          <span className="flex-1 min-w-[200px]">{closeNow.line}</span>
-          <Button size="sm" variant="secondary" onClick={() => setCloseNowOpen(true)}>
-            {closeNow.button}
-          </Button>
-        </div>
+          {closeNow.line}
+        </Notice>
       )}
       {revealConfirm && (
         <ConfirmDialog
@@ -1080,26 +1073,30 @@ export function ResultsClient({
         />
       )}
       {myDraftNotice && (
-        <div
-          role="status"
-          className="mx-4 mt-4 flex flex-wrap items-center gap-2 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-caption text-on-surface lg:mx-6"
+        <Notice
+          tone="warning"
+          className="mx-4 mt-4 lg:mx-6"
+          action={
+            !isAdminViewer && cuppingOpen ? (
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => router.push(`/${locale}/app/sessions/${session.id}/cup`)}
+                >
+                  {translations.myDraftCta}
+                </Button>
+                {finishPlan?.canFinish && finish && (
+                  <Button size="sm" variant="secondary" onClick={() => setFinishOpen(true)}>
+                    {finish.button}
+                  </Button>
+                )}
+              </div>
+            ) : undefined
+          }
         >
-          <span className="flex-1 min-w-[200px]">{myDraftNotice}</span>
-          {!isAdminViewer && cuppingOpen && (
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => router.push(`/${locale}/app/sessions/${session.id}/cup`)}
-            >
-              {translations.myDraftCta}
-            </Button>
-          )}
-          {!isAdminViewer && cuppingOpen && finishPlan?.canFinish && finish && (
-            <Button size="sm" variant="secondary" onClick={() => setFinishOpen(true)}>
-              {finish.button}
-            </Button>
-          )}
-        </div>
+          {myDraftNotice}
+        </Notice>
       )}
       {finish && finishPlan && (
         <ConfirmDialog
@@ -1133,28 +1130,19 @@ export function ResultsClient({
         />
       )}
       {partialSyncNotice && !(effectiveTab === "resumen" && overview.data.who) && (
-        <div
-          role="status"
-          className="mx-4 mt-4 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-caption text-on-surface lg:mx-6"
-        >
+        <Notice tone="info" className="mx-4 mt-4 lg:mx-6">
           {partialSyncNotice}
-        </div>
+        </Notice>
       )}
       {coffeeNotOwnedNotice && (
-        <div
-          role="status"
-          className="mx-4 mt-4 flex items-start gap-2 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-caption text-on-surface lg:mx-6"
+        <Notice
+          tone="info"
+          className="mx-4 mt-4 lg:mx-6"
+          onDismiss={() => setCoffeeNotOwnedNotice(false)}
+          dismissLabel={translations.detail.close}
         >
-          <span className="flex-1">{translations.editSampleNotOwner}</span>
-          <button
-            type="button"
-            onClick={() => setCoffeeNotOwnedNotice(false)}
-            aria-label={translations.detail.close}
-            className="shrink-0 font-semibold hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2"
-          >
-            <span aria-hidden>×</span>
-          </button>
-        </div>
+          {translations.editSampleNotOwner}
+        </Notice>
       )}
       {guestSave && !isAdminViewer && (
         <GuestSaveCta sessionId={session.id} locale={locale} translations={guestSave} />

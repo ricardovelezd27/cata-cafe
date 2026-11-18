@@ -14,7 +14,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle } from "lucide-react";
-import { Button, Badge } from "@/components/ui";
+import { Button, Badge, Card, PaperSectionHeading, TextAction } from "@/components/ui";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { acceptLateEvaluation } from "@/app/actions/community";
 import type { OwnerLateRow } from "@/lib/lateContributions";
@@ -98,21 +98,19 @@ export function LateEvaluationsPanel({
   });
 
   return (
-    <section
-      className={
-        embedded
-          ? "flex flex-col gap-3 rounded-card border border-outline-variant bg-surface-container-lowest p-4"
-          : "mx-4 mt-4 flex flex-col gap-3 rounded-card border border-secondary/30 bg-secondary-container/20 p-4 lg:mx-6"
-      }
-      data-panel-section="late"
-    >
-      <h2 className="section-title">{t.title}</h2>
-      <p className="font-sans text-caption text-on-surface-variant">{t.intro}</p>
-      <ul className="flex flex-col gap-2">
+    // P2d: a section heading, then the rows in ONE card, divided by hairlines (cards
+    // do not nest); the fallback above the tabs is no longer a terracotta banner.
+    <section className={embedded ? "flex flex-col gap-3" : "mx-4 mt-4 flex flex-col gap-3 lg:mx-6"} data-panel-section="late">
+      <div>
+        <PaperSectionHeading title={t.title} flush />
+        <p className="mt-1 font-sans text-caption text-on-surface-variant">{t.intro}</p>
+      </div>
+      <Card padding="compact">
+      <ul className="flex flex-col">
         {rows.map((r) => (
           <li
             key={r.evaluationId}
-            className="flex flex-col gap-2 rounded-card border border-outline-variant bg-surface px-3 py-2"
+            className="flex flex-col gap-2 border-t border-outline-variant py-3 first:border-t-0 first:pt-0 last:pb-0"
           >
             <div className="flex flex-wrap items-center gap-2">
               <div className="min-w-[180px] flex-1">
@@ -129,14 +127,13 @@ export function LateEvaluationsPanel({
             </div>
             <Label row={r} t={t} />
             <Numbers row={r} t={t} />
-            <button
-              type="button"
+            <TextAction
               aria-expanded={open === r.evaluationId}
               onClick={() => setOpen(open === r.evaluationId ? null : r.evaluationId)}
-              className="min-h-[44px] w-fit text-left font-sans text-caption font-medium text-primary-container underline underline-offset-2"
+              className="w-fit justify-start"
             >
               {open === r.evaluationId ? t.hideRatings : t.showRatings}
-            </button>
+            </TextAction>
             {open === r.evaluationId && (
               <ul className="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2">
                 {r.ratings.map((a) => (
@@ -150,6 +147,7 @@ export function LateEvaluationsPanel({
           </li>
         ))}
       </ul>
+      </Card>
 
       <ConfirmDialog
         open={target !== null}

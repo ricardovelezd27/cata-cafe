@@ -3,7 +3,7 @@
 import { useState, useSyncExternalStore } from "react";
 import { UserRoundPlus, X } from "lucide-react";
 import { useGuestClaim } from "@/hooks/useGuestClaim";
-import { Button } from "@/components/ui";
+import { Button, Card, TextAction } from "@/components/ui";
 
 const DISMISS_EVENT = "cata-guest-cta-dismiss";
 
@@ -86,48 +86,41 @@ export function GuestSaveCta({
 
   const handleStart = () => start(`/${locale}/app/sessions/${sessionId}/results`);
 
+  // A bounded invitation with its own action, so a Card (P2d), not a terracotta banner.
   return (
-    <section
-      aria-label={t.title}
-      className="relative mx-4 mt-4 rounded-card border border-secondary/30 bg-secondary-container/20 p-4 pr-10 lg:mx-6"
-    >
-      <button
-        type="button"
-        onClick={handleDismiss}
-        aria-label={t.dismiss}
-        title={t.dismiss}
-        className="absolute right-2 top-2 rounded-pill p-1.5 text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2"
+    <section aria-label={t.title} className="mx-4 mt-4 lg:mx-6">
+      <Card
+        padding="compact"
+        title={
+          <span className="inline-flex items-start gap-2">
+            <UserRoundPlus size={18} aria-hidden className="mt-0.5 shrink-0 text-secondary" />
+            {t.title}
+          </span>
+        }
+        action={
+          <TextAction tone="quiet" onClick={handleDismiss} aria-label={t.dismiss} title={t.dismiss} className="-my-[12px] -mr-[12px]">
+            <X size={16} aria-hidden />
+          </TextAction>
+        }
       >
-        <X size={16} aria-hidden />
-      </button>
+        <p className="text-body text-on-surface-variant">{t.body}</p>
 
-      <div className="flex items-start gap-3">
-        <UserRoundPlus size={18} aria-hidden className="mt-0.5 shrink-0 text-secondary" />
-        <div className="min-w-0 flex-1">
-          <p className="font-sans text-caption font-semibold text-on-surface">{t.title}</p>
-          <p className="mt-0.5 text-body text-on-surface-variant">{t.body}</p>
-
-          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
-            <Button size="sm" onClick={handleStart} disabled={starting || !online}>
-              {starting ? t.ctaLoading : t.cta}
-            </Button>
-            <button
-              type="button"
-              onClick={handleDismiss}
-              className="text-caption font-medium text-on-surface-variant underline underline-offset-2 hover:text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2 sm:ml-1"
-            >
-              {t.dismiss}
-            </button>
-          </div>
-
-          {!online && <p className="mt-2 text-caption text-on-surface-variant">{t.offline}</p>}
-          {failed && (
-            <p role="alert" className="mt-2 text-caption text-error">
-              {t.error}
-            </p>
-          )}
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+          <Button size="sm" onClick={handleStart} disabled={starting || !online}>
+            {starting ? t.ctaLoading : t.cta}
+          </Button>
+          <TextAction tone="quiet" onClick={handleDismiss} className="self-start sm:ml-1 sm:self-auto">
+            {t.dismiss}
+          </TextAction>
         </div>
-      </div>
+
+        {!online && <p className="mt-2 text-caption text-on-surface-variant">{t.offline}</p>}
+        {failed && (
+          <p role="alert" className="mt-2 text-caption text-error">
+            {t.error}
+          </p>
+        )}
+      </Card>
     </section>
   );
 }

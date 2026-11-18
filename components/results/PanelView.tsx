@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { PaperSectionHeading } from "@/components/ui";
 import { CupperAlignment, type AlignmentTranslations, type CupperAlignmentRow } from "@/components/results/CupperAlignment";
 import { LateEvaluationsPanel, type LateEvaluationsTranslations } from "@/components/results/LateEvaluationsPanel";
 import {
@@ -90,10 +91,7 @@ export function PanelView({
       ) : null}
 
       <section className="flex flex-col gap-3" data-panel-section="matrix">
-        <h2 className="section-title inline-flex items-center gap-1.5">
-          {matrixTitle}
-          {matrixHelp}
-        </h2>
+        <PaperSectionHeading title={matrixTitle} info={matrixHelp} flush />
         <OwnerParticipantSection
           sessionId={sessionId}
           participants={participants}

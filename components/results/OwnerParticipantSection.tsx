@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { setParticipantExclusion } from "@/app/actions/community";
-import { useActionFeedback } from "@/components/ui";
+import { Card, useActionFeedback } from "@/components/ui";
 import { ExclusionDialog } from "@/components/results/ExclusionDialog";
 import { PanelMatrix } from "@/components/results/PanelMatrix";
 import type { PanelStrings } from "@/components/results/panelStrings";
@@ -185,8 +185,7 @@ export function OwnerParticipantSection({
   return (
     <div className="flex flex-col gap-5">
       {/* The matrix: every cell opens that cupper's evaluation of that coffee. */}
-      <div className="flex flex-col gap-3 rounded-card border border-outline-variant bg-surface-container-lowest p-4">
-        <h3 className="text-card leading-tight">{t.title}</h3>
+      <Card padding="compact" title={t.title}>
         <PanelMatrix
           matrix={matrix}
           rows={matrixRows}
@@ -214,13 +213,13 @@ export function OwnerParticipantSection({
             phoneSpread: panelT.phoneSpread,
           }}
         />
-      </div>
+      </Card>
 
       {/* Who counts: include or exclude each cupper from the group's numbers. */}
       {!readOnly && (
-        <div className="rounded-card border border-outline-variant bg-surface-container-lowest p-4" data-panel-section="who-counts">
-          <h3 className="mb-1 text-card leading-tight">{t.manageTitle}</h3>
-          <p className="m-0 mb-1 text-caption leading-snug text-on-surface-variant">{t.manageHint}</p>
+        <div data-panel-section="who-counts">
+        <Card padding="compact" title={t.manageTitle}>
+          <p className="-mt-2 mb-1 text-caption leading-snug text-on-surface-variant">{t.manageHint}</p>
           <p className="m-0 mb-3 text-caption font-semibold tabular-nums text-on-surface-variant">
             {fill(t.includedCount, { n: String(includedN), total: String(participants.length) })}
           </p>
@@ -262,6 +261,7 @@ export function OwnerParticipantSection({
               );
             })}
           </ul>
+        </Card>
         </div>
       )}
 

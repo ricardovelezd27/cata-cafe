@@ -36,7 +36,7 @@ import { DotPlot, type DotPlotItem } from "@/components/ui/DotPlot";
 import { CountBar } from "@/components/ui/CountBar";
 import { familyToneClass } from "@/components/ui/familyTone";
 import { ScoreWithContext, formatScore, formatSigned } from "@/components/ui/ScoreWithContext";
-import { Button, PillTabs } from "@/components/ui";
+import { Badge, Button, PaperSectionHeading, PillTabs, TextAction } from "@/components/ui";
 import { ExtrinsicSummary } from "@/components/results/ExtrinsicSummary";
 import {
   ScoreBreakdownPanel,
@@ -156,7 +156,7 @@ function marksOf(data: Data, keys: readonly string[], lang: Lang) {
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="flex flex-col gap-2 border-t border-outline-variant pt-4 first:border-t-0 first:pt-0">
-      <h3 className="text-card leading-tight">{title}</h3>
+      <PaperSectionHeading level={3} title={title} flush />
       {children}
     </section>
   );
@@ -386,14 +386,10 @@ export function SampleDetail({
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="m-0 flex flex-wrap items-center gap-2">
             {referenceBadge ? (
-              <span className="inline-flex items-center rounded-pill border border-outline-variant px-2 py-px text-caption font-semibold text-on-surface-variant">
-                {referenceBadge}
-              </span>
+              <Badge tone="outline">{referenceBadge}</Badge>
             ) : null}
             {stateChip ? (
-              <span className="inline-flex items-center rounded-pill border border-outline-variant px-2 py-px text-caption font-semibold text-on-surface-variant">
-                {stateChip}
-              </span>
+              <Badge tone="outline">{stateChip}</Badge>
             ) : null}
           </p>
           {onEdit ? (
@@ -605,14 +601,9 @@ export function SampleDetail({
                 </p>
               ) : null}
               {activeStage.items.length > ROWS ? (
-                <button
-                  type="button"
-                  className="inline-flex min-h-[44px] w-fit items-center text-body font-semibold text-primary-container underline-offset-2 hover:underline"
-                  aria-expanded={allRows}
-                  onClick={() => setAllRows((v) => !v)}
-                >
+                <TextAction tone="none" className="w-fit justify-start text-body font-semibold text-primary-container underline-offset-2 hover:underline" aria-expanded={allRows} onClick={() => setAllRows((v) => !v)}>
                   {allRows ? s.showFewer : fillPattern(s.showAll, { n: activeStage.items.length })}
-                </button>
+                </TextAction>
               ) : null}
             </div>
           ) : null}
