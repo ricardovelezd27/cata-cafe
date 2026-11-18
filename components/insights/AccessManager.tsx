@@ -7,6 +7,7 @@ import type { AnalyticsUser } from "@/app/actions/analytics";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { cardClasses } from "@/components/ui/cardRecipe";
 
 export interface AccessTranslations {
   search: string;
@@ -161,7 +162,7 @@ export function AccessManager({ users: initialUsers, locale, t }: AccessManagerP
       // The same fields today's search read: the name and the address.
       searchText={(u) => [u.displayName, u.email]}
       renderMobileCard={(u) => (
-        <div className="flex items-center gap-3 rounded-card border border-outline-variant bg-surface-container-lowest p-4">
+        <div className={`${cardClasses({ padding: "compact" })} flex items-center gap-3`}>
           <div className="min-w-0 flex-1 space-y-0.5">
             {nameCell(u)}
             <span className="block truncate text-caption text-on-surface-variant">

@@ -13,6 +13,7 @@
 import { useId, useState, useTransition } from "react";
 import { sendGroupEmail, type GroupEmailSummary } from "@/app/actions/groups";
 import { useActionFeedback } from "@/components/ui";
+import { cardClasses } from "@/components/ui/cardRecipe";
 
 export type NotifyGroupOption = { id: string; name: string; memberCount: number };
 
@@ -92,7 +93,7 @@ export function NotifyGroupPanel({
   };
 
   return (
-    <div className="p-4 bg-surface-container-lowest border border-outline-variant rounded-card space-y-3">
+    <div className={`${cardClasses({ padding: "compact" })} space-y-3`}>
       <div className="flex items-center justify-between">
         <p className="text-caption font-semibold text-primary-container">{t.notifyGroupTitle}</p>
         <button

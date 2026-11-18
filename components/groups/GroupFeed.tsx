@@ -11,6 +11,7 @@ import { Pencil, Trash2, Check, X } from "lucide-react";
 import { updateGroupPost, deleteGroupPost } from "@/app/actions/groups";
 import { Badge } from "@/components/ui/Badge";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { cardClasses } from "@/components/ui/cardRecipe";
 
 export type GroupFeedPost = {
   id: string;
@@ -132,7 +133,7 @@ export function GroupFeed({
         return (
           <div
             key={post.id}
-            className="bg-surface-container-lowest border border-outline-variant rounded-card p-4 space-y-2"
+            className={`${cardClasses({ padding: "compact" })} space-y-2`}
           >
             {isEditing ? (
               <div className="space-y-2">

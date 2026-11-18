@@ -6,6 +6,7 @@ import { createCoffeeInvite, revokeCoffeeShare, rotateCoffeeInvite } from "@/app
 import { useActionFeedback } from "@/components/ui";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { buildCoffeeInviteUrl } from "@/lib/inviteUrl";
+import { PaperSectionHeading } from "@/components/ui/PaperSectionHeading";
 
 type Share = { userId: string; displayName: string };
 
@@ -131,7 +132,7 @@ export function CoffeeShareManager({
 
   return (
     <div className="space-y-4">
-      <h2 className="section-title">{t.title}</h2>
+      <PaperSectionHeading level={3} title={t.title} flush />
 
       {token ? (
         <div className="flex flex-col gap-2 sm:flex-row">

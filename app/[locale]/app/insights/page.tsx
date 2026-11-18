@@ -9,6 +9,7 @@ import { InsightChart } from "@/components/insights/InsightChart";
 import { DescriptorBarList } from "@/components/insights/DescriptorBarList";
 import { AiSummaryPanel } from "@/components/insights/AiSummaryPanel";
 import type { ReactNode } from "react";
+import { cardClasses } from "@/components/ui/cardRecipe";
 
 export function generateStaticParams() {
   return [{ locale: "es" }, { locale: "en" }];
@@ -16,7 +17,7 @@ export function generateStaticParams() {
 
 function ChartCard({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="bg-surface-container-lowest rounded-card border border-outline-variant shadow-card p-5">
+    <section className={cardClasses()}>
       <h2 className="label-caps font-sans mb-4">
         {title}
       </h2>

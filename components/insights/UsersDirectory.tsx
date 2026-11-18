@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/Button";
 import { useActionFeedback } from "@/components/ui/Toast";
 import { downloadFile } from "@/lib/platform/files";
 import { useIsNativeShell } from "@/hooks/useIsNativeShell";
+import { cardClasses } from "@/components/ui/cardRecipe";
 
 export interface UsersDirectoryTranslations {
   table: {
@@ -186,7 +187,7 @@ export function UsersDirectory({ users, locale, t, canExport, canRevealEmails }:
         searchText={(row) => [row.displayName, row.email ? shown(row.email) : null]}
         facets={facets}
         renderMobileCard={(row) => (
-          <div className="space-y-2 rounded-card border border-outline-variant bg-surface-container-lowest p-4">
+          <div className={`${cardClasses({ padding: "compact" })} space-y-2`}>
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 space-y-1">
                 <div className="flex min-w-0 items-center gap-2">

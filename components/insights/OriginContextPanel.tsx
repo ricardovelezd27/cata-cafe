@@ -18,6 +18,7 @@ import { useActionFeedback } from "@/components/ui/Toast";
 import type { OriginContext } from "@/lib/analytics/benchmarks";
 import { getChartColors } from "@/components/results/chartColors";
 import { chartTick, CHART_HTML_PX } from "./chartText";
+import { cardClasses } from "@/components/ui/cardRecipe";
 
 const CHART_HEIGHT = 280;
 
@@ -94,7 +95,7 @@ export function OriginContextPanel({
   }
 
   return (
-    <section className="bg-surface-container-lowest rounded-card border border-outline-variant shadow-card p-5">
+    <section className={cardClasses()}>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-card">{t.title}</h2>
         {isPending && <Loader2 size={16} className="animate-spin text-on-surface-variant" aria-hidden />}

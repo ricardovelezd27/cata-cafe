@@ -3,6 +3,7 @@ import { ChevronDown } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { textActionClasses } from "@/components/ui/TextAction";
 import type { LifetimeLines } from "@/lib/coffeeLifetimeLines";
+import { cardClasses } from "@/components/ui/cardRecipe";
 
 /**
  * The coffee page's ONE score block (package S9 of the 2026-11-15 UI/UX audit, I-07).
@@ -36,7 +37,8 @@ export function CoffeeScoreBlock({
   return (
     <section
       aria-label={title}
-      className="col-span-2 flex flex-col gap-1.5 rounded-card border border-outline-variant bg-surface-container-lowest p-5 shadow-card xl:col-span-4"
+      // P2c (D-07): the card recipe (no shadow); what it shows and where it sits are unchanged.
+      className={`${cardClasses()} col-span-2 flex flex-col gap-1.5 xl:col-span-4`}
     >
       <span className="label-caps">{title}</span>
       <span className="mt-1 font-display text-4xl leading-none tabular-nums text-on-surface">

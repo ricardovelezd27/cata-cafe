@@ -10,6 +10,7 @@ import { citationLines } from "@/lib/analytics/referenceSources";
 import { BenchmarkPanel } from "@/components/insights/BenchmarkPanel";
 import { OriginContextPanel } from "@/components/insights/OriginContextPanel";
 import { SourceAttribution } from "@/components/insights/SourceAttribution";
+import { PaperSectionHeading } from "@/components/ui/PaperSectionHeading";
 
 export function generateStaticParams() {
   return [{ locale: "es" }, { locale: "en" }];
@@ -40,7 +41,7 @@ export default async function InsightsBenchmarkPage({
   return (
     <div className="flex flex-col gap-5 pb-8">
       <div>
-        <h2 className="text-card mb-1">{t("title")}</h2>
+        <PaperSectionHeading title={t("title")} flush />
         <p className="text-caption text-on-surface-variant">{t("subtitle")}</p>
       </div>
 

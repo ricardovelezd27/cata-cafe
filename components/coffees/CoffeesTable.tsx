@@ -19,6 +19,7 @@ import { formatCoffeeCode } from "@/lib/coffeeCode";
 import { MAX_BULK_COFFEE_DELETE } from "@/lib/coffeeAccess";
 import { normKey } from "@/lib/analytics/normalize";
 import { processToneVar } from "@/lib/processTone";
+import { cardClasses } from "@/components/ui/cardRecipe";
 
 // Variety facet: free-text varieties are grouped by accent/case-insensitive key
 // ("Caturra" and "caturra " merge)
@@ -408,8 +409,8 @@ export default function CoffeesTable({
         const latest = row.coffeeHistory[0] ?? null;
         return (
           <div
-            className={`space-y-2 rounded-card border border-outline-variant px-4 py-3 ${
-              sel?.selected ? "bg-primary-fixed/40" : "bg-surface-container-lowest"
+            className={`space-y-2 ${
+              cardClasses({ tone: sel?.selected ? "selected" : "default", padding: "row" })
             }`}
           >
             <div className="flex items-start justify-between gap-2">
