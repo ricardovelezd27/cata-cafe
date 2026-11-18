@@ -30,6 +30,7 @@ export default async function InsightsAccessPage({
     listAnalyticsUsers(),
     getLastDigestRun(),
   ]);
+  const tTabs = await getTranslations("insights.tabs");
 
   return (
     <div className="flex flex-col gap-4 pb-8">
@@ -65,6 +66,8 @@ export default async function InsightsAccessPage({
             prev: tc("prev"),
             next: tc("next"),
             clearFilters: tc("clearFilters"),
+            caption: tTabs("access"),
+            actions: tc("tableActions"),
             all: tc("all"),
           },
           colName: tu("colName"),

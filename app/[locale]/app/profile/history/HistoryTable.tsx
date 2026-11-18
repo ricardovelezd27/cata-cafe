@@ -39,6 +39,8 @@ export type HistoryTableTranslations = {
     prev: string;
     next: string;
     clearFilters: string;
+    caption: string;
+    actions?: string;
     all: string;
   };
   colCoffee: string;
@@ -135,6 +137,7 @@ export function HistoryTable({
     },
     {
       key: "individualScore",
+      numeric: true,
       label: t.yourScore,
       align: "right",
       render: (row) => (
@@ -146,6 +149,7 @@ export function HistoryTable({
     },
     {
       key: "communityScore",
+      numeric: true,
       label: t.communityScore,
       align: "right",
       render: (row) => <ScorePill score={row.communityScore} />,

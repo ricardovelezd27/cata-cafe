@@ -70,7 +70,7 @@ export function LevelBadge({
       <span className="text-caption text-on-surface-variant">{progressText}</span>
 
       {topPercentText && (
-        <span className="text-caption font-semibold text-secondary">{topPercentText}</span>
+        <span className="text-caption font-semibold text-on-surface">{topPercentText}</span>
       )}
 
       <p className="text-caption text-on-surface-variant border-t border-outline-variant pt-2 mt-1">

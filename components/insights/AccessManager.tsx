@@ -22,6 +22,8 @@ export interface AccessTranslations {
     prev: string;
     next: string;
     clearFilters: string;
+    caption: string;
+    actions?: string;
     all: string;
   };
   colName: string;

@@ -21,6 +21,8 @@ export interface UsersDirectoryTranslations {
     prev: string;
     next: string;
     clearFilters: string;
+    caption: string;
+    actions?: string;
     all: string;
   };
   colName: string;
@@ -111,14 +113,14 @@ export function UsersDirectory({ users, locale, t, canExport, canRevealEmails }:
       key: "sessionsCount",
       label: t.colSessions,
       sortable: true,
-      align: "center",
+      numeric: true,
       render: (row) => <span className="tabular-nums">{row.sessionsCount}</span>,
     },
     {
       key: "coffeesCount",
       label: t.colCoffees,
       sortable: true,
-      align: "center",
+      numeric: true,
       render: (row) => <span className="tabular-nums">{row.coffeesCount}</span>,
     },
     {

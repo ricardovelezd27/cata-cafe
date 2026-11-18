@@ -5,11 +5,12 @@ interface StatCardProps {
   label: string;
   value: string;
   subtext: string;
+  /** @deprecated A-04 (Q1): a score is never singled out by colour; kept so callers still compile, it paints nothing. */
   accent?: boolean;
   icon?: ReactNode;
 }
 
-export function StatCard({ label, value, subtext, accent, icon }: StatCardProps) {
+export function StatCard({ label, value, subtext, icon }: StatCardProps) {
   return (
     // P2b (D-07): a Card (one border, no shadow). The 240 px stat cap is not applied:
     // the dashboard's stat grid would leave gaps (listed in the P2b pull request).
@@ -24,9 +25,8 @@ export function StatCard({ label, value, subtext, accent, icon }: StatCardProps)
         {label}
       </span>
       <span
-        className={`font-display text-4xl leading-none mt-1 tabular-nums ${
-          accent ? "text-secondary" : "text-on-surface"
-        }`}
+        // A-04 (Q1): every numeral is ink, the score included; B-06: tabular figures.
+        className="font-display text-4xl leading-none mt-1 tabular-nums text-on-surface"
       >
         {value}
       </span>

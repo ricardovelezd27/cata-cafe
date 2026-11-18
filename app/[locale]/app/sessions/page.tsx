@@ -167,6 +167,8 @@ export default async function SessionsList({
       prev: tc("prev"),
       next: tc("next"),
       clearFilters: tc("clearFilters"),
+      caption: t("list"),
+      actions: tc("tableActions"),
       all: tc("all"),
     },
     colName: t("table.colName"),

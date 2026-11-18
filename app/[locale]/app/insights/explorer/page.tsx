@@ -31,6 +31,7 @@ export default async function InsightsExplorerPage({
     getTranslations("insights.charts"),
     loadSavedInsights(),
   ]);
+  const tChat = await getTranslations("insights.chat");
 
   // Bulk-build option-label records; the dynamic keys defeat next-intl's
   // template-literal typing, so go through an untyped alias.
@@ -104,6 +105,7 @@ export default async function InsightsExplorerPage({
         running: t("running"),
         noResults: t("noResults"),
         error: t("error"),
+        retry: tChat("retry"),
         datasets: datasetLabels,
         dimensions: dimensionLabels,
         measures: measureLabels,
