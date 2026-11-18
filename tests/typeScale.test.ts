@@ -184,7 +184,6 @@ const SWEPT_ALLOWLIST: Record<string, { token: string; reason: string }[]> = {
   "components/dashboard/StatCard.tsx": [{ token: "text-4xl", reason: "a stat's numeral, a display size outside the six roles (31.5 px)" }],
   "app/[locale]/app/sessions/express/ExpressForm.tsx": [{ token: "text-4xl", reason: "the sample counter's numeral, a display size (31.5 px)" }],
   "components/onboarding/WelcomeModal.tsx": [{ token: "text-5xl", reason: "the welcome's coffee-cup emoji, used as a picture (42 px)" }],
-  "app/[locale]/app/sessions/[id]/waiting/WaitingRoomClient.tsx": [{ token: "text-6xl", reason: "the waiting room's coffee-cup emoji, used as a picture (52.5 px)" }],
   "components/coffees/CoffeeScoreBlock.tsx": [{ token: "text-4xl", reason: "the coffee's lifetime score, a display numeral (31.5 px)" }],
   "app/[locale]/app/warmup/page.tsx": [
     { token: "text-[28px]", reason: "an exercise's minutes on the library card, a display numeral" },

@@ -357,20 +357,21 @@ export function WaitingRoomClient({
             {referenceLine && (
               <p
                 role="status"
-                className="inline-block rounded-pill border border-surface/40 px-3 py-1 text-caption font-medium text-surface"
+                className="inline-block rounded-pill border border-surface/60 px-3 py-1 text-caption font-medium text-surface"
               >
                 {referenceLine}
               </p>
             )}
             {/* Waiting: said in words, with one still mint mark. Nothing bounces. */}
             {!isAsync && (
-              <p className="inline-flex items-center gap-2 text-caption text-surface/80">
-                <span aria-hidden="true" className="inline-block h-2 w-2 rounded-full bg-primary-fixed" />
+              <p className="text-caption text-surface/80">
+                <span aria-hidden="true" className="mr-2 inline-block h-2 w-2 rounded-full bg-primary-fixed align-middle" />
                 {translations.waiting}
               </p>
             )}
             {!isAsync && connectionLost && (
-              <p role="status" className="text-caption text-secondary-container">
+              <p role="status" className="text-caption text-surface">
+                <span aria-hidden="true" className="mr-2 inline-block h-2 w-2 rounded-full bg-secondary-container align-middle" />
                 {translations.connectionLost}
               </p>
             )}
