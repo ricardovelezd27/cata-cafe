@@ -8,7 +8,7 @@
   padding: 10px 16px 10px 20px;
   text-align: left;
   font-family: var(--font-ui);
-  font-size: 14px;
+  font-size: var(--text-body);
   font-weight: 500;
   color: var(--color-on-surface);
   background: transparent;
@@ -63,7 +63,7 @@
   justify-content: center;
   width: 14px;
   height: 14px;
-  font-size: 9px;
+  font-size: var(--text-caption);
   color: var(--color-primary-muted);
   flex-shrink: 0;
 }
@@ -71,7 +71,7 @@
 .position {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  font-size: 10px;
+  font-size: var(--text-caption);
   color: var(--color-on-surface-variant);
   font-weight: 600;
   width: 14px;
@@ -84,9 +84,9 @@
   padding: 0 20px 6px;
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  font-size: 10px;
+  font-size: var(--text-label);
   font-weight: 600;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--color-on-surface-variant);
 }
@@ -136,7 +136,7 @@
   padding: 8px 14px;
   text-align: left;
   font-family: var(--font-ui);
-  font-size: 14px;
+  font-size: var(--text-body);
   font-weight: 500;
   color: var(--color-on-surface);
   background: transparent;
@@ -182,9 +182,9 @@
   padding: 1px 6px;
   border-radius: var(--radius-pill);
   font-family: var(--font-mono);
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
+  font-size: var(--text-label);
+  font-weight: 600;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--color-secondary);
   background: var(--color-secondary-fixed);

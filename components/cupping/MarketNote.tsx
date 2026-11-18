@@ -66,7 +66,7 @@ export function MarketNote({
   };
 
   const optionClass = (active: boolean) =>
-    `min-h-[44px] flex-1 rounded-input border px-3 py-2 text-left font-sans text-sm transition-colors ${
+    `min-h-[44px] flex-1 rounded-input border px-3 py-2 text-left font-sans text-caption transition-colors ${
       active
         ? "border-primary-container bg-primary-container text-on-primary"
         : "border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low"
@@ -77,9 +77,9 @@ export function MarketNote({
       className="mt-4 rounded-card border border-outline-variant bg-surface-container-lowest"
       open={initiallyOpen}
     >
-      <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-between gap-2 px-4 py-2 font-sans text-sm text-on-surface">
+      <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-between gap-2 px-4 py-2 font-sans text-body text-on-surface">
         <span>{copy.title}</span>
-        <span className="text-xs text-on-surface-variant">{copy.optional}</span>
+        <span className="text-caption text-on-surface-variant">{copy.optional}</span>
       </summary>
       <div className="space-y-3 border-t border-outline-variant px-4 py-3">
         <div role="radiogroup" aria-label={copy.title} className="flex flex-col gap-2 sm:flex-row">
@@ -106,7 +106,7 @@ export function MarketNote({
         </div>
         {pov === "conocido" && (
           <label className="block">
-            <span className="mb-1 block font-sans text-xs text-on-surface-variant">{copy.noteLabel}</span>
+            <span className="mb-1 block font-sans text-body text-on-surface-variant">{copy.noteLabel}</span>
             <input
               type="text"
               value={note}
@@ -114,7 +114,7 @@ export function MarketNote({
               disabled={disabled}
               placeholder={copy.notePlaceholder}
               onChange={(e) => onChange({ ...data, [MARKET_KEY]: "conocido", [MARKET_NOTE_KEY]: e.target.value })}
-              className="min-h-[44px] w-full rounded-input border border-outline-variant bg-surface-container-lowest px-3 py-2 font-sans text-sm text-on-surface"
+              className="min-h-[44px] w-full rounded-input border border-outline-variant bg-surface-container-lowest px-3 py-2 font-sans text-body text-on-surface"
             />
           </label>
         )}

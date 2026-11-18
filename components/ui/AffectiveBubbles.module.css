@@ -1,7 +1,7 @@
 .root { width: 100%; container-type: inline-size; }
 .head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-.label { font-family: var(--font-ui); font-size: 13px; font-weight: 500; color: var(--color-on-surface); }
-.finalBadge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; background: var(--color-primary-container); color: var(--color-surface); font-family: var(--font-mono); font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.18em; border-radius: 3px; }
+.label { font-family: var(--font-ui); font-size: var(--text-body); font-weight: 500; color: var(--color-on-surface); }
+.finalBadge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; background: var(--color-primary-container); color: var(--color-surface); font-family: var(--font-mono); font-size: var(--text-label); font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; border-radius: 3px; }
 .finalBadge::before { content: ""; width: 5px; height: 5px; background: var(--color-secondary); border-radius: 50%; }
 .row { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
 .bubble { position: relative; flex: 0 0 auto; width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid var(--color-outline-variant); background: var(--color-surface); font-family: var(--font-display); font-size: 19px; font-weight: 600; color: var(--color-on-surface); display: grid; place-items: center; transition: all var(--transition-fast); font-variant-numeric: tabular-nums; padding: 0; }
@@ -16,16 +16,16 @@
    high and red for low read as a quality band, which a score never has. */
 .selected { background: var(--color-primary-container); border-color: var(--color-primary-container); color: var(--color-on-primary); box-shadow: 0 0 0 4px color-mix(in oklch, var(--color-primary-container) 12%, transparent); }
 .final { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-left: 16px; }
-.finalCap { font-family: var(--font-mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.18em; color: var(--color-on-surface-variant); font-weight: 600; }
+.finalCap { font-family: var(--font-mono); font-size: var(--text-label); text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-on-surface-variant); font-weight: 600; }
 .finalSet .finalCap { color: var(--color-secondary); }
 .finalInput { width: 58px; height: 44px; line-height: 44px; text-align: center; border: 1.5px solid var(--color-outline-variant); border-radius: var(--radius-input); background: var(--color-surface-container); font-family: var(--font-display); font-size: 22px; font-weight: 600; color: var(--color-on-surface-variant); font-variant-numeric: tabular-nums; }
 .finalSet .finalInput { background: var(--color-primary-container); border-color: var(--color-primary-container); color: var(--color-surface); }
-.scale { display: flex; justify-content: space-between; margin-top: 12px; font-family: var(--font-mono); font-size: 9px; color: var(--color-on-surface-variant); text-transform: uppercase; letter-spacing: 0.16em; }
+.scale { display: flex; justify-content: space-between; margin-top: 12px; font-family: var(--font-mono); font-size: var(--text-caption); line-height: 1.25; color: var(--color-on-surface-variant); }
 /* Reserve space equal to final box + margin so labels align under bubbles only */
-.scaleInner { display: flex; justify-content: space-between; flex: 1; }
-.scaleInner span:nth-child(1) { max-width: 34%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scaleInner { display: flex; justify-content: space-between; gap: 6px; flex: 1; }
+.scaleInner span:nth-child(1) { max-width: 34%; min-width: 0; }
 .scaleInner span:nth-child(2) { flex: 1; text-align: center; }
-.scaleInner span:nth-child(3) { max-width: 34%; min-width: 0; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scaleInner span:nth-child(3) { max-width: 34%; min-width: 0; text-align: right; }
 .scaleSpacer { flex-shrink: 0; width: calc(58px + 16px); } /* matches .final: margin-left 16px + finalInput 58px */
 /* Narrow (the phone's single column, the ~300 px column of the two-column
    layout): nine bubbles paint 34 px (F-02) on a nine-column grid, each centred
@@ -37,16 +37,16 @@
   .bubble { justify-self: center; width: 34px; height: 34px; font-size: 15px; border-width: 1.25px; --hit-w: min(44px, calc((var(--row-w) - var(--final-w)) / 9)); }
   .final { margin-left: 8px; }
   .finalInput { width: 42px; height: 34px; line-height: 34px; font-size: 17px; }
-  .scale { font-size: 8px; }
-  .scaleInner span:nth-child(1), .scaleInner span:nth-child(3) { max-width: 34%; white-space: nowrap; }
+  .scale { font-size: var(--text-caption); }
+  .scaleInner span:nth-child(1), .scaleInner span:nth-child(3) { max-width: 34%; }
   .scaleSpacer { width: calc(42px + 8px); }
 }
 /* Extra-compact: the FINAL readout is hidden and the nine columns take the row. */
 @container (max-width: 360px) {
   .row { --final-w: 0px; }
   .final { display: none; }
-  .scale { font-size: 7.5px; margin-top: 6px; }
-  .scaleInner span:nth-child(1), .scaleInner span:nth-child(3) { max-width: 34%; white-space: nowrap; }
+  .scale { font-size: var(--text-caption); margin-top: 6px; }
+  .scaleInner span:nth-child(1), .scaleInner span:nth-child(3) { max-width: 34%; }
   .scaleSpacer { display: none; }
 }
 /* A column that cannot hold nine 34 px bubbles with 4 px between them
@@ -65,7 +65,7 @@
     .row { gap: 2px; }
     .bubble { width: 34px; height: 34px; font-size: 15px; border-width: 1.25px; --hit-w: 36px; }
     .final { display: none; }
-    .scale { font-size: 7.5px; margin-top: 6px; }
+    .scale { font-size: var(--text-caption); margin-top: 6px; }
     .scaleSpacer { display: none; }
   }
 }

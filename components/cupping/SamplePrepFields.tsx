@@ -18,9 +18,9 @@ export type SamplePrepTranslations = {
 };
 
 const fieldCls =
-  "w-full min-h-[44px] border border-outline-variant rounded-input px-3.5 py-2.5 text-sm text-on-surface bg-surface-container-lowest focus:border-primary-container transition-colors";
+  "w-full min-h-[44px] border border-outline-variant rounded-input px-3.5 py-2.5 text-caption text-on-surface bg-surface-container-lowest focus:border-primary-container transition-colors";
 const labelCls =
-  "block text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant mb-1.5";
+  "label-caps block mb-1.5";
 
 /**
  * The owner's optional per-sample prep data (S10 WP2 / A9): roast date, a free
@@ -49,12 +49,12 @@ export function SamplePrepFields({
         "group rounded-input border border-outline-variant bg-surface-container-low/50 " + className
       }
     >
-      <summary className="flex min-h-[44px] cursor-pointer select-none items-center justify-between gap-2 px-3.5 py-2 text-xs font-semibold uppercase tracking-widest text-on-surface-variant [&::-webkit-details-marker]:hidden">
+      <summary className="label-caps flex min-h-[44px] cursor-pointer select-none items-center justify-between gap-2 px-3.5 py-2 [&::-webkit-details-marker]:hidden">
         {t.summary}
         <ChevronDown size={14} className="transition-transform group-open:rotate-180" aria-hidden />
       </summary>
       <div className="space-y-3 px-3.5 pb-3.5">
-        <p className="text-xs text-on-surface-variant">{t.hint}</p>
+        <p className="text-caption text-on-surface-variant">{t.hint}</p>
         <div>
           <label htmlFor={`${idPrefix}-roast`} className={labelCls}>
             {t.roastDate}
@@ -82,7 +82,7 @@ export function SamplePrepFields({
             onChange={(e) => onChange({ preparationNote: e.target.value })}
           />
         </div>
-        <label className="flex min-h-[44px] cursor-pointer items-center gap-2.5 text-sm text-on-surface">
+        <label className="flex min-h-[44px] cursor-pointer items-center gap-2.5 text-body text-on-surface">
           <input
             type="checkbox"
             checked={value.offProtocol}

@@ -79,7 +79,7 @@ export function AffectiveForm({
     lockedAffective && lockedNote ? (
       <div
         role="note"
-        className="mb-4 rounded-card border border-secondary/30 bg-secondary-fixed px-4 py-3 font-sans text-sm text-on-secondary-fixed-variant"
+        className="mb-4 rounded-card border border-secondary/30 bg-secondary-fixed px-4 py-3 font-sans text-body text-on-secondary-fixed-variant"
       >
         {lockedNote}
       </div>
@@ -170,7 +170,7 @@ export function AffectiveForm({
 
       {showCups && lockedAffective && lockedCupsNote && (
         <FormSection title={copy.title}>
-          <p className="font-sans text-sm text-on-surface-variant">{lockedCupsNote}</p>
+          <p className="font-sans text-caption text-on-surface-variant">{lockedCupsNote}</p>
         </FormSection>
       )}
       {showCups && !lockedAffective && (
@@ -186,7 +186,7 @@ export function AffectiveForm({
             onSetDefect={(i, type) => onChange(applyDefectChoice(d, cupsPerSample, i, type))}
           />
           {(nonUniformCount > 0 || defectiveCount > 0) && (
-            <div className="mt-2 text-[11px] text-on-surface-variant">
+            <div className="mt-2 text-caption text-on-surface-variant">
               {cupSummary(copy, nonUniformCount, defectiveCount)}
             </div>
           )}
@@ -197,7 +197,7 @@ export function AffectiveForm({
         <MarketNote data={d} onChange={onChange} copy={marketCopy ?? MARKET_COPY_FALLBACK[locale]} />
       )}
 
-      <p className="mt-4 font-sans text-sm text-on-surface-variant">{copy.scoreLater}</p>
+      <p className="mt-4 font-sans text-caption text-on-surface-variant">{copy.scoreLater}</p>
     </div>
   );
 }

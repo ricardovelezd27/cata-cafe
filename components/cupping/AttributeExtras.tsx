@@ -86,7 +86,7 @@ export const PARTIAL_COPY_FALLBACK: Record<"es" | "en", PartialCopy> = {
 type Data = Record<string, unknown>;
 
 const BTN =
-  "inline-flex min-h-[44px] items-center rounded-input px-3 font-sans text-sm text-on-surface-variant underline underline-offset-2 hover:text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50";
+  "inline-flex min-h-[44px] items-center rounded-input px-3 font-sans text-caption text-on-surface-variant underline underline-offset-2 hover:text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50";
 
 /** Whether a section's bubbles must be disabled/hidden by the form: it is marked "no evaluado". */
 export function sectionNotEvaluated(data: Data, attrId: string): boolean {
@@ -118,7 +118,7 @@ export function AttributeExtras({
   if (notEvaluated) {
     return (
       <div className="mt-3 flex flex-wrap items-center gap-x-3" data-testid={`ne-${attrId}`}>
-        <span className="font-sans text-sm font-medium text-on-surface-variant">{copy.notEvaluatedOn}</span>
+        <span className="font-sans text-caption font-medium text-on-surface-variant">{copy.notEvaluatedOn}</span>
         <button type="button" className={BTN} onClick={() => onChange(setNotEvaluated(data, attrId, false))}>
           {copy.evaluateIt}
         </button>
@@ -145,7 +145,7 @@ export function AttributeExtras({
                     type="button"
                     onClick={() => onChange(setCooledValue(data, attrId, n))}
                     aria-label={`${copy.cooledLabel}: ${n} — ${AFFECTIVE_LABELS[n]}`}
-                    className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-pill border border-outline-variant font-sans text-sm text-on-surface hover:bg-surface-container focus-visible:outline-2 focus-visible:outline-offset-2"
+                    className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-pill border border-outline-variant font-sans text-caption text-on-surface hover:bg-surface-container focus-visible:outline-2 focus-visible:outline-offset-2"
                   >
                     {n}
                   </button>
@@ -156,7 +156,7 @@ export function AttributeExtras({
       )}
 
       {pair && (
-        <span className="inline-flex items-center gap-2 font-sans text-sm text-on-surface">
+        <span className="inline-flex items-center gap-2 font-sans text-body text-on-surface">
           <span aria-label={copy.cooledSummary.replace("{from}", String(pair.from)).replace("{to}", String(pair.to))}>
             {pair.from} → {pair.to}
           </span>

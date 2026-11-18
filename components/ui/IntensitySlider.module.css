@@ -1,10 +1,10 @@
 .root { position: relative; width: 100%; padding: 4px 0 8px; }
 .head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 16px; }
-.label { font-family: var(--font-ui); font-size: 13px; font-weight: 500; color: var(--color-on-surface); letter-spacing: 0.01em; }
+.label { font-family: var(--font-ui); font-size: var(--text-body); font-weight: 500; color: var(--color-on-surface); letter-spacing: 0.01em; }
 .valueDisplay { font-family: var(--font-display); font-size: 24px; font-weight: 600; color: var(--color-primary-container); line-height: 1; }
-.valueDisplay em { font-family: var(--font-ui); font-size: 13px; font-style: italic; color: var(--color-on-surface-variant); font-weight: 400; }
+.valueDisplay em { font-family: var(--font-ui); font-size: var(--text-caption); font-style: italic; color: var(--color-on-surface-variant); font-weight: 400; }
 .num { font-variant-numeric: tabular-nums; }
-.cap { font-family: var(--font-mono); font-size: 10px; color: var(--color-on-surface-variant); margin-left: 4px; letter-spacing: 0.14em; font-weight: 500; }
+.cap { font-family: var(--font-mono); font-size: var(--text-caption); color: var(--color-on-surface-variant); margin-left: 4px; letter-spacing: 0.14em; font-weight: 500; }
 .track { position: relative; height: 8px; background: var(--color-surface-container); border: 1px solid var(--color-outline-variant); border-radius: var(--radius-pill); cursor: pointer; touch-action: pan-y; }
 /* Expand the touch target to ~44px without affecting layout. */
 .track::before { content: ""; position: absolute; inset: -18px 0; }
@@ -27,9 +27,9 @@
 .locked .input { pointer-events: none; }
 .ticks { position: relative; margin-top: 14px; display: flex; justify-content: space-between; }
 .tick { flex: 1; min-width: 0; }
-.tickNum { font-family: var(--font-mono); font-size: 11px; font-weight: 500; color: var(--color-on-surface-variant); display: block; }
+.tickNum { font-family: var(--font-mono); font-size: var(--text-caption); font-weight: 500; color: var(--color-on-surface-variant); display: block; }
 @media (max-width: 480px) {
   .valueDisplay { font-size: 18px; }
-  .tickNum { font-size: 10px; }
+  .tickNum { font-size: var(--text-caption); }
   .head { margin-bottom: 12px; }
 }

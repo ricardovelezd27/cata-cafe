@@ -142,7 +142,7 @@ export function SessionShell({
             ) : (
               mobileTitle && (
                 <span
-                  className="font-display text-base text-on-surface truncate"
+                  className="font-display text-body text-on-surface truncate"
                   style={{ flex: 1, minWidth: 0 }}
                 >
                   {mobileTitle}

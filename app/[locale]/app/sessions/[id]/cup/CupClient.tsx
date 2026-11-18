@@ -2260,7 +2260,7 @@ export function CupClient({
     </Badge>
   ) : referenceSample && translations.compareHint ? (
     <span
-      className="min-w-0 truncate font-sans text-[11px] text-on-surface-variant"
+      className="min-w-0 truncate font-sans text-caption text-on-surface-variant"
       title={translations.compareHint.replace("{label}", referenceSample.label)}
     >
       {translations.compareHint.replace("{label}", referenceSample.label)}
@@ -2350,7 +2350,7 @@ export function CupClient({
     <TextAction
       tone="none"
       onClick={() => setEditingSample(true)}
-      className="-my-[15px] font-mono text-[10px] uppercase tracking-wide text-on-surface-variant hover:text-primary-container"
+      className="label-caps -my-[15px] hover:text-primary-container"
     >
       ✎ {translations.editSample}
     </TextAction>
@@ -2567,20 +2567,20 @@ export function CupClient({
     : translations.submittedOf;
   const identity = (
     <>
-      <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-on-surface-variant">
+      <div className="label-caps">
         {translations.formatLabel}
         {isGroup ? ` · ${isOwner ? translations.masterRole : translations.participantRole}` : ""}
       </div>
-      <div className="font-display text-xl leading-tight text-primary-container truncate">
+      <div className="font-display text-card leading-tight text-primary-container truncate">
         {session.name}
       </div>
       {isGroup && isOwner && (
-        <div className="font-mono text-[11px] text-on-surface-variant mt-0.5">
+        <div className="font-mono text-caption text-on-surface-variant mt-0.5">
           {ownerSubmittedText}
         </div>
       )}
       {referenceSample && (
-        <div className="font-mono text-[11px] text-on-surface-variant mt-0.5 truncate">
+        <div className="font-mono text-caption text-on-surface-variant mt-0.5 truncate">
           {multiRef ? referenceSummary : `${referenceBadgeLabel}: ${referenceSample.label}`}
         </div>
       )}
@@ -2611,7 +2611,7 @@ export function CupClient({
     <div className="hidden sm:block lg:hidden border-t border-outline-variant bg-surface">
       <div className="flex items-center gap-3 px-4 py-1.5">
         <div className="min-w-0 flex-1">{sampleTabsBar}</div>
-        <span className="shrink-0 font-mono text-[10px] text-on-surface-variant tabular-nums">
+        <span className="shrink-0 font-mono text-caption text-on-surface-variant tabular-nums">
           {sampleIdx + 1}/{samples.length}
         </span>
         {editSampleButton}
@@ -2644,29 +2644,29 @@ export function CupClient({
           onSelect={handleSampleSelect}
         />
       </div>
-      <span className="shrink-0 font-mono text-[10px] text-on-surface-variant tabular-nums">
+      <span className="shrink-0 font-mono text-caption text-on-surface-variant tabular-nums">
         {sampleIdx + 1}/{samples.length}
       </span>
     </div>
   );
   const phoneDetails = (
     <>
-      <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-on-surface-variant">
+      <div className="label-caps">
         {translations.formatLabel}
         {isGroup ? ` · ${isOwner ? translations.masterRole : translations.participantRole}` : ""}
       </div>
-      <div className="font-display text-lg leading-tight text-primary-container truncate">
+      <div className="font-display text-card leading-tight text-primary-container truncate">
         {session.name}
       </div>
       {activeTab !== "cupping" && (
-        <div className="font-sans text-sm text-on-surface">
+        <div className="font-sans text-caption text-on-surface">
           {activeTab === "physical" ? translations.physical : translations.extrinsic}
           {" · "}
           {translations.sample} {current.label}
         </div>
       )}
       {isGroup && isOwner && (
-        <div className="font-mono text-[11px] text-on-surface-variant">{ownerSubmittedText}</div>
+        <div className="font-mono text-caption text-on-surface-variant">{ownerSubmittedText}</div>
       )}
       {referenceContext && <div className="flex items-center">{referenceContext}</div>}
       {editSampleButton && <div className="flex items-center pt-1">{editSampleButton}</div>}
@@ -2788,7 +2788,7 @@ export function CupClient({
     <TextAction
       tone="none"
       onClick={() => void requestLeave("sessions")}
-      className="-my-[13px] !justify-start gap-2 font-sans text-sm text-on-surface-variant hover:text-primary-container transition-colors focus-visible:outline-2 focus-visible:outline-primary-container focus-visible:outline-offset-2 rounded-sm"
+      className="-my-[13px] !justify-start gap-2 font-sans text-caption text-on-surface-variant hover:text-primary-container transition-colors focus-visible:outline-2 focus-visible:outline-primary-container focus-visible:outline-offset-2 rounded-sm"
     >
       <span aria-hidden>←</span> {translations.exitToSessions}
     </TextAction>
@@ -2833,14 +2833,14 @@ export function CupClient({
   // samples are all on screen). Desktop keeps the clock column for continuity.
   const notesTopBar = (
     <div className="flex items-center gap-3 px-4 py-2 sm:px-6">
-      <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-on-surface-variant">
+      <span className="label-caps">
         {expressNotesCopy.title}
       </span>
       <span className="text-outline-variant">·</span>
-      <span className="font-display text-base text-on-surface truncate">
+      <span className="font-display text-body text-on-surface truncate">
         {session.name}
       </span>
-      <span className="ml-auto shrink-0 font-mono text-[10px] text-on-surface-variant tabular-nums">
+      <span className="ml-auto shrink-0 font-mono text-caption text-on-surface-variant tabular-nums">
         {samples.length} {translations.samplesHeader.toLowerCase()}
       </span>
     </div>
@@ -2869,19 +2869,19 @@ export function CupClient({
             </div>
           </div>
           <div className="flex flex-col items-end justify-center gap-0.5 text-right shrink-0 pt-0.5">
-            <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-on-surface-variant">
+            <span className="label-caps">
               {new Intl.DateTimeFormat(locale, { weekday: "short", day: "numeric", month: "short", year: "numeric" }).format(new Date(session.date))}
             </span>
-            <span className="font-mono text-xl font-semibold tabular-nums text-primary-container leading-none">
+            <span className="font-mono text-card font-semibold tabular-nums text-primary-container leading-none">
               {clockTime}
             </span>
             {isGroup && (
-              <span className="font-mono text-[11px] text-on-surface-variant mt-0.5">
+              <span className="font-mono text-caption text-on-surface-variant mt-0.5">
                 {participantCount} {participantCount === 1 ? "participante" : "participantes"}
               </span>
             )}
             {userCountry && (
-              <span className="font-mono text-[11px] text-on-surface-variant">
+              <span className="font-mono text-caption text-on-surface-variant">
                 {userCountry}
               </span>
             )}
@@ -2908,14 +2908,14 @@ export function CupClient({
         {/* Tablet: horizontal sample bar (phones: hamburger row) */}
         {mobileSampleBar}
         <div className="hidden sm:flex items-center gap-3 px-6 py-3">
-          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-on-surface-variant">
+          <span className="label-caps">
             {activeTab === "physical"
               ? translations.physical
               : translations.extrinsic}
           </span>
           <BetaBadge />
           <span className="text-outline-variant">·</span>
-          <span className="font-display text-base text-on-surface">
+          <span className="font-display text-body text-on-surface">
             {translations.sample} {current.label}
           </span>
           {referenceContext}
@@ -2985,14 +2985,14 @@ export function CupClient({
         renderedUserId={userId}
       />
       {allReferencesStuck && translations.allReferencesNotice && (
-        <div role="status" className="mx-4 mt-2 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-sm text-on-surface">
+        <div role="status" className="mx-4 mt-2 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-body text-on-surface">
           {translations.allReferencesNotice}
         </div>
       )}
       {closeAsIsApplies && translations.closeAsIs && (
         <div
           role="status"
-          className="mx-4 mt-2 flex flex-wrap items-center gap-2 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-sm text-on-surface"
+          className="mx-4 mt-2 flex flex-wrap items-center gap-2 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-body text-on-surface"
         >
           <span className="flex-1 min-w-[200px]">{translations.closeAsIs.line}</span>
           <Link
@@ -3013,7 +3013,7 @@ export function CupClient({
       {terminalCount > 0 && translations.offline.terminalNotice && (
         <div
           role="status"
-          className="mx-4 mb-3 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-sm text-on-surface lg:mx-6"
+          className="mx-4 mb-3 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-body text-on-surface lg:mx-6"
         >
           {translations.offline.terminalNotice.replace("{count}", String(terminalCount))}
         </div>
@@ -3088,11 +3088,11 @@ export function CupClient({
               here instead. Group owners use MasterControls. */}
           {!isGroup && !sessionClosed && (
             <label className="mb-4 block">
-              <span className="mb-1 block font-mono text-[10px] uppercase tracking-[0.18em] text-on-surface-variant">
+              <span className="label-caps mb-1 block">
                 {translations.referenceSelect ?? "Muestra de referencia"}
               </span>
               {referenceSummary && (
-                <span className="mb-1 block font-sans text-xs text-on-surface-variant">
+                <span className="mb-1 block font-sans text-caption text-on-surface-variant">
                   {referenceSummary}
                 </span>
               )}
@@ -3110,7 +3110,7 @@ export function CupClient({
                 type="button"
                 disabled={pickPending}
                 onClick={openCoffeePicker}
-                className="inline-flex min-h-[44px] items-center rounded-pill border border-outline-variant px-4 text-sm font-medium text-on-surface transition-colors hover:bg-surface-container disabled:opacity-50"
+                className="inline-flex min-h-[44px] items-center rounded-pill border border-outline-variant px-4 text-caption font-medium text-on-surface transition-colors hover:bg-surface-container disabled:opacity-50"
               >
                 {translations.coffeePicker.useExisting}
               </button>
@@ -3165,7 +3165,7 @@ export function CupClient({
         <div
           role="status"
           aria-live="polite"
-          className="flex items-start gap-2 px-4 py-2 mb-3 rounded-card border border-secondary/30 bg-secondary-container/20 font-sans text-sm text-on-surface"
+          className="flex items-start gap-2 px-4 py-2 mb-3 rounded-card border border-secondary/30 bg-secondary-container/20 font-sans text-body text-on-surface"
         >
           <span className="flex-1">{translations.editSampleNotOwner}</span>
           <button
@@ -3182,7 +3182,7 @@ export function CupClient({
         <div
           role="status"
           aria-live="polite"
-          className="flex items-start gap-2 px-4 py-2 mb-3 rounded-card border border-secondary/40 bg-secondary/10 font-sans text-sm text-secondary"
+          className="flex items-start gap-2 px-4 py-2 mb-3 rounded-card border border-secondary/40 bg-secondary/10 font-sans text-body text-secondary"
         >
           <span className="flex-1">
             {online
@@ -3216,7 +3216,7 @@ export function CupClient({
         <div
           role="alert"
           aria-live="assertive"
-          className="flex items-start gap-2 px-4 py-2 mb-3 rounded-card border border-error/40 bg-error/10 font-sans text-sm text-error"
+          className="flex items-start gap-2 px-4 py-2 mb-3 rounded-card border border-error/40 bg-error/10 font-sans text-body text-error"
         >
           <span className="flex-1">{translations.submitFailed}</span>
           <button
@@ -3239,7 +3239,7 @@ export function CupClient({
       {groupNotice && (
         <div
           role="status"
-          className="flex items-start gap-2 px-4 py-2 mb-3 rounded-card bg-secondary-container text-on-secondary-container font-sans text-sm"
+          className="flex items-start gap-2 px-4 py-2 mb-3 rounded-card bg-secondary-container text-on-secondary-container font-sans text-body"
         >
           <span className="flex-1">
             {groupNotice === "partial"
@@ -3260,7 +3260,7 @@ export function CupClient({
         <div
           role="alert"
           aria-live="assertive"
-          className="flex items-start gap-2 px-4 py-2 mb-3 rounded-card border border-error/40 bg-error/10 font-sans text-sm text-error"
+          className="flex items-start gap-2 px-4 py-2 mb-3 rounded-card border border-error/40 bg-error/10 font-sans text-body text-error"
         >
           <span className="flex-1">{translations.startSessionError}</span>
           <button
@@ -3475,7 +3475,7 @@ export function CupClient({
         {isEvaluationReadOnly({ revealed: isCurrentRevealed, activeTab }) && (
           <div
             role="note"
-            className="mb-4 rounded-card border border-secondary/30 bg-secondary-fixed px-4 py-3 font-sans text-sm text-on-secondary-fixed-variant"
+            className="mb-4 rounded-card border border-secondary/30 bg-secondary-fixed px-4 py-3 font-sans text-body text-on-secondary-fixed-variant"
           >
             {translations.revealedNote ?? REVEALED_NOTE_FALLBACK[locale === "en" ? "en" : "es"]}
           </div>

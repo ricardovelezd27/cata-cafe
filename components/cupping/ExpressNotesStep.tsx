@@ -34,12 +34,12 @@ export function ExpressNotesStep({
     <div className="space-y-4">
       <div className="space-y-1">
         <div className="flex items-center gap-2">
-          <h2 className="section-title text-2xl">{title}</h2>
+          <h2 className="section-title">{title}</h2>
           <Badge tone="neutral" size="xs">
             {optional}
           </Badge>
         </div>
-        <p className="text-sm text-on-surface-variant">{body}</p>
+        <p className="text-body text-on-surface-variant">{body}</p>
       </div>
       <ol className="space-y-3">
         {samples.map((s) => {
@@ -58,7 +58,7 @@ export function ExpressNotesStep({
                 )}
               </div>
               {s.readOnly && (
-                <p role="note" className="mb-2 font-sans text-xs text-on-secondary-fixed-variant">
+                <p role="note" className="mb-2 font-sans text-caption text-on-secondary-fixed-variant">
                   {revealedNote}
                 </p>
               )}
@@ -72,7 +72,7 @@ export function ExpressNotesStep({
                   ariaLabel={`${title} · ${s.label}`}
                 />
               </fieldset>
-              <p className="mt-1 text-right text-[11px] text-on-surface-variant tabular-nums">
+              <p className="mt-1 text-right text-caption text-on-surface-variant tabular-nums">
                 {text.length}/{maxLength}
               </p>
             </li>

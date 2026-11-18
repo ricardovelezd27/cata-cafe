@@ -142,7 +142,7 @@ export function DescriptiveForm({
         {renderBlock("sabor", "Sabor", null)}
         {renderBlock("sabor_residual", "Sabor Residual (Regusto)", null)}
         <FormSection title="Gustos Predominantes" accent flagged={isFlagged("gustos")}>
-          <div className="text-[11px] text-on-surface-variant mb-2">
+          <div className="text-caption text-on-surface-variant mb-2">
             Selecciona hasta 2 sabores principales
           </div>
           <CATAPills

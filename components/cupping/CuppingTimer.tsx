@@ -104,7 +104,7 @@ export function useCuppingTimerRunning(sessionId: string, userId: string): boole
 }
 
 const BTN =
-  "inline-flex min-h-[44px] items-center rounded-input px-3 font-sans text-sm text-on-surface-variant underline underline-offset-2 hover:text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2";
+  "inline-flex min-h-[44px] items-center rounded-input px-3 font-sans text-caption text-on-surface-variant underline underline-offset-2 hover:text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2";
 
 export function CuppingTimer({
   sessionId,
@@ -179,10 +179,10 @@ export function CuppingTimer({
           </button>
         ) : (
           <div className="flex flex-wrap items-center gap-x-3">
-            <span className="font-sans text-sm text-on-surface-variant">{copy.hint}</span>
+            <span className="font-sans text-caption text-on-surface-variant">{copy.hint}</span>
             <button
               type="button"
-              className="inline-flex min-h-[44px] items-center rounded-pill border border-outline-variant px-4 font-sans text-sm font-semibold text-on-surface hover:bg-surface-container focus-visible:outline-2 focus-visible:outline-offset-2"
+              className="inline-flex min-h-[44px] items-center rounded-pill border border-outline-variant px-4 font-sans text-caption font-semibold text-on-surface hover:bg-surface-container focus-visible:outline-2 focus-visible:outline-offset-2"
               onClick={() => {
                 setExtraPasses(0);
                 write(String(Date.now()));
@@ -204,10 +204,10 @@ export function CuppingTimer({
 
   return (
     <div className="flex flex-wrap items-center gap-x-3 px-4 lg:px-6" data-testid="cupping-timer">
-      <span className="font-mono text-lg font-semibold tabular-nums text-on-surface" role="timer" aria-label={copy.title}>
+      <span className="font-mono text-card font-semibold tabular-nums text-on-surface" role="timer" aria-label={copy.title}>
         {formatTimer(elapsed)}
       </span>
-      <span className="font-sans text-sm font-medium text-on-surface" aria-live="polite">
+      <span className="font-sans text-caption font-medium text-on-surface" aria-live="polite">
         {copy[CUE_KEY[cue]]}
       </span>
       {canAdvancePass(elapsed, extraPasses) && (

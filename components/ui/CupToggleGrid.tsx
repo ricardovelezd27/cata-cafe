@@ -167,7 +167,7 @@ export function CupToggleGrid({
           }}
           className="flex flex-col gap-2 rounded-card border border-outline-variant bg-surface-container-low p-3"
         >
-          <div className="font-sans text-sm font-semibold text-on-surface">
+          <div className="font-sans text-caption font-semibold text-on-surface">
             {fill(copy.pickTitle, { n: picking + 1 })}
           </div>
           <div className="flex flex-wrap gap-2">
@@ -183,7 +183,7 @@ export function CupToggleGrid({
                     setPicking(null);
                   }}
                   aria-pressed={active}
-                  className={`min-h-[44px] rounded-pill border px-4 font-sans text-sm font-medium ${
+                  className={`min-h-[44px] rounded-pill border px-4 font-sans text-caption font-medium ${
                     active
                       ? "border-error bg-error text-on-error"
                       : "border-outline bg-surface text-on-surface"
@@ -195,7 +195,7 @@ export function CupToggleGrid({
             })}
           </div>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="font-sans text-xs text-on-surface-variant">{copy.pickHelp}</span>
+            <span className="font-sans text-caption text-on-surface-variant">{copy.pickHelp}</span>
             <span className="flex gap-2">
               {defectiveBools[picking] && (
                 <button
@@ -204,7 +204,7 @@ export function CupToggleGrid({
                     onSetDefect(picking, null);
                     setPicking(null);
                   }}
-                  className="min-h-[44px] rounded-pill border border-outline px-4 font-sans text-sm text-on-surface"
+                  className="min-h-[44px] rounded-pill border border-outline px-4 font-sans text-caption text-on-surface"
                 >
                   {copy.removeMark}
                 </button>
@@ -212,7 +212,7 @@ export function CupToggleGrid({
               <button
                 type="button"
                 onClick={() => setPicking(null)}
-                className="min-h-[44px] rounded-pill px-4 font-sans text-sm text-on-surface-variant"
+                className="min-h-[44px] rounded-pill px-4 font-sans text-caption text-on-surface-variant"
               >
                 {copy.closePicker}
               </button>
@@ -231,7 +231,7 @@ export function CupToggleGrid({
                 type="button"
                 onClick={() => setPicking(i)}
                 aria-label={fill(copy.changeTypeAria, { n: i + 1 })}
-                className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-pill border px-3 font-sans text-sm ${
+                className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-pill border px-3 font-sans text-caption ${
                   type
                     ? "border-error/40 bg-error-container text-on-error-container"
                     : "border-error bg-surface text-error"

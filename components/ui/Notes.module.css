@@ -3,7 +3,7 @@
   min-height: 44px;
   padding: 10px 12px;
   font-family: var(--font-ui);
-  font-size: 13px;
+  font-size: var(--text-body);
   line-height: 1.5;
   color: var(--color-on-surface);
   background: color-mix(in oklch, var(--color-surface-container) 35%, var(--color-surface));
