@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState, type ReactNode } from "react";
-import { PillTabs } from "@/components/ui";
+import { Card, PaperSectionHeading, PillTabs } from "@/components/ui";
 import { fillPattern } from "@/lib/fillPattern";
 import { tabIds } from "@/lib/rovingFocus";
 import { alignmentBars, type AlignmentInput } from "@/lib/reports/panel";
@@ -56,10 +56,7 @@ export function CupperAlignment({
   return (
     <section className="flex flex-col gap-3" aria-labelledby={titleId} data-panel-section="alignment">
       <div className="flex flex-col gap-0.5">
-        <h2 id={titleId} className="section-title inline-flex items-center gap-1.5">
-          {t.title}
-          {titleAction}
-        </h2>
+        <PaperSectionHeading id={titleId} title={t.title} info={titleAction} flush />
         <p className="m-0 text-caption leading-snug text-on-surface-variant">{t.subtitle}</p>
       </div>
       {samples.length > 1 ? (
@@ -73,11 +70,11 @@ export function CupperAlignment({
         />
       ) : null}
       <div
-        className="rounded-card border border-outline-variant bg-surface-container-lowest p-4"
         {...(samples.length > 1
           ? { role: "tabpanel", id: tabIds(tabsId, sampleId).panel, "aria-labelledby": tabIds(tabsId, sampleId).tab }
           : {})}
       >
+        <Card padding="compact">
         {!hasData ? (
           <p className="m-0 text-body text-on-surface-variant">{t.noData}</p>
         ) : (
@@ -111,6 +108,7 @@ export function CupperAlignment({
             ))}
           </ul>
         )}
+        </Card>
       </div>
     </section>
   );

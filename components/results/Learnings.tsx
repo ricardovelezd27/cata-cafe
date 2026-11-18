@@ -1,6 +1,7 @@
 "use client";
 
 import { useId } from "react";
+import { Card, PaperSectionHeading } from "@/components/ui";
 import { PostCloseNoteEditor, type PostCloseNoteTranslations } from "@/components/results/PostCloseNote";
 import { wheelNodeLabels } from "@/lib/flavorWheelLabels";
 import type { MyPostCloseNote } from "@/lib/lateContributions";
@@ -18,7 +19,6 @@ const nameOf = (s: NamedSample) => {
   return name ? `${s.label} ${name}` : s.label;
 };
 
-const card = "flex min-w-0 flex-col gap-2 rounded-card border border-outline-variant bg-surface-container-lowest p-4 md:p-5";
 const quiet = "m-0 text-caption leading-snug text-on-surface-variant";
 
 /**
@@ -113,28 +113,28 @@ export function Learnings({
   return (
     <section className="flex flex-col gap-3 font-sans md:gap-4" aria-labelledby={titleId} data-learnings="">
       <div className="flex flex-col gap-0.5">
-        <h2 id={titleId} className="section-title text-section leading-tight">
-          {t.title}
-        </h2>
+        <PaperSectionHeading id={titleId} title={t.title} flush />
         <p className={quiet}>{t.lead}</p>
       </div>
       <div className={`grid grid-cols-1 gap-3 md:gap-4 ${showPanel && showOwn ? "md:grid-cols-2" : ""}`}>
         {showPanel ? (
-          <div className={card} data-learnings-scope="panel">
-            <h3 className="text-card leading-tight">{t.panelTitle}</h3>
-            {learnings.panelStatus === "too_few" ? (
-              <p className={quiet}>{t.tooFew}</p>
-            ) : learnings.panel.length === 0 ? (
-              <p className={quiet}>{t.panelNone}</p>
-            ) : (
-              list(learnings.panel)
-            )}
+          <div className="min-w-0" data-learnings-scope="panel">
+            <Card title={t.panelTitle}>
+              {learnings.panelStatus === "too_few" ? (
+                <p className={quiet}>{t.tooFew}</p>
+              ) : learnings.panel.length === 0 ? (
+                <p className={quiet}>{t.panelNone}</p>
+              ) : (
+                list(learnings.panel)
+              )}
+            </Card>
           </div>
         ) : null}
         {showOwn ? (
-          <div className={card} data-learnings-scope="mine">
-            <h3 className="text-card leading-tight">{t.mineTitle}</h3>
-            {learnings.mine.length === 0 ? <p className={quiet}>{t.mineNone}</p> : list(learnings.mine)}
+          <div className="min-w-0" data-learnings-scope="mine">
+            <Card title={t.mineTitle}>
+              {learnings.mine.length === 0 ? <p className={quiet}>{t.mineNone}</p> : list(learnings.mine)}
+            </Card>
           </div>
         ) : null}
       </div>
@@ -178,9 +178,7 @@ export function Reflection({
   return (
     <section className="flex flex-col gap-3 font-sans md:gap-4" aria-labelledby={titleId} data-reflection="">
       <div className="flex flex-col gap-0.5">
-        <h2 id={titleId} className="section-title text-section leading-tight">
-          {t.reflectionTitle}
-        </h2>
+        <PaperSectionHeading id={titleId} title={t.reflectionTitle} flush />
         <p className={quiet}>
           {t.reflectionLead} {onlyReader ? t.reflectionWhoSolo : t.reflectionWho}
         </p>
@@ -190,12 +188,18 @@ export function Reflection({
           const note = notes[s.id];
           return (
             <li key={s.id} className="flex min-w-0 flex-col gap-2">
-              <h3 className="text-card leading-tight">
-                {s.label}
-                {s.revealed && s.coffee && s.coffee.name.trim() ? (
-                  <span className="font-sans text-body font-normal text-on-surface-variant"> {s.coffee.name.trim()}</span>
-                ) : null}
-              </h3>
+              <PaperSectionHeading
+                level={3}
+                flush
+                title={
+                  <>
+                    {s.label}
+                    {s.revealed && s.coffee && s.coffee.name.trim() ? (
+                      <span className="font-sans text-body font-normal text-on-surface-variant"> {s.coffee.name.trim()}</span>
+                    ) : null}
+                  </>
+                }
+              />
               <PostCloseNoteEditor
                 // the same note is also on the coffee's sheet: after a save there, show the saved text here
                 key={`${s.id}|${note.text ?? ""}|${note.at ?? ""}`}

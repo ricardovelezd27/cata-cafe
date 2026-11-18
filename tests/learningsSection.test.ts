@@ -333,7 +333,7 @@ describe("the section on the page", () => {
     const t = strings("es");
     const markup = html(createElement(Learnings, props(overviewScenario("closed"))));
     expect((markup.match(/<h2/g) ?? []).length).toBe(1);
-    expect(markup).toMatch(/<h2[^>]*class="section-title/);
+    expect(markup).toMatch(/<h2[^>]*class="[^"]*section-title/);
     expect(markup).toContain('data-learnings-scope="panel"');
     expect(markup).toContain('data-learnings-scope="mine"');
     expect(markup.split(t.closing).length - 1).toBe(1);

@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState, useSyncExternalStore, type KeyboardEvent } from "react";
 import { Check, ChevronRight, Eye } from "lucide-react";
 import { ScoreWithContext } from "@/components/ui/ScoreWithContext";
+import { PaperSectionHeading } from "@/components/ui";
 import { PHONE_MAX, carouselIndex } from "@/components/landing/carouselIndex";
 import { fillPattern } from "@/lib/fillPattern";
 import type { WheelFamilyId } from "@/lib/flavorWheel";
@@ -320,9 +321,7 @@ export function CoffeeCards<S extends CardSampleProps>({
   return (
     <section className={styles.section} aria-labelledby={titleId} data-coffee-cards="">
       <div className={styles.intro}>
-        <h2 id={titleId} className={`section-title ${styles.title}`}>
-          {t.title}
-        </h2>
+        <PaperSectionHeading id={titleId} title={t.title} flush />
         <p className={styles.note}>
           {format === "descriptive" ? t.noteDescriptive : format === "affective" ? t.noteAffective : t.note}
         </p>

@@ -1,3 +1,4 @@
+import { BetaBadge } from "@/components/ui";
 /**
  * Read-only, compact display of whatever extrinsic (origin/process/trade)
  * data any participant filled in for a sample. Extrinsic data is per-sample
@@ -81,9 +82,7 @@ export function ExtrinsicSummary({ data }: { data: Data }) {
         <span className="font-display text-caption font-bold text-primary-container">
           Datos de la muestra (extrínseco)
         </span>
-        <span className="label-caps inline-flex items-center rounded-pill border border-secondary bg-surface-container px-1.5 py-0.5 text-secondary">
-          Beta
-        </span>
+        <BetaBadge />
       </div>
       <div className="flex flex-col gap-0.5">
         {rows.map((row) => (

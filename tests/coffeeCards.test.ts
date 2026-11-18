@@ -338,7 +338,7 @@ describe("the cards on the page", () => {
         const markup = render(s, locale);
         const cards = cardsOf(s);
         expect((markup.match(/<h2/g) ?? []).length, s.id).toBe(1);
-        expect(markup).toMatch(/<h2[^>]*class="section-title/);
+        expect(markup).toMatch(/<h2[^>]*class="[^"]*section-title/);
         expect((markup.match(/<h3/g) ?? []).length, s.id).toBe(cards.length);
         expect((markup.match(/data-card-open=""/g) ?? []).length, s.id).toBe(cards.length);
         expect(markup).not.toMatch(/<h1|<h4/);
