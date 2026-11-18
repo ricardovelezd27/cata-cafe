@@ -1,6 +1,7 @@
 "use client";
 
 import { WifiOff } from "lucide-react";
+import { Button } from "@/components/ui";
 
 // Full-screen state shown when a session is opened offline and there is no
 // cached data on this device to rebuild it from.
@@ -24,13 +25,12 @@ export function OfflineFirstLoadError({
       <p className="max-w-md font-display text-card leading-snug text-on-surface">
         {title}
       </p>
-      <button
+      <Button
         type="button"
         onClick={onRetry}
-        className="px-6 py-2.5 rounded-pill bg-primary-container font-sans text-caption font-semibold text-white hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2"
       >
         {retryLabel}
-      </button>
+      </Button>
     </div>
   );
 }

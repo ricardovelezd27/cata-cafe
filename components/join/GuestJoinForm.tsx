@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { completeGuestOnboarding } from "@/app/actions/community";
 import { existingUserAction } from "@/lib/joinRules";
 import { checkJoinable, joinSessionAsGuest } from "@/app/actions/join";
+import { Button } from "@/components/ui";
 
 // Per tab, best effort, never required: the anonymous user THIS tab created,
 // with a timestamp so it expires (a later person on the same tab must not
@@ -174,13 +175,13 @@ export function GuestJoinForm({ token, locale, translations }: GuestJoinFormProp
         autoComplete="name"
         className="min-h-[44px] w-full rounded-input border border-outline bg-surface-container-lowest px-3 py-2.5 text-body text-on-surface focus:border-primary-container"
       />
-      <button
+      <Button
         type="submit"
         disabled={isSubmitting || !name.trim()}
-        className="min-h-[44px] w-full rounded-pill bg-primary-container py-3 text-body font-semibold text-on-primary transition hover:bg-primary disabled:opacity-50"
+        className="w-full"
       >
         {isSubmitting ? translations.joining : translations.joinButton}
-      </button>
+      </Button>
       {error && (
         <p role="alert" className="text-caption text-error">
           {error}

@@ -118,9 +118,9 @@ export function HistoryTable({
         ) : (
           <span className="inline-flex items-center gap-1.5 text-on-surface-variant">
             {row.sessionName}
-            <span className="rounded-pill border border-outline-variant bg-surface-container px-1.5 py-0.5 text-caption">
+            <Badge tone="outline" size="xs">
               {t.sessionDeleted}
-            </span>
+            </Badge>
           </span>
         ),
     },
@@ -212,9 +212,9 @@ export function HistoryTable({
               ) : (
                 <span className="flex items-center gap-1.5 truncate text-caption text-on-surface-variant">
                   {row.sessionName}
-                  <span className="shrink-0 rounded-pill border border-outline-variant bg-surface-container px-1.5 py-0.5 text-caption">
+                  <Badge tone="outline" size="xs">
                     {t.sessionDeleted}
-                  </span>
+                  </Badge>
                 </span>
               )}
             </div>

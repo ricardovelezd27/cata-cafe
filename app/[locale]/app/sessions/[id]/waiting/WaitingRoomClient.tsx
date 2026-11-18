@@ -18,7 +18,7 @@ import { previewSpec } from "@/lib/warmup/preview";
 import { WarmupPlayer, type WarmupPlayerStrings } from "@/components/warmup/WarmupPlayer";
 import { WarmupFigure } from "@/components/warmup/figures";
 import { GatheringMark, StagePanel } from "@/components/arrival/StagePanel";
-import { Button } from "@/components/ui";
+import { Button, Badge } from "@/components/ui";
 
 export interface WaitingWarmupProps {
   /** CuppingSession.warmupExerciseId — the master's pick, or null. */
@@ -521,13 +521,13 @@ function HeroCard({
       )}
       <div className="mt-4 flex items-center gap-3">
         {running && (
-          <button
+          <Button variant="accent"
             type="button"
             onClick={onJoin}
-            className="min-h-[44px] flex-1 rounded-pill bg-secondary px-5 text-caption font-medium text-on-secondary hover:opacity-90 sm:flex-none"
+            className="flex-1 sm:flex-none"
           >
             {warmup.synced.inProgress.split(" ·")[0]} · {warmup.synced.join}
-          </button>
+          </Button>
         )}
         <button
           type="button"
@@ -541,9 +541,7 @@ function HeroCard({
           {seen ? warmup.heroRepeat : warmup.heroStart}
         </button>
         {seen && (
-          <span className="rounded-pill bg-primary-fixed px-3 py-1 text-caption font-semibold text-primary-container">
-            {warmup.heroDone}
-          </span>
+          <Badge tone="success" size="sm">{warmup.heroDone}</Badge>
         )}
       </div>
     </div>

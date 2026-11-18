@@ -20,6 +20,7 @@ import { MAX_DATE_INPUT } from "@/lib/safeDate";
 import { planRemoveActive, referenceExplanation, shouldPinReference, type ReferenceMode } from "@/lib/referenceRules";
 import { radioKeyDown } from "@/components/radioKeys";
 import { FormActionBar, dockedFormClass } from "@/components/ui/FormActionBar";
+import { Button } from "@/components/ui";
 
 export type EditSessionFormTranslations = {
   name: string;
@@ -679,15 +680,14 @@ export function EditSessionForm({
             placeholder={t.sampleLabel}
             className={inputCls + " flex-1"}
           />
-          <button
+          <Button variant="secondary"
             type="button"
             disabled={addPending}
             onClick={handleAddSample}
-            className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-pill border border-primary-container px-4 py-2.5 text-caption font-medium text-primary-container transition-colors hover:bg-primary-fixed disabled:opacity-50"
           >
             <Plus size={16} />
             {t.addSample}
-          </button>
+          </Button>
         </div>
         {/* Optional: link an existing coffee to the new sample. The server
             re-validates the id with usableCoffeeWhere (addSessionSample). */}
@@ -863,13 +863,12 @@ export function EditSessionForm({
           </>
         }
       >
-        <button
+        <Button
           type="submit"
           disabled={savePending || closed}
-          className="min-h-[44px] rounded-pill bg-primary-container px-6 py-3 text-caption font-medium text-on-primary transition-colors hover:bg-primary disabled:opacity-50"
         >
           {savePending ? t.saving : t.save}
-        </button>
+        </Button>
       </FormActionBar>
       </fieldset>
     </form>

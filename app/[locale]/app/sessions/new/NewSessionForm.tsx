@@ -62,6 +62,7 @@ import {
   type SampleEntry,
   type SampleList,
 } from "./wizardModel";
+import { Button, type BadgeTone } from "@/components/ui";
 
 // Groups v2: session wizard extends NotifyGroupTranslations with the
 // step-1 "link a group" selector copy + the step-2 auto-invite success
@@ -203,10 +204,11 @@ const inputBase =
 const inputCls = inputBase + " min-h-[44px]";
 
 /** Origin badge colors mirror CoffeePicker's own badges. */
-const originBadgeCls: Record<UsableCoffee["origin"], string> = {
-  mine: "bg-primary-container/10 text-primary-container border-primary-container/30",
-  shared: "bg-secondary/15 text-on-surface border-secondary/40",
-  public: "bg-surface-container text-on-surface-variant border-outline-variant",
+// Where a linked coffee comes from, as a kit Badge (P3c): mine, shared with me, public.
+const originBadgeTone: Record<UsableCoffee["origin"], BadgeTone> = {
+  mine: "success",
+  shared: "accent",
+  public: "neutral",
 };
 
 function originBadgeLabel(origin: UsableCoffee["origin"], t: Translations): string {
@@ -780,13 +782,12 @@ export function NewSessionForm({
               className={inputCls + " flex-1 text-caption select-all"}
               onFocus={(e) => e.target.select()}
             />
-            <button
+            <Button variant="secondary"
               type="button"
               onClick={handleCopy}
-              className="min-h-[44px] border border-primary-container text-primary-container rounded-pill px-5 py-2.5 text-caption font-medium hover:bg-primary-fixed transition-colors whitespace-nowrap"
             >
               {copied ? t.groupCopied : t.groupCopyLink}
-            </button>
+            </Button>
           </div>
         </Card>
 
@@ -867,13 +868,7 @@ export function NewSessionForm({
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-semibold text-body text-on-surface">{coffee.name}</span>
           {coffee.linkedOrigin && (
-            <span
-              className={`label-caps rounded-pill border px-2 py-0.5 ${
-                originBadgeCls[coffee.linkedOrigin]
-              }`}
-            >
-              {originBadgeLabel(coffee.linkedOrigin, t)}
-            </span>
+            <Badge tone={originBadgeTone[coffee.linkedOrigin]}>{originBadgeLabel(coffee.linkedOrigin, t)}</Badge>
           )}
         </div>
         {[coffee.country, coffee.region, coffee.variety, coffee.altitude]
@@ -1374,9 +1369,7 @@ export function NewSessionForm({
                 className={`${cardClasses({ invalid })} space-y-4`}
               >
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="label-caps bg-surface-container rounded-pill px-3 py-1 text-on-surface">
-                    {sampleName}
-                  </span>
+                  <Badge tone="neutral" size="sm">{sampleName}</Badge>
                   {/* The reference mark: a 44 px row around a 16 px radio. */}
                   <label className="flex min-h-[44px] cursor-pointer items-center gap-2 px-2 text-caption font-medium text-on-surface">
                     <input
@@ -1493,13 +1486,13 @@ export function NewSessionForm({
           </p>
         )}
 
-        <button
+        <Button variant="secondary"
           type="button"
           onClick={addSample}
-          className="min-h-[44px] border border-primary-container text-primary-container rounded-pill px-5 py-2.5 text-caption font-medium hover:bg-primary-fixed transition-colors"
+          className="w-fit"
         >
           + {t.addSample}
-        </button>
+        </Button>
       </section>
 
       {/* 4. Group session */}
@@ -1642,13 +1635,12 @@ export function NewSessionForm({
           </>
         }
       >
-        <button
+        <Button
           type="submit"
           disabled={pending || !online}
-          className="bg-primary-container text-on-primary rounded-pill px-6 py-3.5 font-medium hover:bg-primary transition-colors disabled:opacity-50"
         >
           {isGroup ? t.newForm.startGroup : t.start}
-        </button>
+        </Button>
       </FormActionBar>
     </form>
   );
