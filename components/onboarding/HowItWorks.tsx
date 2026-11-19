@@ -115,7 +115,7 @@ export function HowItWorks({ t, showTitle = true }: { t: HowItWorksStrings; show
             <ul className="mt-4 space-y-1.5 border-t border-outline-variant pt-3">
               {[t.calcAnchors, t.calcRounding, t.calcGroup, t.calcPerResult].map((note, i) => (
                 <li key={i} className="flex max-w-[68ch] gap-2 text-body leading-relaxed text-on-surface-variant">
-                  <span aria-hidden className="text-primary-muted">
+                  <span aria-hidden className="text-on-surface-variant">
                     ·
                   </span>
                   {note}
