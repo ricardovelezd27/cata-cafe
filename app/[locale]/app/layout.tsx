@@ -7,6 +7,7 @@ import TopBar from "@/components/layout/TopBar";
 import BottomNav from "@/components/layout/BottomNav";
 import OnboardingWrapper from "@/components/onboarding/OnboardingWrapper";
 import type { WelcomeModalTranslations } from "@/components/onboarding/WelcomeModal";
+import { howItWorksStrings } from "@/components/onboarding/howItWorksStrings";
 import { LegacyStorageCleanup } from "@/components/layout/LegacyStorageCleanup";
 import { IdentityWatcher } from "@/components/layout/IdentityWatcher";
 import { SkipLink, MAIN_CONTENT_ID } from "@/components/layout/SkipLink";
@@ -57,6 +58,7 @@ export default async function AppLayout({
   const tNav = await getTranslations({ locale, namespace: "nav" });
   const tBrand = await getTranslations({ locale, namespace: "brand" });
   const tOnb = await getTranslations({ locale, namespace: "onboarding" });
+  const tDash = await getTranslations({ locale, namespace: "dashboard" });
   const onboardingTranslations: WelcomeModalTranslations = {
     welcomeTitle: tOnb("welcomeTitle"),
     welcomeTagline: tOnb("welcomeTagline"),
@@ -77,6 +79,7 @@ export default async function AppLayout({
     close: tOnb("close"),
     goTo: tOnb.raw("goTo"),
     stepOf: tOnb.raw("stepOf"),
+    howItWorks: howItWorksStrings(tDash),
     roles: {
       q_grader: tOnb("roles.q_grader"),
       barista: tOnb("roles.barista"),

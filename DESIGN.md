@@ -52,6 +52,8 @@ In this order. When two pull against each other, the earlier one wins.
 | The number | puntaje | score | puntuación, calificación |
 | A 1 to 9 rating of one attribute | calificación | rating | nota (it is a tasting note: "Notas rápidas", "notas percibidas") |
 | Leaving the account | Salir | Sign out | "Cerrar sesión" (it would also mean closing a session) |
+| The fast way to start: solo, three taps | Cata rápida | Quick cupping | Catar ahora, Cup now |
+| Setting up a session, mainly for a group | Organizar cata | Set up a cupping | Nueva sesión, New session |
 
 **The copy rules.**
 
@@ -62,7 +64,7 @@ In this order. When two pull against each other, the earlier one wins.
 - No emoji, in copy or as a picture.
 - A Spanish word where one exists ("lista", not "roster"). "Insights" and "benchmark" are product names and stay.
 
-**Two ways to start a cupping.** Both stay, and each says what it is for. "Catar ahora" is the fast way, mainly for one person, and it comes first with that name. "Nueva sesión" sets up a cupping session and is meant for groups. Neither is offered under the other's name, and a screen offers each at most once (see "An ask appears once").
+**Two ways to start a cupping.** Both stay, and each says what it is for. "Cata rápida" (en: "Quick cupping") is the fast way, mainly for one person, three taps, and it comes first with that name. "Organizar cata" (en: "Set up a cupping") sets up a cupping session and is meant for groups. Each label says what the action is, not when it happens: the old "Catar ahora" and "Nueva sesión" read as the same thing. Neither is offered under the other's name, and a screen offers each at most once (see "An ask appears once").
 
 ---
 

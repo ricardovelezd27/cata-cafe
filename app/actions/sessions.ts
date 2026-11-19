@@ -489,7 +489,7 @@ async function createSessionBody(input: {
   redirect(`/${safeLocale(input.locale)}/app/sessions/${sessionId}/cup`);
 }
 
-// ─── "Catar ahora" — express solo session ────────────────────────────────────
+// ─── "Cata rápida" — express solo session ────────────────────────────────────
 // Three taps from a phone: name → format → sample count → /cup. A separate
 // action rather than a flag on createSession because that one `redirect()`s
 // (cannot return a value) and speaks the wizard's own error codes; this one

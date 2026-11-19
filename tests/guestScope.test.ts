@@ -37,7 +37,7 @@ describe("guest scope", () => {
       "/app/coffees/abc",
       "/app/groups",
       "/app/sessions/new",
-      // "Catar ahora" creates a session under the caller's identity — gated like the wizard.
+      // "Cata rápida" creates a session under the caller's identity — gated like the wizard.
       "/app/sessions/express",
       "/app/sessions/abc/edit",
       "/app/profiles",

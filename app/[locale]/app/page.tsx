@@ -8,8 +8,6 @@ import { finishedSessionWhere } from "@/lib/sessionState";
 import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { FormatBadge } from "@/components/dashboard/FormatBadge";
-import { DashboardIntro } from "@/components/dashboard/DashboardIntro";
-import { WarmupFigure } from "@/components/warmup/figures";
 import { Badge, ScorePill, StatusPill } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Card } from "@/components/ui/Card";
@@ -38,7 +36,6 @@ export default async function Dashboard({
   const t = await getTranslations("dashboard");
   const tSession = await getTranslations("session");
   const tc = await getTranslations("common");
-  const tw = await getTranslations("warmup");
 
   const supabase = await createClient();
   const {
@@ -194,32 +191,32 @@ export default async function Dashboard({
         }
       />
 
-      {/* How it works + scoring methodology: collapsed for a returning user (S6, F-15) */}
-      <DashboardIntro
-        sessionCount={recentSessions.length}
-        t={{
-          eyebrow: t("intro.eyebrow"),
-          title: t("intro.title"),
-          whyLabel: t("intro.whyLabel"),
-          why: t("intro.why"),
-          whatLabel: t("intro.whatLabel"),
-          what: t("intro.what"),
-          howLabel: t("intro.howLabel"),
-          how: t("intro.how"),
-          ctaCalc: t("intro.ctaCalc"),
-          dismiss: t("intro.dismiss"),
-          reopen: t("intro.reopen"),
-          calcTitle: t("intro.calcTitle"),
-          calcLead: t("intro.calcLead"),
-          calcSigma: t("intro.calcSigma"),
-          calcU: t("intro.calcU"),
-          calcD: t("intro.calcD"),
-          calcAnchors: t("intro.calcAnchors"),
-          calcRounding: t("intro.calcRounding"),
-          calcGroup: t("intro.calcGroup"),
-          calcPerResult: t("intro.calcPerResult"),
-        }}
-      />
+      {/* Stat cards: right under the header, where "¿Cómo funciona?" was (owner's review, 2026-11-20). */}
+      {/* F-11: a stat card is never as wide as the row. On a phone two cards share the
+          width and the third (the average, whose "Sin datos" needs the room) spans both;
+          from 768 px the three sit on one row, each capped at 240 px. Not auto-fill: with
+          a 240 px maximum, auto-fill counts columns by the maximum, so a 343 px phone
+          column got one card per row and a 720 px tablet column two. */}
+      <div className="grid grid-cols-2 gap-[12px] [&>:last-child]:col-span-2 md:grid-cols-[repeat(3,minmax(0,240px))] md:gap-[16px] md:[&>:last-child]:col-span-1">
+        <StatCard
+          label={t("statSessions")}
+          value={String(sessionCount)}
+          subtext={t("statSessionsSub")}
+          icon={<ClipboardList size={20} />}
+        />
+        <StatCard
+          label={t("statSamples")}
+          value={String(evaluatedSampleCount)}
+          subtext={t("statSamplesSubEvals")}
+          icon={<Coffee size={20} />}
+        />
+        <StatCard
+          label={t("statAvg")}
+          value={avgScore ?? t("noAvg")}
+          subtext={t("statAvgSub")}
+          icon={<Star size={20} />}
+        />
+      </div>
 
       {/* Their own sessions first (S6, F-15): a returning user's first fold shows them; a newcomer sees the empty state */}
       {!hasData ? (
@@ -309,65 +306,6 @@ export default async function Dashboard({
           </section>
         </div>
       )}
-
-      {/* Stat cards */}
-      {/* F-11: a stat card is never as wide as the row. On a phone two cards share the
-          width and the third (the average, whose "Sin datos" needs the room) spans both;
-          from 768 px the three sit on one row, each capped at 240 px. Not auto-fill: with
-          a 240 px maximum, auto-fill counts columns by the maximum, so a 343 px phone
-          column got one card per row and a 720 px tablet column two. */}
-      <div className="grid grid-cols-2 gap-[12px] [&>:last-child]:col-span-2 md:grid-cols-[repeat(3,minmax(0,240px))] md:gap-[16px] md:[&>:last-child]:col-span-1">
-        <StatCard
-          label={t("statSessions")}
-          value={String(sessionCount)}
-          subtext={t("statSessionsSub")}
-          icon={<ClipboardList size={20} />}
-        />
-        <StatCard
-          label={t("statSamples")}
-          value={String(evaluatedSampleCount)}
-          subtext={t("statSamplesSubEvals")}
-          icon={<Coffee size={20} />}
-        />
-        <StatCard
-          label={t("statAvg")}
-          value={avgScore ?? t("noAvg")}
-          subtext={t("statAvgSub")}
-          icon={<Star size={20} />}
-        />
-      </div>
-
-      {/* Movimiento Sensorial — pre-cupping warm-ups (guest-reachable, plain Link) */}
-      {/* P2b (D-07): a Card that is a link (quiet tone). */}
-      <Card href={`/${locale}/app/warmup`} tone="quiet" className="group">
-        <span className="flex items-center gap-4 md:gap-6">
-        <span className="hidden h-16 w-16 shrink-0 overflow-hidden rounded-card sm:block" aria-hidden>
-          <WarmupFigure
-            kind="arm-raise"
-            eyes="open"
-            pose={{ a: 0.75 }}
-            path={{ from: { a: 0 }, to: { a: 1 }, progress: 0.75 }}
-            frame="tile"
-          />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="label-caps block">
-            {tw("dashboard.eyebrow")}
-          </span>
-          <span className="mt-0.5 block font-display text-card text-primary-container">
-            {tw("dashboard.title")}
-          </span>
-          <span className="mt-1 block max-w-[68ch] text-body leading-relaxed text-on-surface-variant">
-            {tw("dashboard.body")}
-          </span>
-        </span>
-        <span className="hidden shrink-0 items-center gap-1 text-caption font-semibold text-primary-container sm:inline-flex">
-          {tw("dashboard.cta")}
-          <ChevronRight size={16} className="transition-transform group-hover:translate-x-0.5" aria-hidden />
-        </span>
-        <ChevronRight size={16} className="shrink-0 text-on-surface-variant sm:hidden" aria-hidden />
-        </span>
-      </Card>
 
       {/* Activity feed */}
       {hasData && (
