@@ -3,6 +3,7 @@
 import { useState, useSyncExternalStore } from "react";
 import { Clock } from "lucide-react";
 import { deadlineState } from "@/lib/closeRules";
+import { formatDeadlineInstant } from "@/lib/deadlineFormat";
 import { Notice } from "@/components/ui/Notice";
 
 export type DeadlineBannerTranslations = {
@@ -47,13 +48,9 @@ export function DeadlineBanner({
   const ownerZone = zone ?? "UTC";
   const at = new Date(closesAt);
   // The stored instant is 23:59:59.999 of the picked day; show the picked day
-  // and the cutoff time in the owner's zone.
-  const ownerText = new Intl.DateTimeFormat(bcp, {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: ownerZone,
-    timeZoneName: "short",
-  }).format(at);
+  // and the cutoff time in the owner's zone. Never `dateStyle`/`timeStyle` with
+  // `timeZoneName`: Intl throws on that mix (lib/deadlineFormat.ts).
+  const ownerText = formatDeadlineInstant(at, bcp, ownerZone, true);
 
   let viewerZone = ownerZone;
   try {
@@ -62,9 +59,7 @@ export function DeadlineBanner({
     // keep ownerZone: no local line
   }
   const zonesDiffer = viewerZone !== ownerZone;
-  const localText = zonesDiffer
-    ? new Intl.DateTimeFormat(bcp, { dateStyle: "medium", timeStyle: "short", timeZone: viewerZone }).format(at)
-    : null;
+  const localText = zonesDiffer ? formatDeadlineInstant(at, bcp, viewerZone, false) : null;
 
   const template = state === "passed" ? t.passed : state === "soon" ? t.soon : t.open;
   const text = template.replace("{when}", ownerText);
