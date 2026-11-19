@@ -18,6 +18,8 @@ import { sessionHref } from "@/lib/sessionRouting";
 import { GuestClaimButton, type GuestClaimButtonTranslations } from "@/components/guest/GuestClaimButton";
 import { EditProfileDialog } from "./EditProfileDialog";
 import { ChangeEmailDialog } from "@/components/profile/ChangeEmailDialog";
+import { HowItWorksDialog } from "@/components/onboarding/HowItWorksDialog";
+import { howItWorksStrings } from "@/components/onboarding/howItWorksStrings";
 import { isAccountDeletionEnabled } from "@/lib/features";
 import { DeleteAccountDialog } from "@/components/profile/DeleteAccountDialog";
 import { Card } from "@/components/ui/Card";
@@ -125,6 +127,7 @@ export default async function ProfilePage({
   const tCoffee = await getTranslations("coffee");
   const tSession = await getTranslations("session");
   const tGate = await getTranslations("guestGate");
+  const tDash = await getTranslations("dashboard");
 
   // Anonymous QR walk-up: SAME page as everyone (one profile layout), but no
   // email to show and a path to finish creating the account. Access limits
@@ -485,6 +488,8 @@ export default async function ProfilePage({
             </div>
             {/* Less common account actions sit below the everyday ones. */}
             <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+              {/* "Cómo funciona" lives here once onboarding is over (it left the dashboard, 2026-11-20). */}
+              <HowItWorksDialog strings={howItWorksStrings(tDash)} open={tDash("intro.reopen")} close={tc("close")} />
               {!isGuest && (
                 <ChangeEmailDialog
                   locale={locale}

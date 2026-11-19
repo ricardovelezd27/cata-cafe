@@ -51,7 +51,7 @@ export type HistoryTableTranslations = {
   filterScoreBand: string;
   filterYear: string;
   emptyBody: string;
-  /** "Catar ahora" — the express path, the empty state's one action. */
+  /** "Cata rápida" — the express path, the empty state's one action. */
   expressLabel: string;
   noResults: string;
   sessionDeleted: string;

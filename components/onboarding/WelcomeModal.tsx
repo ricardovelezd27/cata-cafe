@@ -8,6 +8,7 @@ import { TextAction, useActionFeedback, Button } from "@/components/ui";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
 import { radioKeyDown } from "@/components/radioKeys";
 import { COUNTRIES } from "@/lib/constants";
+import { HowItWorks, type HowItWorksStrings } from "@/components/onboarding/HowItWorks";
 
 // NOTE: these lists drive ONBOARDING CHOICES (values + prompt copy), a separate
 // concern from display labels shown elsewhere (profile, co-cupper cards, etc).
@@ -44,6 +45,8 @@ export interface WelcomeModalTranslations {
   goTo: string;
   /** Raw template "Paso {n} de {total}", replaced client-side. */
   stepOf: string;
+  /** The second step, "Cómo funciona" (the words of `dashboard.intro`, moved off the dashboard). */
+  howItWorks: HowItWorksStrings;
   roles: Record<(typeof ROLE_VALUES)[number], string>;
   paths: Record<(typeof PATH_DEFS)[number]["id"], { label: string; description: string }>;
 }
@@ -65,7 +68,7 @@ export default function WelcomeModal({ locale, initialDisplayName, translations:
   const [isPending, startTransition] = useTransition();
 
   const [open, setOpen] = useState(true);
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [displayName, setDisplayName] = useState(initialDisplayName);
   const [role, setRole] = useState("");
   const [country, setCountry] = useState("");
@@ -93,7 +96,8 @@ export default function WelcomeModal({ locale, initialDisplayName, translations:
 
   const selectedPathLabel = PATHS.find((p) => p.id === selectedPath)?.label ?? "";
 
-  const dialogTitle = step === 1 ? t.welcomeTitle : step === 2 ? t.aboutYou : t.whereToStart;
+  const dialogTitle =
+    step === 1 ? t.welcomeTitle : step === 2 ? t.howItWorks.eyebrow : step === 3 ? t.aboutYou : t.whereToStart;
 
   return (
     <ResponsiveDialog
@@ -144,8 +148,26 @@ export default function WelcomeModal({ locale, initialDisplayName, translations:
           </div>
         )}
 
-        {/* Step 2 — Profile */}
+        {/* Step 2 — How it works (moved here from the dashboard, 2026-11-20) */}
         {step === 2 && (
+          <div className="pb-2 flex flex-col gap-5">
+            <HowItWorks t={t.howItWorks} />
+
+            <Steps current={2} label={t.stepOf} />
+
+            <div className="flex gap-3">
+              <Button variant="secondary" onClick={() => setStep(1)}>
+                <ChevronLeft className="w-4 h-4" /> {t.back}
+              </Button>
+              <Button onClick={() => setStep(3)} className="flex-1">
+                {t.next} <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3 — Profile */}
+        {step === 3 && (
           <div className="pb-2 flex flex-col gap-5">
             <div className="space-y-4">
               <label className="block">
@@ -194,16 +216,16 @@ export default function WelcomeModal({ locale, initialDisplayName, translations:
               </label>
             </div>
 
-            <Steps current={2} label={t.stepOf} />
+            <Steps current={3} label={t.stepOf} />
 
             <div className="flex gap-3">
               <Button variant="secondary"
-                onClick={() => setStep(1)}
+                onClick={() => setStep(2)}
               >
                 <ChevronLeft className="w-4 h-4" /> {t.back}
               </Button>
               <Button
-                onClick={() => setStep(3)}
+                onClick={() => setStep(4)}
                 disabled={!displayName || !role || !country}
                 className="flex-1"
               >
@@ -213,8 +235,8 @@ export default function WelcomeModal({ locale, initialDisplayName, translations:
           </div>
         )}
 
-        {/* Step 3 — First step */}
-        {step === 3 && (
+        {/* Step 4 — First step */}
+        {step === 4 && (
           <div className="pb-2 flex flex-col gap-5">
             {/* N3: one choice of three, a radio group named by the step's visible title. */}
             <div role="radiogroup" aria-label={t.whereToStart} className="space-y-3">
@@ -257,11 +279,11 @@ export default function WelcomeModal({ locale, initialDisplayName, translations:
               })}
             </div>
 
-            <Steps current={3} label={t.stepOf} />
+            <Steps current={4} label={t.stepOf} />
 
             <div className="flex gap-3">
               <Button variant="secondary"
-                onClick={() => setStep(2)}
+                onClick={() => setStep(3)}
               >
                 <ChevronLeft className="w-4 h-4" /> {t.back}
               </Button>
@@ -282,18 +304,18 @@ export default function WelcomeModal({ locale, initialDisplayName, translations:
 }
 
 /**
- * Where the person is in the three steps (audit D-04): numbered steps, the app's
+ * Where the person is in the four steps (audit D-04): numbered steps, the app's
  * one paper recipe (`.step-mark`), with the step said in words ("Paso 2 de 3").
  * They run left to right because the dialog is advanced with a "next" button.
  * Not tappable: going back is the "Atrás" button.
  */
-function Steps({ current, label }: { current: 1 | 2 | 3; label: string }) {
-  const total = 3;
+function Steps({ current, label }: { current: 1 | 2 | 3 | 4; label: string }) {
+  const total = 4;
   const said = label.replace("{n}", String(current)).replace("{total}", String(total));
   return (
     <div className="flex flex-col items-center gap-[8px]" data-onboarding-steps="">
       <ol className="m-0 flex list-none items-center gap-[8px] p-0" aria-hidden="true">
-        {[1, 2, 3].map((n) => (
+        {[1, 2, 3, 4].map((n) => (
           <li key={n} className="step-mark" data-on={n === current ? "1" : undefined}>
             {n}
           </li>

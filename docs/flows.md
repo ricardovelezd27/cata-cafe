@@ -73,7 +73,7 @@ join, evaluate, submit, waiting room, offline replay and claim.
   submit after the solo auto-close is the final state, not an error. The module
   JSON is bounded in `computeEvaluationDerived` (note 500, module 64k).
 - Naming a coffee on a coffee-less sample creates and links it in one transaction.
-- **Wizard coffees (S9-03).** The new coffees typed in the wizard are created INSIDE the session's own transaction (`createCoffeesInTx`, `app/actions/sessions.ts`), so a failed session insert leaves no stray coffee; codes are pre-generated and the whole transaction is retried on a code collision (`retryOnCodeCollision`). The full wizard still requires a coffee per sample (`sample_without_coffee`); only "Catar ahora" makes coffee-less samples.
+- **Wizard coffees (S9-03).** The new coffees typed in the wizard are created INSIDE the session's own transaction (`createCoffeesInTx`, `app/actions/sessions.ts`), so a failed session insert leaves no stray coffee; codes are pre-generated and the whole transaction is retried on a code collision (`retryOnCodeCollision`). The full wizard still requires a coffee per sample (`sample_without_coffee`); only "Cata rápida" makes coffee-less samples.
 - **Existing coffee on a sample (S9-03, S9-05).** The session edit form (`EditSessionForm`, `addSessionSample` with a `coffeeId`) and the cup page's sample editor (`CupClient`) both offer the shared `CoffeePicker`. On a coffee-less sample the cup page links the picked coffee through `assignSampleCoffee` (owner only; the id is re-validated with `usableCoffeeWhere`; a sample that already has a coffee is `conflict`; on a closed session the sample is also revealed and history re-synced). `cup/page.tsx` sends a sample's `coffeeId` to the owner only, so a participant cannot open a public or shared coffee's page before the reveal.
 
 ### The one close routine (2026-09-08)
@@ -269,7 +269,7 @@ Writes happen only in server actions (Prisma as `postgres`).
 evaluation for **every** sample (`maybeAutoCloseSoloSession` inside
 `submitAllEvaluations`, `app/actions/community.ts`, `emails: "skip"`).
 
-**Express — "Catar ahora" (2026-10).** `createExpressSession` (`app/actions/sessions.ts`,
+**Express — "Cata rápida" (2026-10).** `createExpressSession` (`app/actions/sessions.ts`,
 `run()` → `ActionResult`) creates the same active solo session from a phone in
 three taps — name → format → sample count (1–20, rules in `lib/expressSession.ts`)
 — with `cupsPerSample: 1` and every sample **coffee-less** (`coffeeId: null`,
@@ -525,7 +525,7 @@ flowchart TD
   SAVE --> DONE
   SHORT --> DONE
   PAGE["exercise page: Tus reflexiones"] -->|"only the person's own rows"| SAVE
-  EX["Catar ahora: Calentar 1-2 min antes"] -->|"short player over the form, then back to it"| SHORT
+  EX["Cata rápida: Calentar 1-2 min antes"] -->|"short player over the form, then back to it"| SHORT
   CUP["cup page: interstitial not showing, session not closed"] -->|"Movimiento Sensorial, N min"| SESS["player in session mode, marks nothing seen"]
 ```
 

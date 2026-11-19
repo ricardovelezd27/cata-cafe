@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import es from "@/messages/es.json";
 import en from "@/messages/en.json";
-import { introStartsCollapsed } from "@/lib/dashboardIntro";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { Coffee } from "lucide-react";
@@ -11,7 +10,11 @@ import { readSource as read } from "./helpers/sourceTree";
 // Package S6 of the UI/UX audit of 2026-11-15 (C-01, I-04, D-08, F-15): the dashboard.
 
 const page = read("app/[locale]/app/page.tsx");
-const intro = read("components/dashboard/DashboardIntro.tsx");
+// "Cómo funciona" left the dashboard (owner's review, 2026-11-20): it is the onboarding's second step
+// and a dialog on the profile. Its words keep their `dashboard.intro` keys.
+const intro = read("components/onboarding/HowItWorks.tsx");
+const welcome = read("components/onboarding/WelcomeModal.tsx");
+const profilePage = read("app/[locale]/app/profile/page.tsx");
 const sessionsTable = read("app/[locale]/app/sessions/SessionsTable.tsx");
 
 /** Class strings that paint the action fill (a filled green button), hover variants excluded. */
@@ -23,23 +26,59 @@ function filledActions(src: string): string[] {
 
 const words = (s: string) => (s.match(/[\p{L}\p{N}]+/gu) ?? []).length;
 
-describe("F-15: the intro starts collapsed for a returning user", () => {
-  it("collapsed with a session or after a dismissal; open only for a newcomer who never dismissed it", () => {
-    expect(introStartsCollapsed({ sessionCount: 0, dismissed: false })).toBe(false);
-    expect(introStartsCollapsed({ sessionCount: 1, dismissed: false })).toBe(true);
-    expect(introStartsCollapsed({ sessionCount: 0, dismissed: true })).toBe(true);
-    expect(introStartsCollapsed({ sessionCount: 5, dismissed: true })).toBe(true);
+describe("F-15 (revised 2026-11-20): \"Cómo funciona\" is part of onboarding, not a floating link", () => {
+  it("the dashboard no longer renders the explainer, its link or the warm-up card", () => {
+    expect(page).not.toMatch(/DashboardIntro|dashboard\.intro|WarmupFigure|app\/warmup/);
+    expect(page).not.toMatch(/intro\.(reopen|eyebrow)/);
   });
-  it("the card reads the rule and the dashboard passes it the person's sessions", () => {
-    expect(intro).toMatch(/introStartsCollapsed\(\{\s*sessionCount,\s*dismissed\s*\}\)/);
-    expect(page).toMatch(/<DashboardIntro[\s\S]*?sessionCount=\{recentSessions\.length\}/);
-    // no new kind of storage: the one existing flag
-    expect(intro.match(/localStorage\.(setItem|getItem|removeItem)\(([^,)]+)/g)?.every((c) => c.includes("STORAGE_KEY"))).toBe(true);
+  it("the welcome dialog has it as the second of four numbered steps", () => {
+    expect(welcome).toMatch(/<HowItWorks t=\{t\.howItWorks\} \/>/);
+    expect(welcome).toMatch(/const total = 4;/);
+    expect(welcome).toMatch(/\{\[1, 2, 3, 4\]\.map/);
+    // completion logic is untouched: the final step still calls completeOnboarding with the same fields
+    expect(welcome).toMatch(/completeOnboarding\(\{ displayName, role, country \}\)/);
+  });
+  it("a returning user reaches it from the profile", () => {
+    expect(profilePage).toMatch(/<HowItWorksDialog[\s\S]*?howItWorksStrings\(tDash\)/);
+  });
+  it("the card keeps no storage of its own", () => {
+    expect(intro).not.toMatch(/localStorage|cata_intro_dismissed/);
+  });
+});
+
+describe("The stat cards sit right under the header, above the lists", () => {
+  it("StatCard row comes before Sesiones recientes and Mis mejores cafés", () => {
+    const stats = page.indexOf("<StatCard");
+    const header = page.indexOf("<PageHeader");
+    expect(stats).toBeGreaterThan(0);
+    expect(header).toBeGreaterThan(0);
+    expect(stats).toBeLessThan(page.indexOf('t("recent")'));
+    expect(stats).toBeLessThan(page.indexOf('t("bestCoffees")'));
+    expect(stats).toBeLessThan(page.indexOf('t("activityFeed")'));
+    // the P1a card rules stay: 240 px cards, two per row on a phone with the average spanning both
+    expect(page).toMatch(/grid-cols-2[^"]*\[&>:last-child\]:col-span-2[^"]*md:grid-cols-\[repeat\(3,minmax\(0,240px\)\)\]/);
+  });
+});
+
+describe("The two ways to start say what they are", () => {
+  it("each label names the action, in both languages, and never the old names", () => {
+    expect(es.dashboard.expressCta).toBe("Cata rápida");
+    expect(es.dashboard.fullWizardCta).toBe("Organizar cata");
+    expect(en.dashboard.expressCta).toBe("Quick cupping");
+    expect(en.dashboard.fullWizardCta).toBe("Set up a cupping");
+    // the same words everywhere the two actions are labelled (sessions list header, express page, wizard title)
+    expect(es.session.express.cta).toBe(es.dashboard.expressCta);
+    expect(es.session.express.title).toBe(es.dashboard.expressCta);
+    expect(es.session.new).toBe(es.dashboard.fullWizardCta);
+    expect(en.session.express.cta).toBe(en.dashboard.expressCta);
+    expect(en.session.express.title).toBe(en.dashboard.expressCta);
+    expect(en.session.new).toBe(en.dashboard.fullWizardCta);
+    for (const m of [es, en]) expect(JSON.stringify(m)).not.toMatch(/Catar ahora|Cup now|“New session”|"Nueva sesión"/);
   });
 });
 
 describe("C-01: one ask, one filled button per fold", () => {
-  it("the dashboard has exactly one filled action, in its header: Catar ahora", () => {
+  it("the dashboard has exactly one filled action, in its header: Cata rápida", () => {
     const filled = filledActions(page);
     expect(filled).toHaveLength(1);
     // P1a: the page opens with PageHeader; its action slot holds the ask.
@@ -49,13 +88,13 @@ describe("C-01: one ask, one filled button per fold", () => {
     expect(firstLink).toMatch(/sessions\/express/);
     expect(firstLink).toMatch(/expressCta/);
   });
-  it("the intro card repeats no button: it names both ways in words", () => {
+  it("the explainer repeats no button: it names both ways in words", () => {
     expect(filledActions(intro)).toHaveLength(0);
     expect(intro).not.toMatch(/GuestGateLink|sessions\/new|sessions\/express/);
-    expect(es.dashboard.intro.why).toMatch(/Catar ahora/);
-    expect(es.dashboard.intro.why).toMatch(/Nueva sesión/);
-    expect(en.dashboard.intro.why).toMatch(/Cup now/);
-    expect(en.dashboard.intro.why).toMatch(/New session/);
+    expect(es.dashboard.intro.why).toMatch(/Cata rápida/);
+    expect(es.dashboard.intro.why).toMatch(/Organizar cata/);
+    expect(en.dashboard.intro.why).toMatch(/Quick cupping/);
+    expect(en.dashboard.intro.why).toMatch(/Set up a cupping/);
   });
   it("the empty states point to the header's action in words, without a button", () => {
     const empty = /<EmptyState[^>]*\/>/.exec(page);
@@ -63,8 +102,8 @@ describe("C-01: one ask, one filled button per fold", () => {
     expect(empty![0]).not.toMatch(/action=/);
     const tableEmpty = /emptyState=\{\s*<EmptyState[\s\S]*?\/>/.exec(sessionsTable)![0];
     expect(tableEmpty).not.toMatch(/action=/);
-    expect(es.dashboard.emptyBody).toMatch(/Catar ahora/);
-    expect(en.dashboard.emptyBody).toMatch(/Cup now/);
+    expect(es.dashboard.emptyBody).toMatch(/Cata rápida/);
+    expect(en.dashboard.emptyBody).toMatch(/Quick cupping/);
   });
 });
 

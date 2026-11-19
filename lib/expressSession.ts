@@ -1,4 +1,4 @@
-// "Catar ahora" — the express way to start a SOLO cupping from a phone in
+// "Cata rápida" — the express way to start a SOLO cupping from a phone in
 // three taps (name → format → how many samples). Pure module: the validator
 // and the label helpers live here (not in app/actions/sessions.ts, which is
 // "use server" and cannot be imported by vitest) so the rules are unit-tested
