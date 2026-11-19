@@ -180,7 +180,7 @@ export default async function Dashboard({
         <div className="flex shrink-0 flex-col items-stretch gap-2 sm:flex-row sm:items-center">
           <GuestGateLink
             href={`/${locale}/app/sessions/express`}
-            className="inline-flex min-h-[44px] items-center justify-center px-4 py-2 rounded-pill bg-primary-container text-white text-caption font-bold hover:bg-primary transition-colors text-center"
+            className="inline-flex min-h-[44px] items-center justify-center px-4 py-2 rounded-pill bg-primary-container text-on-primary text-caption font-bold hover:bg-primary transition-colors text-center"
           >
             {t("expressCta")}
           </GuestGateLink>
@@ -253,7 +253,7 @@ export default async function Dashboard({
                         <StatusPill status={s.status} labels={statusLabels} />
                       </div>
                       <div className="flex items-center gap-2 mt-1 text-caption text-on-surface-variant">
-                        <span>
+                        <span className="tabular-nums">
                           {new Date(s.date).toLocaleDateString(locale)}
                         </span>
                         <span>·</span>
@@ -284,7 +284,7 @@ export default async function Dashboard({
                   const avg = g._avg.individualScore ?? 0;
                   return (
                     <Card as="li" key={g.coffeeId} padding="row" className="flex items-center gap-3">
-                      <span className="font-display text-section text-primary-muted w-6 text-center shrink-0">
+                      <span className="font-display text-section tabular-nums text-on-surface-variant w-6 text-center shrink-0">
                         {i + 1}
                       </span>
                       <div className="flex-1 min-w-0">
@@ -333,7 +333,6 @@ export default async function Dashboard({
           label={t("statAvg")}
           value={avgScore ?? t("noAvg")}
           subtext={t("statAvgSub")}
-          accent
           icon={<Star size={20} />}
         />
       </div>

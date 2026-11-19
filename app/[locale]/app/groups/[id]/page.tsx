@@ -455,7 +455,6 @@ export default async function GroupDetailPage({
           label={t("statGroupEvals")}
           value={String(groupEvalCount)}
           subtext=""
-          accent
           icon={<CheckCircle2 size={18} />}
         />
       </div>

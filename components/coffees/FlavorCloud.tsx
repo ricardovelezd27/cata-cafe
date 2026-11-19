@@ -60,23 +60,19 @@ export function FlavorCloud({ descriptive, allDescriptive, isGroup, locale = "es
           const isStar = d.id === starId
           return (
             <span key={d.id} className="relative inline-flex flex-col items-center gap-0.5">
+              {/* H-01 (Q2): DESIGN.md: a family's colour is a dot beside a word in ink, never
+                  the text's colour or a pill's fill (white on these tones was 1.97 to 4.11 : 1). */}
               <span
-                className={`inline-flex items-center gap-1 whitespace-nowrap rounded-pill px-2.5 py-1 font-sans text-caption leading-none text-white ${
-                  isStar ? 'font-bold' : 'font-medium'
+                className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-pill border bg-surface-container-lowest px-2.5 py-1 font-sans text-caption leading-none text-on-surface ${
+                  isStar ? 'border-on-surface-variant font-bold' : 'border-outline-variant font-medium'
                 }`}
-                style={{
-                  backgroundColor: d.color,
-                  boxShadow: isStar ? `0 0 0 2px ${d.color}66` : undefined,
-                }}
               >
+                <span aria-hidden className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: d.color }} />
                 {isStar && <span className="text-caption" aria-hidden>★</span>}
                 {d.label}
               </span>
               {isGroup && totalEvaluators > 0 && d.count > 0 && (
-                <span
-                  className="font-mono text-caption font-semibold tracking-wide"
-                  style={{ color: d.color }}
-                >
+                <span className="font-mono text-caption font-semibold tracking-wide text-on-surface-variant">
                   {d.count}/{totalEvaluators}
                 </span>
               )}

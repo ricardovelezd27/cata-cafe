@@ -58,9 +58,9 @@ export function CoCupperCard({
 
       <div className="flex flex-col gap-1.5">
         <p className="text-caption text-on-surface">
-          <span className="font-semibold">{cupper.sessionCount}</span>{" "}
+          <span className="font-semibold tabular-nums">{cupper.sessionCount}</span>{" "}
           {cupper.sessionCount === 1 ? t.sessionOne : t.sessionMany} ·{" "}
-          <span className="font-semibold">{cupper.evaluationCount}</span>{" "}
+          <span className="font-semibold tabular-nums">{cupper.evaluationCount}</span>{" "}
           {cupper.evaluationCount === 1 ? t.evaluationOne : t.evaluationMany}
         </p>
         <p className="text-caption text-on-surface-variant">

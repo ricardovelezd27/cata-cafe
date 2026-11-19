@@ -104,7 +104,7 @@ export function ConfirmDialog({
             onClick={handleConfirm}
             className={
               destructive
-                ? "min-h-[44px] rounded-pill bg-error px-5 py-2.5 text-caption font-medium text-white transition-colors hover:bg-error/90 disabled:opacity-50"
+                ? "min-h-[44px] rounded-pill bg-error px-5 py-2.5 text-caption font-medium text-on-error transition-colors hover:bg-error/90 disabled:opacity-50"
                 : "min-h-[44px] rounded-pill bg-primary-container px-5 py-2.5 text-caption font-medium text-on-primary transition-colors hover:bg-primary disabled:opacity-50"
             }
           >

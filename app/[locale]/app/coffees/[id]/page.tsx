@@ -399,7 +399,7 @@ export default async function CoffeeProfilePage({
                                 style={{ width: `${scalePct(value, QUALITY_SCALE.min, QUALITY_SCALE.max)}%` }}
                               />
                             </div>
-                            <span className="w-8 text-right text-caption font-semibold text-on-surface">
+                            <span className="w-8 text-right text-caption font-semibold tabular-nums text-on-surface">
                               {value.toFixed(1)}
                             </span>
                           </div>

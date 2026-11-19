@@ -103,7 +103,7 @@ export function CoffeeVisibilityToggle({
               i > 0 ? "border-l border-outline-variant" : ""
             } ${
               active
-                ? "bg-primary-container text-white"
+                ? "bg-primary-container text-on-primary"
                 : "bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container"
             }`}
           >
