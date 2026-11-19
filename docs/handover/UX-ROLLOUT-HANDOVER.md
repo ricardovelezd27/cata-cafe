@@ -80,7 +80,8 @@ glossary, every learnings threshold, the selected bubble's single colour (`TODO(
    - **P2e + P4b** (cupping screen) to Worker B (it built the cupping screen's other packages). Ends
      with your phone test.
    - **P6** (tablet) to Worker C, in parallel (shell and page grids; no cupping files).
-   - **FM-1: redraw the Flowmap lanes** for the screens that changed (section 2), so the as-is flows
+   - **FM-1 FIRST: `docs/prompts/FM-1-flowmap-refresh.md`** (re-score every screen on production, redraw the changed lanes, add a "Start here" view, a walkthrough and a help menu, and a way to record manual-test notes). It replaces the line below.
+   - (old) **FM-1: redraw the Flowmap lanes** for the screens that changed (section 2), so the as-is flows
      match production. Source: `C:/projects/flowmap/boards/src/cata-cafe.flows.mjs` → build →
      validate → republish the same artifact URL (see the Flowmap memory for the gotchas).
    - **Small fixes** F-R-03, F-R-04, F-R-08 together; then Polish (F-15, I-04).
