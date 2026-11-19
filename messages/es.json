@@ -137,7 +137,6 @@
     "inAppLinkCopied": "Enlace copiado"
   },
   "dashboard": {
-    "title": "Tu estudio de catación",
     "intro": {
       "eyebrow": "Cómo funciona",
       "title": "De la taza a un puntaje claro",
@@ -148,7 +147,6 @@
       "howLabel": "Revisa",
       "how": "Tu puntaje, con su cálculo.",
       "ctaCalc": "¿Cómo se calcula el puntaje?",
-      "dismiss": "Entendido",
       "reopen": "¿Cómo funciona?",
       "calcTitle": "La fórmula CVA",
       "calcLead": "Cada puntaje afectivo usa la fórmula oficial SCA CVA. No hay matemática oculta:",
@@ -168,7 +166,6 @@
     "statSessions": "Sesiones CVA",
     "statSessionsSub": "sesiones realizadas",
     "statSamples": "Muestras evaluadas",
-    "statSamplesSub": "cafés únicos catados",
     "statAvg": "Puntaje promedio",
     "statAvgSub": "promedio personal, Puntaje Café Sensible",
     "noAvg": "Sin datos",
@@ -178,8 +175,6 @@
     "noBestCoffees": "Sin cafés evaluados aún",
     "cuppingsCount": "{count, plural, one {# catación} other {# cataciones}}",
     "samplesCount": "{count, plural, one {# muestra} other {# muestras}}",
-    "empty": "Aún no hay sesiones. Crea la primera.",
-    "newSession": "Organizar cata",
     "expressCta": "Cata rápida",
     "fullWizardCta": "Organizar cata",
     "statSamplesSubEvals": "con tu evaluación enviada",
@@ -2524,12 +2519,6 @@
       "eyesClosed": "Ojos cerrados",
       "intro": "Calmar y enfocar la atención antes de catar. El orden recomendado es del 1 al 5: el primero es la puerta de entrada. Cada ejercicio se puede hacer solo.",
       "kimLine": "«En mis clases veo que los catadores llegan más presentes a la mesa.» – Kim Ossenblok"
-    },
-    "dashboard": {
-      "eyebrow": "Antes de catar",
-      "title": "Movimiento Sensorial",
-      "body": "Cinco movimientos lentos de Kim. Calmar y enfocar la atención antes de catar. De 3 a 8 minutos, con silla o de pie.",
-      "cta": "Ver los ejercicios"
     },
     "waiting": {
       "title": "Mientras esperas",

@@ -137,7 +137,6 @@
     "inAppLinkCopied": "Link copied"
   },
   "dashboard": {
-    "title": "Your cupping studio",
     "intro": {
       "eyebrow": "How it works",
       "title": "From the cup to a clear score",
@@ -148,7 +147,6 @@
       "howLabel": "Review",
       "how": "Your score, with its working.",
       "ctaCalc": "How is the score calculated?",
-      "dismiss": "Got it",
       "reopen": "How does it work?",
       "calcTitle": "The CVA formula",
       "calcLead": "Every affective score uses the official SCA CVA formula. No hidden math:",
@@ -168,7 +166,6 @@
     "statSessions": "CVA sessions",
     "statSessionsSub": "sessions completed",
     "statSamples": "Samples evaluated",
-    "statSamplesSub": "unique coffees cupped",
     "statAvg": "Average score",
     "statAvgSub": "personal average, Café Sensible score",
     "noAvg": "No data",
@@ -178,8 +175,6 @@
     "noBestCoffees": "No coffees evaluated yet",
     "cuppingsCount": "{count, plural, one {# cupping} other {# cuppings}}",
     "samplesCount": "{count, plural, one {# sample} other {# samples}}",
-    "empty": "No sessions yet. Create your first.",
-    "newSession": "Set up a cupping",
     "expressCta": "Quick cupping",
     "fullWizardCta": "Set up a cupping",
     "statSamplesSubEvals": "with your evaluation submitted",
@@ -2524,12 +2519,6 @@
       "eyesClosed": "Eyes closed",
       "intro": "Calm and focus your attention before cupping. The recommended order is 1 to 5: the first one is the way in. Each exercise can be done on its own.",
       "kimLine": "“In my classes I see cuppers arrive more present at the table.” – Kim Ossenblok"
-    },
-    "dashboard": {
-      "eyebrow": "Before cupping",
-      "title": "Sensory Movement",
-      "body": "Kim's five slow movements. Calm and focus your attention before cupping. 3 to 8 minutes, seated or standing.",
-      "cta": "See the exercises"
     },
     "waiting": {
       "title": "While you wait",
