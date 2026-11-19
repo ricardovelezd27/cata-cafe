@@ -578,6 +578,28 @@
         "potato": "Potato"
       },
       "scoreLater": "You will see your score when you submit."
+    },
+    "scale": {
+      "labels": [
+        "Extremely low",
+        "Very low",
+        "Moderately low",
+        "Slightly low",
+        "Neither high nor low",
+        "Slightly high",
+        "Moderately high",
+        "Very high",
+        "Extremely high"
+      ]
+    },
+    "place": {
+      "stepsLabel": "Cupping steps",
+      "stepOf": "step {n} of {total}",
+      "sampleOf": "sample {n} of {total}",
+      "notesStep": "Notes",
+      "sendStep": "Send",
+      "language": "Español",
+      "languageLabel": "Switch the language to Spanish"
     }
   },
   "waiting": {

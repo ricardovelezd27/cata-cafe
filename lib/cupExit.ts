@@ -9,8 +9,9 @@
  *   when nothing of the cupper's is device-only; otherwise ask, with the guard's
  *   "pending" wording. A closed session never asks: the page is leaving anyway.
  */
+import { localeSwitchHref } from "@/lib/localeSwitch";
 
-export type CupExitTarget = "sessions" | "results";
+export type CupExitTarget = "sessions" | "results" | "language";
 
 export type ModuleAction =
   | { kind: "leave"; target: CupExitTarget }
@@ -41,8 +42,12 @@ export function exitDecision(s: ExitState): "leave" | "confirm" {
   return "leave";
 }
 
-/** Where a way out goes. */
-export function cupExitHref(locale: string, sessionId: string, target: CupExitTarget): string {
+/** Where a way out goes. "language" (P5b, D-01) is the same cup page in the other language,
+ *  with the query kept (the cupper's sample and step, `lib/cupPlace.ts`). */
+export function cupExitHref(locale: string, sessionId: string, target: CupExitTarget, search = ""): string {
+  if (target === "language") {
+    return localeSwitchHref(`/${locale}/app/sessions/${sessionId}/cup`, search, "", locale === "en" ? "es" : "en");
+  }
   return target === "results" ? `/${locale}/app/sessions/${sessionId}/results` : `/${locale}/app/sessions`;
 }
 

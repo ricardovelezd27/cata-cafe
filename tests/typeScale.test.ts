@@ -277,8 +277,7 @@ const SWEPT_CSS_PX: Record<string, { px: string; reason: string }[]> = {
   "components/ui/AffectiveBubbles.module.css": [
     { px: "19px", reason: "the number inside a 44 px rating bubble, a numeral sized with its circle" },
     { px: "15px", reason: "the same number inside a 34 px bubble on phones" },
-    { px: "22px", reason: "the FINAL readout's number (wide columns)" },
-    { px: "17px", reason: "the FINAL readout's number on phones" },
+    // P5b (2026-11-19): the FINAL readout (22 px / 17 px) was removed by the owner's decision.
   ],
   "components/ui/CupToggleGrid.module.css": [{ px: "15px", reason: "a cup's number inside its toggle, sized with the bubbles" }],
   "components/ui/IntensitySlider.module.css": [
