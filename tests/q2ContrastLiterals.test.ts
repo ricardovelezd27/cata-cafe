@@ -53,6 +53,13 @@ describe("H-01: a family's colour is a dot beside a word in ink", () => {
     expect(src).toMatch(/font-display text-section tabular-nums text-on-surface-variant w-6 text-center shrink-0/);
     expect(src).not.toMatch(/text-primary-muted w-6/);
   });
+  it("B-06: the numbers left proportional after Q1 are tabular (dates, attribute values, counts, the level)", () => {
+    expect(read("app/[locale]/app/page.tsx")).toMatch(/<span className="tabular-nums">\s*\{new Date\(s\.date\)\.toLocaleDateString\(locale\)\}/);
+    expect(read("app/[locale]/app/coffees/[id]/page.tsx")).toMatch(/w-8 text-right text-caption font-semibold tabular-nums/);
+    expect(read("components/groups/CoCupperCard.tsx")).toMatch(/font-semibold tabular-nums">\{cupper\.sessionCount\}/);
+    expect(read("components/groups/CoCupperCard.tsx")).toMatch(/font-semibold tabular-nums">\{cupper\.evaluationCount\}/);
+    expect(read("components/profile/LevelBadge.tsx")).toMatch(/text-caption font-bold tabular-nums shrink-0/);
+  });
   it("the coffees list's process cell is a dot and an ink word (T5)", () => {
     expect(read("components/coffees/CoffeesTable.tsx")).toMatch(/rounded-full" style=\{\{ backgroundColor: processToneVar\(type\) \}\}/);
   });

@@ -253,7 +253,7 @@ export default async function Dashboard({
                         <StatusPill status={s.status} labels={statusLabels} />
                       </div>
                       <div className="flex items-center gap-2 mt-1 text-caption text-on-surface-variant">
-                        <span>
+                        <span className="tabular-nums">
                           {new Date(s.date).toLocaleDateString(locale)}
                         </span>
                         <span>·</span>
