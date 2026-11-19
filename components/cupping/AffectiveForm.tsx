@@ -21,6 +21,7 @@ import {
 import { MarketNote,MARKET_COPY_FALLBACK, type MarketCopy } from "@/components/cupping/MarketNote";
 import { CUP_COPY_FALLBACK, cupSummary, type CupCopy } from "@/lib/cupCopy";
 import { applyDefectChoice, applyNonUniformToggle, formCupState } from "@/lib/cupDefects";
+import { SCALE_COPY_FALLBACK, type ScaleCopy } from "@/components/ui/AffectiveBubbles";
 
 type Data = Record<string, unknown>;
 
@@ -38,6 +39,7 @@ export function AffectiveForm({
   cupCopy,
   marketCopy,
   partialCopy,
+  scaleCopy,
 }: {
   sampleData: Data;
   onChange: (d: Data) => void;
@@ -61,9 +63,12 @@ export function AffectiveForm({
   marketCopy?: MarketCopy;
   /** "No evaluado" / "as it cooled" copy (messages `cupping.partial`, S10 WP3b). */
   partialCopy?: PartialCopy;
+  /** The 1-9 scale's words (messages `cupping.scale`, P5b). */
+  scaleCopy?: ScaleCopy;
 }) {
   const copy = cupCopy ?? CUP_COPY_FALLBACK[locale];
   const partial = partialCopy ?? PARTIAL_COPY_FALLBACK[locale];
+  const scale = scaleCopy ?? SCALE_COPY_FALLBACK[locale];
   const isFlagged = (id: string) => missingIds?.includes(id) ?? false;
   const d = sampleData;
   const set = (key: string, val: unknown) => onChange({ ...d, [key]: val });
@@ -113,6 +118,8 @@ export function AffectiveForm({
                 {/* Left: quality (liking) */}
                 <div className="min-w-0">
                   <AffectiveBubbles
+                    ariaLabel={title}
+                    scale={scale}
                     value={getNum(`${attr.affectiveId}_final`)}
                     onChange={(v) => set(`${attr.affectiveId}_final`, v)}
                     disabled={lockedAffective || sectionNotEvaluated(d, attr.affectiveId)}
@@ -148,6 +155,8 @@ export function AffectiveForm({
       {lockedBanner}
       <FormSection title="Impresión Global" accent flagged={isFlagged("impresion_global")}>
         <AffectiveBubbles
+          ariaLabel="Impresión Global"
+          scale={scale}
           value={getNum("impresion_global_final")}
           onChange={(v) => set("impresion_global_final", v)}
           disabled={lockedAffective || sectionNotEvaluated(d, "impresion_global")}

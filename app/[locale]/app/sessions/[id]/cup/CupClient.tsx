@@ -27,7 +27,9 @@ import { shouldShowWarmupOverlay } from "@/lib/warmup/overlayGate";
 import { formatTimeLeft, isRunning as isWarmupRunning, parseDbTimestamp, resyncPositionMs, runLengthMs, seekFor, skewMs, timeLeftMs } from "@/lib/warmup/syncedRun";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
-import { Coffee, Scale, FileText, BarChart3, Timer } from "lucide-react";
+import { Coffee, Scale, FileText, BarChart3, Timer, Languages } from "lucide-react";
+import { CUP_PLACE_FALLBACK, cupStepIndexFrom, writePlaceToHistory, type CupPlaceCopy } from "@/lib/cupPlace";
+import type { ScaleCopy } from "@/components/ui/AffectiveBubbles";
 import { DescriptiveForm } from "@/components/cupping/DescriptiveForm";
 import { AffectiveForm } from "@/components/cupping/AffectiveForm";
 import { CombinedForm } from "@/components/cupping/CombinedForm";
@@ -237,9 +239,16 @@ const NO_ROWS: SubmittedRow[] = [];
 const NO_IDS: string[] = [];
 const NO_COUNTS: Record<string, number> = {};
 
+/** P5b: write the cupper's place into the address (no navigation). The rule, and why Next's
+ *  own history state is never passed back, is in lib/cupPlace.ts `writePlaceToHistory`. */
+function writePlaceToAddress(sampleId: string | null, stepIdx: number) {
+  writePlaceToHistory(window, sampleId, stepIdx);
+}
+
 export function CupClient({
   locale,
   initialSampleId,
+  initialStep,
   session,
   isOwner,
   isGroup,
@@ -261,6 +270,8 @@ export function CupClient({
 }: {
   locale: string;
   initialSampleId?: string;
+  /** P5b (D-01): the step in the address (`?step=n`, 1-based), read once at mount. */
+  initialStep?: string;
   session: Session;
   /** Optional pre-cupping warm-up (CuppingSession.warmupExerciseId) — shown
    *  once per (session, user, exercise) per device by the session-moment
@@ -510,6 +521,10 @@ export function CupClient({
     market?: MarketCopy;
     /** "No evaluado" / "as it cooled" copy (S10 WP3b, C4/A5); fallback in components/cupping/AttributeExtras.tsx. */
     partial?: PartialCopy;
+    /** The 1-9 scale's words (P5b, H-08); fallback in components/ui/AffectiveBubbles.tsx. */
+    scale?: ScaleCopy;
+    /** Steps, samples and language copy (P5b); fallback in lib/cupPlace.ts. */
+    place?: CupPlaceCopy;
     /** Optional cupping timer copy (S10 WP3b, A5); fallback in components/cupping/CuppingTimer.tsx. */
     timer?: TimerCopy;
     /** Cup grid + "score after submitting" copy (S10 WP1b); optional: the error
@@ -570,7 +585,9 @@ export function CupClient({
     ? Math.max(0, initialOrdered.findIndex((s) => s.id === initialSampleId))
     : 0;
   const [sampleIdx, setSampleIdx] = useState(initialSampleIdx);
-  const [currentStep, setCurrentStep] = useState<CuppingStep>(stepsForFormat[0]);
+  const [currentStep, setCurrentStep] = useState<CuppingStep>(
+    stepsForFormat[cupStepIndexFrom(initialStep, stepsForFormat.length)],
+  );
   const [samples, setSamples] = useState(initialOrdered);
   const [activeTab, setActiveTab] = useState<CuppingTab>("cupping");
   // "Notas rápidas": the free-text end step shown after the last sample of
@@ -1586,6 +1603,27 @@ export function CupClient({
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
+  // ─── The place in the address (P5b, audit D-01) ───────────────
+  // The sample and the step are WRITTEN FROM this state into `?sample=&step=` with
+  // replaceState: no navigation and no render (this page reads no search params), and the
+  // history entry keeps its own state (the back trap's sentinel). They are READ ONCE, at
+  // mount, by the page (`initialSampleId`, `initialStep`): never a second source of truth.
+  // The notes stage writes nothing (it keeps the last step). The back trap above re-arms on
+  // `popstate` with the URL of the entry back went to; this second listener, registered
+  // after it, writes the current place again. Nothing here saves or flushes.
+  const placeSampleId = samples[sampleIdx]?.id ?? null;
+  const placeStepIdx = stepsForFormat.indexOf(currentStep);
+  const placeRef = useRef({ sampleId: placeSampleId, stepIdx: placeStepIdx });
+  useEffect(() => {
+    placeRef.current = { sampleId: placeSampleId, stepIdx: placeStepIdx };
+    writePlaceToAddress(placeSampleId, placeStepIdx);
+  }, [placeSampleId, placeStepIdx]);
+  useEffect(() => {
+    const onPopState = () => writePlaceToAddress(placeRef.current.sampleId, placeRef.current.stepIdx);
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
   // Fallback mirrors messages.*.cupping.leaveGuard for props rehydrated from a
   // pre-upgrade offline cache (see the prop's comment).
   const leaveGuardFallback =
@@ -1624,7 +1662,7 @@ export function CupClient({
     const target = leaveTargetRef.current;
     leaveTargetRef.current = "sessions";
     setLeaveGuardPending(false);
-    router.push(cupExitHref(locale, session.id, target));
+    router.push(cupExitHref(locale, session.id, target, window.location.search));
   };
 
   const handleLeaveCancel = () => {
@@ -1645,7 +1683,7 @@ export function CupClient({
       sessionClosed: sessionClosed || closedNoticeShownRef.current,
     });
     if (decision === "leave") {
-      router.push(cupExitHref(locale, session.id, target));
+      router.push(cupExitHref(locale, session.id, target, window.location.search));
       return;
     }
     leaveTargetRef.current = target;
@@ -2587,6 +2625,9 @@ export function CupClient({
     </>
   );
 
+  // P5b: steps, samples and language copy (fallback for an older cached prop blob).
+  const placeCopy = translations.place ?? CUP_PLACE_FALLBACK[locale === "en" ? "en" : "es"];
+
   const sampleTabsBar = (
     <SampleTabs
       orientation="horizontal"
@@ -2599,6 +2640,7 @@ export function CupClient({
         referenceTag: multiRef ? `R${refOrder.indexOf(s.id) + 1}` : undefined,
       }))}
       referenceLabel={referenceBadgeLabel}
+      positionTemplate={placeCopy.sampleOf}
       activeIndex={sampleIdx}
       onSelect={handleSampleSelect}
     />
@@ -2640,6 +2682,7 @@ export function CupClient({
             referenceTag: multiRef ? `R${refOrder.indexOf(s.id) + 1}` : undefined,
           }))}
           referenceLabel={referenceBadgeLabel}
+      positionTemplate={placeCopy.sampleOf}
           activeIndex={sampleIdx}
           onSelect={handleSampleSelect}
         />
@@ -2784,14 +2827,27 @@ export function CupClient({
       />
     ) : undefined;
 
+  // P5b (D-01): the language switch is one more way out through the same guard (flush, then
+  // leave or ask), to the same page in the other language with the query (sample, step) kept.
   const exitLink = (
-    <TextAction
-      tone="none"
-      onClick={() => void requestLeave("sessions")}
-      className="-my-[13px] !justify-start gap-2 font-sans text-caption text-on-surface-variant hover:text-primary-container transition-colors focus-visible:outline-2 focus-visible:outline-primary-container focus-visible:outline-offset-2 rounded-sm"
-    >
-      <span aria-hidden>←</span> {translations.exitToSessions}
-    </TextAction>
+    <div className="flex w-full items-center justify-between gap-3">
+      <TextAction
+        tone="none"
+        onClick={() => void requestLeave("sessions")}
+        className="-my-[13px] !justify-start gap-2 font-sans text-caption text-on-surface-variant hover:text-primary-container transition-colors focus-visible:outline-2 focus-visible:outline-primary-container focus-visible:outline-offset-2 rounded-sm"
+      >
+        <span aria-hidden>←</span> {translations.exitToSessions}
+      </TextAction>
+      <TextAction
+        tone="none"
+        onClick={() => void requestLeave("language")}
+        aria-label={placeCopy.languageLabel}
+        lang={locale === "en" ? "es" : "en"}
+        className="-my-[13px] gap-1.5 font-sans text-caption text-on-surface-variant hover:text-primary-container transition-colors focus-visible:outline-2 focus-visible:outline-primary-container focus-visible:outline-offset-2 rounded-sm"
+      >
+        <Languages size={14} aria-hidden /> {placeCopy.language}
+      </TextAction>
+    </div>
   );
 
   // S10 WP7 (Kim F1): the discreet warm-up entry lives under the exit link.
@@ -2826,6 +2882,9 @@ export function CupClient({
       onSelect={handleStepChange}
       variant="light"
       compact
+      ariaLabel={placeCopy.stepsLabel}
+      stepOfTemplate={placeCopy.stepOf}
+      trailing={[placeCopy.notesStep, placeCopy.sendStep]}
     />
   );
 
@@ -2861,6 +2920,9 @@ export function CupClient({
               onSelect={handleStepChange}
               variant="light"
               align="start"
+              ariaLabel={placeCopy.stepsLabel}
+              stepOfTemplate={placeCopy.stepOf}
+              trailing={[placeCopy.notesStep, placeCopy.sendStep]}
             />
             <div className="border-t border-outline-variant pt-1.5 flex items-center gap-3">
               <div className="min-w-0 flex-1">{sampleTabsBar}</div>
@@ -2975,6 +3037,14 @@ export function CupClient({
           : undefined
       }
     >
+      {/* B-03: the cupping screen's one h1, visually hidden: the session's name. */}
+      <h1 className="sr-only">{session.name}</h1>
+      {/* The step being cupped, between the h1 and the form's attribute headings (h3). */}
+      {activeTab === "cupping" && !notesStage && (
+        <h2 className="sr-only">
+          {`${stepsForFormat.indexOf(currentStep) + 1}. ${translations.phaseLabels[currentStep] ?? currentStep}`}
+        </h2>
+      )}
       <OfflineBanner
         online={online}
         syncPhase={syncPhase}
@@ -3508,6 +3578,7 @@ export function CupClient({
             cupCopy={translations.cups}
             marketCopy={translations.market}
             partialCopy={translations.partial}
+            scaleCopy={translations.scale}
           />
         )}
         {activeTab === "cupping" &&
@@ -3527,6 +3598,7 @@ export function CupClient({
               cupCopy={translations.cups}
               marketCopy={translations.market}
               partialCopy={translations.partial}
+            scaleCopy={translations.scale}
             />
           )}
         {activeTab === "extrinsic" && (

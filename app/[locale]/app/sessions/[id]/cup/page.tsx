@@ -13,6 +13,8 @@ import { isSessionExpired } from "@/lib/sessionState";
 import { gateSamplePrep } from "@/lib/samplePrep";
 import { cupGroupProgressForViewer } from "@/lib/cupGroupProgress";
 import { CupClient } from "./CupClient";
+import type { ScaleCopy } from "@/components/ui/AffectiveBubbles";
+import type { CupPlaceCopy } from "@/lib/cupPlace";
 
 // Server actions invoked from this page (closeSession → after() email fan-out
 // with one PDF render per participant) inherit this budget on Vercel.
@@ -23,10 +25,10 @@ export default async function CupPage({
   searchParams,
 }: {
   params: Promise<{ locale: string; id: string }>;
-  searchParams: Promise<{ sample?: string }>;
+  searchParams: Promise<{ sample?: string; step?: string }>;
 }) {
   const { locale, id } = await params;
-  const { sample: initialSampleId } = await searchParams;
+  const { sample: initialSampleId, step: initialStep } = await searchParams;
   setRequestLocale(locale);
 
   const user = await requireAppUser(locale, `/${locale}/app/sessions/${id}/cup`);
@@ -175,6 +177,7 @@ export default async function CupPage({
     <CupClient
       locale={locale}
       initialSampleId={initialSampleId}
+      initialStep={initialStep}
       isOwner={isOwner}
       isGroup={session.isGroup}
       userId={user.id}
@@ -429,6 +432,9 @@ export default async function CupPage({
           noteLabel: t("cupping.market.noteLabel"),
           notePlaceholder: t("cupping.market.notePlaceholder"),
         },
+        // P5b: the 1-9 scale's words and the place copy ({n}/{total} replaced client-side).
+        scale: t.raw("cupping.scale") as ScaleCopy,
+        place: t.raw("cupping.place") as CupPlaceCopy,
         // "No evaluado" / "as it cooled" (S10 WP3b): {from}/{to}/{sample}/{n} are replaced client-side.
         partial: {
           notEvaluated: t("cupping.partial.notEvaluated"),

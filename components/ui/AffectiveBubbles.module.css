@@ -1,8 +1,6 @@
 .root { width: 100%; container-type: inline-size; }
 .head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
 .label { font-family: var(--font-ui); font-size: var(--text-body); font-weight: 500; color: var(--color-on-surface); }
-.finalBadge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; background: var(--color-primary-container); color: var(--color-surface); font-family: var(--font-mono); font-size: var(--text-label); font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; border-radius: 3px; }
-.finalBadge::before { content: ""; width: 5px; height: 5px; background: var(--color-secondary); border-radius: 50%; }
 .row { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
 .bubble { position: relative; flex: 0 0 auto; width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid var(--color-outline-variant); background: var(--color-surface); font-family: var(--font-display); font-size: 19px; font-weight: 600; color: var(--color-on-surface); display: grid; place-items: center; transition: all var(--transition-fast); font-variant-numeric: tabular-nums; padding: 0; }
 /* The hit area (F-02): a transparent ::before, 44 px tall, centred on the
@@ -15,57 +13,29 @@
 /* A-06: ONE selected look for every value (the kit's primary pair). Terracotta for
    high and red for low read as a quality band, which a score never has. */
 .selected { background: var(--color-primary-container); border-color: var(--color-primary-container); color: var(--color-on-primary); box-shadow: 0 0 0 4px color-mix(in oklch, var(--color-primary-container) 12%, transparent); }
-.final { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-left: 16px; }
-.finalCap { font-family: var(--font-mono); font-size: var(--text-label); text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-on-surface-variant); font-weight: 600; }
-.finalSet .finalCap { color: var(--color-secondary); }
-.finalInput { width: 58px; height: 44px; line-height: 44px; text-align: center; border: 1.5px solid var(--color-outline-variant); border-radius: var(--radius-input); background: var(--color-surface-container); font-family: var(--font-display); font-size: 22px; font-weight: 600; color: var(--color-on-surface-variant); font-variant-numeric: tabular-nums; }
-.finalSet .finalInput { background: var(--color-primary-container); border-color: var(--color-primary-container); color: var(--color-surface); }
-.scale { display: flex; justify-content: space-between; margin-top: 12px; font-family: var(--font-mono); font-size: var(--text-caption); line-height: 1.25; color: var(--color-on-surface-variant); }
-/* Reserve space equal to final box + margin so labels align under bubbles only */
-.scaleInner { display: flex; justify-content: space-between; gap: 6px; flex: 1; }
-.scaleInner span:nth-child(1) { max-width: 34%; min-width: 0; }
-.scaleInner span:nth-child(2) { flex: 1; text-align: center; }
-.scaleInner span:nth-child(3) { max-width: 34%; min-width: 0; text-align: right; }
-.scaleSpacer { flex-shrink: 0; width: calc(58px + 16px); } /* matches .final: margin-left 16px + finalInput 58px */
 /* Narrow (the phone's single column, the ~300 px column of the two-column
    layout): nine bubbles paint 34 px (F-02) on a nine-column grid, each centred
    in its column, so the columns' edges are the midpoints between bubbles.
-   --row-w is the row's width and --final-w the room the FINAL readout takes;
-   a bubble's hit area is min(44 px, its column). */
+   --row-w is the row's width; a bubble's hit area is min(44 px, its column).
+   (P5b: the FINAL readout and the scale words are gone, by the owner's decision;
+   the scale's words are the radios' accessible names.) */
 @container (max-width: 440px) {
-  .row { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)) auto; column-gap: 0; --row-w: 100cqw; --final-w: 50px; }
-  .bubble { justify-self: center; width: 34px; height: 34px; font-size: 15px; border-width: 1.25px; --hit-w: min(44px, calc((var(--row-w) - var(--final-w)) / 9)); }
-  .final { margin-left: 8px; }
-  .finalInput { width: 42px; height: 34px; line-height: 34px; font-size: 17px; }
-  .scale { font-size: var(--text-caption); }
-  .scaleInner span:nth-child(1), .scaleInner span:nth-child(3) { max-width: 34%; }
-  .scaleSpacer { width: calc(42px + 8px); }
-}
-/* Extra-compact: the FINAL readout is hidden and the nine columns take the row. */
-@container (max-width: 360px) {
-  .row { --final-w: 0px; }
-  .final { display: none; }
-  .scale { font-size: var(--text-caption); margin-top: 6px; }
-  .scaleInner span:nth-child(1), .scaleInner span:nth-child(3) { max-width: 34%; }
-  .scaleSpacer { display: none; }
+  .row { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); column-gap: 0; --row-w: 100cqw; }
+  .bubble { justify-self: center; width: 34px; height: 34px; font-size: 15px; border-width: 1.25px; --hit-w: min(44px, calc(var(--row-w) / 9)); }
 }
 /* A column that cannot hold nine 34 px bubbles with 4 px between them
-   (9 x 34 + 8 x 4 = 338 px): the row and its scale reach 12 px into the
+   (9 x 34 + 8 x 4 = 338 px): the row reaches 12 px into the
    section's own padding on each side (FormSection: 16 px on a phone, where the
    form is flush to the screen since S5b; 20 px wider), never past it. On a
    375 px phone the column is 343 px and this never applies; at 320 px it is
    288 px and the row spans 312 px. The page's side margin no longer gives way. */
 @container (max-width: 337.98px) {
-  .row, .scale { width: calc(100% + 24px); margin-inline: -12px; }
-  .row { --row-w: calc(100cqw + 24px); }
+  .row { width: calc(100% + 24px); margin-inline: -12px; --row-w: calc(100cqw + 24px); }
 }
 /* Browsers without container queries (Safari < 16): the phone sizes by window. */
 @supports not (container-type: inline-size) {
   @media (max-width: 480px) {
     .row { gap: 2px; }
     .bubble { width: 34px; height: 34px; font-size: 15px; border-width: 1.25px; --hit-w: 36px; }
-    .final { display: none; }
-    .scale { font-size: var(--text-caption); margin-top: 6px; }
-    .scaleSpacer { display: none; }
   }
 }

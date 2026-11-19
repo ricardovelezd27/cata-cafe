@@ -578,6 +578,28 @@
         "potato": "Papa"
       },
       "scoreLater": "Verás tu puntaje al enviar la evaluación."
+    },
+    "scale": {
+      "labels": [
+        "Extremadamente bajo",
+        "Muy bajo",
+        "Moderadamente bajo",
+        "Ligeramente bajo",
+        "Ni alto ni bajo",
+        "Ligeramente alto",
+        "Moderadamente alto",
+        "Muy alto",
+        "Extremadamente alto"
+      ]
+    },
+    "place": {
+      "stepsLabel": "Pasos de la cata",
+      "stepOf": "paso {n} de {total}",
+      "sampleOf": "muestra {n} de {total}",
+      "notesStep": "Notas",
+      "sendStep": "Enviar",
+      "language": "English",
+      "languageLabel": "Cambiar el idioma a inglés"
     }
   },
   "waiting": {
