@@ -43,10 +43,11 @@ describe("Q1: DataTable names its rows, columns and itself", () => {
 });
 
 describe("Q1: the rest of the package", () => {
-  it("A-04: a stat card's numeral is ink, whatever `accent` says", () => {
+  it("A-04: a stat card's numeral is ink, and the card has no `accent` to single one out", () => {
     const card = read("components/dashboard/StatCard.tsx");
     expect(card).toMatch(/className="font-display text-4xl leading-none mt-1 tabular-nums text-on-surface"/);
     expect(card).not.toMatch(/text-secondary/);
+    expect(card).not.toMatch(/accent/);
     expect(read("components/profile/LevelBadge.tsx")).not.toMatch(/text-secondary/);
   });
 

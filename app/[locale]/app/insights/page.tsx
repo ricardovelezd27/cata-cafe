@@ -98,13 +98,11 @@ export default async function InsightsDashboardPage({
           label={t("kpi.avgScore")}
           value={data.avgIndividualScore != null ? data.avgIndividualScore.toFixed(2) : "—"}
           subtext={t("kpi.avgScoreSub")}
-          accent
         />
         <StatCard
           label={t("kpi.avgCommunity")}
           value={data.avgCommunityScore != null ? data.avgCommunityScore.toFixed(2) : "—"}
           subtext={t("kpi.avgCommunitySub")}
-          accent
         />
       </div>
 

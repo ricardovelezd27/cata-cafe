@@ -5,8 +5,6 @@ interface StatCardProps {
   label: string;
   value: string;
   subtext: string;
-  /** @deprecated A-04 (Q1): a score is never singled out by colour; kept so callers still compile, it paints nothing. */
-  accent?: boolean;
   icon?: ReactNode;
 }
 

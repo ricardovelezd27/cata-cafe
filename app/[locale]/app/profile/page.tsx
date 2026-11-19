@@ -315,7 +315,6 @@ export default async function ProfilePage({
                 label={t("statCoffees")}
                 value={String(distinctCoffees)}
                 subtext={t("viewHistory")}
-                accent
                 icon={<Coffee size={18} />}
               />
             </Link>

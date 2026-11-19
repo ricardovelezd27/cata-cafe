@@ -48,6 +48,11 @@ describe("H-01: a family's colour is a dot beside a word in ink", () => {
     expect(src).not.toMatch(/style=\{\{\s*color:/);
     expect(src).toMatch(/rounded-full" style=\{\{ backgroundColor: d\.color \}\}/);
   });
+  it("the dashboard's rank numerals are ink and tabular (B-06), not the muted green (1.7 : 1)", () => {
+    const src = read("app/[locale]/app/page.tsx");
+    expect(src).toMatch(/font-display text-section tabular-nums text-on-surface-variant w-6 text-center shrink-0/);
+    expect(src).not.toMatch(/text-primary-muted w-6/);
+  });
   it("the coffees list's process cell is a dot and an ink word (T5)", () => {
     expect(read("components/coffees/CoffeesTable.tsx")).toMatch(/rounded-full" style=\{\{ backgroundColor: processToneVar\(type\) \}\}/);
   });
@@ -63,9 +68,10 @@ describe("H-01: a family's colour is a dot beside a word in ink", () => {
 // brand: the dark ground's own rules), the warm-up player and stage, the dev pages,
 // the printed form (lib/pdf's pixels), the social image (its own pixel space).
 const OUT = /components\/(landing|journey|arrival|brand|warmup|dev)\/|\/dev\/|\/print\/|opengraph-image|app\/\[locale\]\/page\.tsx/;
-// Later packages, by name: the cupping screen (P5b) and the shell (P4a). Their counts
-// are pinned below and may only shrink.
-const LATER = /components\/(cupping|layout)\/|\/cup\/|components\/ui\/(SessionShell|CanvasFooter|SampleTabs|ModuleSwitcher|AffectiveBubbles|IntensitySlider|CATAPills|CupToggleGrid|MasterControls|FormSection|Notes)\.|app\/\[locale\]\/app\/page\.tsx/;
+// The later package, by name: the cupping screen (P5b) and the kit modules only it uses.
+// Their counts are pinned below and may only shrink. (The shell, `components/layout`, and
+// the dashboard joined the scan once P4a merged.)
+const LATER = /components\/cupping\/|\/cup\/|components\/ui\/(SessionShell|CanvasFooter|SampleTabs|ModuleSwitcher|AffectiveBubbles|IntensitySlider|CATAPills|CupToggleGrid|MasterControls|FormSection|Notes)\./;
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const name of readdirSync(join(process.cwd(), dir))) {
@@ -104,7 +110,7 @@ const ALLOWED: Record<string, { kind: string; n: number; reason: string }[]> = {
 /** Text coloured through `style={{ color }}` that stays, and why. May only shrink. */
 const COLOR_ALLOWED = new Set<string>([]);
 
-/** The later packages' remaining hits, by file. May only shrink (P5b: the cupping screen; P4a: the shell). */
+/** The later packages' remaining hits, by file. May only shrink (P5b: the cupping screen). */
 const LATER_COUNTS: Record<string, number> = {
   "components/cupping/CloseSessionDialog.tsx": 1,
   "components/cupping/EditSampleMetadataForm.tsx": 1,
@@ -118,7 +124,6 @@ const LATER_COUNTS: Record<string, number> = {
   "components/ui/FormSection.module.css": 2,
   "components/ui/IntensitySlider.module.css": 2,
   "components/ui/SessionShell.module.css": 1,
-  "app/[locale]/app/page.tsx": 1, // P4a: the dashboard's "Catar ahora" link, text-white on primary-container
 };
 
 describe("E-04: design values are tokens, not literals", () => {
