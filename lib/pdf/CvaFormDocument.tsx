@@ -414,6 +414,10 @@ function chosenWords(rows: CataGroupRow[]): string[] {
   return out;
 }
 
+/** What a Notes box holds: a longer note is cut here, so it never runs onto another page nor pushes the combined form's columns out of line. */
+const NOTE_MAX = 400;
+const clip = (text: string) => (text.length > NOTE_MAX ? `${text.slice(0, NOTE_MAX).trimEnd()}…` : text);
+
 /** The cupper's free-text note of a stage (`<stage>_notas`), already sanitized by the builder. */
 type StageNote = { prefix?: string; text: string };
 
@@ -440,7 +444,7 @@ function WrittenNotes({ notes }: { notes?: StageNote[] }) {
     <View>
       {notes.map((n, i) => (
         <View key={i} style={{ marginBottom: 2 }}>
-          <Written size={6.3}>{n.prefix ? `${n.prefix}: ${n.text}` : n.text}</Written>
+          <Written size={6.3}>{n.prefix ? `${n.prefix}: ${clip(n.text)}` : clip(n.text)}</Written>
         </View>
       ))}
     </View>
@@ -553,7 +557,7 @@ function QualityLegend({ t, layout }: { t: Record<string, string>; layout: "row"
 }
 
 /** Nine circled numbers and a FINAL pill. The chosen value: a solid rounded square over its circle, and a solid pill carrying the number. */
-function Bubbles({ value }: { value: number | null }) {
+function Bubbles({ value, notEvaluated, notEvaluatedLabel }: { value: number | null; notEvaluated: boolean; notEvaluatedLabel: string }) {
   return (
     <View style={s.bubbleRow}>
       {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
@@ -569,9 +573,15 @@ function Bubbles({ value }: { value: number | null }) {
           )}
         </View>
       ))}
-      <View style={value === null ? s.pill : [s.pill, s.pillOn]}>
-        <Text style={value === null ? s.pillText : s.pillOnText}>{value === null ? "FINAL" : value}</Text>
-      </View>
+      {notEvaluated ? (
+        <View style={[s.pill, s.pillOn, { minWidth: 40 }]}>
+          <Text style={[s.pillOnText, { fontSize: 5.6 }]}>{notEvaluatedLabel}</Text>
+        </View>
+      ) : (
+        <View style={value === null ? s.pill : [s.pill, s.pillOn]}>
+          <Text style={value === null ? s.pillText : s.pillOnText}>{value === null ? "FINAL" : value}</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -585,7 +595,7 @@ function NotesBlock({ notes, label }: { notes: { prefix?: string; text: string }
         .filter((n) => n.text)
         .map((n, i) => (
           <View key={i} style={{ marginBottom: 2 }}>
-            <Written size={6.3}>{n.prefix ? `${n.prefix}: ${n.text}` : n.text}</Written>
+            <Written size={6.3}>{n.prefix ? `${n.prefix}: ${clip(n.text)}` : clip(n.text)}</Written>
           </View>
         ))}
     </View>
@@ -613,7 +623,7 @@ function AffCell({
           {labelWidth ? (
             <Text style={[s.secName, { width: labelWidth }]}>{shortLabel(t, row.labelKey)}</Text>
           ) : null}
-          <Bubbles value={row.value} />
+          <Bubbles value={row.value} notEvaluated={row.notEvaluated} notEvaluatedLabel={t.notEvaluated} />
         </View>
       ))}
       <NotesBlock

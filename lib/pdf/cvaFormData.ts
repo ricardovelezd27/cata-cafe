@@ -32,7 +32,7 @@ import { sanitizePdfText } from "@/lib/pdf/text";
 import { samplePrepVisible, type SamplePrep } from "@/lib/samplePrep";
 import { calcIndividualBreakdown, evaluationCupCounts, isAffectiveComplete } from "@/lib/scoring";
 import { mayShowOwnTotal } from "@/lib/ownTotal";
-import { isAffectiveDeclaredPartial } from "@/lib/affectivePartial";
+import { isAffectiveDeclaredPartial, isNotEvaluated } from "@/lib/affectivePartial";
 import type { ScoreRule } from "@/lib/scoreRule";
 
 export type Locale = "es" | "en";
@@ -142,6 +142,7 @@ export const CVA_TEXT: Record<Locale, Record<string, string>> = {
     mouthfeelShort: "Sens. en boca",
     overallShort: "Global",
     reference: "Referencia",
+    notEvaluated: "No evaluado",
   },
   en: {
     descriptive: "Descriptive assessment",
@@ -224,6 +225,7 @@ export const CVA_TEXT: Record<Locale, Record<string, string>> = {
     mouthfeelShort: "Mouthfeel",
     overallShort: "Overall",
     reference: "Reference",
+    notEvaluated: "Not evaluated",
   },
 };
 
@@ -579,6 +581,8 @@ export type AffectiveRow = {
   id: string; // e.g. fragancia_af
   labelKey: string;
   value: number | null; // 1–9 final
+  /** The cupper marked this section "no evaluado" (a declared partial evaluation). */
+  notEvaluated: boolean;
   notes: string;
 };
 
@@ -862,6 +866,7 @@ export function buildCvaFormData(input: CvaFormInput): CvaSampleSheet {
         id: attr.id,
         labelKey: AFF_LABEL_KEY[attr.id] ?? attr.id,
         value: num(aff, `${attr.id}_final`) ?? num(aff, attr.id),
+        notEvaluated: isNotEvaluated(aff, attr.id),
         notes: str(aff, `${attr.id}_notas`),
       });
     }
