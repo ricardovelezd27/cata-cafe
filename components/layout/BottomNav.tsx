@@ -17,7 +17,7 @@ export default function BottomNav({
   const pathname = usePathname();
   // Six tabs at most (DESIGN.md "Breakpoint rule", F-14): Insights is reached
   // from Perfil on phones; the sidebar keeps its item.
-  const tabs = NAV_ITEMS.filter((i) => !i.hideOnMobile);
+  const tabs = NAV_ITEMS;
   // Inert while the full-screen cupping layer covers the shell (H-03).
   const covered = useShellCovered();
 

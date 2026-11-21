@@ -17,8 +17,6 @@ export interface NavItem {
   /** Renders a visual divider ABOVE this item in the Sidebar — separates the
    *  personal group (Inicio, Perfil) from the work group (Sesiones, Cafés, Grupos). */
   startsGroup?: boolean;
-  /** Leaves the item out of BottomNav (six tabs at most, DESIGN.md F-14). */
-  hideOnMobile?: boolean;
 }
 
 /** Shared translations shape passed down from app/[locale]/app/layout.tsx (server) to
