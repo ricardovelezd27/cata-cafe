@@ -255,14 +255,14 @@ export default function WelcomeModal({ locale, initialDisplayName, translations:
                     onKeyDown={(e) => radioKeyDown(e, i, PATHS.length, (n) => setSelectedPath(PATHS[n].id))}
                     className={`w-full text-left rounded-card border-2 p-4 flex items-start gap-3 transition-all ${
                       isSelected
-                        ? "border-primary-container bg-primary-fixed"
+                        ? "border-primary-fixed bg-primary-fixed"
                         : "border-outline-variant bg-surface-container-lowest hover:border-outline hover:bg-surface-container-low"
                     }`}
                   >
                     <div
                       className={`mt-0.5 p-1.5 rounded-sm ${
                         isSelected
-                          ? "bg-primary-container text-on-primary"
+                          ? "bg-surface-container-lowest text-on-primary-fixed"
                           : "bg-surface-container text-on-surface-variant"
                       }`}
                     >

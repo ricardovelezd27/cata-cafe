@@ -157,7 +157,7 @@ export function ExplorerWorkspace({
             type="button"
             onClick={() => setMode("simple")}
             className={`px-4 py-1.5 rounded-pill text-caption font-semibold transition-colors ${
-              mode === "simple" ? "bg-primary-container text-on-primary" : "text-on-surface-variant hover:text-on-surface"
+              mode === "simple" ? "bg-surface-container-lowest text-on-surface shadow-card" : "text-on-surface-variant hover:text-on-surface active:text-on-surface"
             }`}
           >
             {t.mode.simple}
@@ -166,7 +166,7 @@ export function ExplorerWorkspace({
             type="button"
             onClick={() => setMode("pivot")}
             className={`px-4 py-1.5 rounded-pill text-caption font-semibold transition-colors ${
-              mode === "pivot" ? "bg-primary-container text-on-primary" : "text-on-surface-variant hover:text-on-surface"
+              mode === "pivot" ? "bg-surface-container-lowest text-on-surface shadow-card" : "text-on-surface-variant hover:text-on-surface active:text-on-surface"
             }`}
           >
             {t.mode.pivot}

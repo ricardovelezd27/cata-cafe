@@ -292,8 +292,8 @@ export function CreateGroupDialog({
                       className={
                         "inline-flex min-h-[44px] items-center gap-1 px-3 py-1.5 rounded-pill text-caption font-semibold border transition-colors " +
                         (selected
-                          ? "bg-primary-container text-on-primary border-primary-container"
-                          : "bg-surface-container-lowest text-on-surface border-outline-variant hover:border-primary-container")
+                          ? "bg-primary-fixed text-on-primary-fixed border-primary-fixed"
+                          : "bg-surface-container-lowest text-on-surface-variant border-outline-variant hover:bg-surface-container hover:text-on-surface active:bg-surface-container active:text-on-surface")
                       }
                     >
                       {selected && <Check size={12} />}

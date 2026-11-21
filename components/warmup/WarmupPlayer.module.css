@@ -579,9 +579,10 @@
 }
 .segOn,
 .toggleChipOn {
-  background: var(--color-primary-container);
-  border-color: var(--color-primary-container);
-  color: var(--color-on-primary);
+  background: var(--color-primary-fixed);
+  border-color: var(--color-primary-fixed);
+  color: var(--color-on-primary-fixed);
+  font-weight: 600;
 }
 .seg:focus-visible,
 .toggleChip:focus-visible { outline: 2px solid var(--wu-fill); outline-offset: 2px; }

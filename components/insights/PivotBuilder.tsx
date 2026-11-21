@@ -553,7 +553,7 @@ export function PivotBuilder({ locale, t, loadedConfig, loadKey, onConfigChange 
                   type="button"
                   onClick={() => setView(opt.id)}
                   className={`px-3 py-1 rounded-pill text-caption font-semibold transition-colors ${
-                    view === opt.id ? "bg-primary-container text-on-primary" : "text-on-surface-variant hover:text-on-surface"
+                    view === opt.id ? "bg-surface-container-lowest text-on-surface shadow-card" : "text-on-surface-variant hover:text-on-surface active:text-on-surface"
                   }`}
                 >
                   {opt.label}
@@ -567,8 +567,8 @@ export function PivotBuilder({ locale, t, loadedConfig, loadKey, onConfigChange 
                 aria-pressed={heatmap}
                 className={`px-3 py-1 rounded-pill text-caption font-semibold border transition-colors ${
                   heatmap
-                    ? "bg-primary-container text-on-primary border-primary-container"
-                    : "border-outline-variant text-on-surface-variant hover:text-on-surface"
+                    ? "bg-primary-fixed text-on-primary-fixed border-primary-fixed"
+                    : "border-outline-variant text-on-surface-variant hover:bg-surface-container hover:text-on-surface active:bg-surface-container active:text-on-surface"
                 }`}
               >
                 {t.heatmap}

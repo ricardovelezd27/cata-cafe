@@ -395,8 +395,8 @@ export function CoffeeForm({
                 aria-pressed={active}
                 className={
                   active
-                    ? `${HIT_Y44} min-h-[30px] bg-primary-container text-on-primary rounded-pill px-3.5 py-1.5 text-caption font-semibold transition-colors`
-                    : `${HIT_Y44} min-h-[30px] border border-outline-variant text-on-surface rounded-pill px-3.5 py-1.5 text-caption font-medium hover:bg-surface-container transition-colors`
+                    ? `${HIT_Y44} min-h-[30px] border border-primary-fixed bg-primary-fixed text-on-primary-fixed rounded-pill px-3.5 py-1.5 text-caption font-semibold transition-colors`
+                    : `${HIT_Y44} min-h-[30px] border border-outline-variant text-on-surface-variant rounded-pill px-3.5 py-1.5 text-caption font-medium hover:bg-surface-container hover:text-on-surface active:bg-surface-container active:text-on-surface transition-colors`
                 }
               >
                 {c}

@@ -107,8 +107,8 @@ export function PhysicalEvalForm({
                 aria-pressed={active}
                 className={`px-3 py-1.5 rounded-pill border text-caption font-medium transition-colors ${
                   active
-                    ? "bg-primary-container text-white border-primary-container"
-                    : "bg-transparent text-on-surface border-outline-variant hover:bg-surface-container"
+                    ? "bg-primary-fixed text-on-primary-fixed border-primary-fixed"
+                    : "bg-transparent text-on-surface-variant border-outline-variant hover:bg-surface-container hover:text-on-surface active:bg-surface-container active:text-on-surface"
                 }`}
               >
                 {c}

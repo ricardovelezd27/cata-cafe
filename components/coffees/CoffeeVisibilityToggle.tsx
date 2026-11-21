@@ -99,12 +99,12 @@ export function CoffeeVisibilityToggle({
             aria-checked={active}
             onClick={() => handleSelect(opt.value)}
             disabled={isPending}
-            className={`inline-flex min-h-[44px] items-center text-caption font-semibold px-3 py-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+            className={`inline-flex min-h-[44px] items-center text-caption px-3 py-1.5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
               i > 0 ? "border-l border-outline-variant" : ""
             } ${
               active
-                ? "bg-primary-container text-on-primary"
-                : "bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container"
+                ? "bg-primary-fixed font-semibold text-on-primary-fixed"
+                : "bg-surface-container-lowest font-medium text-on-surface-variant hover:bg-surface-container hover:text-on-surface active:bg-surface-container active:text-on-surface"
             }`}
           >
             {opt.label}
