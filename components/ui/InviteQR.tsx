@@ -5,6 +5,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { toBlob, toPng } from "html-to-image";
 import { Copy, Download, Check } from "lucide-react";
 import { downloadFile } from "@/lib/platform/files";
+import { Button } from "./Button";
 
 interface InviteQRProps {
   /** The full URL encoded into the QR code (e.g. from buildInviteUrl). */
@@ -83,22 +84,17 @@ export function InviteQR({ url, size = 176, labels }: InviteQRProps) {
         />
       </div>
       <div className="flex flex-wrap justify-center gap-2">
-        <button
-          type="button"
+        <Button
+          variant="secondary"
+          size="sm"
           onClick={handleCopyImage}
-          className="inline-flex items-center gap-1.5 rounded-pill border border-primary-muted px-3.5 py-2 text-caption font-semibold text-primary-container hover:bg-primary-fixed-dim/25 transition-colors"
+          icon={copied ? <Check size={13} aria-hidden /> : <Copy size={13} aria-hidden />}
         >
-          {copied ? <Check size={13} aria-hidden /> : <Copy size={13} aria-hidden />}
           {copied ? labels.copied : labels.copyImage}
-        </button>
-        <button
-          type="button"
-          onClick={handleDownload}
-          className="inline-flex items-center gap-1.5 rounded-pill border border-outline-variant px-3.5 py-2 text-caption font-semibold text-on-surface hover:bg-surface-container transition-colors"
-        >
-          <Download size={13} aria-hidden />
+        </Button>
+        <Button variant="secondary" size="sm" onClick={handleDownload} icon={<Download size={13} aria-hidden />}>
           {labels.download}
-        </button>
+        </Button>
       </div>
     </div>
   );

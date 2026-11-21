@@ -161,7 +161,7 @@ export function MasterControls({
             onClick={entries.onToggle}
             disabled={entries.pending}
             aria-pressed={entries.locked}
-            className={`${styles.button} ${styles.invite}`}
+            className={`${styles.button} ${styles.toggle}`}
           >
             {entries.locked ? <DoorOpen size={14} aria-hidden /> : <DoorClosed size={14} aria-hidden />}
             {entries.locked ? entries.openLabel : entries.closeLabel}

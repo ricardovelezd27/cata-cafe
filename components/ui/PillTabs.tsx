@@ -89,7 +89,7 @@ export function PillTabs({
               active
                 ? "border-primary-fixed bg-primary-fixed font-semibold text-on-primary-fixed"
                 : "border-outline font-medium text-on-surface-variant hover:bg-surface-container hover:text-on-surface active:bg-surface-container active:text-on-surface"
-            } ${item.disabled ? "opacity-60 cursor-not-allowed" : ""}`}
+            } ${item.disabled ? "opacity-60 cursor-default" : ""}`}
           >
             {item.label}
             {item.badge != null && (

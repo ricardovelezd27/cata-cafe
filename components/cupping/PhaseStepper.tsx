@@ -74,6 +74,15 @@ export function PhaseStepper<T extends string>({
   const stepOf = (n: number) =>
     stepOfTemplate ? `, ${stepOfTemplate.replace("{n}", String(n)).replace("{total}", String(total))}` : "";
 
+  // DESIGN.md "Selected and not selected", the pill-tab row (as PillTabs): not selected = an
+  // `outline` border, hover and pressed = `surface-container`; selected = `primary-fixed`.
+  const LIGHT_PILL = {
+    active: "border border-primary-fixed bg-primary-fixed font-semibold text-on-primary-fixed",
+    idle: "border border-outline font-medium text-on-surface-variant transition-colors hover:bg-surface-container hover:text-on-surface active:bg-surface-container active:text-on-surface",
+    trailing: "border border-dashed border-outline font-medium text-on-surface-variant",
+  };
+  const pillClass = (kind: keyof typeof LIGHT_PILL) => (isLight ? LIGHT_PILL[kind] : "");
+
   const pillStyle = (isActive: boolean) => ({
     flexShrink: 0,
     display: "flex",
@@ -83,16 +92,16 @@ export function PhaseStepper<T extends string>({
     padding: compact ? "4px 12px" : "6px 12px",
     borderRadius: 20,
     fontSize: "var(--text-caption)",
-    fontWeight: isActive ? 700 : 400,
-    background: isLight
-      ? (isActive ? "var(--color-surface-container-lowest)" : "transparent")
-      : (isActive ? "rgba(255,255,255,0.92)" : "transparent"),
-    color: isLight
-      ? (isActive ? "var(--color-primary-container)" : "var(--color-on-surface-variant)")
-      : (isActive ? "var(--color-primary-container)" : "rgba(255,255,255,0.72)"),
-    border: isLight
-      ? (isActive ? "1px solid var(--color-primary-container)" : "1px solid var(--color-outline-variant)")
-      : (isActive ? "1px solid rgba(255,255,255,0.5)" : "1px solid transparent"),
+    // The light stepper (the cup page) takes its tones from LIGHT_PILL (classes, so it has a
+    // hover and a pressed tone); the dark one keeps its inline tones.
+    ...(isLight
+      ? {}
+      : {
+          fontWeight: isActive ? 700 : 400,
+          background: isActive ? "rgba(255,255,255,0.92)" : "transparent",
+          color: isActive ? "var(--color-primary-container)" : "rgba(255,255,255,0.72)",
+          border: isActive ? "1px solid rgba(255,255,255,0.5)" : "1px solid transparent",
+        }),
     cursor: "pointer",
     fontFamily: "inherit",
     transition: "all 0.15s",
@@ -148,7 +157,7 @@ export function PhaseStepper<T extends string>({
             // Compact (the phone's docked stepper) keeps its 40 px so the chrome
             // does not grow; its hit area is 44 px tall, inside the scroller's
             // 2 px padding. The full stepper paints 44 px itself.
-            className={compact ? HIT_Y44 : undefined}
+            className={`${compact ? HIT_Y44 : ""} ${pillClass(isActive ? "active" : "idle")}`.trim() || undefined}
             style={pillStyle(isActive)}
           >
             <span style={{ whiteSpace: "nowrap" }}>
@@ -184,8 +193,8 @@ export function PhaseStepper<T extends string>({
             aria-disabled
             tabIndex={-1}
             data-trailing-step=""
-            className={compact ? HIT_Y44 : undefined}
-            style={{ ...pillStyle(false), cursor: "default", borderStyle: "dashed" }}
+            className={`${compact ? HIT_Y44 : ""} ${pillClass("trailing")}`.trim() || undefined}
+            style={{ ...pillStyle(false), cursor: "default", ...(isLight ? {} : { borderStyle: "dashed" }) }}
           >
             <span style={{ whiteSpace: "nowrap" }}>
               {idx + 1}. {label}

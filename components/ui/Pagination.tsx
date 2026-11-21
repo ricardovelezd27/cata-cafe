@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "./Button";
 
 export function Pagination({
   page,
@@ -22,24 +23,19 @@ export function Pagination({
       <span>{showingText}</span>
       {showControls && (
         <div className="flex gap-2">
-          <button
-            type="button"
+          <Button
+            variant="secondary"
+            size="sm"
             disabled={page <= 1}
             onClick={() => onPageChange(page - 1)}
-            className="inline-flex min-h-[44px] items-center gap-1 rounded-pill border border-outline-variant px-3 py-1 text-caption text-on-surface-variant transition-colors hover:border-outline disabled:cursor-not-allowed disabled:opacity-40"
+            icon={<ChevronLeft size={14} aria-hidden />}
           >
-            <ChevronLeft size={14} aria-hidden />
             {translations.prev}
-          </button>
-          <button
-            type="button"
-            disabled={page >= totalPages}
-            onClick={() => onPageChange(page + 1)}
-            className="inline-flex min-h-[44px] items-center gap-1 rounded-pill border border-outline-variant px-3 py-1 text-caption text-on-surface-variant transition-colors hover:border-outline disabled:cursor-not-allowed disabled:opacity-40"
-          >
+          </Button>
+          <Button variant="secondary" size="sm" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)}>
             {translations.next}
             <ChevronRight size={14} aria-hidden />
-          </button>
+          </Button>
         </div>
       )}
     </div>

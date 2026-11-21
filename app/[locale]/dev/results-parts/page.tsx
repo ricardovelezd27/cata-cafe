@@ -118,7 +118,6 @@ export default async function ResultsPartsDevPage({
           breakdown: t.raw("breakdown") as SampleDetailTranslations["breakdown"],
           inProgress: t("table.inProgress"),
           notEvaluated: t("table.notEvaluated"),
-          market: t.raw("market") as SampleDetailTranslations["market"],
           partial: t.raw("partial") as SampleDetailTranslations["partial"],
           prep: t.raw("samplePrep") as SampleDetailTranslations["prep"],
         },

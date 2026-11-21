@@ -20,7 +20,6 @@ import { computeEvaluationDerived } from "@/lib/evaluation";
 import { DEFECT_TYPE_KEY } from "@/lib/cupDefects";
 import { REF_STASH_KEY, type RefStash } from "@/lib/referenceStashKey";
 
-import { MARKET_KEY, MARKET_NOTE_KEY } from "@/lib/marketNote";
 import { clearPartialKeys, hasPartialKeys, inicialKey, neKey } from "@/lib/affectivePartial";
 
 export { REF_STASH_KEY, type RefStash };
@@ -207,9 +206,6 @@ export function pinReferenceAffective(
   pinned.defecto_tipo = [];
   // S10 WP1b: the per-cup defect types go with the flags.
   pinned.tazas_defecto_tipo = Array(cups).fill(null);
-  // S10 WP3a (A10): the optional market note is an affective input too; the pin clears it.
-  delete pinned[MARKET_KEY];
-  delete pinned[MARKET_NOTE_KEY];
   return pinned;
 }
 
@@ -277,8 +273,7 @@ export function isReferencePinned(data: Record<string, unknown>): boolean {
     const v = data[k];
     return !Array.isArray(v) || v.every((x) => x !== true);
   });
-  const noMarket = data[MARKET_KEY] === undefined && data[MARKET_NOTE_KEY] === undefined;
-  return allFive && noCups && noMarket && !hasPartialKeys(data);
+  return allFive && noCups && !hasPartialKeys(data);
 }
 
 /** S10 WP3a review H1 (+ round 3): a reference change that would PIN a sample whose coffee is
@@ -322,9 +317,6 @@ export const PIN_OVERWRITTEN_KEYS: readonly string[] = [
   "tazas_defectuosas",
   "defecto_tipo",
   DEFECT_TYPE_KEY,
-  // S10 WP3a (A10): the pin also deletes the optional market note.
-  MARKET_KEY,
-  MARKET_NOTE_KEY,
   // S10 WP3b (C4, A5): the pin also deletes every "no evaluado" mark and "as it cooled" value.
   ...AFFECTIVE_ATTRIBUTES.flatMap((a) => [neKey(a.id), inicialKey(a.id)]),
 ];

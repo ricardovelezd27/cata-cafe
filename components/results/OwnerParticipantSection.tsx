@@ -77,7 +77,7 @@ function ToggleSwitch({
     >
       <span
         className={`relative block h-[22px] w-[38px] rounded-pill transition-colors ${
-          on ? "bg-primary-container" : "bg-surface-container-highest"
+          on ? "bg-primary-container" : "bg-outline"
         }`}
       >
         <span

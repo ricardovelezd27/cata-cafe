@@ -347,7 +347,8 @@ flowchart TD
   wizard sends an EMPTY label for rows still on auto and shows a "Letra al azar"
   placeholder, never a fixed letter next to a coffee. The owner finds letter -> coffee in
   the collapsed "Clave de muestras": on wizard step 2 (from the action's `sampleKey`) and
-  on the cup page (owner only; participants never receive coffee names).
+  on the cup page, in the organizer's info area on a desktop (1024 px and wider; owner only,
+  none on a tablet or phone; participants never receive coffee names).
   `duplicateSession` re-shuffles auto samples (never reusing the source's mapping),
   `referenceRank` travels with its sample and the active pointer is re-aimed at the same
   sample; `addSessionSample` labels the new sample with the LETTER of its position (a

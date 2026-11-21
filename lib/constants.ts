@@ -342,14 +342,34 @@ export function flavorNodeColor(id: string): string {
   return node ? shadeForLevel(base, node.level) : base
 }
 
+/** The two texts a filled pill can take: the `--color-on-surface` and `--color-surface`
+ *  tokens of app/globals.css (tests/flavorPalette.test.ts keeps them equal). */
+export const PILL_TEXT_INK = '#1f1b19'
+export const PILL_TEXT_CREAM = '#fff8f6'
+
+/** WCAG 2 relative luminance of a `#rrggbb` colour. */
+function relativeLuminance(hex: string): number {
+  const [r, g, b] = [1, 3, 5].map((i) => {
+    const c = parseInt(hex.slice(i, i + 2), 16) / 255
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+  })
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b
+}
+
+function contrastRatio(a: string, b: string): number {
+  const [x, y] = [relativeLuminance(a), relativeLuminance(b)]
+  return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
+}
+
 /**
- * Pick readable text color (dark brown or cream) for a solid pill fill, based on
- * relative luminance — the same base color renders lighter at L3, so selected-state
- * text can't always assume a light color reads well against it.
+ * The text of a solid pill fill (dark ink or cream): whichever has the higher MEASURED
+ * WCAG contrast ratio against the fill (OR-C, 2026-11-21; the old rule picked by HSL
+ * lightness and put cream on fills where ink reads better, e.g. 3.04 : 1 on Ácido/Fermentado).
  */
 export function getContrastTextColor(hex: string): string {
-  const [, , l] = hexToHsl(hex)
-  return l > 0.6 ? 'var(--color-on-surface)' : 'var(--color-surface)'
+  return contrastRatio(hex, PILL_TEXT_INK) >= contrastRatio(hex, PILL_TEXT_CREAM)
+    ? 'var(--color-on-surface)'
+    : 'var(--color-surface)'
 }
 
 /**

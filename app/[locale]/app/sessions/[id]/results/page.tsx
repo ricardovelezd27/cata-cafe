@@ -1517,7 +1517,6 @@ export default async function ResultsPage({
           editSample: tResults("detail.editSample"),
           editExtrinsic: tResults("detail.editExtrinsic"),
           expressNotes: tResults("detail.expressNotes"),
-          market: { label: tResults("market.label"), known: tResults("market.known") },
           partial: {
             label: tResults("partial.label"),
             // `{n}` is filled in the browser.

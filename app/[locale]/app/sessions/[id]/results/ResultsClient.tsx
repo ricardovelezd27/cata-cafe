@@ -1163,6 +1163,8 @@ export function ResultsClient({
             // "Revelar" is refused once the cupping is over (closing reveals every
             // coffee), and the admin's lens is read-only (`isOwner` is false there).
             canReveal={isOwner && cuppingOpen}
+            // as in the overview: nothing in the admin's lens is the reader's own
+            own={!isAdminViewer}
             onReveal={handleReveal}
             onOpenSample={(id) => openSheet(id)}
             familyLabels={overview.familyLabels}
