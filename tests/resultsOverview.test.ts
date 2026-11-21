@@ -52,28 +52,31 @@ const viewOf = (s: OverviewScenario) =>
 const render = (s: OverviewScenario, locale: Locale = "es") => {
   const { parts, t } = stringsOf(locale);
   return html(
-    createElement(SessionOverview, {
-      samples: s.samples,
-      ctx: s.ctx,
-      referenceId: s.referenceId,
-      data: s.data,
-      myAlignment: s.myAlignment,
-      preliminary: s.preliminary,
-      // "Comparar": drawn only for a closed cupping, as on the page
-      compare: {
-        closed: s.closed,
-        t: MESSAGES[locale].results.cards as unknown as Pick<
-          CardsStrings,
-          "compare" | "comparePick" | "compareHint" | "compareNeedTwo"
-        >,
+    createElement(
+      SessionOverview,
+      {
+        samples: s.samples,
+        ctx: s.ctx,
+        referenceId: s.referenceId,
+        data: s.data,
+        myAlignment: s.myAlignment,
+        preliminary: s.preliminary,
+        // "Comparar": drawn only for a closed cupping, as on the page
+        compare: {
+          closed: s.closed,
+          t: MESSAGES[locale].results.cards as unknown as Pick<
+            CardsStrings,
+            "compare" | "comparePick" | "compareHint" | "compareNeedTwo"
+          >,
+        },
+        familyLabels: wheelFamilyLabels(locale),
+        parts,
+        t,
+        onOpenSample: () => {},
       },
-      familyLabels: wheelFamilyLabels(locale),
-      parts,
-      t,
-      onOpenSample: () => {},
       // the coffees one by one (the cards) sit between the two boxes and "Comparar"
-      children: createElement("div", { "data-cards-slot": "" }),
-    }),
+      createElement("div", { "data-cards-slot": "" }),
+    ),
   );
 };
 const text = (markup: string) => markup.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");

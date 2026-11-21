@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
 import { calcRawScore } from "@/lib/scoring";
-import { RANKING_POLICY, rankSamples, type RankableSample } from "@/lib/reports/ranking";
 import {
   INTENSITY_SCALE,
   QUALITY_SCALE,

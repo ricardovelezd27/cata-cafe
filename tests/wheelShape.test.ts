@@ -13,7 +13,6 @@ import { fillPattern } from "@/lib/fillPattern";
 import {
   WHEEL_FAMILY_ORDER,
   WHEEL_FRAMES,
-  compareGeometry,
   familyCounts,
   wheelGeometry,
   type WheelFrame,
