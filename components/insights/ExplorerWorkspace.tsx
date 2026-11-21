@@ -16,6 +16,7 @@ import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
 import { cardClasses } from "@/components/ui/cardRecipe";
 import { Button } from "@/components/ui/Button";
 import { TextAction } from "@/components/ui/TextAction";
+import { PillTabs } from "@/components/ui/PillTabs";
 
 export interface SavedInsightItem {
   id: string;
@@ -26,7 +27,7 @@ export interface SavedInsightItem {
 }
 
 export interface ExplorerWorkspaceTranslations {
-  mode: { simple: string; pivot: string };
+  mode: { label: string; simple: string; pivot: string };
   save: string;
   saveName: string;
   saveConfirm: string;
@@ -152,26 +153,15 @@ export function ExplorerWorkspace({
   return (
     <div className="flex flex-col gap-5 pb-8">
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="inline-flex rounded-pill border border-outline-variant bg-surface-container p-1">
-          <button
-            type="button"
-            onClick={() => setMode("simple")}
-            className={`px-4 py-1.5 rounded-pill text-caption font-semibold transition-colors ${
-              mode === "simple" ? "bg-primary-container text-on-primary" : "text-on-surface-variant hover:text-on-surface"
-            }`}
-          >
-            {t.mode.simple}
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode("pivot")}
-            className={`px-4 py-1.5 rounded-pill text-caption font-semibold transition-colors ${
-              mode === "pivot" ? "bg-primary-container text-on-primary" : "text-on-surface-variant hover:text-on-surface"
-            }`}
-          >
-            {t.mode.pivot}
-          </button>
-        </div>
+        <PillTabs
+          ariaLabel={t.mode.label}
+          items={[
+            { id: "simple", label: t.mode.simple },
+            { id: "pivot", label: t.mode.pivot },
+          ]}
+          value={mode}
+          onChange={(id) => setMode(id as Mode)}
+        />
         <div className="flex items-center gap-4">
           <TextAction
             type="button"

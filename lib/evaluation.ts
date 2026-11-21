@@ -4,7 +4,6 @@ import { cupDefectTypes, cupFlags } from "@/lib/validate";
 import { DEFECT_TYPE_KEY, distinctDefectTypes } from "@/lib/cupDefects";
 import { EXPRESS_NOTE_KEY, EXPRESS_NOTE_MAX } from "@/lib/expressSession";
 import { REF_STASH_KEY, type RefStash } from "@/lib/referenceStashKey";
-import { sanitizeMarketNote } from "@/lib/marketNote";
 import { applyNotEvaluated, isAffectiveDeclaredPartial, sanitizeCooledValues } from "@/lib/affectivePartial";
 
 export type EvalModuleKey = "descriptive" | "affective" | "combined";
@@ -141,9 +140,7 @@ export function computeEvaluationDerived(
         .filter((v): v is string => typeof v === "string")
         .slice(0, 20)
     : [];
-  // S10 WP3a (A10): the optional market note; display-only, validated here so the live and
-  // offline paths agree; never read by scoring, completeness or the trigger.
-  let normalized: Record<string, unknown> = sanitizeMarketNote(sanitizeAffectiveRatings(data), moduleKey);
+  let normalized: Record<string, unknown> = sanitizeAffectiveRatings(data);
   // S10 WP3b (C4, A5): "no evaluado" markers delete the section's stale ratings; `_inicial`
   // (the value before it cooled) is clamped and display-only. Order matters: ratings first.
   // TODO(kim-validar:C4) TODO(kim-validar:A5)

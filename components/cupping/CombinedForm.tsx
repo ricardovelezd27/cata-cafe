@@ -73,10 +73,10 @@ import {
   sectionNotEvaluated,
   type PartialCopy,
 } from "@/components/cupping/AttributeExtras";
-import { MarketNote,MARKET_COPY_FALLBACK, type MarketCopy } from "@/components/cupping/MarketNote";
 import { CUP_COPY_FALLBACK, cupSummary, type CupCopy } from "@/lib/cupCopy";
 import { applyDefectChoice, applyNonUniformToggle, formCupState } from "@/lib/cupDefects";
 import { SCALE_COPY_FALLBACK, type ScaleCopy } from "@/components/ui/AffectiveBubbles";
+import { Notice } from "@/components/ui/Notice";
 
 export function CombinedForm({
   sampleData,
@@ -90,7 +90,6 @@ export function CombinedForm({
   lockedCupsNote,
   isGroup = false,
   cupCopy,
-  marketCopy,
   partialCopy,
   scaleCopy,
 }: {
@@ -110,8 +109,6 @@ export function CombinedForm({
   isGroup?: boolean;
   /** Cup grid + "score after submitting" copy (messages `cupping.cups`). */
   cupCopy?: CupCopy;
-  /** Optional "market" line copy (messages `cupping.market`, S10 WP3a). */
-  marketCopy?: MarketCopy;
   /** "No evaluado" / "as it cooled" copy (messages `cupping.partial`, S10 WP3b). */
   partialCopy?: PartialCopy;
   /** The 1-9 scale's words (messages `cupping.scale`, P5b). */
@@ -144,12 +141,9 @@ export function CombinedForm({
 
   const lockedBanner =
     lockedAffective && lockedNote ? (
-      <div
-        role="note"
-        className="mb-4 rounded-card border border-secondary/30 bg-secondary-fixed px-4 py-3 font-sans text-body text-on-secondary-fixed-variant"
-      >
+      <Notice live={false} className="mb-[16px]">
         {lockedNote}
-      </div>
+      </Notice>
     ) : null;
 
   const cupState = formCupState(d, cupsPerSample);
@@ -213,9 +207,6 @@ export function CombinedForm({
           </FormSection>
         )}
 
-        {!lockedAffective && (
-          <MarketNote data={d} onChange={onChange} copy={marketCopy ?? MARKET_COPY_FALLBACK[locale]} />
-        )}
 
         <p className="mt-4 font-sans text-caption text-on-surface-variant">{copy.scoreLater}</p>
       </div>

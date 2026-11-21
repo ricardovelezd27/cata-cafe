@@ -52,7 +52,7 @@ const closesASession = (key: string) => /close/i.test(key.split(".").pop() ?? ""
  * The cupping screen's remaining hits, for package P4b. ONLY SHRINKS: remove a
  * line when P4b fixes it; never add one outside the cupping namespace.
  */
-const CUPPING_ALLOWLIST = new Set<string>(["en:cupping.expressNotes.body:em dash"]);
+const CUPPING_ALLOWLIST = new Set<string>([]);
 
 function hits() {
   const out: string[] = [];

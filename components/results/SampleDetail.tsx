@@ -50,7 +50,6 @@ import { canShowMyScore, type MyEvaluation } from "@/lib/evaluationState";
 import { EXPRESS_NOTE_KEY } from "@/lib/expressSession";
 import { fillPattern } from "@/lib/fillPattern";
 import { wheelFamilyOf, type WheelFamilyId } from "@/lib/flavorWheel";
-import { MARKET_KEY, MARKET_NOTE_KEY, readMarketNote } from "@/lib/marketNote";
 import type { CoffeeCard, CompareOption } from "@/lib/reports/coffeeCards";
 import { SHEET_GENERAL, type SheetData } from "@/lib/reports/coffeeSheet";
 import type { DefectSummary } from "@/lib/reports/defectSummary";
@@ -91,8 +90,6 @@ export type SampleDetailTranslations = {
   inProgress?: string;
   notEvaluated?: string;
   expressNotes?: string;
-  /** "market" note labels (`results.market.*`, S10 WP3a, A10). */
-  market?: { label: string; known: string };
   /** A9 prep-data labels (`results.samplePrep.*`). */
   prep?: { roastDate: string; preparation: string; offProtocol: string };
   /** S10 WP3b (`results.partial.*`). `includesOne` / `includesMany` are raw `{n}` patterns. */
@@ -174,6 +171,10 @@ function Mark({ label, family }: { label: string; family: WheelFamilyId | null }
     </span>
   );
 }
+
+/** The market note was removed (owner, 2026-11-21); keys an old evaluation may still hold are
+ *  never read, and never make an otherwise empty evaluation look filled. */
+const OLD_MARKET_KEYS: readonly string[] = ["mercado", "mercado_nota"];
 
 export function SampleDetail({
   data,
@@ -271,7 +272,7 @@ export function SampleDetail({
   const [laid, setLaid] = useState<string[]>([]);
 
   const filled = Object.entries(data)
-    .filter(([k]) => k !== EXPRESS_NOTE_KEY && k !== MARKET_KEY && k !== MARKET_NOTE_KEY)
+    .filter(([k]) => k !== EXPRESS_NOTE_KEY && !OLD_MARKET_KEYS.includes(k))
     .some(([, v]) => (Array.isArray(v) ? v.length > 0 : v !== null && v !== undefined && v !== "" && v !== 0));
 
   // ── 1. the score ──────────────────────────────────────────────────────────
@@ -375,8 +376,7 @@ export function SampleDetail({
   );
   const overallNote = text(data, "impresion_global_notas");
   const expressNote = text(data, EXPRESS_NOTE_KEY);
-  const marketNote = showAffective ? readMarketNote(data) : null;
-  const hasNotes = noteRows.length > 0 || overallNote !== "" || expressNote !== "" || marketNote !== null;
+  const hasNotes = noteRows.length > 0 || overallNote !== "" || expressNote !== "";
 
   return (
     <div className="flex flex-col gap-4 font-sans" data-coffee-sheet="">
@@ -733,14 +733,6 @@ export function SampleDetail({
               <div className="contents">
                 <dt className="text-on-surface-variant">{t.expressNotes ?? s.notes}</dt>
                 <dd className="m-0 whitespace-pre-wrap text-on-surface">{expressNote}</dd>
-              </div>
-            ) : null}
-            {marketNote && t.market ? (
-              <div className="contents">
-                <dt className="text-on-surface-variant">{t.market.label}</dt>
-                <dd className="m-0 whitespace-pre-wrap text-on-surface">
-                  {marketNote.note ? `${t.market.known}: ${marketNote.note}` : t.market.known}
-                </dd>
               </div>
             ) : null}
           </dl>

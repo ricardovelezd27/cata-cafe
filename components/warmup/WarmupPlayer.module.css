@@ -316,7 +316,7 @@
   border-radius: var(--radius-pill);
 }
 .ghostBtn:hover { color: var(--wu-ink); }
-.ghostBtn:disabled { opacity: 0.45; cursor: default; }
+.ghostBtn:disabled { opacity: 0.6; cursor: default; }
 /* A ghost button with an icon in front of its label, on one line. */
 .listenBtn { display: inline-flex; align-items: center; gap: 6px; }
 
@@ -546,7 +546,7 @@
   width: 40px;
   height: 24px;
   border-radius: var(--radius-pill);
-  background: var(--color-outline-variant);
+  background: var(--color-outline);
   transition: background-color var(--transition-fast);
 }
 .switchOn { background: var(--color-primary-container); }
@@ -569,24 +569,33 @@
   min-height: 44px;
   padding: 0 16px;
   border-radius: var(--radius-pill);
-  border: 1px solid var(--color-outline-variant);
-  background: var(--color-surface-container-lowest);
-  color: var(--wu-ink);
+  border: 1px solid var(--color-outline);
+  background: transparent;
+  color: var(--color-on-surface-variant);
   font: inherit;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
 }
+.seg:hover:not(.segOn):not(:disabled),
+.seg:active:not(.segOn):not(:disabled),
+.toggleChip:hover:not(.toggleChipOn):not(:disabled),
+.toggleChip:active:not(.toggleChipOn):not(:disabled) {
+  background: var(--color-surface-container);
+  color: var(--color-on-surface);
+}
 .segOn,
 .toggleChipOn {
-  background: var(--color-primary-container);
-  border-color: var(--color-primary-container);
-  color: var(--color-on-primary);
+  background: var(--color-primary-fixed);
+  border-color: var(--color-primary-fixed);
+  color: var(--color-on-primary-fixed);
+  font-weight: 600;
 }
 .seg:focus-visible,
 .toggleChip:focus-visible { outline: 2px solid var(--wu-fill); outline-offset: 2px; }
 .chipRow { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
-.toggleChip:disabled { opacity: 0.45; cursor: default; }
+.seg:disabled,
+.toggleChip:disabled { opacity: 0.6; cursor: default; }
 
 /* Reflection */
 .textarea {

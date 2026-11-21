@@ -25,7 +25,7 @@ import { lw, warmupById } from "@/lib/warmup/exercises";
 import { formatTimeLeft, isRunning as isWarmupRunning, parseDbTimestamp, resyncPositionMs, runLengthMs, seekFor, skewMs, timeLeftMs } from "@/lib/warmup/syncedRun";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
-import { Coffee, Scale, FileText, BarChart3, Timer, Languages } from "lucide-react";
+import { Coffee, Scale, FileText, BarChart3, Languages } from "lucide-react";
 import { CUP_PLACE_FALLBACK, cupStepIndexFrom, writePlaceToHistory, type CupPlaceCopy } from "@/lib/cupPlace";
 import type { ScaleCopy } from "@/components/ui/AffectiveBubbles";
 import { DescriptiveForm } from "@/components/cupping/DescriptiveForm";
@@ -52,8 +52,9 @@ import { SampleKey, type SampleKeyTranslations } from "@/components/cupping/Samp
 import type { SamplePrepTranslations } from "@/components/cupping/SamplePrepFields";
 import { prepFromForm, prepToForm, type SamplePrep } from "@/lib/samplePrep";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { TextAction } from "@/components/ui/TextAction";
-import Link from "next/link";
+import { TextAction, TextActionLink } from "@/components/ui/TextAction";
+import { Notice } from "@/components/ui/Notice";
+import { Button } from "@/components/ui/Button";
 import { planFinish, soloCloseAsIsOffer } from "@/lib/closeRules";
 import { CoffeePicker, type UsableCoffee } from "@/components/coffees/CoffeePicker";
 import { canPickExistingCoffee } from "@/lib/cupCoffeePick";
@@ -103,14 +104,10 @@ import {
   type GuardItem,
 } from "@/components/cupping/EvaluationGuardModal";
 import { PhaseStepper } from "@/components/cupping/PhaseStepper";
-import { ExpressNotesStep } from "@/components/cupping/ExpressNotesStep";
-import { EXPRESS_NOTE_KEY, EXPRESS_NOTE_MAX } from "@/lib/expressSession";
-import { moduleKeyForFormat } from "@/lib/evaluation";
 import { useKeyboardOpen } from "@/hooks/useKeyboardOpen";
 import { isEvaluationReadOnly, isModuleFrozenForRevealed } from "@/lib/revealFreeze";
-import type { MarketCopy } from "@/components/cupping/MarketNote";
 import { PARTIAL_COPY_FALLBACK, type PartialCopy } from "@/components/cupping/AttributeExtras";
-import { CuppingTimer, TIMER_COPY_FALLBACK, useCuppingTimerRunning, type TimerCopy } from "@/components/cupping/CuppingTimer";
+import { CuppingTimer, TIMER_COPY_FALLBACK, type TimerCopy } from "@/components/cupping/CuppingTimer";
 import { isAffectiveDeclaredPartial } from "@/lib/affectivePartial";
 import { backupEntryFor, planHydration } from "@/lib/pinnedViewHydration";
 import { indexAfterReconcile, reconcileSamples, reconcileUnpinned } from "@/lib/sampleReconcile";
@@ -386,10 +383,10 @@ export function CupClient({
     startGroupNoticePartial: string;
     masterRole: string;
     participantRole: string;
+    /** "3 participantes" (I-03). Optional: an older cached prop blob has none. */
+    participantsCount?: string;
     // Shell (Phase 3)
     samplesHeader: string;
-    /** aria-label of the phone chevron that reveals session details. */
-    sessionDetails?: string;
     evaluationHeader: string;
     phaseTitle: string;
     cuppingModule: string;
@@ -512,8 +509,6 @@ export function CupClient({
     referenceCupsLocked?: string;
     /** One line shown on a revealed sample, which can no longer be evaluated (S10 WP3a, X3). */
     revealedNote?: string;
-    /** Optional "market" line copy (S10 WP3a, A10); fallback in components/cupping/MarketNote.tsx. */
-    market?: MarketCopy;
     /** "No evaluado" / "as it cooled" copy (S10 WP3b, C4/A5); fallback in components/cupping/AttributeExtras.tsx. */
     partial?: PartialCopy;
     /** The 1-9 scale's words (P5b, H-08); fallback in components/ui/AffectiveBubbles.tsx. */
@@ -525,15 +520,10 @@ export function CupClient({
     /** Cup grid + "score after submitting" copy (S10 WP1b); optional: the error
      *  boundary rehydrates an older cached blob (lib/cupCopy.ts has a fallback). */
     cups?: CupCopy;
-    // "Notas rápidas" end step (2026-10, WP-B). Optional with inline
-    // fallbacks: the cup error boundary rehydrates an older cached prop blob.
+    // The last sample's button label ("Enviar evaluación"). Optional with an inline
+    // fallback: the cup error boundary rehydrates an older cached prop blob. The
+    // "Notas rápidas" screen itself was removed (owner, 2026-11-21).
     expressNotes?: {
-      title: string;
-      body: string;
-      placeholder: string;
-      optional: string;
-      open: string;
-      back: string;
       submit: string;
     };
   };
@@ -585,13 +575,6 @@ export function CupClient({
   );
   const [samples, setSamples] = useState(initialOrdered);
   const [activeTab, setActiveTab] = useState<CuppingTab>("cupping");
-  // "Notas rápidas": the free-text end step shown after the last sample of
-  // the last phase and before every submit path. A boolean, NOT a
-  // CuppingStep — STEP_ATTRIBUTES, PhaseStepper and completeness never see it.
-  const [notesStage, setNotesStage] = useState(false);
-  // The note lives inside the format's module JSON under EXPRESS_NOTE_KEY, so
-  // it rides the existing auto-save / offline / submit plumbing untouched.
-  const notesModuleKey = moduleKeyForFormat(session.format);
   const [saveStatus, setSaveStatus] = useState<
     "idle" | "saving" | "saved" | "pending"
   >("idle");
@@ -951,9 +934,6 @@ export function CupClient({
   const leaveTargetRef = useRef<CupExitTarget>("sessions");
   const closedNoticeShownRef = useRef(false);
   const closedNoticeRef = useRef<() => void>(() => {});
-  // F-05 (S5b): the timer's open state is shared by its row and the phone's header-row link.
-  const [timerOpen, setTimerOpen] = useState(false);
-  const timerRunning = useCuppingTimerRunning(session.id, userId);
   // IndexedDB has proven unreliable (quota, Safari private mode, …) — the
   // OfflineBanner surfaces this so the cupper knows local drafts aren't safe.
   // S10 WP8b: the OfflineBanner notice sits at the top of the scroll area; toast
@@ -1775,15 +1755,6 @@ export function CupClient({
   const setCurrentData = (key: keyof Sample, data: Data) =>
     setSampleData(sampleIdx, key, data);
 
-  // Notes stage: merge the free text into the format's module JSON so the
-  // scores already in that object are preserved (and vice versa).
-  const setSampleNote = (sampleId: string, text: string) => {
-    const idx = samples.findIndex((s) => s.id === sampleId);
-    if (idx < 0) return;
-    const existing = samples[idx][notesModuleKey];
-    setSampleData(idx, notesModuleKey, { ...existing, [EXPRESS_NOTE_KEY]: text });
-  };
-
   // ─── Navigation ───────────────────────────────────────────────
   const scrollCanvasToTop = () => {
     // Scroll the canvas (SessionShell's overflow container)
@@ -1794,34 +1765,17 @@ export function CupClient({
   };
 
   const handleStepChange = async (step: CuppingStep, resetSample = false) => {
-    if (step === currentStep && !notesStage) return;
+    if (step === currentStep) return;
     await flushPending();
-    setNotesStage(false);
     setCurrentStep(step);
     if (resetSample) setSampleIdx(0);
     scrollCanvasToTop();
   };
 
   const handleSampleSelect = async (i: number) => {
-    if (i === sampleIdx && !notesStage) return;
+    if (i === sampleIdx) return;
     await flushPending();
-    setNotesStage(false);
     setSampleIdx(i);
-    scrollCanvasToTop();
-  };
-
-  // "Notas rápidas": every path to submit passes through here first (footer on
-  // the last sample, the Results module tap). Skippable — the stage's own
-  // next button is the real submit (handleGoToResults, guard untouched).
-  const openNotesStage = async () => {
-    await flushPending();
-    setNotesStage(true);
-    scrollCanvasToTop();
-  };
-
-  const closeNotesStage = async () => {
-    await flushPending();
-    setNotesStage(false);
     scrollCanvasToTop();
   };
 
@@ -2514,14 +2468,13 @@ export function CupClient({
 
   const handleModuleSelect = async (key: string) => {
     // S5a (C-02): "Resultados" is a way out, never a submit. The footer's button is the
-    // one submit (notes stage, then handleGoToResults, unchanged).
+    // one submit (handleGoToResults, unchanged).
     const action = moduleAction(key);
     if (action.kind === "leave") {
       await requestLeave(action.target);
       return;
     }
     if (action.kind !== "tab") return;
-    if (notesStage) await closeNotesStage();
     setActiveTab(action.tab);
     scrollCanvasToTop();
   };
@@ -2531,40 +2484,19 @@ export function CupClient({
     isLastSampleInStep && !isLastStep
       ? stepsForFormat[stepsForFormat.indexOf(currentStep) + 1]
       : null;
-  // Inline fallbacks for the notes-stage copy (pre-upgrade cached prop blobs).
-  const expressNotesCopy = translations.expressNotes ?? (locale === "en"
-    ? {
-        title: "Quick notes",
-        body: "One free-text impression per sample. Optional — you can submit without writing anything.",
-        placeholder: "What did this cup leave you? Aromas, flavors, sensations…",
-        optional: "Optional",
-        open: "Quick notes",
-        back: "Back",
-        submit: "Submit evaluation",
-      }
-    : {
-        title: "Notas rápidas",
-        body: "Una impresión libre por muestra. Opcional: puedes enviar sin escribir nada.",
-        placeholder: "¿Qué te dejó esta taza? Aromas, sabores, sensaciones…",
-        optional: "Opcional",
-        open: "Notas rápidas",
-        back: "Volver",
-        submit: "Enviar evaluación",
-      });
+  // The last sample's button submits ("Notas rápidas" was removed, owner 2026-11-21).
+  const submitLabel =
+    translations.expressNotes?.submit ?? (locale === "en" ? "Submit evaluation" : "Enviar evaluación");
 
-  const nextLabel = notesStage
-    ? expressNotesCopy.submit
-    : isLastSampleOverall
-    ? expressNotesCopy.open
+  const nextLabel = isLastSampleOverall
+    ? submitLabel
     : nextStep
     ? `${translations.nextPhase} ${translations.phasesShort?.[nextStep] ?? translations.phaseLabels[nextStep]}`
     : translations.nextSample;
 
   const nextVariant: "next-sample" | "next-phase" | "view-results" =
-    notesStage
+    isLastSampleOverall
       ? "view-results"
-      : isLastSampleOverall
-      ? "next-phase"
       : isLastSampleInStep && !isLastStep
       ? "next-phase"
       : "next-sample";
@@ -2641,9 +2573,8 @@ export function CupClient({
     </div>
   );
 
-  // Phone (<sm): sample tabs + counter share the hamburger row. Everything
-  // that used to need its own line (session name, role, reference context,
-  // edit button) sits behind the chevron (`phoneDetails`).
+  // Phone (<sm): sample tabs + counter share the hamburger row. The session name,
+  // role, reference context and edit button sit under it, always shown (`phoneDetails`).
   const phoneBar = (
     <div className="flex items-center gap-2 min-w-0">
       <div className="min-w-0 flex-1">
@@ -2690,17 +2621,6 @@ export function CupClient({
       )}
       {referenceContext && <div className="flex items-center">{referenceContext}</div>}
       {editSampleButton && <div className="flex items-center pt-1">{editSampleButton}</div>}
-      {/* F-05 (S5b): on a phone the owner's letter -> coffee key lives here, not above the form. */}
-      {isOwner && translations.sampleKey && !notesStage && (
-        <SampleKey
-          rows={viewSamples.map((s) => ({
-            id: s.id,
-            label: s.label,
-            coffee: s.coffee?.name?.trim() || null,
-          }))}
-          translations={translations.sampleKey}
-        />
-      )}
     </>
   );
 
@@ -2829,6 +2749,50 @@ export function CupClient({
 
   // ─── Top bar content ──────────────────────────────────────────
   const timerCopy = translations.timer ?? TIMER_COPY_FALLBACK[locale === "en" ? "en" : "es"];
+  const tastingInfo = (
+    <>
+      <span className="label-caps">
+        {new Intl.DateTimeFormat(locale, { weekday: "short", day: "numeric", month: "short", year: "numeric" }).format(new Date(session.date))}
+      </span>
+      <span className="font-mono text-card font-semibold tabular-nums text-on-surface leading-none">
+        {clockTime}
+      </span>
+      {isGroup && translations.participantsCount && (
+        <span className="font-mono text-caption text-on-surface-variant mt-0.5">
+          {translations.participantsCount}
+        </span>
+      )}
+      {userCountry && (
+        <span className="font-mono text-caption text-on-surface-variant">
+          {userCountry}
+        </span>
+      )}
+    </>
+  );
+  // OR-C (owner, 2026-11-21, 11.png): the organizer's tasting info area, left of the form on a
+  // desktop. Exactly what he named and nothing else: the timer, the coffee being cupped now,
+  // "Clave de muestras" and the information about the tasting.
+  const currentCoffee = current.coffee?.name?.trim() || null;
+  const ownerInfoArea = isOwner ? (
+    <div className="hidden lg:flex lg:flex-col lg:gap-[16px]">
+      <CuppingTimer sessionId={session.id} userId={userId} copy={timerCopy} />
+      <div>
+        <div className="label-caps">{current.label}</div>
+        {currentCoffee && <div className="font-display text-card text-on-surface">{currentCoffee}</div>}
+      </div>
+      {translations.sampleKey && (
+        <SampleKey
+          rows={viewSamples.map((s) => ({
+            id: s.id,
+            label: s.label,
+            coffee: s.coffee?.name?.trim() || null,
+          }))}
+          translations={translations.sampleKey}
+        />
+      )}
+      <div className="flex flex-col gap-[4px]">{tastingInfo}</div>
+    </div>
+  ) : null;
   const phaseStepper = (
     <PhaseStepper
       phases={stepsForFormat}
@@ -2840,30 +2804,11 @@ export function CupClient({
       compact
       ariaLabel={placeCopy.stepsLabel}
       stepOfTemplate={placeCopy.stepOf}
-      trailing={[placeCopy.notesStep, placeCopy.sendStep]}
+      trailing={[placeCopy.sendStep]}
     />
   );
 
-  // Notes stage: no stepper, no sample tabs — one compact title line (the
-  // samples are all on screen). Desktop keeps the clock column for continuity.
-  const notesTopBar = (
-    <div className="flex items-center gap-3 px-4 py-2 sm:px-6">
-      <span className="label-caps">
-        {expressNotesCopy.title}
-      </span>
-      <span className="text-outline-variant">·</span>
-      <span className="font-display text-body text-on-surface truncate">
-        {session.name}
-      </span>
-      <span className="ml-auto shrink-0 font-mono text-caption text-on-surface-variant tabular-nums">
-        {samples.length} {translations.samplesHeader.toLowerCase()}
-      </span>
-    </div>
-  );
-
-  const topBar = notesStage ? (
-    notesTopBar
-  ) : activeTab === "cupping" ? (
+  const topBar = activeTab === "cupping" ? (
       <>
         {/* Desktop: phases + samples (left) / session info (right) */}
         <div className="hidden lg:grid grid-cols-[1fr_auto] items-start gap-x-8 px-6 py-2">
@@ -2878,7 +2823,7 @@ export function CupClient({
               align="start"
               ariaLabel={placeCopy.stepsLabel}
               stepOfTemplate={placeCopy.stepOf}
-              trailing={[placeCopy.notesStep, placeCopy.sendStep]}
+              trailing={[placeCopy.sendStep]}
             />
             <div className="border-t border-outline-variant pt-1.5 flex items-center gap-3">
               <div className="min-w-0 flex-1">{sampleTabsBar}</div>
@@ -2886,36 +2831,15 @@ export function CupClient({
               {editSampleButton}
             </div>
           </div>
-          <div className="flex flex-col items-end justify-center gap-0.5 text-right shrink-0 pt-0.5">
-            <span className="label-caps">
-              {new Intl.DateTimeFormat(locale, { weekday: "short", day: "numeric", month: "short", year: "numeric" }).format(new Date(session.date))}
-            </span>
-            <span className="font-mono text-card font-semibold tabular-nums text-primary-container leading-none">
-              {clockTime}
-            </span>
-            {isGroup && (
-              <span className="font-mono text-caption text-on-surface-variant mt-0.5">
-                {participantCount} {participantCount === 1 ? "participante" : "participantes"}
-              </span>
-            )}
-            {userCountry && (
-              <span className="font-mono text-caption text-on-surface-variant">
-                {userCountry}
-              </span>
-            )}
-          </div>
+          {!isOwner && (
+            <div className="flex flex-col items-end justify-center gap-[4px] text-right shrink-0 pt-0.5">
+              {tastingInfo}
+            </div>
+          )}
         </div>
         {/* Mobile/tablet: phase stepper + sample bar */}
         <div className="lg:hidden">{phaseStepper}</div>
         {mobileSampleBar}
-        <CuppingTimer
-          sessionId={session.id}
-          userId={userId}
-          copy={timerCopy}
-          open={timerOpen}
-          onOpenChange={setTimerOpen}
-          phoneLinkInHeader
-        />
       </>
     ) : (
       <>
@@ -2946,19 +2870,13 @@ export function CupClient({
   // ─── Footer ───────────────────────────────────────────────────
   const footer = (
     <CanvasFooter
-      onPrev={notesStage ? closeNotesStage : handlePrev}
-      onNext={
-        notesStage
-          ? handleGoToResults
-          : isLastSampleOverall
-          ? openNotesStage
-          : handleNextSample
-      }
-      prevLabel={notesStage ? expressNotesCopy.back : translations.prev}
+      onPrev={handlePrev}
+      onNext={isLastSampleOverall ? handleGoToResults : handleNextSample}
+      prevLabel={translations.prev}
       nextLabel={
         isNavigating || isGoingToResults ? translations.submitting : nextLabel
       }
-      prevDisabled={(!notesStage && prevDisabled) || isNavigating}
+      prevDisabled={prevDisabled || isNavigating}
       nextDisabled={isNavigating || isGoingToResults}
       nextVariant={nextVariant}
     />
@@ -2977,26 +2895,20 @@ export function CupClient({
       exitLink={exitLink}
       topBar={topBar}
       footer={footer}
-      mobileTitle={notesStage ? expressNotesCopy.title : session.name}
-      mobileBar={notesStage ? undefined : phoneBar}
+      mobileBar={phoneBar}
       mobileDetails={phoneDetails}
-      mobileDetailsLabel={translations.sessionDetails}
       collapsed={keyboardOpen}
       saveStatus={saveStatus}
       savePendingLabel={translations.savedLocally}
       navLabels={translations.openNav && translations.navTitle ? { open: translations.openNav, title: translations.navTitle } : undefined}
       onMobileExit={() => void requestLeave("sessions")}
       mobileExitLabel={translations.exitToSessions}
-      mobileTool={
-        !notesStage && activeTab === "cupping" && !timerRunning
-          ? { label: timerCopy.show, icon: <Timer size={18} aria-hidden />, onClick: () => setTimerOpen((v) => !v), expanded: timerOpen }
-          : undefined
-      }
+      wide={isOwner}
     >
       {/* B-03: the cupping screen's one h1, visually hidden: the session's name. */}
       <h1 className="sr-only">{session.name}</h1>
       {/* The step being cupped, between the h1 and the form's attribute headings (h3). */}
-      {activeTab === "cupping" && !notesStage && (
+      {activeTab === "cupping" && (
         <h2 className="sr-only">
           {`${stepsForFormat.indexOf(currentStep) + 1}. ${translations.phaseLabels[currentStep] ?? currentStep}`}
         </h2>
@@ -3011,23 +2923,19 @@ export function CupClient({
         renderedUserId={userId}
       />
       {allReferencesStuck && translations.allReferencesNotice && (
-        <div role="status" className="mx-4 mt-2 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-body text-on-surface">
-          {translations.allReferencesNotice}
-        </div>
+        <Notice className="mx-[16px] mt-[8px]">{translations.allReferencesNotice}</Notice>
       )}
       {closeAsIsApplies && translations.closeAsIs && (
-        <div
-          role="status"
-          className="mx-4 mt-2 flex flex-wrap items-center gap-2 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-body text-on-surface"
+        <Notice
+          className="mx-[16px] mt-[8px]"
+          action={
+            <TextActionLink href={`/${locale}/app/sessions/${session.id}/results`}>
+              {translations.closeAsIs.go}
+            </TextActionLink>
+          }
         >
-          <span className="flex-1 min-w-[200px]">{translations.closeAsIs.line}</span>
-          <Link
-            href={`/${locale}/app/sessions/${session.id}/results`}
-            className="inline-flex min-h-[44px] items-center font-semibold text-primary-container hover:underline"
-          >
-            {translations.closeAsIs.go}
-          </Link>
-        </div>
+          {translations.closeAsIs.line}
+        </Notice>
       )}
       {translations.offline.bannerNewVersion && translations.offline.reloadNow && (
         <StaleBundleNotice
@@ -3037,12 +2945,9 @@ export function CupClient({
         />
       )}
       {terminalCount > 0 && translations.offline.terminalNotice && (
-        <div
-          role="status"
-          className="mx-4 mb-3 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-body text-on-surface lg:mx-6"
-        >
+        <Notice className="mx-[16px] mb-[12px] lg:mx-[24px]">
           {translations.offline.terminalNotice.replace("{count}", String(terminalCount))}
-        </div>
+        </Notice>
       )}
       {isGroup && translations.closeAnnounce && !isOwner && (
         <CloseAnnounceBanner
@@ -3088,21 +2993,6 @@ export function CupClient({
           />
         </div>
       )}
-      {/* A4: the letters are drawn at random, so the owner (only) gets a
-          collapsed letter -> coffee key. Participants never receive coffee
-          names (cup/page.tsx ships `coffee` to the owner only). */}
-      {isOwner && translations.sampleKey && !notesStage && (
-        <div className="mx-4 mt-3 lg:mx-6 hidden min-[641px]:block">
-          <SampleKey
-            rows={viewSamples.map((s) => ({
-              id: s.id,
-              label: s.label,
-              coffee: s.coffee?.name?.trim() || null,
-            }))}
-            translations={translations.sampleKey}
-          />
-        </div>
-      )}
       {isOwner && editingSample && (
         <ResponsiveDialog
           open={editingSample}
@@ -3132,14 +3022,9 @@ export function CupClient({
           )}
           {canPickCoffee && translations.coffeePicker && (
             <div className="mb-4">
-              <button
-                type="button"
-                disabled={pickPending}
-                onClick={openCoffeePicker}
-                className="inline-flex min-h-[44px] items-center rounded-pill border border-outline-variant px-4 text-caption font-medium text-on-surface transition-colors hover:bg-surface-container disabled:opacity-50"
-              >
+              <Button variant="secondary" size="sm" disabled={pickPending} onClick={openCoffeePicker}>
                 {translations.coffeePicker.useExisting}
-              </button>
+              </Button>
             </div>
           )}
           <EditSampleMetadataForm
@@ -3188,116 +3073,71 @@ export function CupClient({
         />
       )}
       {coffeeNotOwnedNotice && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="flex items-start gap-2 px-4 py-2 mb-3 rounded-card border border-secondary/30 bg-secondary-container/20 font-sans text-body text-on-surface"
+        <Notice
+          className="mb-[12px]"
+          onDismiss={() => setCoffeeNotOwnedNotice(false)}
+          dismissLabel={translations.cancel}
         >
-          <span className="flex-1">{translations.editSampleNotOwner}</span>
-          <button
-            type="button"
-            onClick={() => setCoffeeNotOwnedNotice(false)}
-            aria-label={translations.cancel}
-            className="shrink-0 font-semibold hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2"
-          >
-            <span aria-hidden>×</span>
-          </button>
-        </div>
+          {translations.editSampleNotOwner}
+        </Notice>
       )}
       {submitBlocked && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="flex items-start gap-2 px-4 py-2 mb-3 rounded-card border border-secondary/40 bg-secondary/10 font-sans text-body text-secondary"
+        <Notice
+          tone="info"
+          className="mb-[12px]"
+          action={
+            online ? (
+              <TextAction
+                onClick={() => {
+                  setSubmitBlocked(false);
+                  void handleGoToResults();
+                }}
+              >
+                {translations.offline.retryBeforeSubmit ?? translations.retrySubmit}
+              </TextAction>
+            ) : undefined
+          }
+          onDismiss={() => setSubmitBlocked(false)}
+          dismissLabel={translations.cancel}
         >
-          <span className="flex-1">
-            {online
-              ? (translations.offline.submitBlockedPending ??
-                translations.offline.submitBlocked)
-              : translations.offline.submitBlocked}
-          </span>
-          {online && (
-            <button
-              type="button"
-              onClick={() => {
-                setSubmitBlocked(false);
-                void handleGoToResults();
-              }}
-              className="shrink-0 font-semibold underline hover:opacity-80"
-            >
-              {translations.offline.retryBeforeSubmit ?? translations.retrySubmit}
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => setSubmitBlocked(false)}
-            aria-label="×"
-            className="shrink-0 font-semibold hover:opacity-80"
-          >
-            ×
-          </button>
-        </div>
+          {online
+            ? (translations.offline.submitBlockedPending ??
+              translations.offline.submitBlocked)
+            : translations.offline.submitBlocked}
+        </Notice>
       )}
       {submitError && (
-        <div
-          role="alert"
-          aria-live="assertive"
-          className="flex items-start gap-2 px-4 py-2 mb-3 rounded-card border border-error/40 bg-error/10 font-sans text-body text-error"
+        <Notice
+          tone="error"
+          className="mb-[12px]"
+          action={<TextAction onClick={() => void handleGoToResults()}>{translations.retrySubmit}</TextAction>}
+          onDismiss={() => setSubmitError(false)}
+          dismissLabel={translations.cancel}
         >
-          <span className="flex-1">{translations.submitFailed}</span>
-          <button
-            type="button"
-            onClick={() => void handleGoToResults()}
-            className="shrink-0 font-semibold underline hover:opacity-80"
-          >
-            {translations.retrySubmit}
-          </button>
-          <button
-            type="button"
-            onClick={() => setSubmitError(false)}
-            aria-label="×"
-            className="shrink-0 font-semibold hover:opacity-80"
-          >
-            ×
-          </button>
-        </div>
+          {translations.submitFailed}
+        </Notice>
       )}
       {groupNotice && (
-        <div
-          role="status"
-          className="flex items-start gap-2 px-4 py-2 mb-3 rounded-card bg-secondary-container text-on-secondary-container font-sans text-body"
+        <Notice
+          tone="info"
+          className="mb-[12px]"
+          onDismiss={() => setGroupNotice(null)}
+          dismissLabel={translations.cancel}
         >
-          <span className="flex-1">
-            {groupNotice === "partial"
-              ? translations.startGroupNoticePartial
-              : translations.startGroupNoticeFailed}
-          </span>
-          <button
-            type="button"
-            onClick={() => setGroupNotice(null)}
-            aria-label="×"
-            className="shrink-0 font-semibold hover:opacity-80"
-          >
-            ×
-          </button>
-        </div>
+          {groupNotice === "partial"
+            ? translations.startGroupNoticePartial
+            : translations.startGroupNoticeFailed}
+        </Notice>
       )}
       {startError && (
-        <div
-          role="alert"
-          aria-live="assertive"
-          className="flex items-start gap-2 px-4 py-2 mb-3 rounded-card border border-error/40 bg-error/10 font-sans text-body text-error"
+        <Notice
+          tone="error"
+          className="mb-[12px]"
+          onDismiss={() => setStartError(false)}
+          dismissLabel={translations.cancel}
         >
-          <span className="flex-1">{translations.startSessionError}</span>
-          <button
-            type="button"
-            onClick={() => setStartError(false)}
-            aria-label="×"
-            className="shrink-0 font-semibold hover:opacity-80"
-          >
-            ×
-          </button>
-        </div>
+          {translations.startSessionError}
+        </Notice>
       )}
       <ConfirmDialog
         open={pendingReference !== null}
@@ -3469,42 +3309,13 @@ export function CupClient({
               : translations.guard.continueAnyway,
         }}
       />
-      {notesStage && (
-        <ExpressNotesStep
-          samples={viewSamples.map((s) => ({
-            id: s.id,
-            label: s.label,
-            isReference: s.id === referenceSampleId,
-            // The quick note lives in the evaluation module: frozen once revealed (lib/revealFreeze.ts).
-            readOnly: isModuleFrozenForRevealed({ revealed: s.revealed, key: notesModuleKey }),
-          }))}
-          values={Object.fromEntries(
-            samples.map((s) => {
-              const v = s[notesModuleKey][EXPRESS_NOTE_KEY];
-              return [s.id, typeof v === "string" ? v : ""];
-            }),
-          )}
-          onChange={setSampleNote}
-          maxLength={EXPRESS_NOTE_MAX}
-          translations={{
-            title: expressNotesCopy.title,
-            body: expressNotesCopy.body,
-            placeholder: expressNotesCopy.placeholder,
-            optional: expressNotesCopy.optional,
-            referenceBadge: referenceBadgeLabel,
-            revealedNote: translations.revealedNote ?? REVEALED_NOTE_FALLBACK[locale === "en" ? "en" : "es"],
-          }}
-        />
-      )}
-      {!notesStage && (
+      <div className={isOwner ? "lg:grid lg:grid-cols-[minmax(15rem,18rem)_minmax(0,1fr)] lg:items-start lg:gap-[24px]" : undefined}>
+      {ownerInfoArea}
       <div key={`${activeTab}-${currentStep}-${current.id}`}>
         {isEvaluationReadOnly({ revealed: isCurrentRevealed, activeTab }) && (
-          <div
-            role="note"
-            className="mb-4 rounded-card border border-secondary/30 bg-secondary-fixed px-4 py-3 font-sans text-body text-on-secondary-fixed-variant"
-          >
+          <Notice live={false} className="mb-[16px]">
             {translations.revealedNote ?? REVEALED_NOTE_FALLBACK[locale === "en" ? "en" : "es"]}
-          </div>
+          </Notice>
         )}
         <fieldset
           disabled={isEvaluationReadOnly({ revealed: isCurrentRevealed, activeTab })}
@@ -3532,7 +3343,6 @@ export function CupClient({
             isGroup={isGroup}
             locale={locale === "en" ? "en" : "es"}
             cupCopy={translations.cups}
-            marketCopy={translations.market}
             partialCopy={translations.partial}
             scaleCopy={translations.scale}
           />
@@ -3552,7 +3362,6 @@ export function CupClient({
               lockedCupsNote={translations.referenceCupsLocked}
               isGroup={isGroup}
               cupCopy={translations.cups}
-              marketCopy={translations.market}
               partialCopy={translations.partial}
             scaleCopy={translations.scale}
             />
@@ -3571,7 +3380,7 @@ export function CupClient({
         )}
         </fieldset>
       </div>
-      )}
+      </div>
 
       <DevRoleBadge email={userEmail} />
     </SessionShell>

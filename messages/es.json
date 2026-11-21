@@ -444,14 +444,6 @@
     "referenceLockedAffective": "Referencia fija: la calidad queda fijada en 5 (ni alto ni bajo) en todos los atributos y no hay nada que puntuar aquí. Pruébala con calma, anota lo que percibas y continúa con la siguiente muestra.",
     "referenceCupsLocked": "Las tazas de la referencia no se marcan: su puntaje se mantiene fijo en 79.00.",
     "revealedNote": "Muestra revelada: ya no se puede evaluar.",
-    "market": {
-      "title": "¿Desde qué punto de vista calificaste?",
-      "optional": "Opcional",
-      "own": "Mi preferencia",
-      "known": "Un mercado que conozco",
-      "noteLabel": "¿Qué mercado?",
-      "notePlaceholder": "Ej. cafeterías de especialidad en Madrid"
-    },
     "partial": {
       "notEvaluated": "No evaluado",
       "notEvaluatedOn": "Esta sección quedó sin evaluar.",
@@ -484,12 +476,6 @@
     },
     "referenceFirstHint": "La cata empieza por la referencia.",
     "expressNotes": {
-      "title": "Notas rápidas",
-      "body": "Una impresión libre por muestra. Opcional: puedes enviar sin escribir nada.",
-      "placeholder": "¿Qué te dejó esta taza? Aromas, sabores, sensaciones…",
-      "optional": "Opcional",
-      "open": "Notas rápidas",
-      "back": "Volver",
       "submit": "Enviar evaluación"
     },
     "phases": {
@@ -539,8 +525,7 @@
       "copied": "Copiado",
       "copyImage": "Copiar QR",
       "downloadQr": "Descargar QR",
-      "currentSample": "Muestra activa",
-      "sessionDetails": "Detalles de la sesión"
+      "currentSample": "Muestra activa"
     },
     "cups": {
       "title": "Tazas",
@@ -590,7 +575,6 @@
       "stepsLabel": "Pasos de la cata",
       "stepOf": "paso {n} de {total}",
       "sampleOf": "muestra {n} de {total}",
-      "notesStep": "Notas",
       "sendStep": "Enviar",
       "language": "English",
       "languageLabel": "Cambiar el idioma a inglés"
@@ -792,6 +776,7 @@
     "masterControls": "Panel del organizador",
     "masterRole": "Organizador",
     "participantRole": "Catador",
+    "participantsCount": "{count, plural, one {# participante} other {# participantes}}",
     "copyImage": "Copiar QR",
     "downloadQr": "Descargar QR",
     "inviteMissing": "Esta cata no tiene un enlace de invitación activo. Genera uno desde el panel de la cata.",
@@ -1256,10 +1241,6 @@
       "body": "Todos verán qué café es y nadie podrá seguir evaluando esta muestra. Las evaluaciones en borrador de esta muestra quedarán como están. Si todavía no la evaluaste, ya no podrás hacerlo.",
       "confirm": "Revelar muestra",
       "cancel": "Cancelar"
-    },
-    "market": {
-      "label": "Punto de vista",
-      "known": "Un mercado que conozco"
     },
     "partial": {
       "label": "Parcial · sin puntaje",
@@ -2003,6 +1984,7 @@
     },
     "explorer": {
       "mode": {
+        "label": "Modo del explorador",
         "simple": "Simple",
         "pivot": "Tabla dinámica"
       },
@@ -2086,6 +2068,7 @@
       "empty": "Sin resultados para esta combinación",
       "running": "Calculando…",
       "error": "No se pudo calcular. Revisa la configuración.",
+      "viewLabel": "Vista",
       "viewTable": "Tabla",
       "viewGrouped": "Barras agrupadas",
       "viewStacked": "Barras apiladas",

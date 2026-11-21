@@ -1,20 +1,17 @@
 "use client";
 
 import type { ReactNode } from "react";
-import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
+import { TextActionLink } from "./TextAction";
 
 /** The back link every detail and create page opens with (D-06). PageHeader renders it;
  *  a page whose title is not a PageHeader (an editable name) uses it on its own. */
 export function PageBackLink({ href, label }: { href: string; label?: string }) {
   return (
-    <Link
-      href={href}
-      className="-my-[6px] inline-flex min-h-[44px] w-fit items-center gap-1 text-caption text-on-surface-variant transition-colors hover:text-on-surface"
-    >
+    <TextActionLink href={href} tone="quiet" className="-my-[6px] w-fit">
       <ChevronLeft size={16} aria-hidden />
       {label}
-    </Link>
+    </TextActionLink>
   );
 }
 

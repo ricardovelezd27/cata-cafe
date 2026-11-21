@@ -2,15 +2,16 @@
 // three taps (name → format → how many samples). Pure module: the validator
 // and the label helpers live here (not in app/actions/sessions.ts, which is
 // "use server" and cannot be imported by vitest) so the rules are unit-tested
-// and shared by the server action, the form and the notes stage.
+// and shared by the server action and the form.
 //
 // Product rules (Ricardo, 2026-10-21):
 //   · solo only — no group/async variant;
 //   · samples are created WITHOUT a coffee (coffeeId null). The full wizard's
 //     validation (`validateSessionInput`) is untouched and still requires one;
-//   · the free-text impression typed on the "Notas rápidas" end step is stored
-//     under EXPRESS_NOTE_KEY inside the format's module JSON — a key, never a
-//     column, never counted by completeness.
+//   · the "Notas rápidas" end step was removed on 2026-11-21: older evaluations
+//     still hold its free-text impression under EXPRESS_NOTE_KEY inside the
+//     format's module JSON (a key, never a column, never counted by completeness)
+//     and it still renders where it did; nothing writes new ones.
 
 import * as v from "@/lib/validate";
 

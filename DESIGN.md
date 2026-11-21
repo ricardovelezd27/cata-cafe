@@ -167,6 +167,8 @@ Anything else that tints a number or a rating by its value is a finding.
 
 **(rule)** A family colour marks a family with a shape: a dot, a bar, an arc of the wheel, a ring. It is never the colour of text and never the background of text. Used as text these tones measure from about 2 : 1 to 4.1 : 1, all under the 4.5 : 1 that body text needs, so a family's name is ink beside its coloured dot, and a selected flavour pill is a neutral pill with a coloured dot.
 
+**(departure, the owner, 2026-11-21)** One exception: on the cupping screen the descriptors a cupper has selected are pills FILLED with their family's shade (`FlavorPicker`, `CATAPills`), because he wants to see the families at a glance while cupping. Their text is ink or cream, whichever has the higher MEASURED contrast ratio against the fill (`getContrastTextColor`, `lib/constants.ts`; `tests/flavorPalette.test.ts` checks every family at its three levels). Six shades stay under 4.5 : 1 with either text (Frutal and Verde/Vegetal and Nueces/Cacao at level 1, Dulce and Ácido/Fermentado and Otro at level 2, between 4.1 and 4.4 : 1): that is his open question. Everywhere else the rule above holds.
+
 | Family | Hex |
 |---|---|
 | Floral | `#c2368f` |
@@ -681,6 +683,7 @@ A card is one component, `Card` (`components/ui/Card.tsx`, built by package P2a 
 
 - **Props:** `tone` (default `surface-container-lowest`; quiet `surface-container-low`; selected `primary-fixed`), `padding` (16 or 20 px, in pixels: the paper rhythm), `title`, `eyebrow`, `action`, `footer`, `interactive` (hover `surface-container-high`, a focus ring), `as`.
 - All cards of one kind have the same parts in the same order, and a card is as wide as its content needs: a stat card is capped at 240 px, in an auto-fill grid.
+- **(departure, 2026-11-21, OR-C)** Under 360 px the cupping form's card gives way (it reaches 12 px into the page's side margin and its side padding is 12 px) so the nine rating bubbles fit a 320 px phone; no other card does this.
 
 **(rule) A notice is not a card.** A sentence that tells the person something about the screen (an admin lens, a pending save, a session that closed, a stale version) is a `Notice` (`components/ui/Notice.tsx`, same package), never a card and never a terracotta banner:
 
@@ -751,6 +754,7 @@ A tablet is a small desktop, in the app as on the landing. **(rule)**
 | Dialogs (centered modal ↔ bottom sheet) | 640px (`ResponsiveDialog` internal) |
 
 - **(rule) `sm:` changes a padding or a type size, never an arrangement.** No third, in-between layout.
+- **(departure, the owner, 2026-11-21) The cupping screen's info area is desktop only.** The organizer's info area left of the form (the timer, the coffee being cupped, "Clave de muestras", the tasting info) exists from 1024 px only; under 1024 px the form stands alone, with no timer and no sample key (a tablet follows the phone here, and only here).
 - **(rule) The phone's bottom bar has six tabs at most.** Movimiento sensorial is one of them: the main navigation is its one entry, on phones too (the owner, 2026-11-21). Insights lives inside Perfil for those who have it; the account and sign-out are reachable from the shell.
 - As built, the app shell switches at `lg:` (1024 px) and content arrangements switch at `lg:` by window width; moving both to this rule is package P6 of the audit's plan.
 
@@ -785,9 +789,9 @@ A tablet is a small desktop, in the app as on the landing. **(rule)**
 ### `CATAPills`
 
 - Unselected: `outline-variant` border, transparent fill, pill shape
-- Selected, as built: solid `primary-container` fill, `on-primary` text (the action fill: see "A selection never looks like an action")
+- Selected: the family's shade, with ink or cream text by measured contrast (`getContrastTextColor`; the owner's departure of 2026-11-21, "Flavor Family Colors")
 - At-limit: unselected take the one disabled look (under "Buttons")
-- A flavour's family is shown as a coloured dot in the pill, never as the pill's fill or its text colour ("Flavor Family Colors")
+- A flavour's family is shown as a coloured dot in the pill, never as the pill's fill or its text colour ("Flavor Family Colors"), except the selected descriptors of the cupping screen, filled with their family's shade (the owner's departure of 2026-11-21, same section)
 
 ### `FlavorPicker`
 
@@ -931,7 +935,7 @@ A screen that writes the name by hand, or shows no mark where this list says one
 | Animate a count-up on an offer or a fact | Print the number |
 | Use `secondary` (terracotta) as a quality signal, or to single out a score | A score is ink; no colour signals quality ("No quality bands") |
 | Colour a difference green above and terracotta below | Ink with its sign |
-| Set a family colour as text or behind text | A coloured dot or bar beside ink text |
+| Set a family colour as text or behind text | A coloured dot or bar beside ink text (one departure: the cupping screen's selected descriptor pills, "Flavor Family Colors") |
 | Paint a terracotta banner to say something | `Notice` (info, warning, error) |
 | Fill a selected tab, chip or segment with the action green | A tone, a weight, an underline or a check |
 | Set text under 11 px, or data under 12 px | The six text roles ("Type Scale") |

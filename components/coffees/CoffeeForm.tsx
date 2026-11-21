@@ -395,8 +395,8 @@ export function CoffeeForm({
                 aria-pressed={active}
                 className={
                   active
-                    ? `${HIT_Y44} min-h-[30px] bg-primary-container text-on-primary rounded-pill px-3.5 py-1.5 text-caption font-semibold transition-colors`
-                    : `${HIT_Y44} min-h-[30px] border border-outline-variant text-on-surface rounded-pill px-3.5 py-1.5 text-caption font-medium hover:bg-surface-container transition-colors`
+                    ? `${HIT_Y44} min-h-[30px] border border-primary-fixed bg-primary-fixed text-on-primary-fixed rounded-pill px-3.5 py-1.5 text-caption font-semibold transition-colors`
+                    : `${HIT_Y44} min-h-[30px] border border-outline text-on-surface-variant rounded-pill px-3.5 py-1.5 text-caption font-medium hover:bg-surface-container hover:text-on-surface active:bg-surface-container active:text-on-surface transition-colors`
                 }
               >
                 {c}
@@ -441,15 +441,15 @@ export function CoffeeForm({
                   className={
                     "text-left rounded-card border p-3.5 transition-colors " +
                     (active
-                      ? "border-primary-container bg-primary-fixed"
-                      : "border-outline-variant bg-surface-container-lowest hover:bg-surface-container")
+                      ? "border-primary-fixed bg-primary-fixed"
+                      : "border-outline hover:bg-surface-container active:bg-surface-container")
                   }
                 >
                   <div className="flex items-center gap-2">
                     <span
                       className={
                         "inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 " +
-                        (active ? "border-primary-container" : "border-outline-variant")
+                        (active ? "border-primary-container" : "border-outline")
                       }
                     >
                       {active && <span className="h-2 w-2 rounded-full bg-primary-container" />}

@@ -15,7 +15,7 @@
 /* H-04: the app's one indicator, not the pill's own colour (a pale pill colour
    was under 3 : 1 against the paper). */
 .pill:focus-visible { outline: 2px solid var(--color-primary-container); outline-offset: 2px; }
-.pill:disabled { cursor: not-allowed; opacity: 0.45; }
+.pill:disabled { cursor: default; opacity: 0.6; }
 .pill .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
 .selected { background: var(--pill-color) !important; border-color: transparent !important; color: var(--pill-text, var(--color-surface)) !important; }
 .selected .dot { background: rgba(255, 255, 255, 0.65); }

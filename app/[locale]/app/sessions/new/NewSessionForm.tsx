@@ -845,7 +845,7 @@ export function NewSessionForm({
                 router.push(`/${locale}/app/sessions/${sessionId}/cup`);
               });
             }}
-            className="w-full rounded-pill py-2.5 text-caption font-medium text-primary-container hover:bg-primary-fixed transition-colors disabled:opacity-50"
+            className="w-full rounded-pill py-2.5 text-caption font-medium text-primary-container hover:bg-primary-fixed transition-colors disabled:cursor-default disabled:opacity-60"
           >
             {t.newForm.startNow}
           </button>
@@ -1079,8 +1079,8 @@ export function NewSessionForm({
                       aria-pressed={active}
                       className={
                         active
-                          ? `${HIT_Y44} min-h-[30px] rounded-pill bg-primary-container px-3 py-1 text-caption font-semibold text-on-primary transition-colors`
-                          : `${HIT_Y44} min-h-[30px] rounded-pill border border-outline-variant px-3 py-1 text-caption font-medium text-on-surface transition-colors hover:bg-surface-container`
+                          ? `${HIT_Y44} min-h-[30px] rounded-pill border border-primary-fixed bg-primary-fixed px-3 py-1 text-caption font-semibold text-on-primary-fixed transition-colors`
+                          : `${HIT_Y44} min-h-[30px] rounded-pill border border-outline px-3 py-1 text-caption font-medium text-on-surface-variant transition-colors hover:bg-surface-container hover:text-on-surface active:bg-surface-container active:text-on-surface`
                       }
                     >
                       {cert}
@@ -1203,8 +1203,8 @@ export function NewSessionForm({
               onKeyDown={(e) => radioKeyDown(e, i, all.length, (n) => setFormat(all[n]))}
               className={
                 format === v
-                  ? "min-h-[44px] bg-primary-container text-on-primary rounded-pill px-5 py-2.5 text-caption font-medium"
-                  : "min-h-[44px] border border-outline-variant text-on-surface rounded-pill px-5 py-2.5 text-caption hover:bg-surface-container transition-colors"
+                  ? "min-h-[44px] border border-primary-fixed bg-primary-fixed text-on-primary-fixed rounded-pill px-5 py-2.5 text-caption font-semibold"
+                  : "min-h-[44px] border border-outline text-on-surface-variant rounded-pill px-5 py-2.5 text-caption font-medium hover:bg-surface-container hover:text-on-surface active:bg-surface-container active:text-on-surface transition-colors"
               }
             >
               {{ descriptive: t.formatDescriptive, affective: t.formatAffective, combined: t.formatCombined }[v]}
@@ -1229,7 +1229,7 @@ export function NewSessionForm({
                 aria-hidden
                 className={
                   "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors " +
-                  (warmupOn ? "bg-primary-container" : "bg-outline-variant")
+                  (warmupOn ? "bg-primary-container" : "bg-outline")
                 }
               >
                 <span
@@ -1323,8 +1323,8 @@ export function NewSessionForm({
                   onClick={() => setReferenceMode(opt.v)}
                   className={
                     referenceMode === opt.v
-                      ? "min-h-[44px] bg-primary-container text-on-primary rounded-pill px-4 py-2 text-caption font-medium"
-                      : "min-h-[44px] border border-outline-variant text-on-surface rounded-pill px-4 py-2 text-caption hover:bg-surface-container transition-colors"
+                      ? "min-h-[44px] border border-primary-fixed bg-primary-fixed text-on-primary-fixed rounded-pill px-4 py-2 text-caption font-semibold"
+                      : "min-h-[44px] border border-outline text-on-surface-variant rounded-pill px-4 py-2 text-caption font-medium hover:bg-surface-container hover:text-on-surface active:bg-surface-container active:text-on-surface transition-colors"
                   }
                 >
                   {opt.l}
@@ -1512,7 +1512,7 @@ export function NewSessionForm({
               aria-hidden
               className={
                 "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors " +
-                (isGroup ? "bg-primary-container" : "bg-outline-variant")
+                (isGroup ? "bg-primary-container" : "bg-outline")
               }
             >
               <span
@@ -1600,8 +1600,8 @@ export function NewSessionForm({
                       onClick={() => setNotifyGroupWhen(opt.v)}
                       className={
                         notifyGroupWhen === opt.v
-                          ? "min-h-[44px] bg-primary-container text-on-primary rounded-pill px-4 py-2 text-caption font-medium"
-                          : "min-h-[44px] border border-outline-variant text-on-surface rounded-pill px-4 py-2 text-caption hover:bg-surface-container transition-colors"
+                          ? "min-h-[44px] border border-primary-fixed bg-primary-fixed text-on-primary-fixed rounded-pill px-4 py-2 text-caption font-semibold"
+                          : "min-h-[44px] border border-outline text-on-surface-variant rounded-pill px-4 py-2 text-caption font-medium hover:bg-surface-container hover:text-on-surface active:bg-surface-container active:text-on-surface transition-colors"
                       }
                     >
                       {opt.l}

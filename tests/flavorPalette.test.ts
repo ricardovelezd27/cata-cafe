@@ -1,7 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { L1_GROUP_COLOR } from "@/lib/constants";
+import {
+  L1_GROUP_COLOR,
+  PILL_TEXT_CREAM,
+  PILL_TEXT_INK,
+  getContrastTextColor,
+  shadeForLevel,
+} from "@/lib/constants";
 
 // One palette for the nine flavour families (package RP, RESULTS-DESIGN.md 6c,
 // decided 2026-11-16: "retune once, but align with the color wheel"). The
@@ -105,4 +111,22 @@ describe("flavour family palette: one palette, the wheel's", () => {
     const tokens = Object.keys(TOKEN_TO_FAMILY).map((t) => hex(`--color-flavor-${t}`, ROOT_TOKENS)).sort();
     expect(listed).toEqual(tokens);
   });
+});
+
+describe("a filled pill's text: the higher measured contrast (OR-C)", () => {
+  it("the ink and the cream are the on-surface and surface tokens", () => {
+    expect(PILL_TEXT_INK).toBe(hex("--color-on-surface", ROOT_TOKENS));
+    expect(PILL_TEXT_CREAM).toBe(hex("--color-surface", ROOT_TOKENS));
+  });
+
+  for (const [family, base] of Object.entries(L1_GROUP_COLOR)) {
+    for (const level of [1, 2, 3] as const) {
+      it(`${family} level ${level}: the text with the higher ratio`, () => {
+        const fill = shadeForLevel(base, level);
+        const ink = contrast(fill, PILL_TEXT_INK);
+        const cream = contrast(fill, PILL_TEXT_CREAM);
+        expect(getContrastTextColor(fill)).toBe(ink >= cream ? "var(--color-on-surface)" : "var(--color-surface)");
+      });
+    }
+  }
 });
