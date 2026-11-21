@@ -5,9 +5,9 @@
 //
 //   npx tsx scripts/render-cva-preview.ts [outDir]
 //
-// Expected page counts for the fixture below: descriptive 3 (2 samples/page +
-// appendix), affective 3 (3 samples/page as columns + appendix), combined 3
-// (1 sample/page + appendix). More than that means something overflowed.
+// Expected page counts for the fixture below: descriptive 2 (2 samples per page),
+// affective 3 (2 samples per page, side by side), combined 2 (1 sample per page).
+// More than that means something overflowed.
 import { renderToFile } from "@react-pdf/renderer";
 import { CvaFormDocument, type CvaDocumentProps } from "../lib/pdf/CvaFormDocument";
 import path from "node:path";
@@ -34,7 +34,9 @@ const descriptive = {
   sensacion_desc: ["mouthfeel:smooth", "mouthfeel:silky"],
   fragancia_notas: "Muy expresiva en seco. Σ ▼ ñ ü ç 🍋",
   nota_express: "Taza limpia, mucho cuerpo; la recomendaría para espresso.",
+  aroma_notas: "Dulce de panela.",
   acidez_notas: "Cítrica, jugosa, sostenida.",
+  sensacion_notas: "Sedosa, sin astringencia.",
 };
 
 const affective = {
@@ -103,23 +105,6 @@ const base = {
   ownerView: true,
 };
 
-// The four states of the score cell side by side (affective sheet, es + en):
-// a sent complete evaluation (a total), an incomplete one, a declared partial
-// ("no evaluado" on aroma) and an unsent draft (A-01: "—" and the note).
-function scoreStates(): CvaDocumentProps["samples"] {
-  const incomplete: Record<string, unknown> = { ...affective };
-  delete incomplete.acidez_af_final;
-  delete incomplete.impresion_global_final;
-  const declaredPartial: Record<string, unknown> = { ...affective, aroma_af_ne: true };
-  delete declaredPartial.aroma_af_final;
-  return [
-    { ...sample("A"), label: "Completa enviada" },
-    { ...sample("B"), label: "Incompleta", affective: incomplete },
-    { ...sample("C"), label: "Parcial declarada", affective: declaredPartial },
-    { ...sample("D"), label: "Sin enviar", sent: false },
-  ];
-}
-
 async function main() {
   const cases: [string, number][] = [
     ["descriptive", 4],
@@ -136,11 +121,6 @@ async function main() {
     };
     const file = path.join(OUT, `cva-${format}.pdf`);
     await renderToFile(CvaFormDocument(props), file);
-    console.log("wrote", file);
-  }
-  for (const locale of ["es", "en"] as const) {
-    const file = path.join(OUT, `cva-score-states.${locale}.pdf`);
-    await renderToFile(CvaFormDocument({ ...base, locale, format: "affective", samples: scoreStates() }), file);
     console.log("wrote", file);
   }
 }

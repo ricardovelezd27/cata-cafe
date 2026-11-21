@@ -65,7 +65,7 @@ describe("the family colours come from one place", () => {
     expect(PDF_PALETTE.grid).toBe("#c1c8c2");
     expect(PDF_PALETTE.reference).toBe("#727973");
     expect(PDF_PALETTE.ink).toBe("#111111");
-    expect(Object.keys(PDF_PALETTE)).toHaveLength(12);
+    expect(Object.keys(PDF_PALETTE)).toHaveLength(13);
   });
 });
 

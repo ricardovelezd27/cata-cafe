@@ -114,6 +114,19 @@ describe("buildCvaFormData — score state machine", () => {
   });
 });
 
+describe("buildCvaFormData — a declared partial is labelled on its own row", () => {
+  it("flags only the section marked no evaluado (literal true), not a section that was left empty", () => {
+    const { aroma_af_final: _drop, ...rest } = affectiveFull;
+    void _drop;
+    const sheet = buildCvaFormData(input({ ownerView: false, affective: { ...rest, aroma_af_ne: true, acidez_af_ne: "true" } }));
+    const byId = Object.fromEntries(sheet.affectiveRows.map((r) => [r.id, r]));
+    expect(byId.aroma_af.notEvaluated).toBe(true);
+    expect(byId.aroma_af.value).toBeNull();
+    expect(byId.acidez_af.notEvaluated).toBe(false);
+    expect(byId.fragancia_af.notEvaluated).toBe(false);
+  });
+});
+
 describe("sanitizePdfText", () => {
   it("strips emoji and keeps accents and Greek-free Latin text", () => {
     expect(sanitizePdfText("Taza limpia 🍋 ñ ü ç")).toBe("Taza limpia ñ ü ç");
