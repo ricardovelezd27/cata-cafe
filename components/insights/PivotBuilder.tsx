@@ -568,7 +568,7 @@ export function PivotBuilder({ locale, t, loadedConfig, loadKey, onConfigChange 
                 className={`px-3 py-1 rounded-pill text-caption font-semibold border transition-colors ${
                   heatmap
                     ? "bg-primary-fixed text-on-primary-fixed border-primary-fixed"
-                    : "border-outline-variant text-on-surface-variant hover:bg-surface-container hover:text-on-surface active:bg-surface-container active:text-on-surface"
+                    : "border-outline text-on-surface-variant hover:bg-surface-container hover:text-on-surface active:bg-surface-container active:text-on-surface"
                 }`}
               >
                 {t.heatmap}

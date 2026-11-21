@@ -110,7 +110,7 @@ export function AccessManager({ users: initialUsers, locale, t }: AccessManagerP
           <span
             aria-hidden
             className={`relative h-6 w-10 rounded-full transition-colors ${
-              on ? "bg-primary-container" : "bg-outline-variant"
+              on ? "bg-primary-container" : "bg-outline"
             }`}
           >
             <span

@@ -256,7 +256,7 @@ export default function WelcomeModal({ locale, initialDisplayName, translations:
                     className={`w-full text-left rounded-card border-2 p-4 flex items-start gap-3 transition-all ${
                       isSelected
                         ? "border-primary-fixed bg-primary-fixed"
-                        : "border-outline-variant bg-surface-container-lowest hover:border-outline hover:bg-surface-container-low"
+                        : "border-outline hover:bg-surface-container active:bg-surface-container"
                     }`}
                   >
                     <div

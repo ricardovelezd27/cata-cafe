@@ -1080,7 +1080,7 @@ export function NewSessionForm({
                       className={
                         active
                           ? `${HIT_Y44} min-h-[30px] rounded-pill border border-primary-fixed bg-primary-fixed px-3 py-1 text-caption font-semibold text-on-primary-fixed transition-colors`
-                          : `${HIT_Y44} min-h-[30px] rounded-pill border border-outline-variant px-3 py-1 text-caption font-medium text-on-surface-variant transition-colors hover:bg-surface-container hover:text-on-surface active:bg-surface-container active:text-on-surface`
+                          : `${HIT_Y44} min-h-[30px] rounded-pill border border-outline px-3 py-1 text-caption font-medium text-on-surface-variant transition-colors hover:bg-surface-container hover:text-on-surface active:bg-surface-container active:text-on-surface`
                       }
                     >
                       {cert}
@@ -1204,7 +1204,7 @@ export function NewSessionForm({
               className={
                 format === v
                   ? "min-h-[44px] border border-primary-fixed bg-primary-fixed text-on-primary-fixed rounded-pill px-5 py-2.5 text-caption font-semibold"
-                  : "min-h-[44px] border border-outline-variant text-on-surface-variant rounded-pill px-5 py-2.5 text-caption font-medium hover:bg-surface-container hover:text-on-surface active:bg-surface-container active:text-on-surface transition-colors"
+                  : "min-h-[44px] border border-outline text-on-surface-variant rounded-pill px-5 py-2.5 text-caption font-medium hover:bg-surface-container hover:text-on-surface active:bg-surface-container active:text-on-surface transition-colors"
               }
             >
               {{ descriptive: t.formatDescriptive, affective: t.formatAffective, combined: t.formatCombined }[v]}
@@ -1229,7 +1229,7 @@ export function NewSessionForm({
                 aria-hidden
                 className={
                   "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors " +
-                  (warmupOn ? "bg-primary-container" : "bg-outline-variant")
+                  (warmupOn ? "bg-primary-container" : "bg-outline")
                 }
               >
                 <span
@@ -1324,7 +1324,7 @@ export function NewSessionForm({
                   className={
                     referenceMode === opt.v
                       ? "min-h-[44px] border border-primary-fixed bg-primary-fixed text-on-primary-fixed rounded-pill px-4 py-2 text-caption font-semibold"
-                      : "min-h-[44px] border border-outline-variant text-on-surface-variant rounded-pill px-4 py-2 text-caption font-medium hover:bg-surface-container hover:text-on-surface active:bg-surface-container active:text-on-surface transition-colors"
+                      : "min-h-[44px] border border-outline text-on-surface-variant rounded-pill px-4 py-2 text-caption font-medium hover:bg-surface-container hover:text-on-surface active:bg-surface-container active:text-on-surface transition-colors"
                   }
                 >
                   {opt.l}
@@ -1512,7 +1512,7 @@ export function NewSessionForm({
               aria-hidden
               className={
                 "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors " +
-                (isGroup ? "bg-primary-container" : "bg-outline-variant")
+                (isGroup ? "bg-primary-container" : "bg-outline")
               }
             >
               <span
@@ -1601,7 +1601,7 @@ export function NewSessionForm({
                       className={
                         notifyGroupWhen === opt.v
                           ? "min-h-[44px] border border-primary-fixed bg-primary-fixed text-on-primary-fixed rounded-pill px-4 py-2 text-caption font-semibold"
-                          : "min-h-[44px] border border-outline-variant text-on-surface-variant rounded-pill px-4 py-2 text-caption font-medium hover:bg-surface-container hover:text-on-surface active:bg-surface-container active:text-on-surface transition-colors"
+                          : "min-h-[44px] border border-outline text-on-surface-variant rounded-pill px-4 py-2 text-caption font-medium hover:bg-surface-container hover:text-on-surface active:bg-surface-container active:text-on-surface transition-colors"
                       }
                     >
                       {opt.l}

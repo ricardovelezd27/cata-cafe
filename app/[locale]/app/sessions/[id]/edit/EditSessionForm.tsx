@@ -502,7 +502,7 @@ export function EditSessionForm({
                 className={
                   format === opt
                     ? "rounded-pill border border-primary-fixed bg-primary-fixed px-5 py-2.5 text-caption font-semibold text-on-primary-fixed disabled:cursor-not-allowed disabled:opacity-60"
-                    : "rounded-pill border border-outline-variant px-5 py-2.5 text-caption font-medium text-on-surface-variant transition-colors hover:bg-surface-container hover:text-on-surface active:bg-surface-container active:text-on-surface disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent"
+                    : "rounded-pill border border-outline px-5 py-2.5 text-caption font-medium text-on-surface-variant transition-colors hover:bg-surface-container hover:text-on-surface active:bg-surface-container active:text-on-surface disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent"
                 }
               >
                 {t.formats[opt]}
@@ -547,7 +547,7 @@ export function EditSessionForm({
               }}
               className={
                 "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 " +
-                (warmupOn ? "bg-primary-container" : "bg-outline-variant")
+                (warmupOn ? "bg-primary-container" : "bg-outline")
               }
             >
               <span
@@ -760,7 +760,7 @@ export function EditSessionForm({
                 className={
                   referenceMode === opt.v
                     ? "min-h-[44px] rounded-pill border border-primary-fixed bg-primary-fixed px-4 py-2 text-caption font-semibold text-on-primary-fixed disabled:cursor-not-allowed disabled:opacity-60"
-                    : "min-h-[44px] rounded-pill border border-outline-variant px-4 py-2 text-caption font-medium text-on-surface-variant transition-colors hover:bg-surface-container hover:text-on-surface active:bg-surface-container active:text-on-surface disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent"
+                    : "min-h-[44px] rounded-pill border border-outline px-4 py-2 text-caption font-medium text-on-surface-variant transition-colors hover:bg-surface-container hover:text-on-surface active:bg-surface-container active:text-on-surface disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent"
                 }
               >
                 {opt.l}

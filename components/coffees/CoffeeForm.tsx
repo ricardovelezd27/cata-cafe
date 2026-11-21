@@ -396,7 +396,7 @@ export function CoffeeForm({
                 className={
                   active
                     ? `${HIT_Y44} min-h-[30px] border border-primary-fixed bg-primary-fixed text-on-primary-fixed rounded-pill px-3.5 py-1.5 text-caption font-semibold transition-colors`
-                    : `${HIT_Y44} min-h-[30px] border border-outline-variant text-on-surface-variant rounded-pill px-3.5 py-1.5 text-caption font-medium hover:bg-surface-container hover:text-on-surface active:bg-surface-container active:text-on-surface transition-colors`
+                    : `${HIT_Y44} min-h-[30px] border border-outline text-on-surface-variant rounded-pill px-3.5 py-1.5 text-caption font-medium hover:bg-surface-container hover:text-on-surface active:bg-surface-container active:text-on-surface transition-colors`
                 }
               >
                 {c}
@@ -441,8 +441,8 @@ export function CoffeeForm({
                   className={
                     "text-left rounded-card border p-3.5 transition-colors " +
                     (active
-                      ? "border-primary-container bg-primary-fixed"
-                      : "border-outline-variant bg-surface-container-lowest hover:bg-surface-container")
+                      ? "border-primary-fixed bg-primary-fixed"
+                      : "border-outline hover:bg-surface-container active:bg-surface-container")
                   }
                 >
                   <div className="flex items-center gap-2">
