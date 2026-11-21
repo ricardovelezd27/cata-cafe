@@ -11,3 +11,5 @@ rule here is binding for plans, briefs and pull requests. Newest last.
 - 2026-11-21: The "Notas rápidas" screen is eliminated for everyone: final notes are asked in the Global step.
 - 2026-11-21: Results: no "joins samples with no clear difference" bar; no "Each coffee" view (it repeats "Coffee by coffee"); no "Aprendizajes"; one general reflection per tasting, not per coffee.
 - 2026-11-21: Exports are three files only: the official CVA sheet PDF per coffee, a PDF of the results page with its look, and the CSV without names.
+- 2026-11-21: The warm-up link on the cupping screen ("Movimiento Sensorial · N min") goes. The session's warm-up is a setup option; when the organizer chooses it, it is part of the cupping workflow (the interstitial), nothing more.
+- 2026-11-21: Results: the same information is never shown twice in one view. When it is the same data from another perspective, it becomes another VIEW (for example by coffee, by cupper), each with its own layout. The information itself may stay. Buttons must be distinguishable. Results designs are reviewed by this critic AND with data-visualization and mobile best practices.
