@@ -64,7 +64,8 @@
   border-color: var(--color-primary-container);
 }
 
-.start:hover:not(:disabled) {
+.start:hover:not(:disabled),
+.start:active:not(:disabled) {
   background: var(--color-primary);
 }
 
@@ -74,8 +75,16 @@
   border-color: var(--color-primary-muted);
 }
 
-.invite:hover:not(:disabled) {
+.invite:hover:not(:disabled),
+.invite:active:not(:disabled) {
   background: color-mix(in oklch, var(--color-primary-fixed-dim) 25%, transparent);
+}
+
+/* The "entries closed" toggle (aria-pressed): the selection tone, never the action fill. */
+.invite[aria-pressed="true"] {
+  background: var(--color-primary-fixed);
+  color: var(--color-on-primary-fixed);
+  border-color: var(--color-primary-fixed);
 }
 
 .close {
@@ -84,11 +93,12 @@
   border-color: color-mix(in oklch, var(--color-error) 40%, var(--color-outline-variant));
 }
 
-.close:hover:not(:disabled) {
+.close:hover:not(:disabled),
+.close:active:not(:disabled) {
   background: color-mix(in oklch, var(--color-error) 8%, transparent);
 }
 
-.button:disabled { cursor: default; opacity: 0.5; }
+.button:disabled { cursor: default; opacity: 0.6; }
 
 .inviteBlock {
   display: flex;
@@ -145,7 +155,8 @@
 
 .copyBtn.copied { background: var(--color-primary-container); }
 
-.copyBtn:hover:not(.copied) {
+.copyBtn:hover:not(.copied),
+.copyBtn:active:not(.copied) {
   background: color-mix(in oklch, var(--color-primary-muted) 85%, black);
 }
 
@@ -155,7 +166,8 @@
   border-color: var(--color-outline-variant);
 }
 
-.resetBtn:hover {
+.resetBtn:hover,
+.resetBtn:active {
   background: color-mix(in oklch, var(--color-surface-container) 50%, transparent);
 }
 

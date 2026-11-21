@@ -47,7 +47,7 @@ export function RouteTabs({ tabs, ariaLabel, className = "" }: { tabs: RouteTab[
             className={`-mb-px flex min-h-[44px] shrink-0 items-center whitespace-nowrap border-b-2 px-4 text-caption transition-colors ${
               active
                 ? "border-primary-container font-semibold text-on-surface"
-                : "border-transparent text-on-surface-variant hover:text-on-surface"
+                : "border-transparent text-on-surface-variant hover:text-on-surface active:text-on-surface"
             }`}
           >
             {label}

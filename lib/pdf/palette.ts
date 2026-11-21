@@ -30,6 +30,10 @@ export const PDF_PALETTE = {
     red: "#ba1a1a", // --color-error
     neutral: "#727973", // --color-outline
   },
+  // The cupper's own marks on the CVA sheet (lib/pdf/CvaFormDocument.tsx): the one colour
+  // the printed form never uses, always paired with a solid shape so it also survives
+  // a black-and-white print.
+  mark: "#9d4326", // --color-secondary
   paper: "#f6f3ec", // warm paper wash for cards / KPI tiles
   white: "#ffffff",
 } as const;
