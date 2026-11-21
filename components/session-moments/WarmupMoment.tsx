@@ -1,13 +1,11 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useState } from "react";
 import { warmupById, lw } from "@/lib/warmup/exercises";
 import { seenMomentValue } from "@/lib/sessionMoments";
 import { exitMarksSeen, shouldShowWarmupOverlay } from "@/lib/warmup/overlayGate";
 import { WarmupPlayer, type WarmupPlayerStrings } from "@/components/warmup/WarmupPlayer";
 import { SessionMomentOverlay, useSessionMoment } from "./SessionMomentOverlay";
-
-const subscribeNoop = () => () => {};
 
 export interface WarmupMomentProps {
   sessionId: string;
@@ -25,9 +23,6 @@ export interface WarmupMomentProps {
   /** Extra gate from the host (e.g. session not closed). */
   enabled?: boolean;
   strings: WarmupPlayerStrings;
-  /** Tells the host whether the interstitial is on screen (the discreet
-   *  entry, WarmupEntry, is hidden while it is). */
-  onOpenChange?: (open: boolean) => void;
 }
 
 /**
@@ -53,7 +48,6 @@ export function WarmupMoment({
   startedAt = false,
   enabled = true,
   strings,
-  onOpenChange,
 }: WarmupMomentProps) {
   const [frozen] = useState(() => {
     const id = exerciseId ?? null;
@@ -78,13 +72,6 @@ export function WarmupMoment({
     value: frozen.id ?? "",
     when: frozen.show && exercise !== null,
   });
-  // Report only once hydrated: before that the seen-set reads its server
-  // snapshot ("seen"), which would tell the host "closed" for a frame while the
-  // interstitial is about to open.
-  const settled = useSyncExternalStore(subscribeNoop, () => true, () => false);
-  useEffect(() => {
-    if (settled) onOpenChange?.(open);
-  }, [open, settled, onOpenChange]);
   if (!exercise) return null;
   return (
     <SessionMomentOverlay open={open} label={lw(exercise.name, locale)}>

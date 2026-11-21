@@ -1,8 +1,6 @@
-// S10 WP7: private reflections (Kim F2) and the discreet entry after the
-// interstitial (Kim F1). Pure rules and static scans only (no Prisma import).
+// S10 WP7: private reflections (Kim F2). Pure rules and static scans only (no Prisma import).
 import { describe, expect, it } from "vitest";
 import { REFLECTION_MAX, parseReflectionInput } from "@/lib/warmup/reflections";
-import { shouldOfferWarmupEntry, shouldShowWarmupOverlay } from "@/lib/warmup/overlayGate";
 import { WARMUP_IDS } from "@/lib/warmup/exercises";
 import { SCAN_TIMEOUT_MS, readSource, walkSource } from "./helpers/sourceTree";
 
@@ -103,59 +101,3 @@ describe("nobody else reads warmup_reflections", () => {
   }, SCAN_TIMEOUT_MS); // walks three source folders
 });
 
-describe("shouldOfferWarmupEntry (the discreet entry after the interstitial)", () => {
-  const base = { exerciseId: "eyes", sessionClosed: false, overlayOpen: false, isOwner: false, isGroup: false, isAsync: false, startedAt: false };
-
-  it("is offered when the session has an exercise, is not closed and the overlay is not open", () => {
-    expect(shouldOfferWarmupEntry(base)).toBe(true);
-  });
-
-  it("is not offered without a (known) exercise", () => {
-    expect(shouldOfferWarmupEntry({ ...base, exerciseId: null })).toBe(false);
-    expect(shouldOfferWarmupEntry({ ...base, exerciseId: undefined })).toBe(false);
-    expect(shouldOfferWarmupEntry({ ...base, exerciseId: "" })).toBe(false);
-    expect(shouldOfferWarmupEntry({ ...base, exerciseId: "not-an-exercise" })).toBe(false);
-  });
-
-  it("is not offered on a closed session", () => {
-    expect(shouldOfferWarmupEntry({ ...base, sessionClosed: true })).toBe(false);
-  });
-
-  it("is not offered while the interstitial itself is open", () => {
-    expect(shouldOfferWarmupEntry({ ...base, overlayOpen: true })).toBe(false);
-  });
-
-  it("covers exactly the cases where the interstitial says no: started live group, returning cupper, seen", () => {
-    const gate = { exerciseId: "eyes", seenValue: null, hasOwnEvaluation: false, isOwner: false, isGroup: true, isAsync: false, startedAt: true };
-    // a live group already started: no interstitial, but the entry is there
-    expect(shouldShowWarmupOverlay(gate)).toBe(false);
-    expect(shouldOfferWarmupEntry({ ...base, isGroup: true, startedAt: true })).toBe(true);
-    // returning mid-cupping (has an evaluation)
-    expect(shouldShowWarmupOverlay({ ...gate, startedAt: false, hasOwnEvaluation: true })).toBe(false);
-    expect(shouldOfferWarmupEntry({ ...base, isGroup: true })).toBe(true);
-    // already seen
-    expect(shouldShowWarmupOverlay({ ...gate, startedAt: false, seenValue: "eyes" })).toBe(false);
-    // when the interstitial says yes, it is open, so no entry on top of it
-    expect(shouldShowWarmupOverlay({ ...gate, startedAt: false })).toBe(true);
-    expect(shouldOfferWarmupEntry({ ...base, overlayOpen: true })).toBe(false);
-  });
-
-  // TODO(kim-validar:F1): the master of a live group is not offered a private run before the start.
-  it("truth table for the owner: not offered before the start of a LIVE group, offered everywhere else", () => {
-    const rows: Array<[string, Partial<typeof base>, boolean]> = [
-      ["live group, owner, not started", { isOwner: true, isGroup: true, isAsync: false, startedAt: false }, false],
-      ["live group, owner, started", { isOwner: true, isGroup: true, isAsync: false, startedAt: true }, true],
-      ["live group, participant, not started", { isOwner: false, isGroup: true, isAsync: false, startedAt: false }, true],
-      ["async group, owner", { isOwner: true, isGroup: true, isAsync: true, startedAt: false }, true],
-      ["solo, owner", { isOwner: true, isGroup: false, isAsync: false, startedAt: false }, true],
-    ];
-    for (const [name, patch, want] of rows) expect(shouldOfferWarmupEntry({ ...base, ...patch }), name).toBe(want);
-  });
-});
-
-describe("the entry does not touch the seen-set", () => {
-  it("WarmupEntry never marks a moment seen", () => {
-    const src = read("components/session-moments/WarmupEntry.tsx");
-    expect(src).not.toMatch(/markMomentSeen|useSessionMoment|dismiss\(/);
-  });
-});

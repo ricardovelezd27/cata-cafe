@@ -18,12 +18,10 @@ import {
 import { blocksSubmit, hydratesForm, isTerminal } from "@/lib/offline/status";
 import { warmupForCache } from "@/lib/warmup/offlineCache";
 import { WarmupMoment } from "@/components/session-moments/WarmupMoment";
-import { WarmupEntry } from "@/components/session-moments/WarmupEntry";
 import { SessionMomentOverlay } from "@/components/session-moments/SessionMomentOverlay";
 import { WarmupPlayer, type WarmupPlayerStrings } from "@/components/warmup/WarmupPlayer";
 import { unlockWarmupAudio } from "@/hooks/useWarmupAudio";
 import { lw, warmupById } from "@/lib/warmup/exercises";
-import { shouldShowWarmupOverlay } from "@/lib/warmup/overlayGate";
 import { formatTimeLeft, isRunning as isWarmupRunning, parseDbTimestamp, resyncPositionMs, runLengthMs, seekFor, skewMs, timeLeftMs } from "@/lib/warmup/syncedRun";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
@@ -285,9 +283,6 @@ export function CupClient({
     warmupStartedAt: string | null;
     serverNow: string;
     strings: WarmupPlayerStrings;
-    /** Raw `warmup.entry.label` for the discreet entry after the interstitial
-     *  (S10 WP7, Kim F1); absent in older cached copies = no entry. */
-    entryLabel?: string;
     /** Master-panel strings (group.warmup*). `{time}` placeholders are raw. */
     master: {
       startLabel: string;
@@ -805,24 +800,6 @@ export function CupClient({
   // server timestamp (+ clock skew) so the panel can show time left and the
   // "Iniciar cata" button can ask before cutting the exercise short.
   const warmupExercise = warmupById(warmup?.exerciseId);
-  // Starts from the server-knowable part of the interstitial's gate (the seen-set
-  // is only readable on the client), so the discreet entry never renders for a
-  // frame under an interstitial that is about to open; WarmupMoment corrects it
-  // once settled. TODO(kim-validar:F1)
-  const [warmupOverlayOpen, setWarmupOverlayOpen] = useState(
-    () =>
-      !!warmup &&
-      sessionStatus !== "closed" &&
-      shouldShowWarmupOverlay({
-        exerciseId: warmup.exerciseId,
-        seenValue: null,
-        hasOwnEvaluation: warmup.hasOwnEvaluation,
-        isOwner,
-        isGroup,
-        isAsync: sessionIsAsync,
-        startedAt: !!startedAt,
-      }),
-  );
   const warmupRunMs = runLengthMs(warmup?.exerciseId);
   const [warmupStartedAtMs, setWarmupStartedAtMs] = useState<number | null>(() =>
     parseDbTimestamp(warmup?.warmupStartedAt),
@@ -2850,27 +2827,6 @@ export function CupClient({
     </div>
   );
 
-  // S10 WP7 (Kim F1): the discreet warm-up entry lives under the exit link.
-  const exitSlot = warmup ? (
-    <div className="flex flex-col items-start">
-      {exitLink}
-      <WarmupEntry
-        exerciseId={warmup.exerciseId}
-        closed={sessionStatus === "closed"}
-        overlayOpen={warmupOverlayOpen}
-        isOwner={isOwner}
-        isGroup={isGroup}
-        isAsync={sessionIsAsync}
-        startedAt={!!startedAt}
-        locale={locale}
-        label={warmup.entryLabel}
-        strings={warmup.strings}
-      />
-    </div>
-  ) : (
-    exitLink
-  );
-
   // ─── Top bar content ──────────────────────────────────────────
   const timerCopy = translations.timer ?? TIMER_COPY_FALLBACK[locale === "en" ? "en" : "es"];
   const phaseStepper = (
@@ -3018,7 +2974,7 @@ export function CupClient({
       identity={identity}
       secondaryNav={secondaryNav}
       ownerControls={ownerControls}
-      exitLink={exitSlot}
+      exitLink={exitLink}
       topBar={topBar}
       footer={footer}
       mobileTitle={notesStage ? expressNotesCopy.title : session.name}
@@ -3663,7 +3619,6 @@ export function CupClient({
         startedAt={!!startedAt}
         enabled={sessionStatus !== "closed"}
         strings={warmup.strings}
-        onOpenChange={setWarmupOverlayOpen}
       />
     )}
     </>

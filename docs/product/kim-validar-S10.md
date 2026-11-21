@@ -67,7 +67,7 @@ dulzor (se quedan las listas, X4), C3 (los plazos de 24 h y 7 días son decisió
 
 | Código | Dónde | Lo que está construido | Pregunta para Kim |
 |---|---|---|---|
-| F1 | ``lib/warmup/overlayGate.ts:70``, `app/[locale]/app/sessions/[id]/cup/CupClient.tsx:785` | Antes del agua el calentamiento se ofrece solo; después, un botón discreto "Movimiento Sensorial" en la barra de la cata. | ¿Debe poder abrirse una vez hay agua en la taza? |
+| F1 | — | Decidido por Ricardo (2026-11-21): la pantalla de cata no tiene botón de calentamiento. El calentamiento es parte de la cata solo si quien organiza lo elige al configurar la sesión. | Ninguna. |
 | F2 | ``lib/warmup/reflections.ts:9`` | Las reflexiones se guardan en la cuenta, privadas, solo para esa persona (ni profesor ni grupo). Máximo 200 por ejercicio. | ¿Quieres un modo "no guardar nunca" y un límite distinto? |
 | F3 | ``app/[locale]/app/warmup/page.tsx:104`` | **NECESITA TU SÍ.** La página de la biblioteca muestra con tu nombre (clave `warmup.library.kimLine`, `messages/es.json:2229`) la frase: «En mis clases veo que los catadores llegan más presentes a la mesa.» Se publicó por decisión de Ricardo ("ship now", 2026-11-13) sin tu confirmación. No se promete que "despierta los sentidos". | ¿Confirmas esa línea tal cual (te la atribuimos) o la cambiamos? Si no, se quita. |
 | F4 | ``lib/warmup/exercises.ts:155`` `:163` `:166`, ``lib/warmup/timeline.ts:153`` `:175` `:359` `:360` | Versión corta de 1 a 2 minutos (postura 5 s, una respiración, los primeros pasos, vuelta al centro, cierre de 15 s). Sin cue "abre los ojos" salvo que un paso cierre los ojos. | Una corrida corta con los ojos abiertos no tiene sonido de final (el último es el cuenco al empezar el cierre). ¿Añadimos un solo tic? |

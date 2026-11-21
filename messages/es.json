@@ -2650,9 +2650,6 @@
       "deleteCancel": "Cancelar",
       "deleteFailed": "No se pudo eliminar. Inténtalo de nuevo."
     },
-    "entry": {
-      "label": "Movimiento Sensorial · {min} min"
-    },
     "synced": {
       "listen": "Cierra los ojos y escucha",
       "stopped": "Quien organiza detuvo el ejercicio",

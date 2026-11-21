@@ -2650,9 +2650,6 @@
       "deleteCancel": "Cancel",
       "deleteFailed": "Could not delete it. Please try again."
     },
-    "entry": {
-      "label": "Sensory Movement · {min} min"
-    },
     "synced": {
       "listen": "Close your eyes and listen",
       "stopped": "The organizer stopped the exercise",

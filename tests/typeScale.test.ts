@@ -181,7 +181,6 @@ const SWEPT_AREAS: { area: string; paths: string[] }[] = [
     paths: [
       "app/[locale]/app/sessions/[id]/cup",
       "components/cupping",
-      "components/session-moments/WarmupEntry.tsx",
       "components/ui/SessionShell.tsx",
       "components/ui/SessionShell.module.css",
       "components/ui/CanvasFooter.tsx",

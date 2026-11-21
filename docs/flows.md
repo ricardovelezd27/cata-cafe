@@ -512,8 +512,8 @@ past 20 s asks "Toca otra vez para saltar". Sign-out purges the legacy
 `cata_warmup_reflections_*` keys (S8-13 stopped writing them; S10 WP7 below saves the
 answers again, but in the account, not in localStorage).
 
-**Reflections, short version, entry after start, seated and small space (S10 WP7,
-Kim F1 F2 F4 F5 B7; every answer is SIMULATED, `TODO(kim-validar:…)`).**
+**Reflections, short version, seated and small space (S10 WP7,
+Kim F2 F4 F5 B7; every answer is SIMULATED, `TODO(kim-validar:…)`).**
 
 ```mermaid
 flowchart TD
@@ -525,7 +525,6 @@ flowchart TD
   SAVE --> DONE
   SHORT --> DONE
   PAGE["exercise page: Tus reflexiones"] -->|"only the person's own rows"| SAVE
-  CUP["cup page: interstitial not showing, session not closed"] -->|"Movimiento Sensorial, N min"| SESS["player in session mode, marks nothing seen"]
 ```
 
 - **Reflections (F2).** In library mode the `reflect` phase has two optional text areas
@@ -550,12 +549,10 @@ flowchart TD
   The short version has no reflect phase. The master-led synced run is always the full
   version. The library intro offers "Completa · N min" / "Corta · 1–2 min". **Cata
   rápida** offers no warm-up (the owner, 2026-11-21: a fast tasting has no time for it).
-- **Entry after the cupping started (F1).** `shouldOfferWarmupEntry` (pure, in
-  `overlayGate.ts`): the session has an exercise, is not closed, and the interstitial is
-  not on screen, and it is not the owner of a LIVE group session that has not started
-  (the master panel has its own synced start; `TODO(kim-validar:F1)`). The cup page then shows one small text button under the exit link
-  ("Movimiento Sensorial · N min", `WarmupEntry`) that opens the same player in session
-  mode. Closing it marks nothing seen and never blocks the cupping.
+- **No entry on the cupping screen (F1).** The cup page has no link to the warm-up
+  (the owner, 2026-11-21): the warm-up is part of the cupping only when the organizer
+  chose an exercise in the session setup, through the interstitial and the waiting
+  room's synced run.
 - **Seated and small space (F5).** Two optional chips on the player's intro, both off by
   default and remembered per device (`cata_warmup_seated`, `cata_warmup_compact`).
   "Sentado" (only for the standing exercise) swaps the posture card and the arrival line
