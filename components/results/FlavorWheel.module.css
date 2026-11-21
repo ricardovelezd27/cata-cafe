@@ -215,3 +215,14 @@
 }
 .cell { font-weight: 600; }
 .cellZero { color: var(--color-on-surface-variant); }
+
+/* "Comparar" of the overview: from 768 px the table sits beside the wheel (the
+   owner's two-column layout); on a phone it stays under it. */
+@media (min-width: 768px) {
+  .beside {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 16px 24px;
+  }
+}

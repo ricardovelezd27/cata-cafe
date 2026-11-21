@@ -12,7 +12,6 @@
 import { AFFECTIVE_ATTRIBUTES, type SessionFormat } from "@/lib/constants";
 import type { MyEvaluation } from "@/lib/evaluationState";
 import { buildSheetData, type SheetData } from "@/lib/reports/coffeeSheet";
-import { myScoreFor } from "@/lib/reports/ranking";
 import { buildOverviewData, type OverviewData, type OverviewRow } from "@/lib/reports/overview";
 import { buildPersonalComparison, type PersonalComparison } from "@/lib/reports/personalComparison";
 import { computeSampleBlockFrequencies } from "@/lib/resultsAggregation";
@@ -263,8 +262,6 @@ function build(plan: Plan): OverviewScenario {
     }
   }
   const reference = samples.find((s) => s.referenceRank !== null) ?? null;
-  const ctx = { format: plan.format, isGroup: plan.isGroup, canViewGroup: plan.canViewGroup, cupsPerSample: plan.cups };
-  const referencePinned = plan.samples.some((s) => s.reference === "anchor") && plan.format !== "descriptive";
   return {
     id: plan.id,
     title: plan.title,

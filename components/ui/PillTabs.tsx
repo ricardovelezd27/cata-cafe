@@ -3,7 +3,14 @@
 import { useRef, type KeyboardEvent, type ReactNode } from "react";
 import { nextRovingIndex, tabIds, tabStopIndex } from "@/lib/rovingFocus";
 
-export type PillTabItem = { id: string; label: string; badge?: string; disabled?: boolean };
+export type PillTabItem = {
+  id: string;
+  label: string;
+  badge?: string;
+  /** What the badge's number counts, read out in place of the bare number. */
+  badgeLabel?: string;
+  disabled?: boolean;
+};
 
 type PillTabsSize = "md" | "sm";
 
@@ -91,7 +98,9 @@ export function PillTabs({
                   active ? "bg-surface-container-lowest text-on-surface" : "bg-secondary text-on-secondary"
                 }`}
               >
-                {item.badge}
+                {/* the number alone says nothing to a screen reader: read what it counts */}
+                <span aria-hidden={item.badgeLabel ? true : undefined}>{item.badge}</span>
+                {item.badgeLabel ? <span className="sr-only">{item.badgeLabel}</span> : null}
               </span>
             )}
           </button>

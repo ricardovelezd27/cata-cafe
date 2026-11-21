@@ -1250,9 +1250,6 @@ export default async function ResultsPage({
         parts: buildResultsPartsStrings(tResults),
         t: {
           ...buildOverviewStrings(tResults, {
-            referenceTitle: tResults(`dashboard.anchorTitle${refCopy}`),
-            referenceHint: tResults(`dashboard.anchorHint${refCopy}`),
-            notScored: tResults("dashboard.notScored"),
             rankHelp: tResults("dashboard.rankHelp"),
             communityPending: tResults("communityPending"),
             defectTypes: {

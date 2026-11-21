@@ -6,13 +6,11 @@
 // alignment's title and help) keeps its own keys, unchanged.
 
 export const RESULTS_PANEL_KEYS = [
-  "pendingTitle",
   "pendingLateOne",
   "pendingLateMany",
   "pendingNotesOne",
   "pendingNotesMany",
   "pendingBoth",
-  "pendingOpen",
   "matrixCaption",
   "matrixRegion",
   "group",

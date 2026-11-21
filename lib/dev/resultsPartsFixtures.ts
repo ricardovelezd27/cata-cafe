@@ -4,12 +4,11 @@
 // are the same data. Every coffee, cupper and number is made up.
 //
 // Each fixture is built THROUGH the pure rules a real page will use
-// (`scoreContext`, `tiesWithNext`), never by hand, so the page shows what those
+// (`scoreContext`), never by hand, so the page shows what those
 // rules really give for one, two, three and six cuppers.
 
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
 import type { RankValue } from "@/lib/reports/ranking";
-import { tiesWithNext, type TieEntry } from "@/lib/resultsScales";
 import { scoreContext, type ScoreContext } from "@/lib/scoreContext";
 
 export type FixtureLocale = "es" | "en";
@@ -44,7 +43,6 @@ export const SCORE_FIXTURES: ScoreFixture[] = [
       value: community(88.75, 2.9, 6, 6, 12),
       mine: 86.75,
       deltaVsReference: 9.75,
-      noClearGap: true,
     }),
   },
   { id: "solo", cuppers: null, context: scoreContext({ value: own(86.5), mine: 86.5 }) },
@@ -59,7 +57,6 @@ export type RankFixtureRow = {
   label: string;
   name: string | null;
   context: ScoreContext;
-  tie: TieEntry;
 };
 
 export type RankFixture = {
@@ -71,18 +68,14 @@ export type RankFixture = {
 type RankSeed = { letter: string; name: string | null; value: RankValue; mine: number | null };
 
 function rankRows(seeds: readonly RankSeed[], sample: string, referenceScore: number | null): RankFixtureRow[] {
-  const ties: TieEntry[] = seeds.map((s) => ({ score: s.value.score, sd: s.value.sd, n: s.value.n }));
-  const withNext = tiesWithNext(ties);
   return seeds.map((s, i) => ({
     id: s.letter,
     place: String(i + 1),
     label: `${sample} ${s.letter}`,
     name: s.name,
-    tie: ties[i],
     context: scoreContext({
       value: s.value,
       mine: s.mine,
-      noClearGap: withNext[i] || (i > 0 && withNext[i - 1]),
       deltaVsReference: referenceScore !== null && s.value.score !== null ? s.value.score - referenceScore : null,
     }),
   }));

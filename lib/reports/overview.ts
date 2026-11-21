@@ -30,7 +30,7 @@ import {
   type RankableSample,
 } from "@/lib/reports/ranking";
 import { buildOwnWheelData, buildWheelData, type WheelData } from "@/lib/reports/wheelData";
-import { round2, tiesWithNext, type TieEntry } from "@/lib/resultsScales";
+import { round2 } from "@/lib/resultsScales";
 import { scoreContext, type ScoreContext } from "@/lib/scoreContext";
 
 // ── On the server ────────────────────────────────────────────────────────────
@@ -171,17 +171,10 @@ export type OverviewEntry<S> = {
   place: number | null;
   /** Everything said beside its score. */
   context: ScoreContext;
-  /** What the tie rule reads. */
-  tie: TieEntry;
 };
 
 export type OverviewFirst<S> =
-  | {
-      status: "ok";
-      entry: OverviewEntry<S>;
-      /** The next coffee, when there is no clear difference between the two. */
-      tieWith: { sample: S; gap: number } | null;
-    }
+  | { status: "ok"; entry: OverviewEntry<S> }
   /** `descriptive`: the session has no scores. `no_scores`: nothing to rank yet.
    *  `too_few`: scores exist, but none rests on enough cuppers to be "first". */
   | { status: "none"; reason: "descriptive" | "no_scores" | "too_few" };
@@ -245,10 +238,8 @@ export function overviewView<S extends OverviewSample>(input: {
           context: scoreContext({
             value: r,
             mine: myScoreFor(r.sample, ctx.format, ctx.cupsPerSample),
-            noClearGap: ranked && r.noClearGap,
             deltaVsReference: ranking.refDeltas.get(r.sample.id) ?? null,
           }),
-          tie: { score: r.score, sd: r.sd, n: r.n },
         }));
 
   const first = ((): OverviewFirst<S> => {
@@ -256,16 +247,7 @@ export function overviewView<S extends OverviewSample>(input: {
     if (!ranked || !entries.some((e) => e.context.score !== null)) return { status: "none", reason: "no_scores" };
     const candidates = entries.filter((e) => e.context.canBeFirst);
     if (candidates.length === 0) return { status: "none", reason: "too_few" };
-    const [entry, next] = candidates;
-    const tied = next ? tiesWithNext([entry.tie, next.tie])[0] : false;
-    return {
-      status: "ok",
-      entry,
-      tieWith:
-        tied && next
-          ? { sample: next.sample, gap: round2(Math.abs((entry.tie.score as number) - (next.tie.score as number))) }
-          : null,
-    };
+    return { status: "ok", entry: candidates[0] };
   })();
 
   const referenceLine =

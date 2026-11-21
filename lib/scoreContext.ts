@@ -41,8 +41,6 @@ export type PanelGates = {
   sharedDescriptors: boolean;
   /** The "Tú y el panel" tile: from three. */
   youAndPanel: boolean;
-  /** Every learning about the panel: from three. */
-  panelLearnings: boolean;
   /** "diferencia" between the viewer's score and the group's: from three. */
   difference: boolean;
   /** The "±" beside a group score: from three. */
@@ -76,7 +74,6 @@ export function panelGates(
     groupIntensities: compares,
     sharedDescriptors: compares,
     youAndPanel: compares,
-    panelLearnings: compares,
     difference: compares,
     spread: compares,
     first: compares,
@@ -90,10 +87,8 @@ export type ScoreContextInput = {
   value: RankValue;
   /** The viewer's own score for the same sample, when they have one to show. */
   mine: number | null;
-  /** The sample is a reference: outside the ranking, never "first", never tied. */
+  /** The sample is a reference: outside the ranking, never "first". */
   isReference?: boolean;
-  /** `RankedEntry.noClearGap` (the tie rule, already applied by the ranking). */
-  noClearGap?: boolean;
   /** Δ against the reference, already computed by lib/referenceDelta.ts. */
   deltaVsReference?: number | null;
 };
@@ -118,8 +113,6 @@ export type ScoreContext = {
   indicative: boolean;
   /** A community number of fewer than three cuppers: no spread, never first. */
   suppressed: boolean;
-  /** "sin diferencia clara" with a neighbour in the ranking. */
-  noClearGap: boolean;
   /** May be named "Primera del ranking" if it is the first of the order. */
   canBeFirst: boolean;
 };
@@ -158,7 +151,6 @@ export function scoreContext(
       !isReference && typeof delta === "number" && Number.isFinite(delta) ? delta : null,
     indicative: community && flags.indicative,
     suppressed: community && flags.suppressed,
-    noClearGap: !isReference && value.score !== null && input.noClearGap === true,
     canBeFirst:
       !isReference && value.score !== null && (value.basis === "mine" || (community && gates.first)),
   };

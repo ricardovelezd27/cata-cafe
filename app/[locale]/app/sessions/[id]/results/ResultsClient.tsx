@@ -112,10 +112,10 @@ type MatrixTranslations = {
 // page. A participant has ONE view and no tab bar.
 type Tab = "resumen" | "panel";
 
-// What lies under the territories of "Comparar" (FlavorCompare's `ground`):
-// "rings" is the recommendation, "families" the alternative. One line, the
-// owner's to confirm.
-const COMPARE_GROUND: "rings" | "families" = "rings";
+// What lies under the territories of "Comparar" (FlavorCompare's `ground`): the
+// dim family shades of the small wheels (the owner's choice, 2026-11-21). One
+// line for the overview's "Comparar" and the sheet's "Comparar con".
+const COMPARE_GROUND: "rings" | "families" = "families";
 
 // "Comparar con" pick (S6 multi-reference): which reference the Δ chips use.
 // Same external-store pattern; "" = nothing chosen → the active reference.
@@ -739,11 +739,6 @@ export function ResultsClient({
   const panelWaiting = canViewIndividual
     ? panelPending({ lateRows: isAdminViewer ? null : lateRows, notesByCupper: postCloseNotes?.byCupper ?? null })
     : null;
-  const openPanel = () => {
-    setTab("panel");
-    // the tile that was pressed leaves with the overview: put the reader at the Panel's start
-    requestAnimationFrame(() => document.querySelector<HTMLElement>("[data-panel-view]")?.focus());
-  };
   const panelGroupScores = Object.fromEntries(
     cards.map((c) => [c.sample.id, c.context && c.context.basis === "community" ? c.context.score : null]),
   );
@@ -778,10 +773,23 @@ export function ResultsClient({
       </div>
     ) : null;
 
-  // A participant has ONE view: no tab bar then.
+  // Two views of the same cupping (OR-D): "Por café" for everyone, "Por catador"
+  // for the organizer and the admin's lens. A participant has ONE view: no tab
+  // bar then. What waits for the organizer in "Por catador" is the count on its tab.
+  const waiting = panelWaiting ? panelWaiting.late + panelWaiting.notes : 0;
   const tabItems = [
     { id: "resumen", label: translations.tabResultados },
-    ...(canViewIndividual ? [{ id: "panel", label: overview.cards.tabPanel }] : []),
+    ...(canViewIndividual
+      ? [
+          {
+            id: "panel",
+            label: overview.cards.tabPanel,
+            ...(panelWaiting && waiting > 0
+              ? { badge: String(waiting), badgeLabel: pendingSentence(panelWaiting, overview.panelT) }
+              : {}),
+          },
+        ]
+      : []),
   ];
 
   // S1: the exports this viewer gets (the CVA sheet for everyone, the CSV without names for the organizer).
@@ -1139,24 +1147,13 @@ export function ResultsClient({
             data={overview.data}
             myAlignment={myAlignment ?? null}
             preliminary={overview.preliminary}
-            referencePinned={overview.referencePinned}
             compareSelector={compareSelector}
             familyLabels={overview.familyLabels}
             parts={overview.parts}
             t={overview.t}
             compare={{ closed: sessionClosed, ground: COMPARE_GROUND, t: overview.cards }}
-            pending={
-              panelWaiting
-                ? {
-                    title: overview.panelT.pendingTitle,
-                    text: pendingSentence(panelWaiting, overview.panelT),
-                    action: overview.panelT.pendingOpen,
-                    onOpen: openPanel,
-                  }
-                : null
-            }
             onOpenSample={(id) => openSheet(id)}
-          />
+          >
           <CoffeeCards
             cards={cards}
             format={resolvedFormat}
@@ -1171,6 +1168,7 @@ export function ResultsClient({
             parts={overview.parts}
             t={overview.cards}
           />
+          </SessionOverview>
           {/* The reflection: the existing note after the close, one per coffee the
               reader sent an evaluation of. The same note is on each coffee's sheet. */}
           {sessionClosed && !isAdminViewer && postCloseNotes && noteTranslations ? (

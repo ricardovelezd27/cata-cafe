@@ -13,9 +13,9 @@ const MAX_COMPARED = 3;
 export type OverviewCompareStrings = Pick<CardsStrings, "comparePick" | "compareHint" | "compareNeedTwo">;
 
 /**
- * "Comparar" of the overview's flavour tile: chips for the coffees and, for
- * the two or three chosen, their territories on one wheel with the counts in a
- * table under it. The first three of the ranking to start.
+ * "Comparar" of the "Por café" view: chips for the coffees and, for the two or
+ * three chosen, their territories on one wheel with the counts in a table
+ * beside it (under it on a phone). The first three of the ranking to start.
  *
  * WHICH coffees may be compared is decided before this component
  * (`compareOptions`, lib/reports/coffeeCards.ts: a closed session only, and
@@ -88,6 +88,7 @@ export function OverviewCompare({
           familyLabels={familyLabels}
           strings={strings}
           ground={ground}
+          beside
         />
       ) : (
         <p role="status" className={styles.notice}>

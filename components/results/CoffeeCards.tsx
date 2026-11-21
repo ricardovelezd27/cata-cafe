@@ -2,7 +2,6 @@
 
 import { useEffect, useId, useRef, useState, useSyncExternalStore, type KeyboardEvent } from "react";
 import { Check, ChevronRight, Eye } from "lucide-react";
-import { ScoreWithContext } from "@/components/ui/ScoreWithContext";
 import { PaperSectionHeading } from "@/components/ui";
 import { PHONE_MAX, carouselIndex } from "@/components/landing/carouselIndex";
 import { fillPattern } from "@/lib/fillPattern";
@@ -223,26 +222,6 @@ export function CoffeeCards<S extends CardSampleProps>({
             </div>
           </div>
 
-          {card.context ? (
-            <ScoreWithContext
-              context={
-                // a fixed reference's number is a rule, not an average: the number alone
-                card.isReference && referencePinned
-                  ? {
-                      ...card.context,
-                      spread: null,
-                      included: null,
-                      mine: null,
-                      difference: null,
-                      indicative: false,
-                      suppressed: false,
-                    }
-                  : card.context
-              }
-              strings={parts.score}
-              size="md"
-            />
-          ) : null}
           {card.partial ? <p className={styles.caption}>{t.partialLabel}</p> : null}
         </div>
 

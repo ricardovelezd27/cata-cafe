@@ -31,7 +31,6 @@ import { wheelHeadline } from "@/lib/flavorWheelLayout";
 import { INTENSITY_SCALE, QUALITY_SCALE, countBar } from "@/lib/resultsScales";
 import { OVERVIEW_SCENARIOS } from "@/lib/dev/overviewFixtures";
 import { PANEL_CLASS, PANEL_DESCRIPTIVE, PANEL_LARGE, PANEL_TWO } from "@/lib/dev/panelFixtures";
-import { pendingSentence } from "@/components/results/panelStrings";
 import css from "./gallery.module.css";
 import { OverviewFixture } from "./OverviewFixture";
 import { PanelFixtureView, type PanelWords } from "./PanelFixtureView";
@@ -353,16 +352,6 @@ export function ResultsPartsGallery({
                 parts={strings}
                 t={overviewStrings[scenario.id]}
                 cards={cardsStrings}
-                // the organizer's tile: what waits for them in the Panel
-                pending={
-                  scenario.id === "closed-owner"
-                    ? {
-                        title: panelWords.panel.pendingTitle,
-                        text: pendingSentence({ late: 1, notes: 2 }, panelWords.panel),
-                        action: panelWords.panel.pendingOpen,
-                      }
-                    : null
-                }
               />
             </div>
           ))}
