@@ -56,7 +56,7 @@ function stringsOf(locale: Locale): { cards: CardsStrings; parts: ReturnType<typ
 const cardsOf = (s: OverviewScenario) =>
   coffeeCards({ samples: s.samples, referenceId: s.referenceId, ctx: s.ctx, data: s.data });
 
-function render(s: OverviewScenario, locale: Locale = "es", canReveal = false): string {
+function render(s: OverviewScenario, locale: Locale = "es", canReveal = false, own = true): string {
   const { cards, parts } = stringsOf(locale);
   return html(
     createElement(CoffeeCards<OverviewScenario["samples"][number]>, {
@@ -64,6 +64,7 @@ function render(s: OverviewScenario, locale: Locale = "es", canReveal = false): 
       format: s.ctx.format,
       referencePinned: s.referencePinned,
       canReveal,
+      own,
       onReveal: () => {},
       onOpenSample: () => {},
       familyLabels: wheelFamilyLabels(locale),
@@ -289,6 +290,23 @@ describe("what a card shows, state by state (RESULTS-DESIGN section 4)", () => {
     expect(first).toContain(t.outsideRanking);
     expect(first).toContain(t.referenceBadge);
   });
+
+  it("the admin's lens draws nothing as the reader's own: no \"elegido por ti\", no \"Sin evaluar\" or \"En curso\"", () => {
+    const { cards: t, parts } = stringsOf("es");
+    let own = 0;
+    for (const s of OVERVIEW_SCENARIOS) {
+      const mine = render(s);
+      const lens = render(s, "es", false, false);
+      if (mine.includes(parts.counted.chosenByYou) || mine.includes(t.notEvaluated) || mine.includes(t.inProgress)) own += 1;
+      expect(lens, s.id).not.toContain(parts.counted.chosenByYou);
+      expect(lens, s.id).not.toContain(`>${t.notEvaluated}<`);
+      expect(lens, s.id).not.toContain(`>${t.inProgress}<`);
+      // the group's counts are all still there
+      expect((lens.match(/data-card=""/g) ?? []).length).toBe((mine.match(/data-card=""/g) ?? []).length);
+    }
+    expect(own).toBeGreaterThan(0);
+    expect(read("app", "[locale]", "app", "sessions", "[id]", "results", "ResultsClient.tsx").match(/own=\{!isAdminViewer\}/g)).toHaveLength(2);
+  }, HEAVY_TEST_TIMEOUT_MS);
 
   it("no card prints a score: every score is in the ranking box, on one scale (owner, 2026-11-21)", () => {
     for (const s of OVERVIEW_SCENARIOS) {
