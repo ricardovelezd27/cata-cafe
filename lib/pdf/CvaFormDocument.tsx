@@ -62,7 +62,7 @@ const WHITE = PDF_PALETTE.white;
 const MARK = PDF_PALETTE.mark;
 
 /** The gradient of a ruler: fifteen steps from pale to dark grey, opaque (a transparent fill prints differently from one printer to the next). */
-const RULER_STEPS = Array.from({ length: 15 }, (_, i) => pdfPaleTint(INK, 0.06 + (i / 14) * 0.6));
+const RULER_STEPS = Array.from({ length: 15 }, (_, i) => pdfPaleTint(INK, 0.06 + (i / 14) * 0.42));
 
 const s = StyleSheet.create({
   page: {
@@ -72,7 +72,6 @@ const s = StyleSheet.create({
     fontFamily: SANS,
     fontSize: 6.5,
     color: INK,
-    lineHeight: 1.2,
   },
 
   // ── Page head ──
@@ -148,20 +147,8 @@ const s = StyleSheet.create({
   cupLabel: { fontSize: 5.2, fontFamily: SERIF, fontWeight: 700, textTransform: "uppercase", marginRight: 3 },
   cupBox: { width: 7, height: 7, border: `0.5pt solid ${INK}`, marginRight: 2.5 },
 
-  // ── Score strip, outside the form's frame ──
-  scoreStrip: { flexDirection: "row", alignItems: "baseline", marginTop: 3, paddingTop: 2, borderTop: `0.5pt solid ${HAIR}` },
-  scoreLabel: { fontSize: 5.5, color: SOFT, letterSpacing: 0.8, textTransform: "uppercase", marginRight: 4 },
-  // Each carries its OWN line height: inherited from the page it resolved to the
-  // page's 6.5 pt line, too short for a 13 pt value.
-  scoreValue: { fontSize: 13, fontFamily: SANS, fontWeight: 700, lineHeight: 1.15 },
-  scoreFormula: { fontSize: 5, color: SOFT, fontStyle: "italic", marginLeft: 5, lineHeight: 1.3 },
-
-  // ── Appendix blocks ──
-  metaBox: { border: `0.6pt solid ${INK}`, marginBottom: 6 },
-  metaTitle: { fontSize: 5.5, letterSpacing: 1, textTransform: "uppercase", fontFamily: SERIF, fontWeight: 700, borderBottom: `0.5pt solid ${INK}`, paddingVertical: 2, paddingHorizontal: 5 },
-  metaBody: { paddingVertical: 3, paddingHorizontal: 5 },
+  // ── Part 3 fields ──
   metaWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  metaField: { flexBasis: "31%", marginBottom: 2 },
   metaLabel: { fontSize: 5, letterSpacing: 0.9, color: SOFT, textTransform: "uppercase" },
 });
 
@@ -231,22 +218,7 @@ function Field({ label, value, flex }: { label: string; value: string; flex?: nu
   );
 }
 
-function PrepFields({ sheet, t }: { sheet: CvaSampleSheet; t: Record<string, string> }) {
-  const p = sheet.header.prep;
-  if (!p) return null;
-  const parts: string[] = [];
-  if (p.roastDate) parts.push(`${t.roastDate}: ${p.roastDate}`);
-  if (p.preparationNote) parts.push(`${t.preparation}: ${p.preparationNote}`);
-  if (p.offProtocol) parts.push(`${t.offProtocol}${p.offProtocolNote ? `: ${p.offProtocolNote}` : ""}`);
-  if (parts.length === 0) return null;
-  return (
-    <View style={{ borderTop: `0.5pt solid ${INK}`, paddingVertical: 2, paddingHorizontal: 4 }}>
-      <Written size={6.5}>{parts.join("  ·  ")}</Written>
-    </View>
-  );
-}
-
-/** Title block at the left, the fields at the right (descriptive, affective, appendix). */
+/** Title block at the left, the fields at the right (descriptive and affective). */
 function PageHead({ sheet, t, formName }: { sheet: CvaSampleSheet; t: Record<string, string>; formName: string }) {
   const h = sheet.header;
   return (
@@ -259,7 +231,6 @@ function PageHead({ sheet, t, formName }: { sheet: CvaSampleSheet; t: Record<str
         <Field label={t.name} value={h.cupperName} />
         <Field label={t.date} value={h.date} />
         <Field label={t.purpose} value={h.purpose} />
-        <Field label={t.session} value={h.sessionName} />
       </View>
       <Text style={s.brand}>Café Sensible</Text>
     </View>
@@ -341,7 +312,7 @@ function Ruler({ name, value, t, nameWidth = 58 }: { name: string; value: number
           ))}
           {pct !== null ? (
             <View style={{ position: "absolute", left: `${pct}%`, top: -3, width: 0 }}>
-              <View style={{ position: "absolute", left: -1.6, top: 0, width: 3.2, height: 13, backgroundColor: MARK, border: `0.8pt solid ${WHITE}` }} />
+              <View style={{ position: "absolute", left: -2.2, top: -0.6, width: 4.4, height: 14.2, backgroundColor: MARK, border: `1.2pt solid ${WHITE}` }} />
             </View>
           ) : null}
         </View>
@@ -443,12 +414,46 @@ function chosenWords(rows: CataGroupRow[]): string[] {
   return out;
 }
 
-/** The "Notes" cell: its caption, then the chosen words as chips. */
-function NotesCell({ label, items, width, minHeight }: { label: string; items: string[]; width?: number | string; minHeight?: number }) {
+/** The cupper's free-text note of a stage (`<stage>_notas`), already sanitized by the builder. */
+type StageNote = { prefix?: string; text: string };
+
+const STAGE_LABEL: Record<StageId, string> = {
+  fragancia: "fragrance",
+  aroma: "aroma",
+  sabor: "flavor",
+  sabor_residual: "aftertasteShort",
+  acidez: "acidity",
+  dulzor: "sweetness",
+  sensacion: "mouthfeelShort",
+};
+
+/** The written notes of the stages that share one Notes box; a stage's name leads its note only when two share the box. */
+function stageNotes(d: DescriptiveSheet, stages: StageId[], t: Record<string, string>): StageNote[] {
+  return stages
+    .map((id) => ({ prefix: stages.length > 1 ? t[STAGE_LABEL[id]] : undefined, text: d.freeNotes[id] }))
+    .filter((n) => n.text);
+}
+
+function WrittenNotes({ notes }: { notes?: StageNote[] }) {
+  if (!notes || notes.length === 0) return null;
   return (
-    <View style={[s.notesCol, width !== undefined ? { width } : { flexGrow: 1, flexBasis: 0 }, minHeight ? { minHeight } : {}]}>
+    <View>
+      {notes.map((n, i) => (
+        <View key={i} style={{ marginBottom: 2 }}>
+          <Written size={6.3}>{n.prefix ? `${n.prefix}: ${n.text}` : n.text}</Written>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/** The "Notes" cell: its caption, then the chosen words as chips. */
+function NotesCell({ label, items, notes, width }: { label: string; items: string[]; notes?: StageNote[]; width?: number | string }) {
+  return (
+    <View style={[s.notesCol, width !== undefined ? { width } : { flexGrow: 1, flexBasis: 0 }]}>
       <Text style={s.notesLabel}>{label}</Text>
       <Chips items={items} />
+      <WrittenNotes notes={notes} />
     </View>
   );
 }
@@ -464,7 +469,6 @@ function DescriptiveBlock({ sheet, t }: { sheet: CvaSampleSheet; t: Record<strin
   return (
     <View style={s.frame}>
       <SampleBand sheet={sheet} t={t} />
-      <PrepFields sheet={sheet} t={t} />
 
       {/* Fragrance + Aroma share Box A (orthonasal) and one Notes cell. */}
       <View style={[s.cellRow, s.section]}>
@@ -473,7 +477,7 @@ function DescriptiveBlock({ sheet, t }: { sheet: CvaSampleSheet; t: Record<strin
           <Ruler name={t.aroma} value={int("aroma")} t={t} />
           <CataList rows={d.boxA.map(flavorToRow)} columns={2} />
         </View>
-        <NotesCell label={t.notes} items={d.boxANotes} width={notesW} />
+        <NotesCell label={t.notes} items={d.boxANotes} notes={stageNotes(d, ["fragancia", "aroma"], t)} width={notesW} />
       </View>
 
       {/* Flavor + Aftertaste share Box B (retronasal), with the Main tastes inside it. */}
@@ -486,21 +490,21 @@ function DescriptiveBlock({ sheet, t }: { sheet: CvaSampleSheet; t: Record<strin
             <MainTastes sheet={sheet} t={t} />
           </View>
         </View>
-        <NotesCell label={t.notes} items={d.boxBNotes} width={notesW} />
+        <NotesCell label={t.notes} items={d.boxBNotes} notes={stageNotes(d, ["sabor", "sabor_residual"], t)} width={notesW} />
       </View>
 
       <View style={[s.cellRow, s.section]}>
         <View style={{ width: DESC_LEFT, minHeight: 30 }}>
           <Ruler name={t.acidity} value={int("acidez")} t={t} />
         </View>
-        <NotesCell label={t.notes} items={chosenWords(d.acidity)} width={notesW} />
+        <NotesCell label={t.notes} items={chosenWords(d.acidity)} notes={stageNotes(d, ["acidez"], t)} width={notesW} />
       </View>
 
       <View style={[s.cellRow, s.section]}>
         <View style={{ width: DESC_LEFT, minHeight: 30 }}>
           <Ruler name={t.sweetness} value={int("dulzor")} t={t} />
         </View>
-        <NotesCell label={t.notes} items={chosenWords(d.sweetness)} width={notesW} />
+        <NotesCell label={t.notes} items={chosenWords(d.sweetness)} notes={stageNotes(d, ["dulzor"], t)} width={notesW} />
       </View>
 
       <View style={[s.cellRow, s.section]}>
@@ -508,7 +512,7 @@ function DescriptiveBlock({ sheet, t }: { sheet: CvaSampleSheet; t: Record<strin
           <Ruler name={t.mouthfeelShort ?? t.mouthfeel} value={int("sensacion")} t={t} />
           <CataList rows={d.mouthfeel.map(cataToRow)} columns={3} />
         </View>
-        <NotesCell label={t.notes} items={[]} width={notesW} />
+        <NotesCell label={t.notes} items={[]} notes={stageNotes(d, ["sensacion"], t)} width={notesW} />
       </View>
     </View>
   );
@@ -521,14 +525,22 @@ const QUALITY_KEYS = ["q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8", "q9"];
 /** Narrow label columns take the short form where one exists. */
 const shortLabel = (t: Record<string, string>, key: string) => t[`${key}Short`] ?? t[key] ?? key;
 
-/** IMPRESSION OF QUALITY: the nine circled numbers with their words. */
-function QualityLegend({ t }: { t: Record<string, string> }) {
+/** IMPRESSION OF QUALITY: the nine circled numbers with their words, in one row (affective) or three across (beside the combined form's fields). */
+function QualityLegend({ t, layout }: { t: Record<string, string>; layout: "row" | "grid" }) {
+  const grid = layout === "grid";
   return (
-    <View style={s.legend} wrap={false}>
+    <View style={grid ? [s.legend, { marginBottom: 0 }] : s.legend} wrap={false}>
       <Text style={s.legendTitle}>{t.impressionOfQuality}</Text>
-      <View style={{ flexDirection: "row" }}>
+      <View style={{ flexDirection: "row", flexWrap: grid ? "wrap" : "nowrap" }}>
         {QUALITY_KEYS.map((k, i) => (
-          <View key={k} style={{ flexGrow: 1, flexBasis: 0, flexDirection: "row", alignItems: "flex-start", paddingRight: 2 }}>
+          <View
+            key={k}
+            style={
+              grid
+                ? { width: "33.3%", flexDirection: "row", alignItems: "flex-start", paddingRight: 2, marginBottom: 2 }
+                : { flexGrow: 1, flexBasis: 0, flexDirection: "row", alignItems: "flex-start", paddingRight: 2 }
+            }
+          >
             <View style={{ width: 8, height: 8, borderRadius: 4, border: `0.4pt solid ${INK}`, alignItems: "center", justifyContent: "center", marginRight: 1.5 }}>
               <Text style={{ fontSize: 5, lineHeight: 1 }}>{i + 1}</Text>
             </View>
@@ -645,24 +657,6 @@ function CupsFoot({ sheet, t }: { sheet: CvaSampleSheet; t: Record<string, strin
   );
 }
 
-function ScoreStrip({ sheet, t }: { sheet: CvaSampleSheet; t: Record<string, string> }) {
-  return (
-    <View style={s.scoreStrip} wrap={false}>
-      <Text style={s.scoreLabel}>{t.score}</Text>
-      <Text style={s.scoreValue}>{sheet.scoreState === "complete" ? sheet.score : t.none}</Text>
-      {sheet.scoreState === "complete" ? (
-        <Text style={s.scoreFormula}>
-          {t.sumH}={sheet.breakdown.affectiveSum} · u={sheet.breakdown.u} · d={sheet.breakdown.d}
-        </Text>
-      ) : sheet.scoreState === "partial" ? (
-        <Text style={s.scoreFormula}>{sheet.partialDeclared ? t.partialDeclared : t.incomplete}</Text>
-      ) : sheet.scoreState === "unsent" ? (
-        <Text style={s.scoreFormula}>{t.unsent}</Text>
-      ) : null}
-    </View>
-  );
-}
-
 /** Affective row groups of the official form: [Fragrance, Aroma] [Flavor, Aftertaste] [Acidity] [Sweetness] [Mouthfeel] [Overall]. */
 function affGroups(rows: AffRows): AffRows[] {
   const pick = (ids: string[]) => rows.filter((r) => ids.includes(r.id));
@@ -683,18 +677,11 @@ function AffectiveSample({ sheet, t }: { sheet: CvaSampleSheet; t: Record<string
     <View style={{ flexGrow: 1, flexBasis: 0 }}>
       <View style={s.frame}>
         <SampleBand sheet={sheet} t={t} roast={false} />
-        <PrepFields sheet={sheet} t={t} />
         {affGroups(sheet.affectiveRows).map((rows, i) => (
           <AffCell key={i} rows={rows} t={t} minHeight={AFF_HEIGHTS[i] ?? 60} labelWidth={56} />
         ))}
         <CupsFoot sheet={sheet} t={t} />
       </View>
-      <ScoreStrip sheet={sheet} t={t} />
-      {sheet.expressNotes ? (
-        <View style={{ marginTop: 3 }}>
-          <Written size={6.3}>{`${t.expressNotes}: ${sheet.expressNotes}`}</Written>
-        </View>
-      ) : null}
     </View>
   );
 }
@@ -703,7 +690,7 @@ function AffectivePage({ pair, t }: { pair: CvaSampleSheet[]; t: Record<string, 
   return (
     <Page size="A4" style={s.page}>
       <PageHead sheet={pair[0]} t={t} formName={t.formAffective} />
-      <QualityLegend t={t} />
+      <QualityLegend t={t} layout="row" />
       <View style={{ flexDirection: "row", gap: 5 }}>
         {pair.map((sheet, i) => (
           <AffectiveSample key={i} sheet={sheet} t={t} />
@@ -748,10 +735,9 @@ function CombinedPage({ sheet, t }: { sheet: CvaSampleSheet; t: Record<string, s
             <Field label={t.purpose} value={h.purpose} flex={1} />
             <Field label={t.sampleNo} value={`${h.sampleLabel}${ref}${h.coffeeName ? ` · ${h.coffeeName}` : ""}`} flex={1.7} />
           </View>
-          <Field label={t.session} value={h.sessionName} />
         </View>
         <View style={{ flexGrow: 1, flexBasis: 0, marginLeft: 6 }}>
-          <QualityLegendBox t={t} />
+          <QualityLegend t={t} layout="grid" />
         </View>
       </View>
 
@@ -766,14 +752,13 @@ function CombinedPage({ sheet, t }: { sheet: CvaSampleSheet; t: Record<string, s
                 {h.roastLevel ? <Written>{h.roastLevel}</Written> : null}
               </View>
             </View>
-            <PrepFields sheet={sheet} t={t} />
 
             <View style={{ minHeight: COMBINED_H[0] }}>
               <Ruler name={t.fragrance} value={int("fragancia")} t={t} nameWidth={54} />
               <Ruler name={t.aroma} value={int("aroma")} t={t} nameWidth={54} />
               <View style={[s.cellRow, s.section]}>
                 <CataList rows={d.boxA.map(flavorToRow)} columns={1} style={{ width: 192 }} />
-                <NotesCell label={t.notes} items={d.boxANotes} />
+                <NotesCell label={t.notes} items={d.boxANotes} notes={stageNotes(d, ["fragancia", "aroma"], t)} />
               </View>
             </View>
 
@@ -795,7 +780,7 @@ function CombinedPage({ sheet, t }: { sheet: CvaSampleSheet; t: Record<string, s
                     </View>
                   </View>
                 </View>
-                <NotesCell label={t.notes} items={d.boxBNotes} />
+                <NotesCell label={t.notes} items={d.boxBNotes} notes={stageNotes(d, ["sabor", "sabor_residual"], t)} />
               </View>
             </View>
 
@@ -804,6 +789,7 @@ function CombinedPage({ sheet, t }: { sheet: CvaSampleSheet; t: Record<string, s
               <View style={{ paddingHorizontal: 4, paddingBottom: 2 }}>
                 <Text style={s.notesLabel}>{t.notes}</Text>
                 <Chips items={chosenWords(d.acidity)} />
+                <WrittenNotes notes={stageNotes(d, ["acidez"], t)} />
               </View>
             </View>
 
@@ -812,6 +798,7 @@ function CombinedPage({ sheet, t }: { sheet: CvaSampleSheet; t: Record<string, s
               <View style={{ paddingHorizontal: 4, paddingBottom: 2 }}>
                 <Text style={s.notesLabel}>{t.notes}</Text>
                 <Chips items={chosenWords(d.sweetness)} />
+                <WrittenNotes notes={stageNotes(d, ["dulzor"], t)} />
               </View>
             </View>
 
@@ -819,7 +806,7 @@ function CombinedPage({ sheet, t }: { sheet: CvaSampleSheet; t: Record<string, s
               <Ruler name={t.mouthfeelShort ?? t.mouthfeel} value={int("sensacion")} t={t} nameWidth={54} />
               <View style={s.cellRow}>
                 <CataList rows={d.mouthfeel.map(cataToRow)} columns={1} style={{ width: 192 }} />
-                <NotesCell label={t.notes} items={[]} />
+                <NotesCell label={t.notes} items={[]} notes={stageNotes(d, ["sensacion"], t)} />
               </View>
             </View>
           </View>
@@ -855,91 +842,9 @@ function CombinedPage({ sheet, t }: { sheet: CvaSampleSheet; t: Record<string, s
             {groups[5] ? <AffCell rows={groups[5]} t={t} minHeight={60} /> : null}
             <CupsFoot sheet={sheet} t={t} />
           </View>
-          <ScoreStrip sheet={sheet} t={t} />
         </View>
       </View>
 
-      <SheetFooter t={t} />
-    </Page>
-  );
-}
-
-/** The nine quality words, three across, in the box beside the combined form's fields. */
-function QualityLegendBox({ t }: { t: Record<string, string> }) {
-  return (
-    <View style={[s.legend, { marginBottom: 0 }]} wrap={false}>
-      <Text style={s.legendTitle}>{t.impressionOfQuality}</Text>
-      <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
-        {QUALITY_KEYS.map((k, i) => (
-          <View key={k} style={{ width: "33.3%", flexDirection: "row", alignItems: "flex-start", paddingRight: 2, marginBottom: 2 }}>
-            <View style={{ width: 8, height: 8, borderRadius: 4, border: `0.4pt solid ${INK}`, alignItems: "center", justifyContent: "center", marginRight: 1.5 }}>
-              <Text style={{ fontSize: 5, lineHeight: 1 }}>{i + 1}</Text>
-            </View>
-            <Text style={[s.legendItem, { flexGrow: 1, flexBasis: 0 }]}>{t[k]}</Text>
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-}
-
-// ─── Physical, extrinsic and quick notes: the appendix page ─────────────────
-
-function MetaBlock({ title, fields }: { title: string; fields: { label: string; value: string }[] }) {
-  if (fields.length === 0) return null;
-  return (
-    <View style={s.metaBox} wrap={false}>
-      <Text style={s.metaTitle}>{title}</Text>
-      <View style={s.metaBody}>
-        <View style={s.metaWrap}>
-          {fields.map((f, i) => (
-            <View key={i} style={s.metaField}>
-              <Text style={s.metaLabel}>{f.label}</Text>
-              <Written size={7}>{f.value}</Written>
-            </View>
-          ))}
-        </View>
-      </View>
-    </View>
-  );
-}
-
-/**
- * Physical + extrinsic data for every sample, on one appendix page: the sensory
- * sheets stay at the official layout, and extrinsic data stays apart from the
- * assessment, as the CVA intends. The combined sheet carries its own extrinsic
- * data in its Part 3, so there the appendix holds the rest.
- */
-function MetaAppendix({ sheets, t, formName }: { sheets: CvaSampleSheet[]; t: Record<string, string>; formName: string }) {
-  // Affective sheets already carry the quick note under their score; descriptive
-  // and combined sheets keep it here.
-  const noteOf = (sh: CvaSampleSheet) => (sh.format === "affective" ? "" : sh.expressNotes);
-  const extrinsicOf = (sh: CvaSampleSheet) => (sh.format === "combined" ? [] : sh.extrinsic);
-  const withData = sheets.filter((sh) => sh.physical.length + extrinsicOf(sh).length > 0 || noteOf(sh) !== "");
-  if (withData.length === 0) return null;
-  return (
-    <Page size="A4" style={s.page}>
-      <PageHead sheet={sheets[0]} t={t} formName={formName} />
-      <View style={[s.partBand, { marginBottom: 5 }]}>
-        <Text style={s.partBandText}>{t.partExtrinsic}</Text>
-      </View>
-      {withData.map((sheet, i) => (
-        <View key={i} wrap={false}>
-          <View style={[s.frame, { marginBottom: 4 }]}>
-            <SampleBand sheet={sheet} t={t} roast={false} />
-          </View>
-          <MetaBlock title={t.physical} fields={sheet.physical} />
-          <MetaBlock title={t.extrinsic} fields={extrinsicOf(sheet)} />
-          {noteOf(sheet) ? (
-            <View style={s.metaBox} wrap={false}>
-              <Text style={s.metaTitle}>{t.expressNotes}</Text>
-              <View style={s.metaBody}>
-                <Written size={7}>{noteOf(sheet)}</Written>
-              </View>
-            </View>
-          ) : null}
-        </View>
-      ))}
       <SheetFooter t={t} />
     </Page>
   );
@@ -1037,7 +942,6 @@ export function CvaFormDocument(props: CvaDocumentProps) {
         {chunk(sheets, 2).map((pair, i) => (
           <AffectivePage key={i} pair={pair} t={t} />
         ))}
-        <MetaAppendix sheets={sheets} t={t} formName={t.formAffective} />
       </Document>
     );
   }
@@ -1049,7 +953,6 @@ export function CvaFormDocument(props: CvaDocumentProps) {
         {sheets.map((sheet, i) => (
           <CombinedPage key={i} sheet={sheet} t={t} />
         ))}
-        <MetaAppendix sheets={sheets} t={t} formName={t.formCombined} />
       </Document>
     );
   }
@@ -1068,7 +971,6 @@ export function CvaFormDocument(props: CvaDocumentProps) {
           <SheetFooter t={t} />
         </Page>
       ))}
-      <MetaAppendix sheets={sheets} t={t} formName={t.formDescriptive} />
     </Document>
   );
 }
