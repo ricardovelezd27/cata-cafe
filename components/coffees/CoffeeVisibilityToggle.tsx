@@ -104,7 +104,7 @@ export function CoffeeVisibilityToggle({
             } ${
               active
                 ? "bg-primary-fixed font-semibold text-on-primary-fixed"
-                : "font-medium text-on-surface-variant hover:bg-surface-container hover:text-on-surface active:bg-surface-container active:text-on-surface"
+                : "font-medium text-on-surface-variant not-disabled:hover:bg-surface-container not-disabled:hover:text-on-surface not-disabled:active:bg-surface-container not-disabled:active:text-on-surface"
             }`}
           >
             {opt.label}
