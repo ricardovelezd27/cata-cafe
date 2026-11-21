@@ -13,7 +13,7 @@ import {
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
 import { evaluationScoreRule, sampleScoreRule } from "@/lib/scoreRule";
 
-// S = 0.65625 × Σhᵢ + 52.75 − 2u − 4d, rounded to 0.25 (CLAUDE.md "Scoring System"),
+// S = 0.65625 × Σhᵢ + 52.75 − 2u − 4d, rounded to 0.25 (docs/guide/cupping-form-and-scoring.md "Scoring System"),
 // the deduction shared across everyone's cups and diluted beyond five (lib/scoring.ts cupDeduction).
 function allAttrs(value: number): Record<string, unknown> {
   return Object.fromEntries(AFFECTIVE_ATTRIBUTES.map((a) => [`${a.id}_final`, value]));
@@ -81,7 +81,7 @@ describe("individual CVA score", () => {
 });
 
 describe("community score (display-only mirror of the DB trigger)", () => {
-  it("matches the CLAUDE.md verification case: 2 participants × 5 cups, 1 non-uniform cup → −1.0", () => {
+  it("matches the docs/guide/cupping-form-and-scoring.md verification case: 2 participants × 5 cups, 1 non-uniform cup → −1.0", () => {
     const score = calcCommunityScore({
       avgRawScore: 80,
       totalNonUniform: 1,

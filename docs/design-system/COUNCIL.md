@@ -19,3 +19,11 @@ Rules:
 - A role with nothing to check is skipped, and the pull request says so (no flow touched: no flow monitor).
 - A product choice is never settled by a role: it goes to the owner as a one-word question, and his answer is written into `OVERENGINEERING-LOG.md`.
 - A cupping-screen change also waits for the owner's phone test.
+
+Operating rules (cost in tokens, the owner 2026-11-21):
+- One session per package: it starts with a short brief and closes when the package merges. An old session is never reused for new work. State lives in files (the pull request, a handover note, the memory file), never only in a chat.
+- The orchestrator hands over to a fresh session at every pause or after about 150k of conversation, writing the state to the memory file first.
+- Few, large steps: chain commands, run all checks in one command, one notification per merge. No polling and no status reply that says nothing changed.
+- The cheapest model that can do the job: Haiku or Sonnet for mechanical work, Opus for risky code, Fable only for orchestration and hard design. The brief states the model.
+- A reviewer gets the diff and the one section of the rules it checks, never a whole document. The developer runs the reviews before reporting, so a change takes one round.
+- Every report to the owner gives: what is live, percent complete, and the tokens used per agent and model.
