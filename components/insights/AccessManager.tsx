@@ -105,7 +105,7 @@ export function AccessManager({ users: initialUsers, locale, t }: AccessManagerP
           onClick={() => toggle(user)}
           // A 44 px box around the unchanged 40 x 24 track (F-03); the
           // negative margin keeps the row's height.
-          className="-my-[10px] inline-flex min-h-[44px] min-w-[44px] items-center justify-center disabled:cursor-not-allowed disabled:opacity-50"
+          className="-my-[10px] inline-flex min-h-[44px] min-w-[44px] items-center justify-center disabled:cursor-default disabled:opacity-60"
         >
           <span
             aria-hidden

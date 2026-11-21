@@ -2,6 +2,7 @@
 
 import { X } from "lucide-react";
 import { Select } from "./Select";
+import { TextAction } from "./TextAction";
 
 export type FacetOption = { value: string; label: string };
 
@@ -36,14 +37,10 @@ export function FilterBar({
         />
       ))}
       {hasActive && (
-        <button
-          type="button"
-          onClick={onClear}
-          className="inline-flex min-h-[44px] items-center gap-1 text-caption text-on-surface-variant transition-colors hover:text-on-surface"
-        >
+        <TextAction tone="quiet" onClick={onClear}>
           <X size={14} aria-hidden />
           {translations.clearFilters}
-        </button>
+        </TextAction>
       )}
     </div>
   );

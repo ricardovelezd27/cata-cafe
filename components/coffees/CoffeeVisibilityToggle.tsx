@@ -99,7 +99,7 @@ export function CoffeeVisibilityToggle({
             aria-checked={active}
             onClick={() => handleSelect(opt.value)}
             disabled={isPending}
-            className={`inline-flex min-h-[44px] items-center text-caption px-3 py-1.5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
+            className={`inline-flex min-h-[44px] items-center text-caption px-3 py-1.5 transition-colors disabled:opacity-60 disabled:cursor-default ${
               i > 0 ? "border-l border-outline" : ""
             } ${
               active
