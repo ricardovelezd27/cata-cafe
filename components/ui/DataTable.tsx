@@ -534,8 +534,9 @@ export function DataTable<T>({
             </table>
           </div>
 
-          {/* Mobile cards */}
-          <div className="grid gap-3 md:hidden">
+          {/* Mobile cards. grid-cols-1 (minmax(0, 1fr)): a card never grows past the
+              screen to fit a long one-line title. */}
+          <div className="grid grid-cols-1 gap-3 md:hidden">
             {pageItems.map((row) => (
               <div key={rowKey(row)}>
                 {renderMobileCard(row, rowActions?.(row) ?? null, rowSelection(row))}
