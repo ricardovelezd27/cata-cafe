@@ -144,7 +144,7 @@ export function CuppingTimer({
             {copy.show}
           </TextAction>
         ) : (
-          <div className="flex flex-wrap items-center gap-x-3">
+          <div className="flex flex-wrap items-center gap-x-[12px]">
             <span className="font-sans text-caption text-on-surface-variant">{copy.hint}</span>
             <Button
               variant="secondary"
@@ -169,7 +169,7 @@ export function CuppingTimer({
   const cue = timerCue(elapsed, extraPasses);
 
   return (
-    <div className="flex flex-wrap items-center gap-x-3" data-testid="cupping-timer">
+    <div className="flex flex-wrap items-center gap-x-[12px]" data-testid="cupping-timer">
       <span className="font-mono text-card font-semibold tabular-nums text-on-surface" role="timer" aria-label={copy.title}>
         {formatTimer(elapsed)}
       </span>

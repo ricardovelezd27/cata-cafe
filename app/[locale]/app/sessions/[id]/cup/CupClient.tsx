@@ -2790,7 +2790,7 @@ export function CupClient({
           translations={translations.sampleKey}
         />
       )}
-      <div className="flex flex-col gap-0.5">{tastingInfo}</div>
+      <div className="flex flex-col gap-[4px]">{tastingInfo}</div>
     </div>
   ) : null;
   const phaseStepper = (
@@ -2832,7 +2832,7 @@ export function CupClient({
             </div>
           </div>
           {!isOwner && (
-            <div className="flex flex-col items-end justify-center gap-0.5 text-right shrink-0 pt-0.5">
+            <div className="flex flex-col items-end justify-center gap-[4px] text-right shrink-0 pt-0.5">
               {tastingInfo}
             </div>
           )}
@@ -2923,11 +2923,11 @@ export function CupClient({
         renderedUserId={userId}
       />
       {allReferencesStuck && translations.allReferencesNotice && (
-        <Notice className="mx-4 mt-2">{translations.allReferencesNotice}</Notice>
+        <Notice className="mx-[16px] mt-[8px]">{translations.allReferencesNotice}</Notice>
       )}
       {closeAsIsApplies && translations.closeAsIs && (
         <Notice
-          className="mx-4 mt-2"
+          className="mx-[16px] mt-[8px]"
           action={
             <TextActionLink href={`/${locale}/app/sessions/${session.id}/results`}>
               {translations.closeAsIs.go}
@@ -2945,7 +2945,7 @@ export function CupClient({
         />
       )}
       {terminalCount > 0 && translations.offline.terminalNotice && (
-        <Notice className="mx-4 mb-3 lg:mx-6">
+        <Notice className="mx-[16px] mb-[12px] lg:mx-[24px]">
           {translations.offline.terminalNotice.replace("{count}", String(terminalCount))}
         </Notice>
       )}
@@ -3074,7 +3074,7 @@ export function CupClient({
       )}
       {coffeeNotOwnedNotice && (
         <Notice
-          className="mb-3"
+          className="mb-[12px]"
           onDismiss={() => setCoffeeNotOwnedNotice(false)}
           dismissLabel={translations.cancel}
         >
@@ -3082,99 +3082,62 @@ export function CupClient({
         </Notice>
       )}
       {submitBlocked && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="flex items-start gap-2 px-4 py-2 mb-3 rounded-card border border-secondary/40 bg-secondary/10 font-sans text-body text-secondary"
+        <Notice
+          tone="info"
+          className="mb-[12px]"
+          action={
+            online ? (
+              <TextAction
+                onClick={() => {
+                  setSubmitBlocked(false);
+                  void handleGoToResults();
+                }}
+              >
+                {translations.offline.retryBeforeSubmit ?? translations.retrySubmit}
+              </TextAction>
+            ) : undefined
+          }
+          onDismiss={() => setSubmitBlocked(false)}
+          dismissLabel={translations.cancel}
         >
-          <span className="flex-1">
-            {online
-              ? (translations.offline.submitBlockedPending ??
-                translations.offline.submitBlocked)
-              : translations.offline.submitBlocked}
-          </span>
-          {online && (
-            <button
-              type="button"
-              onClick={() => {
-                setSubmitBlocked(false);
-                void handleGoToResults();
-              }}
-              className="shrink-0 font-semibold underline hover:opacity-80"
-            >
-              {translations.offline.retryBeforeSubmit ?? translations.retrySubmit}
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => setSubmitBlocked(false)}
-            aria-label="×"
-            className="shrink-0 font-semibold hover:opacity-80"
-          >
-            ×
-          </button>
-        </div>
+          {online
+            ? (translations.offline.submitBlockedPending ??
+              translations.offline.submitBlocked)
+            : translations.offline.submitBlocked}
+        </Notice>
       )}
       {submitError && (
-        <div
-          role="alert"
-          aria-live="assertive"
-          className="flex items-start gap-2 px-4 py-2 mb-3 rounded-card border border-error/40 bg-error/10 font-sans text-body text-error"
+        <Notice
+          tone="error"
+          className="mb-[12px]"
+          action={<TextAction onClick={() => void handleGoToResults()}>{translations.retrySubmit}</TextAction>}
+          onDismiss={() => setSubmitError(false)}
+          dismissLabel={translations.cancel}
         >
-          <span className="flex-1">{translations.submitFailed}</span>
-          <button
-            type="button"
-            onClick={() => void handleGoToResults()}
-            className="shrink-0 font-semibold underline hover:opacity-80"
-          >
-            {translations.retrySubmit}
-          </button>
-          <button
-            type="button"
-            onClick={() => setSubmitError(false)}
-            aria-label="×"
-            className="shrink-0 font-semibold hover:opacity-80"
-          >
-            ×
-          </button>
-        </div>
+          {translations.submitFailed}
+        </Notice>
       )}
       {groupNotice && (
-        <div
-          role="status"
-          className="flex items-start gap-2 px-4 py-2 mb-3 rounded-card bg-secondary-container text-on-secondary-container font-sans text-body"
+        <Notice
+          tone="info"
+          className="mb-[12px]"
+          onDismiss={() => setGroupNotice(null)}
+          dismissLabel={translations.cancel}
         >
-          <span className="flex-1">
-            {groupNotice === "partial"
-              ? translations.startGroupNoticePartial
-              : translations.startGroupNoticeFailed}
-          </span>
-          <button
-            type="button"
-            onClick={() => setGroupNotice(null)}
-            aria-label="×"
-            className="shrink-0 font-semibold hover:opacity-80"
-          >
-            ×
-          </button>
-        </div>
+          {groupNotice === "partial"
+            ? translations.startGroupNoticePartial
+            : translations.startGroupNoticeFailed}
+        </Notice>
       )}
       {startError && (
-        <div
-          role="alert"
-          aria-live="assertive"
-          className="flex items-start gap-2 px-4 py-2 mb-3 rounded-card border border-error/40 bg-error/10 font-sans text-body text-error"
+        <Notice
+          tone="error"
+          className="mb-[12px]"
+          onDismiss={() => setStartError(false)}
+          dismissLabel={translations.cancel}
         >
-          <span className="flex-1">{translations.startSessionError}</span>
-          <button
-            type="button"
-            onClick={() => setStartError(false)}
-            aria-label="×"
-            className="shrink-0 font-semibold hover:opacity-80"
-          >
-            ×
-          </button>
-        </div>
+          {translations.startSessionError}
+        </Notice>
       )}
       <ConfirmDialog
         open={pendingReference !== null}
@@ -3350,7 +3313,7 @@ export function CupClient({
       {ownerInfoArea}
       <div key={`${activeTab}-${currentStep}-${current.id}`}>
         {isEvaluationReadOnly({ revealed: isCurrentRevealed, activeTab }) && (
-          <Notice live={false} className="mb-4">
+          <Notice live={false} className="mb-[16px]">
             {translations.revealedNote ?? REVEALED_NOTE_FALLBACK[locale === "en" ? "en" : "es"]}
           </Notice>
         )}

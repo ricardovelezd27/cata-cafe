@@ -676,6 +676,7 @@ A card is one component, `Card` (`components/ui/Card.tsx`, built by package P2a 
 
 - **Props:** `tone` (default `surface-container-lowest`; quiet `surface-container-low`; selected `primary-fixed`), `padding` (16 or 20 px, in pixels: the paper rhythm), `title`, `eyebrow`, `action`, `footer`, `interactive` (hover `surface-container-high`, a focus ring), `as`.
 - All cards of one kind have the same parts in the same order, and a card is as wide as its content needs: a stat card is capped at 240 px, in an auto-fill grid.
+- **(departure, 2026-11-21, OR-C)** Under 360 px the cupping form's card gives way (it reaches 12 px into the page's side margin and its side padding is 12 px) so the nine rating bubbles fit a 320 px phone; no other card does this.
 
 **(rule) A notice is not a card.** A sentence that tells the person something about the screen (an admin lens, a pending save, a session that closed, a stale version) is a `Notice` (`components/ui/Notice.tsx`, same package), never a card and never a terracotta banner:
 

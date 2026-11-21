@@ -79,7 +79,7 @@ export function AffectiveForm({
 
   const lockedBanner =
     lockedAffective && lockedNote ? (
-      <Notice live={false} className="mb-4">
+      <Notice live={false} className="mb-[16px]">
         {lockedNote}
       </Notice>
     ) : null;

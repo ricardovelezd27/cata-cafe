@@ -524,17 +524,17 @@ export function FlavorPicker({
       </div>
 
       {/* Open-modal trigger */}
-      <button
-        type="button"
+      <Button
+        variant="secondary"
+        size="sm"
+        icon={<Plus size={15} aria-hidden />}
         onClick={() => {
           setNavId(null);
           setOpen(true);
         }}
-        className="inline-flex items-center gap-1.5 rounded-pill border-[1.5px] border-dashed border-primary-muted px-3.5 py-1.5 text-caption font-medium text-primary-container transition-colors hover:bg-primary-muted/10"
       >
-        <Plus size={15} aria-hidden />
         {t.add}
-      </button>
+      </Button>
 
       <ResponsiveDialog
         open={open}
