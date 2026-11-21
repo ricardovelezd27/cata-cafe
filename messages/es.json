@@ -324,8 +324,7 @@
       "creating": "Creando…",
       "fullWizard": "Configurar sesión completa",
       "nameRequired": "Ponle un nombre a la cata para continuar.",
-      "offline": "Sin conexión: se necesita internet para crear la sesión.",
-      "warmup": "Calentar 1–2 min antes"
+      "offline": "Sin conexión: se necesita internet para crear la sesión."
     },
     "deleteSession": {
       "title": "Eliminar sesión",
@@ -2510,8 +2509,6 @@
       "steps": "{count} pasos",
       "back": "Todos los ejercicios",
       "open": "Abrir ejercicio",
-      "mobileLink": "Movimiento sensorial",
-      "count": "5 ejercicios",
       "eyesClosed": "Ojos cerrados",
       "intro": "Calmar y enfocar la atención antes de catar. El orden recomendado es del 1 al 5: el primero es la puerta de entrada. Cada ejercicio se puede hacer solo.",
       "kimLine": "«En mis clases veo que los catadores llegan más presentes a la mesa.» – Kim Ossenblok"
@@ -2648,9 +2645,6 @@
       "deleteConfirm": "Eliminar",
       "deleteCancel": "Cancelar",
       "deleteFailed": "No se pudo eliminar. Inténtalo de nuevo."
-    },
-    "entry": {
-      "label": "Movimiento Sensorial · {min} min"
     },
     "synced": {
       "listen": "Cierra los ojos y escucha",

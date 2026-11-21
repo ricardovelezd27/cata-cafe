@@ -324,8 +324,7 @@
       "creating": "Creating…",
       "fullWizard": "Set up a full session",
       "nameRequired": "Give the cupping a name to continue.",
-      "offline": "No connection: you need internet to create the session.",
-      "warmup": "Warm up for 1–2 min first"
+      "offline": "No connection: you need internet to create the session."
     },
     "deleteSession": {
       "title": "Delete session",
@@ -2510,8 +2509,6 @@
       "steps": "{count} steps",
       "back": "All exercises",
       "open": "Open exercise",
-      "mobileLink": "Sensory movement",
-      "count": "5 exercises",
       "eyesClosed": "Eyes closed",
       "intro": "Calm and focus your attention before cupping. The recommended order is 1 to 5: the first one is the way in. Each exercise can be done on its own.",
       "kimLine": "“In my classes I see cuppers arrive more present at the table.” – Kim Ossenblok"
@@ -2648,9 +2645,6 @@
       "deleteConfirm": "Delete",
       "deleteCancel": "Cancel",
       "deleteFailed": "Could not delete it. Please try again."
-    },
-    "entry": {
-      "label": "Sensory Movement · {min} min"
     },
     "synced": {
       "listen": "Close your eyes and listen",

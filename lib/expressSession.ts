@@ -15,7 +15,7 @@
 import * as v from "@/lib/validate";
 
 export const EXPRESS_MAX_SAMPLES = 20;
-export const EXPRESS_DEFAULT_SAMPLES = 6;
+export const EXPRESS_DEFAULT_SAMPLES = 1;
 export const EXPRESS_NAME_MAX = 120;
 
 /** Key of the per-sample free-text note inside descriptiveData /

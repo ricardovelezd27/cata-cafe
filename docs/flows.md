@@ -512,8 +512,8 @@ past 20 s asks "Toca otra vez para saltar". Sign-out purges the legacy
 `cata_warmup_reflections_*` keys (S8-13 stopped writing them; S10 WP7 below saves the
 answers again, but in the account, not in localStorage).
 
-**Reflections, short version, entry after start, seated and small space (S10 WP7,
-Kim F1 F2 F4 F5 B7; every answer is SIMULATED, `TODO(kim-validar:…)`).**
+**Reflections, short version, seated and small space (S10 WP7,
+Kim F2 F4 F5 B7; every answer is SIMULATED, `TODO(kim-validar:…)`).**
 
 ```mermaid
 flowchart TD
@@ -525,8 +525,6 @@ flowchart TD
   SAVE --> DONE
   SHORT --> DONE
   PAGE["exercise page: Tus reflexiones"] -->|"only the person's own rows"| SAVE
-  EX["Cata rápida: Calentar 1-2 min antes"] -->|"short player over the form, then back to it"| SHORT
-  CUP["cup page: interstitial not showing, session not closed"] -->|"Movimiento Sensorial, N min"| SESS["player in session mode, marks nothing seen"]
 ```
 
 - **Reflections (F2).** In library mode the `reflect` phase has two optional text areas
@@ -549,16 +547,12 @@ flowchart TD
   when a kept step closes the eyes (only `eyes`). 93.5 to 111.8 s in library mode, at most
   116.8 s in session mode, for the five exercises (`TODO(kim-validar:F4)`).
   The short version has no reflect phase. The master-led synced run is always the full
-  version. The library intro offers "Completa · N min" / "Corta · 1–2 min"; **Catar
-  ahora** has an optional, secondary "Calentar 1–2 min antes" that plays `arm-raise` in
-  short, over the form (the form stays mounted, so its state is intact), before any
-  session exists (`createExpressSession` is unchanged).
-- **Entry after the cupping started (F1).** `shouldOfferWarmupEntry` (pure, in
-  `overlayGate.ts`): the session has an exercise, is not closed, and the interstitial is
-  not on screen, and it is not the owner of a LIVE group session that has not started
-  (the master panel has its own synced start; `TODO(kim-validar:F1)`). The cup page then shows one small text button under the exit link
-  ("Movimiento Sensorial · N min", `WarmupEntry`) that opens the same player in session
-  mode. Closing it marks nothing seen and never blocks the cupping.
+  version. The library intro offers "Completa · N min" / "Corta · 1–2 min". **Cata
+  rápida** offers no warm-up (the owner, 2026-11-21: a fast tasting has no time for it).
+- **No entry on the cupping screen (F1).** The cup page has no link to the warm-up
+  (the owner, 2026-11-21): the warm-up is part of the cupping only when the organizer
+  chose an exercise in the session setup, through the interstitial and the waiting
+  room's synced run.
 - **Seated and small space (F5).** Two optional chips on the player's intro, both off by
   default and remembered per device (`cata_warmup_seated`, `cata_warmup_compact`).
   "Sentado" (only for the standing exercise) swaps the posture card and the arrival line
@@ -1156,9 +1150,9 @@ flowchart TD
     UCH --> D
 ```
 
-`/app/warmup` ("Movimiento sensorial") is also a desktop sidebar item under
-Sesiones (`hideOnMobile`, so the BottomNav keeps its five tabs); on phones it is
-reached from the dashboard card and the link at the top of the Sesiones page.
+`/app/warmup` ("Movimiento sensorial") is reached from ONE place, the main
+navigation: the sidebar item under Sesiones and a tab of the phone's bottom bar (the
+owner, 2026-11-21). No page links to it.
 
 **Native-shell seam (S8-15).** Anything a WebView treats differently from a browser — printing, `window.open`, blob/anchor downloads, sharing, opening the system browser, shell sniffing — goes through `lib/platform/` (`printPage`, `downloadFile`/`shareFile`, `openReport`, `openExternal`, `isNativeShell`). Report links (`ReportLink`) are plain anchors on the web and disabled offline. Cup, waiting room and results re-attach realtime and refetch on foreground resume (`useForegroundResume`). Deep links map through `routeFromUrl` (`/join`, `/auth/claim`, `/app`). No Capacitor dependency exists yet; native branches are TODO stubs. Device checklist: `docs/native/device-checklist.md`.
 
