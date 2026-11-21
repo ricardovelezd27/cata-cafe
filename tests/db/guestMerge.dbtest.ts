@@ -53,6 +53,11 @@ describe("mergeGuestData", () => {
     // private warm-up reflections (S10 WP7): the guest's move to the account, the account's stay
     const guestReflection = await prisma.warmupReflection.create({ data: { userId: guest, exerciseId: "eyes", feel: "tranquilo" } });
     const accountReflection = await prisma.warmupReflection.create({ data: { userId: account, exerciseId: "arm-raise", discovery: "mi mano" } });
+    // reflections about a tasting (OR-D), one per session and person: both wrote about `s`
+    // (the account's stays, the guest's goes); only the guest wrote about its own solo session (it moves)
+    await prisma.sessionReflection.create({ data: { sessionId: s.id, userId: guest, text: "del invitado" } });
+    await prisma.sessionReflection.create({ data: { sessionId: s.id, userId: account, text: "de la cuenta" } });
+    await prisma.sessionReflection.create({ data: { sessionId: guestSolo.id, userId: guest, text: "mi cata sola" } });
 
     // A DETACHED history row: the guest cupped a revealed coffee in a session that
     // was then deleted through the delete path (sessionId/evaluationId NULL,
@@ -134,6 +139,11 @@ describe("mergeGuestData", () => {
     const reflections = await prisma.warmupReflection.findMany({ orderBy: { id: "asc" } });
     expect(reflections.map((r) => [r.id, r.userId]).sort()).toEqual(
       [[guestReflection.id, account], [accountReflection.id, account]].sort(),
+    );
+
+    const sessionReflections = await prisma.sessionReflection.findMany();
+    expect(sessionReflections.map((r) => [r.sessionId, r.userId, r.text]).sort()).toEqual(
+      [[s.id, account, "de la cuenta"], [guestSolo.id, account, "mi cata sola"]].sort(),
     );
 
     // the anonymous profile is gone; nothing anywhere still references it

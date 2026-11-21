@@ -3300,3 +3300,97 @@ COMMIT;
 --   DROP FUNCTION public.is_affective_declared_partial(jsonb);
 --   COMMIT;
 -- ============================================================================
+
+-- ============================================================================
+-- PHASE 30 (2026-11-21, OR-D / the owner's review): session_reflections is read
+-- by the person who wrote it and the session's organizer only. Deny-all for the
+-- API roles.
+-- Apply via runbook §38, dry run first (prisma/sql/dry-runs/phase30_dry_run.sql).
+-- The Supabase project is production (there is only one). NOT applied by the PR
+-- that adds it: the owner applies it, AFTER `npx prisma migrate deploy` created
+-- the table (migration 20261121090000_session_reflections).
+--
+-- Why: after a tasting closes, a person can write ONE reflection about it (one
+-- row per session and person, up to 500 characters). It replaces the note per
+-- coffee. The app reads and writes the table only with Prisma, as `postgres`
+-- (table owner, bypasses RLS and privileges): the page reads the viewer's own
+-- row, and every row of the session only for its organizer; the write is scoped
+-- by the signed-in user id (`setSessionReflection`, app/actions/community.ts).
+-- The browser never queries it. So the API roles get NOTHING, the same shape as
+-- warmup_reflections in PHASE 27:
+--   * RLS enabled with NO policy = every row invisible to anon and authenticated;
+--   * REVOKE ALL on top, so a future policy added by mistake still meets a
+--     missing privilege, and the PHASE 24 rule (no write grant for the API
+--     roles) holds for the new table.
+-- Supabase auto-enables RLS on new public tables; the explicit ENABLE below is
+-- idempotent documentation.
+--
+-- Pre-flight (read-only; run first):
+--   -- (a) the table exists with exactly these columns:
+--   select column_name from information_schema.columns
+--     where table_schema='public' and table_name='session_reflections' order by 1;
+--     -- expect: sessionId, text, userId, writtenAt
+--   -- (b) current table privileges for the API roles (Supabase default after
+--   --     PHASE 24: SELECT/REFERENCES/TRIGGER at most). SAVE the output: it is the
+--   --     rollback if you ever need it:
+--   select grantee, privilege_type from information_schema.role_table_grants
+--     where table_schema='public' and table_name='session_reflections'
+--       and grantee in ('anon','authenticated') order by 1,2;
+--   -- (c) no policy yet (expect no rows):
+--   select policyname from pg_policies
+--     where schemaname='public' and tablename='session_reflections';
+--
+-- Dry run: prisma/sql/dry-runs/phase30_dry_run.sql (ONE DO statement, nothing can
+-- be applied, no placeholder to replace). It ends in an intentional error whose
+-- message lists every probe with its expected value.
+--
+-- How to verify after applying:
+--   select relrowsecurity from pg_class where oid = 'public.session_reflections'::regclass;
+--     -- expect: t
+--   select grantee, privilege_type from information_schema.role_table_grants
+--     where table_schema='public' and table_name='session_reflections'
+--       and grantee in ('anon','authenticated');   -- expect no rows
+--   then the smoke test of runbook §38.
+-- Rollback: the commented block at the end of this phase.
+-- ============================================================================
+BEGIN;
+
+-- >>> PHASE 30 statements (copied verbatim into phase30_dry_run.sql) >>>
+
+ALTER TABLE session_reflections ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON session_reflections FROM anon, authenticated;
+
+-- <<< end of PHASE 30 statements <<<
+
+-- Self-check (not copied into the dry run, whose probes check the same things).
+-- Any failure aborts the transaction: nothing is applied.
+DO $chk$
+DECLARE
+  v_role text;
+  v_priv text;
+BEGIN
+  IF NOT (SELECT relrowsecurity FROM pg_class WHERE oid = 'public.session_reflections'::regclass) THEN
+    RAISE EXCEPTION 'PHASE 30 aborted, nothing applied: row level security is not enabled on session_reflections';
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'session_reflections') THEN
+    RAISE EXCEPTION 'PHASE 30 aborted, nothing applied: session_reflections has a policy; it must have none';
+  END IF;
+  FOREACH v_role IN ARRAY ARRAY['anon', 'authenticated'] LOOP
+    FOREACH v_priv IN ARRAY ARRAY['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'] LOOP
+      IF has_table_privilege(v_role, 'public.session_reflections', v_priv) THEN
+        RAISE EXCEPTION 'PHASE 30 aborted, nothing applied: % still has % on session_reflections', v_role, v_priv;
+      END IF;
+    END LOOP;
+  END LOOP;
+END
+$chk$;
+
+COMMIT;
+
+-- Rollback (one transaction; the app works under either state, it only uses Prisma):
+--   BEGIN;
+--   ALTER TABLE session_reflections DISABLE ROW LEVEL SECURITY;
+--   -- only if pre-flight (b) listed grants, restore exactly those, e.g.:
+--   -- GRANT SELECT ON session_reflections TO anon, authenticated;
+--   COMMIT;
+--   -- Prefer NOT to roll back: leaving RLS on with no policy is the safe state.

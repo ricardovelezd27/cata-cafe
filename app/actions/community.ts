@@ -38,7 +38,8 @@ import {
   recomputeLegacyDraftsInTx,
 } from "@/lib/legacyDrafts";
 import { closingAtFor, isAnnounceMinutes } from "@/lib/closeAnnounce";
-import { isAcceptableLate, normalizePostCloseNote, postCloseNoteAllowed } from "@/lib/lateContributions";
+import { isAcceptableLate } from "@/lib/lateContributions";
+import { normalizeReflection, reflectionAllowed } from "@/lib/sessionReflection";
 import type { Prisma } from "@/app/generated/prisma/client";
 
 // ─── Submit all draft evaluations for a session ───────────────────────────────
@@ -1139,47 +1140,49 @@ export async function acceptLateEvaluation(
   });
 }
 
-// ─── A text note after the close (S10 WP4b, Kim C2) ──────────────────────────
-// `TODO(kim-validar:C2)`. SANCTIONED post-close write: the cupper adds (or
-// clears, with "") a text note on their OWN SUBMITTED evaluation of a CLOSED
-// session. Writes ONLY postCloseNote / postCloseNoteAt: never the JSON module,
-// a rating, isDraft or submittedAt, so the aggregate trigger (which fires on
-// isDraft) does not run and no score changes. Guests may write (it is their own
-// evaluation); expectedUserId is the shared-device guard of the other cup-page
-// writes. Max 500 characters.
-export async function setPostCloseNote(
-  evaluationId: string,
+// ─── The reflection about a tasting (OR-D, the owner's review of 2026-11-21) ──
+// SANCTIONED post-close write: a person writes (or clears, with "") ONE text
+// about a CLOSED session they SENT at least one evaluation in. It replaced the
+// note per coffee (`setPostCloseNote`). Writes ONLY their own row of
+// `session_reflections`: never an evaluation, so no score changes and the
+// aggregate trigger does not run. A tasting that holds notes per coffee from
+// before this existed takes no reflection (`reflectionAllowed`): one kind or the
+// other, never both. Guests may write (it is their own tasting); expectedUserId
+// is the shared-device guard of the other cup-page writes. Max 500 characters.
+export async function setSessionReflection(
+  sessionId: string,
   text: string,
   expectedUserId?: string,
 ): Promise<ActionResult<{ text: string | null; at: string | null }>> {
-  return run("setPostCloseNote", async () => {
+  return run("setSessionReflection", async () => {
     const user = await requireUserExpecting(expectedUserId);
-    const id = v.str(evaluationId, "evaluationId", { max: 64 }) as string;
-    const note = normalizePostCloseNote(text);
+    const id = v.str(sessionId, "sessionId", { max: 64 }) as string;
+    const note = normalizeReflection(text);
 
-    const row = await prisma.evaluation.findUnique({
-      where: { id },
-      select: {
-        cupperId: true,
-        isDraft: true,
-        sessionSample: { select: { sessionId: true, session: { select: { status: true } } } },
-      },
-    });
-    // Someone else's evaluation reads exactly like a missing one.
-    if (!row || row.cupperId !== user.id) throw new Error("not_found_or_forbidden");
-    if (!postCloseNoteAllowed({ sessionStatus: row.sessionSample.session.status, evaluation: row, userId: user.id })) {
+    const [session, sentEvaluations, coffeeNotes] = await Promise.all([
+      prisma.cuppingSession.findUnique({ where: { id }, select: { status: true } }),
+      prisma.evaluation.count({ where: { cupperId: user.id, isDraft: false, sessionSample: { sessionId: id } } }),
+      prisma.evaluation.count({ where: { postCloseNote: { not: null }, sessionSample: { sessionId: id } } }),
+    ]);
+    // A session the caller sent nothing in reads exactly like a missing one.
+    if (!session || sentEvaluations === 0) throw new Error("not_found_or_forbidden");
+    if (!reflectionAllowed({ sessionStatus: session.status, sentEvaluations, coffeeNotes })) {
       throw new Error("invalid_input");
     }
 
     const at = note === null ? null : new Date();
-    const res = await prisma.evaluation.updateMany({
-      where: { id, cupperId: user.id, isDraft: false, sessionSample: { session: { status: "closed" } } },
-      data: { postCloseNote: note, postCloseNoteAt: at },
-    });
-    if (res.count === 0) throw new Error("invalid_input");
+    if (note === null || at === null) {
+      await prisma.sessionReflection.deleteMany({ where: { sessionId: id, userId: user.id } });
+    } else {
+      await prisma.sessionReflection.upsert({
+        where: { sessionId_userId: { sessionId: id, userId: user.id } },
+        create: { sessionId: id, userId: user.id, text: note, writtenAt: at },
+        update: { text: note, writtenAt: at },
+      });
+    }
 
-    revalidatePath(`/es/app/sessions/${row.sessionSample.sessionId}/results`);
-    revalidatePath(`/en/app/sessions/${row.sessionSample.sessionId}/results`);
+    revalidatePath(`/es/app/sessions/${id}/results`);
+    revalidatePath(`/en/app/sessions/${id}/results`);
     return { text: note, at: at ? at.toISOString() : null };
   });
 }

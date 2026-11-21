@@ -1239,14 +1239,6 @@
       "error": "No se pudo incluir la evaluación. Inténtalo de nuevo."
     },
     "postCloseNote": {
-      "add": "Añadir una nota después del cierre",
-      "edit": "Editar nota",
-      "remove": "Borrar nota",
-      "placeholder": "Una observación que quieras dejar sobre esta muestra…",
-      "hint": "Solo texto. No cambia ningún puntaje.",
-      "save": "Guardar",
-      "saving": "Guardando…",
-      "cancel": "Cancelar",
       "added": "Nota añadida el {date}:",
       "ownerTitle": "Notas añadidas después del cierre",
       "ownerIntro": "Los catadores pueden dejar una nota de texto sobre su evaluación después del cierre. Solo tú y quien la escribió la ven."
@@ -1425,10 +1417,20 @@
       "valuesOf": "{name}"
     },
     "reflection": {
-      "title": "Reflexión",
-      "lead": "¿Qué te llevas de cada café? Una nota por café, de hasta 500 caracteres.",
-      "who": "La leen tú y quien organizó la cata.",
-      "whoSolo": "Solo la lees tú."
+      "title": "Tu reflexión sobre esta cata",
+      "who": "La leen tú y quien organizó.",
+      "whoSolo": "Solo la lees tú.",
+      "placeholder": "¿Qué te llevas de esta cata?",
+      "hint": "Solo texto, hasta 500 caracteres. No cambia ningún puntaje.",
+      "save": "Guardar",
+      "saving": "Guardando…",
+      "cancel": "Cancelar",
+      "edit": "Editar",
+      "remove": "Borrar",
+      "written": "Escrita el {date}:",
+      "oldTitle": "Tus notas después del cierre",
+      "ownerTitle": "Reflexiones sobre la cata",
+      "ownerIntro": "Después del cierre, cada persona puede escribir una reflexión sobre la cata. Solo tú y quien la escribió la leen."
     }
   },
   "community": {

@@ -17,6 +17,7 @@ import { canShowMyRatings, deriveMyEvaluation, NO_EVALUATION, summarizeMyProgres
 import { buildOverviewData } from "@/lib/reports/overview";
 import { wheelFamilyLabels } from "@/lib/flavorWheelLabels";
 import { buildResultsPartsStrings } from "@/components/results/partsStrings";
+import { buildReflections } from "@/lib/sessionReflection";
 import { buildOverviewStrings } from "@/components/results/overviewStrings";
 import { buildCardsStrings } from "@/components/results/cardsStrings";
 import { buildPanelStrings } from "@/components/results/panelStrings";
@@ -1058,6 +1059,28 @@ export default async function ResultsPage({
         viewerId: user.id,
         evals: [...myEvalRows, ...otherNotes],
       });
+  // The reflection about the tasting (OR-D): the viewer's own row, and every row
+  // only for the organizer. A tasting that holds notes per coffee takes none.
+  const reflectionsOpen = !isAdminViewer && session.status === "closed";
+  const [coffeeNoteCount, reflectionRows] = reflectionsOpen
+    ? await Promise.all([
+        prisma.evaluation.count({ where: { sessionSample: { sessionId: id }, postCloseNote: { not: null } } }),
+        prisma.sessionReflection.findMany({
+          where: { sessionId: id, ...(isOwner ? {} : { userId: user.id }) },
+          select: { userId: true, text: true, writtenAt: true },
+        }),
+      ])
+    : [0, []];
+  const reflections = isAdminViewer
+    ? null
+    : buildReflections({
+        sessionStatus: session.status,
+        organizer: isOwner,
+        viewerId: user.id,
+        viewerSent: myEvalRows.filter((e) => e.cupperId === user.id && !e.isDraft).length,
+        coffeeNotes: coffeeNoteCount,
+        rows: reflectionRows,
+      });
   const lateT = {
     title: tResults("late.title"),
     intro: tResults("late.intro"),
@@ -1083,14 +1106,6 @@ export default async function ResultsPage({
     error: tResults("late.error"),
   };
   const noteT = {
-    add: tResults("postCloseNote.add"),
-    edit: tResults("postCloseNote.edit"),
-    remove: tResults("postCloseNote.remove"),
-    placeholder: tResults("postCloseNote.placeholder"),
-    hint: tResults("postCloseNote.hint"),
-    save: tResults("postCloseNote.save"),
-    saving: tResults("postCloseNote.saving"),
-    cancel: tResults("postCloseNote.cancel"),
     added: tResults.raw("postCloseNote.added") as string,
     ownerTitle: tResults("postCloseNote.ownerTitle"),
     ownerIntro: tResults("postCloseNote.ownerIntro"),
@@ -1218,6 +1233,7 @@ export default async function ResultsPage({
       lateRows={lateRows}
       myLateNotices={myLateNotices}
       postCloseNotes={postCloseNotes}
+      reflections={reflections}
       lateTranslations={lateT}
       noteTranslations={noteT}
       usableCoffees={usableCoffees}
@@ -1284,12 +1300,23 @@ export default async function ResultsPage({
         sheet: buildSheetStrings(tResults),
         // R5: the words the organizer's Panel added (the matrix, what waits).
         panelT: buildPanelStrings(tResults),
-        // The reflection's words (the note after the close, listed once per coffee).
+        // The reflection's words (one text per tasting and person, after the close).
         reflectionT: {
           title: tResults("reflection.title"),
-          lead: tResults("reflection.lead"),
           who: tResults("reflection.who"),
           whoSolo: tResults("reflection.whoSolo"),
+          placeholder: tResults("reflection.placeholder"),
+          hint: tResults("reflection.hint"),
+          save: tResults("reflection.save"),
+          saving: tResults("reflection.saving"),
+          cancel: tResults("reflection.cancel"),
+          edit: tResults("reflection.edit"),
+          remove: tResults("reflection.remove"),
+          written: tResults.raw("reflection.written") as string,
+          oldTitle: tResults("reflection.oldTitle"),
+          oldDated: tResults.raw("postCloseNote.added") as string,
+          ownerTitle: tResults("reflection.ownerTitle"),
+          ownerIntro: tResults("reflection.ownerIntro"),
         },
       }}
       format={format}

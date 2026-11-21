@@ -198,7 +198,6 @@ export function SampleDetail({
   extrinsic,
   extrinsicNote = null,
   prep = null,
-  extra = null,
   familyLabels,
   blockLabels,
   parts,
@@ -252,7 +251,6 @@ export function SampleDetail({
   /** A9 prep data, already gated on the server (organizer, or a revealed sample). */
   prep?: SamplePrep | null;
   /** The note after the close (a slot: this component knows nothing of it). */
-  extra?: ReactNode;
   familyLabels: Record<WheelFamilyId, string>;
   blockLabels: Readonly<Record<string, string>>;
   parts: ResultsPartsStrings;
@@ -746,7 +744,6 @@ export function SampleDetail({
           </dl>
         </Section>
       ) : null}
-      {extra}
 
       {Object.keys(extrinsic).length > 0 || extrinsicNote || (prep && t.prep) ? (
         <Section title={s.theCoffee}>

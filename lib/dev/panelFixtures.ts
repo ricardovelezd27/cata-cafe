@@ -10,6 +10,7 @@ import type { CupperAlignmentRow } from "@/components/results/CupperAlignment";
 import type { ParticipantResult } from "@/components/results/OwnerParticipantSection";
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
 import type { CupperPostCloseNote, OwnerLateRow } from "@/lib/lateContributions";
+import type { CupperReflection } from "@/lib/sessionReflection";
 import { buildPanelMatrix } from "@/lib/reports/panel";
 
 export type PanelFixture = {
@@ -20,7 +21,10 @@ export type PanelFixture = {
   /** The score each coffee's card would show: the mean of the included totals. */
   groupScores: Record<string, number | null>;
   lateRows: OwnerLateRow[];
+  /** Notes per coffee: a tasting from before the reflection. */
   notes: Record<string, Record<string, CupperPostCloseNote>>;
+  /** The reflections about the tasting, one per person. */
+  reflections: Record<string, CupperReflection>;
   alignment: CupperAlignmentRow[];
   samples: { id: string; label: string }[];
 };
@@ -60,6 +64,7 @@ function build(input: {
   excluded?: number[];
   late?: { cupper: number; coffee: number; level: number; receivedLate: boolean }[];
   notes?: { cupper: number; coffee: number; text: string }[];
+  reflections?: { cupper: number; text: string }[];
 }): PanelFixture {
   const samples = input.coffees.map((c, i) => ({ id: `${input.id}-s${i}`, label: c.label }));
   const participants: ParticipantResult[] = input.levels.map((row, ci) => {
@@ -124,6 +129,9 @@ function build(input: {
     const cupperId = participants[n.cupper].id;
     (notes[cupperId] ??= {})[samples[n.coffee].id] = { text: n.text, at: "2026-11-13T09:15:00.000Z" };
   }
+  const reflections: PanelFixture["reflections"] = Object.fromEntries(
+    (input.reflections ?? []).map((r) => [participants[r.cupper].id, { text: r.text, at: "2026-11-21T09:15:00.000Z" }]),
+  );
   // An invented share per cupper and coffee, spread from high to low.
   const alignment: CupperAlignmentRow[] =
     input.format === "affective"
@@ -148,6 +156,7 @@ function build(input: {
     groupScores,
     lateRows,
     notes,
+    reflections,
     alignment,
     samples,
   };
@@ -202,6 +211,10 @@ export const PANEL_LARGE: PanelFixture = build({
     }),
   ),
   excluded: [12],
+  reflections: [
+    { cupper: 1, text: "Me costó separar la acidez del dulzor en las tres primeras." },
+    { cupper: 4, text: "La D me gustó más fría que caliente. Quiero repetirla." },
+  ],
 });
 
 /** Two cuppers: no spread worth a distance, no marks. */

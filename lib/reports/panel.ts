@@ -223,11 +223,14 @@ export type PanelPending = {
 export function panelPending(input: {
   lateRows: readonly unknown[] | null | undefined;
   notesByCupper: Readonly<Record<string, Readonly<Record<string, unknown>>>> | null | undefined;
+  /** The other cuppers' reflections about the tasting (one per person). */
+  reflectionsByCupper?: Readonly<Record<string, unknown>> | null;
 }): PanelPending | null {
   const late = input.lateRows?.length ?? 0;
-  const notes = input.notesByCupper
-    ? Object.values(input.notesByCupper).reduce((sum, bySample) => sum + Object.keys(bySample).length, 0)
-    : 0;
+  const notes =
+    (input.notesByCupper
+      ? Object.values(input.notesByCupper).reduce((sum, bySample) => sum + Object.keys(bySample).length, 0)
+      : 0) + Object.keys(input.reflectionsByCupper ?? {}).length;
   return late + notes > 0 ? { late, notes } : null;
 }
 

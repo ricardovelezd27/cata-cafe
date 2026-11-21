@@ -318,6 +318,15 @@ export async function mergeGuestData(
     await tx.coffeeInvite.updateMany({ where: { createdBy: anon }, data: { createdBy: target } });
     await tx.savedInsight.updateMany({ where: { createdBy: anon }, data: { createdBy: target } });
     await tx.warmupReflection.updateMany({ where: { userId: anon }, data: { userId: target } });
+    // One reflection per tasting and person: where the account already wrote one
+    // about a session, it stays and the guest's goes; the rest move.
+    const reflected = await tx.sessionReflection.findMany({ where: { userId: target }, select: { sessionId: true } });
+    if (reflected.length > 0) {
+      await tx.sessionReflection.deleteMany({
+        where: { userId: anon, sessionId: { in: reflected.map((r) => r.sessionId) } },
+      });
+    }
+    await tx.sessionReflection.updateMany({ where: { userId: anon }, data: { userId: target } });
     await tx.tastingGroup.updateMany({ where: { createdBy: anon }, data: { createdBy: target } });
     await tx.tastingGroupMember.updateMany({ where: { userId: anon }, data: { userId: target } });
     await tx.groupPost.updateMany({ where: { authorId: anon }, data: { authorId: target } });

@@ -2,16 +2,13 @@ import { describe, expect, it } from "vitest";
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
 import { calcIndividualScore } from "@/lib/scoring";
 import {
-  POST_CLOSE_NOTE_MAX,
   buildMyLateNotices,
   buildOwnerLateRows,
   buildPostCloseNotes,
   isAcceptableLate,
   isModuleSendable,
-  normalizePostCloseNote,
   planLateDraftWrite,
   totalAcceptanceWillStore,
-  postCloseNoteAllowed,
   type LateDraftForOwner,
   type LateDraftInput,
   type PostCloseNoteEval,
@@ -232,24 +229,6 @@ describe("isModuleSendable", () => {
     expect(isModuleSendable("affective", {})).toBe(false);
     expect(isModuleSendable("physical", complete())).toBe(false);
     expect(isModuleSendable("extrinsic", complete())).toBe(false);
-  });
-});
-
-describe("post-close note", () => {
-  it("normalizes: trims, empty clears, max 500, text only", () => {
-    expect(normalizePostCloseNote("  hola  ")).toBe("hola");
-    expect(normalizePostCloseNote("")).toBeNull();
-    expect(normalizePostCloseNote("   ")).toBeNull();
-    expect(normalizePostCloseNote("x".repeat(POST_CLOSE_NOTE_MAX))).toHaveLength(POST_CLOSE_NOTE_MAX);
-    expect(() => normalizePostCloseNote("x".repeat(POST_CLOSE_NOTE_MAX + 1))).toThrow("invalid_input");
-    expect(() => normalizePostCloseNote(7)).toThrow("invalid_input");
-  });
-  it("only the owner of a SUBMITTED row in a CLOSED session may write", () => {
-    const e = { cupperId: "u1", isDraft: false };
-    expect(postCloseNoteAllowed({ sessionStatus: "closed", evaluation: e, userId: "u1" })).toBe(true);
-    expect(postCloseNoteAllowed({ sessionStatus: "closed", evaluation: e, userId: "u2" })).toBe(false);
-    expect(postCloseNoteAllowed({ sessionStatus: "closed", evaluation: { ...e, isDraft: true }, userId: "u1" })).toBe(false);
-    expect(postCloseNoteAllowed({ sessionStatus: "active", evaluation: e, userId: "u1" })).toBe(false);
   });
 });
 

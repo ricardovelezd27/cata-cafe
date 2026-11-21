@@ -6,7 +6,9 @@ import type { OwnerMatrixTranslations } from "@/components/results/OwnerParticip
 import { PanelView } from "@/components/results/PanelView";
 import type { PanelStrings } from "@/components/results/panelStrings";
 import type { PostCloseNoteTranslations } from "@/components/results/PostCloseNote";
+import type { ReflectionStrings } from "@/components/results/Reflection";
 import type { PanelFixture } from "@/lib/dev/panelFixtures";
+import { ownerNotesBlock } from "@/lib/sessionReflection";
 
 /** The words the organizer's Panel needs, read whole from the messages. */
 export type PanelWords = {
@@ -16,6 +18,7 @@ export type PanelWords = {
   panel: PanelStrings;
   late: LateEvaluationsTranslations;
   note: PostCloseNoteTranslations;
+  reflection: ReflectionStrings & { ownerTitle: string; ownerIntro: string };
   align: AlignmentTranslations;
 };
 
@@ -35,7 +38,12 @@ export function PanelFixtureView({
   readOnly?: boolean;
   words: PanelWords;
 }) {
-  const hasNotes = Object.keys(fixture.notes).length > 0;
+  const block = ownerNotesBlock({
+    coffeeNotes: fixture.notes,
+    reflections: fixture.reflections,
+    cupperNames: Object.fromEntries(fixture.participants.map((p) => [p.id, p.name])),
+    sampleLabels: Object.fromEntries(fixture.samples.map((s) => [s.id, s.label])),
+  });
   return (
     <div style={{ margin: "0 -16px" }}>
       <PanelView
@@ -53,13 +61,16 @@ export function PanelFixtureView({
         matrixT={words.matrix}
         late={fixture.lateRows.length > 0 ? { rows: fixture.lateRows, t: words.late } : null}
         notes={
-          hasNotes
-            ? {
-                byCupper: fixture.notes,
-                sampleLabels: Object.fromEntries(fixture.samples.map((s) => [s.id, s.label])),
-                t: words.note,
-              }
-            : null
+          !block
+            ? null
+            : block.kind === "coffee"
+              ? { title: words.note.ownerTitle, intro: words.note.ownerIntro, dated: words.note.added, items: block.items }
+              : {
+                  title: words.reflection.ownerTitle,
+                  intro: words.reflection.ownerIntro,
+                  dated: words.reflection.written,
+                  items: block.items,
+                }
         }
         alignment={
           fixture.alignment.length > 0 ? { rows: fixture.alignment, samples: fixture.samples, t: words.align, help: null } : null

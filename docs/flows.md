@@ -158,14 +158,20 @@ flowchart TD
   member, CLOSED group session only) writes a DRAFT row: no row creates, a draft is updated
   only when the device copy is not older (`clientTs` rule), a submitted row answers `conflict`
   and is never touched. It never sets `isDraft = false`, `submittedAt` or `acceptedLateAt`.
-- **A text note after close (sanctioned write 7).** `setPostCloseNote(evaluationId, text, expectedUserId?)`:
-  the caller's OWN SUBMITTED evaluation of a CLOSED session, text only (max 500, "" clears),
-  writes only `postCloseNote` / `postCloseNoteAt`. The trigger does not fire. Read by the
-  cupper and the session owner only (`buildPostCloseNotes`); never in a report tier or the CSV.
-  It writes its two columns and `updatedAt` moves (Prisma `@updatedAt`); nothing reads
-  `Evaluation.updatedAt` of a submitted evaluation of a closed session. A guest-claim conflict
-  that deletes the losing evaluation loses its note (accepted); account deletion sets the note
-  to NULL when the evaluation moves to the placeholder.
+- **The reflection about the tasting (sanctioned write 7; OR-D, 2026-11-21).**
+  `setSessionReflection(sessionId, text, expectedUserId?)`: ONE text per session and person
+  (max 500, "" clears), for a person who SENT at least one evaluation in a CLOSED session.
+  It writes only their row of `session_reflections` (no evaluation is touched, the trigger does
+  not fire). Read by that person and the session owner only (`buildReflections`,
+  `lib/sessionReflection.ts`); never in the admin's lens, a report tier or the CSV. Account
+  deletion erases a person's reflections; a guest claim moves them (the account's own
+  reflection of a session wins).
+  It REPLACED the note per coffee (`setPostCloseNote`, S10 WP4b, removed): the notes already
+  written stay in `Evaluation.postCloseNote` and are shown read-only (the writer's own in
+  "Por café", everyone's in the organizer's one notes block, `buildPostCloseNotes`). A tasting
+  has one kind or the other, never both: while any note per coffee exists in a session nobody
+  writes a reflection about it (`reflectionAllowed`). Account deletion still sets those notes to
+  NULL when the evaluation moves to the placeholder.
 - **Review fixes (PR #131).** After the close every coffee is revealed and the group results
   are visible, so a late evaluation may have been written knowing the answer; the organizer
   accepts informed and accepts exactly what they saw:
@@ -227,7 +233,7 @@ so not in the test.
 | 4 | `deleteAccount` (S8-19) and `confirmGuestClaim` (S8-07) | the person | typed confirmation, not the super-admin; the claim needs the signed token and the confirmation button | moves the person's rows in closed sessions to a placeholder profile (deletion) or to the account (claim); a claim that removes or replaces a submitted evaluation re-fires that sample |
 | 5 | `acceptLateEvaluation` (S10 WP4b, C1) | registered session owner | `isAcceptableLate` (closed, a COMPLETE draft, not a deleted-account placeholder, not an excluded cupper) and a matching `expectedUpdatedAt` | `isDraft` false, `submittedAt`, `acceptedLateAt`; that sample's group score |
 | 6 | `submitLateDraft` (S10 WP4b, C1) | a member | CLOSED group session; never over a submitted row | a DRAFT row only, stamped `receivedLateAt` |
-| 7 | `setPostCloseNote` (S10 WP4b, C2) | the cupper | their OWN submitted evaluation of a CLOSED session | `postCloseNote`, `postCloseNoteAt`, text only |
+| 7 | `setSessionReflection` (OR-D; it replaced `setPostCloseNote`) | the person | a CLOSED session they sent at least one evaluation in, and no note per coffee in it (`reflectionAllowed`) | their row of `session_reflections`, text only |
 
 Also on the allowlist, and not writes to a result: the reads (`getDeleteImpact`,
 `getWaitingState`, `checkSessionStarted`, `getCloseImpact`), the lifecycle actions that are
@@ -1186,10 +1192,13 @@ the second view's rows. The Descriptores
 tab, the word cloud, the roll-up lists with typed words and their sentences are
 gone (R3): what a panel found in a coffee is on that coffee's sheet, counted by
 people.
-Once the session is CLOSED the first view ends with the REFLECTION: the existing note after the close
-(`setPostCloseNote`, sanctioned post-close write 7 of section 1), one editor per
-coffee the reader sent an evaluation of, with the line that says who reads it. The
-same note is still on each coffee's sheet. Nothing new is stored or queried.
+Once the session is CLOSED the first view ends with the REFLECTION: ONE text about
+the whole tasting (`setSessionReflection`, sanctioned post-close write 7 of section 1),
+for a reader who sent an evaluation, with the line that says who reads it. A coffee's
+sheet has no note box. In a tasting that holds notes per coffee from before the
+reflection existed, the reader sees their own notes read-only instead, and no text box.
+The organizer reads the others' reflections (or those old notes) in ONE block of
+"Por catador".
 The coffee whose sheet is open is in the address (`?sample=<id>`,
 `useSheetAddress` over the native History API): opening pushes an entry, so the
 browser's Back closes the sheet and the page under it has not moved; a reload
@@ -1216,7 +1225,7 @@ flowchart TD
         R4{"session closed?"}
         R1b["Comparar: up to 3 coffees on one wheel\nover the dim family shades,\nthe counts in a table beside it"]
         R3f["The small facts: you and the panel,\nwho cupped, defective cups"]
-        R4r["Reflexión (Reflection): the note after the close,\none per coffee the reader sent\n(PostCloseNoteEditor, setPostCloseNote)"]
+        R4r["Tu reflexión sobre esta cata (Reflection):\none text per tasting and person\n(setSessionReflection);\nold notes per coffee read-only instead"]
         R1 --> R2
         R2 --> R2o
         R2o -- yes --> R2r
@@ -1249,7 +1258,7 @@ flowchart TD
     SH1 --> SH2["2 Quality on a fixed 1 to 9 scale:\nmy ring, the group's dot\n(group from two included cuppers)"]
     SH2 --> SH3["3 What was found: the full wheel,\n'Comparar con' (closed only),\ndescriptors by people, stage by stage,\nwhat I marked"]
     SH3 --> SH4["4 Intensities on a fixed 0 to 15 scale\n(group: closed, participant, three per row)"]
-    SH4 --> SH5["5 Defective cups · 6 The same coffee twice ·\n7 Notes, the note after close, origin and prep"]
+    SH4 --> SH5["5 Defective cups · 6 The same coffee twice ·\n7 Notes, origin and prep"]
     DET --> DETOWNER{"isOwner?"}
     DETOWNER -- yes --> DETX["Cupper switch (one cupper's evaluation,\nnothing of the group) +\nedit sample metadata + 'Asignar café' +\nedit origin data (ExtrinsicEditDialog,\nrevealed samples only)"]
 ```

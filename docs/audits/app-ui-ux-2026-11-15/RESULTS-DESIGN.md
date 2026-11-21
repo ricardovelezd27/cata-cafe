@@ -9,7 +9,9 @@
 > "Pendiente en el panel" tile (now the count on the "Por catador" tab). "Primera
 > del ranking" holds the coffee's name and score only. "Comparar" is a section of
 > its own, over the dim family shades, with its table beside the wheel on desktop.
-> The reflection becomes one per tasting (section 8) in the next package.
+> The reflection is ONE text per tasting and person (section 8 described the note per coffee, which
+> it replaced: `setSessionReflection`, table `session_reflections`); the notes already written per
+> coffee are shown read-only.
 
 
 > Part of the app UI/UX audit of 2026-11-15 (`REPORT.md`, `RESULTS-DIAGNOSIS.md`, `PLAN.md`,

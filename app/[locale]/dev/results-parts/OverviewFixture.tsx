@@ -1,6 +1,7 @@
 "use client";
 
 import { CoffeeCards } from "@/components/results/CoffeeCards";
+import { Reflection, type ReflectionStrings } from "@/components/results/Reflection";
 import type { CardsStrings } from "@/components/results/cardsStrings";
 import { SessionOverview } from "@/components/results/SessionOverview";
 import type { OverviewStrings } from "@/components/results/overviewStrings";
@@ -10,8 +11,9 @@ import type { WheelFamilyId } from "@/lib/flavorWheel";
 import { wheelNodeLabels, type WheelLocale } from "@/lib/flavorWheelLabels";
 import { coffeeCards } from "@/lib/reports/coffeeCards";
 
-/** One invented cupping drawn with the real overview and the real coffee
- *  cards. Opening a coffee does nothing here: the board has no coffee sheet. */
+/** One invented cupping drawn with the real overview, the real coffee cards
+ *  and, once closed, the real reflection (its buttons call the real action: not
+ *  to be pressed on the board). Opening a coffee does nothing here. */
 export function OverviewFixture({
   scenario,
   locale,
@@ -19,6 +21,7 @@ export function OverviewFixture({
   parts,
   t,
   cards,
+  reflection,
 }: {
   scenario: OverviewScenario;
   locale: WheelLocale;
@@ -26,6 +29,7 @@ export function OverviewFixture({
   parts: ResultsPartsStrings;
   t: OverviewStrings;
   cards: CardsStrings;
+  reflection: ReflectionStrings;
 }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
@@ -61,6 +65,22 @@ export function OverviewFixture({
         t={cards}
       />
       </SessionOverview>
+      {scenario.closed ? (
+        <Reflection
+          sessionId={`dev-${scenario.id}`}
+          // one cupping shows a saved reflection, the others the empty editor
+          mine={
+            scenario.id === "closed-owner"
+              ? { text: "La mesa coincidió más de lo que esperaba. La próxima, dos tazas más por muestra.", at: "2026-11-21T09:15:00.000Z" }
+              : { text: null, at: null }
+          }
+          oldNotes={[]}
+          onlyReader={!scenario.ctx.isGroup || scenario.id === "closed-owner"}
+          locale={locale}
+          userId="dev"
+          t={reflection}
+        />
+      ) : null}
     </div>
   );
 }

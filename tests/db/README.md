@@ -63,7 +63,8 @@ Everything else (`lib/prisma`, the triggers, the lib functions) is the real code
 | `emailLedgers.dbtest.ts` | `reserveEmailBudget` limits, `sendCloseEmails` claim and lease |
 | `closeRules.dbtest.ts` | PHASE 28 (`can_view_group_results` through `agg_select`: all-submitted-but-open is hidden), its dry run against the real schema, and the idle-close cron pass (`closeIdleLiveSessions`) |
 | `harness.dbtest.ts` | the bring-up tolerated EXACTLY the one known SQL failure (a second one, or the known one starting to work, fails the run) |
-| `rls.dbtest.ts` | `authenticated` / `anon` privileges and policies (PHASE 21, 24, 25) |
+| `rls.dbtest.ts` | `authenticated` / `anon` privileges and policies (PHASE 21, 24, 25), and the two tables closed to the API roles (PHASE 27, PHASE 30) |
+| `phase30DryRun.dbtest.ts` | PHASE 30 (OR-D): the dry-run file executed as written; `setSessionReflection`, the merge and the deletion of `session_reflections` are in `lateContributions`, `guestMerge` and `accountDeletion` |
 
 ## Known clean-database failures (tolerated, listed in `knownSqlFailures.ts`)
 
