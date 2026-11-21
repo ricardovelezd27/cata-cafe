@@ -16,3 +16,5 @@ rule here is binding for plans, briefs and pull requests. Newest last.
 - 2026-11-21: "No clear difference" is removed everywhere. Two neighbours in the ranking are not necessarily close in profile; coffees are compared in the Compare (terrain) diagram.
 - 2026-11-21: The organizer's info area on the cupping screen shows for every session owner, solo and Cata rápida included. On a tablet the cupping screen behaves like the phone (no sample key, no timer).
 - 2026-11-21: The CVA sheet PDF follows the official SCA form layout, without the annex numbering. The cupper's markings differ from the printed form in colour AND shape, so they stand out on screen and in a black-and-white print.
+- 2026-11-21: A consistent design system across the entire app is the priority: every selection follows the kit's selected style (never the action fill), everywhere, now.
+- 2026-11-21: The phone bottom bar keeps the full label "Movimiento sensorial" (two lines are fine).
