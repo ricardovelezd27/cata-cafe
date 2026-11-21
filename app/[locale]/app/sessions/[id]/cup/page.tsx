@@ -490,14 +490,8 @@ export default async function CupPage({
           },
           scoreLater: t("cupping.cups.scoreLater"),
         },
-        // "Notas rápidas" end step (WP-B). CupClient has inline fallbacks.
+        // The last sample's button ("Notas rápidas" was removed, owner 2026-11-21).
         expressNotes: {
-          title: t("cupping.expressNotes.title"),
-          body: t("cupping.expressNotes.body"),
-          placeholder: t("cupping.expressNotes.placeholder"),
-          optional: t("cupping.expressNotes.optional"),
-          open: t("cupping.expressNotes.open"),
-          back: t("cupping.expressNotes.back"),
           submit: t("cupping.expressNotes.submit"),
         },
         // Shell (Phase 3)

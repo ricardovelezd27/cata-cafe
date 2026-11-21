@@ -477,12 +477,6 @@
     },
     "referenceFirstHint": "The tasting starts with the reference.",
     "expressNotes": {
-      "title": "Quick notes",
-      "body": "One free-text impression per sample. Optional — you can submit without writing anything.",
-      "placeholder": "What did this cup leave you? Aromas, flavors, sensations…",
-      "optional": "Optional",
-      "open": "Quick notes",
-      "back": "Back",
       "submit": "Submit evaluation"
     },
     "phases": {
@@ -583,7 +577,6 @@
       "stepsLabel": "Cupping steps",
       "stepOf": "step {n} of {total}",
       "sampleOf": "sample {n} of {total}",
-      "notesStep": "Notes",
       "sendStep": "Send",
       "language": "Español",
       "languageLabel": "Switch the language to Spanish"

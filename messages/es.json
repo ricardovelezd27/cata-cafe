@@ -477,12 +477,6 @@
     },
     "referenceFirstHint": "La cata empieza por la referencia.",
     "expressNotes": {
-      "title": "Notas rápidas",
-      "body": "Una impresión libre por muestra. Opcional: puedes enviar sin escribir nada.",
-      "placeholder": "¿Qué te dejó esta taza? Aromas, sabores, sensaciones…",
-      "optional": "Opcional",
-      "open": "Notas rápidas",
-      "back": "Volver",
       "submit": "Enviar evaluación"
     },
     "phases": {
@@ -583,7 +577,6 @@
       "stepsLabel": "Pasos de la cata",
       "stepOf": "paso {n} de {total}",
       "sampleOf": "muestra {n} de {total}",
-      "notesStep": "Notas",
       "sendStep": "Enviar",
       "language": "English",
       "languageLabel": "Cambiar el idioma a inglés"

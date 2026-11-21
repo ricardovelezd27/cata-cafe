@@ -13,7 +13,6 @@ export type CupPlaceCopy = {
   stepsLabel: string;
   stepOf: string;
   sampleOf: string;
-  notesStep: string;
   sendStep: string;
   /** The OTHER language's name, written in it ("English" on the Spanish page). */
   language: string;
@@ -27,7 +26,6 @@ export const CUP_PLACE_FALLBACK: Record<"es" | "en", CupPlaceCopy> = {
     stepsLabel: "Pasos de la cata",
     stepOf: "paso {n} de {total}",
     sampleOf: "muestra {n} de {total}",
-    notesStep: "Notas",
     sendStep: "Enviar",
     language: "English",
     languageLabel: "Cambiar el idioma a inglés",
@@ -36,7 +34,6 @@ export const CUP_PLACE_FALLBACK: Record<"es" | "en", CupPlaceCopy> = {
     stepsLabel: "Cupping steps",
     stepOf: "step {n} of {total}",
     sampleOf: "sample {n} of {total}",
-    notesStep: "Notes",
     sendStep: "Send",
     language: "Español",
     languageLabel: "Switch the language to Spanish",

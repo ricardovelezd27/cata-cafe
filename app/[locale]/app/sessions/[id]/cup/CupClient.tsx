@@ -105,9 +105,6 @@ import {
   type GuardItem,
 } from "@/components/cupping/EvaluationGuardModal";
 import { PhaseStepper } from "@/components/cupping/PhaseStepper";
-import { ExpressNotesStep } from "@/components/cupping/ExpressNotesStep";
-import { EXPRESS_NOTE_KEY, EXPRESS_NOTE_MAX } from "@/lib/expressSession";
-import { moduleKeyForFormat } from "@/lib/evaluation";
 import { useKeyboardOpen } from "@/hooks/useKeyboardOpen";
 import { isEvaluationReadOnly, isModuleFrozenForRevealed } from "@/lib/revealFreeze";
 import { PARTIAL_COPY_FALLBACK, type PartialCopy } from "@/components/cupping/AttributeExtras";
@@ -527,15 +524,10 @@ export function CupClient({
     /** Cup grid + "score after submitting" copy (S10 WP1b); optional: the error
      *  boundary rehydrates an older cached blob (lib/cupCopy.ts has a fallback). */
     cups?: CupCopy;
-    // "Notas rápidas" end step (2026-10, WP-B). Optional with inline
-    // fallbacks: the cup error boundary rehydrates an older cached prop blob.
+    // The last sample's button label ("Enviar evaluación"). Optional with an inline
+    // fallback: the cup error boundary rehydrates an older cached prop blob. The
+    // "Notas rápidas" screen itself was removed (owner, 2026-11-21).
     expressNotes?: {
-      title: string;
-      body: string;
-      placeholder: string;
-      optional: string;
-      open: string;
-      back: string;
       submit: string;
     };
   };
@@ -587,13 +579,6 @@ export function CupClient({
   );
   const [samples, setSamples] = useState(initialOrdered);
   const [activeTab, setActiveTab] = useState<CuppingTab>("cupping");
-  // "Notas rápidas": the free-text end step shown after the last sample of
-  // the last phase and before every submit path. A boolean, NOT a
-  // CuppingStep — STEP_ATTRIBUTES, PhaseStepper and completeness never see it.
-  const [notesStage, setNotesStage] = useState(false);
-  // The note lives inside the format's module JSON under EXPRESS_NOTE_KEY, so
-  // it rides the existing auto-save / offline / submit plumbing untouched.
-  const notesModuleKey = moduleKeyForFormat(session.format);
   const [saveStatus, setSaveStatus] = useState<
     "idle" | "saving" | "saved" | "pending"
   >("idle");
@@ -1795,15 +1780,6 @@ export function CupClient({
   const setCurrentData = (key: keyof Sample, data: Data) =>
     setSampleData(sampleIdx, key, data);
 
-  // Notes stage: merge the free text into the format's module JSON so the
-  // scores already in that object are preserved (and vice versa).
-  const setSampleNote = (sampleId: string, text: string) => {
-    const idx = samples.findIndex((s) => s.id === sampleId);
-    if (idx < 0) return;
-    const existing = samples[idx][notesModuleKey];
-    setSampleData(idx, notesModuleKey, { ...existing, [EXPRESS_NOTE_KEY]: text });
-  };
-
   // ─── Navigation ───────────────────────────────────────────────
   const scrollCanvasToTop = () => {
     // Scroll the canvas (SessionShell's overflow container)
@@ -1814,34 +1790,17 @@ export function CupClient({
   };
 
   const handleStepChange = async (step: CuppingStep, resetSample = false) => {
-    if (step === currentStep && !notesStage) return;
+    if (step === currentStep) return;
     await flushPending();
-    setNotesStage(false);
     setCurrentStep(step);
     if (resetSample) setSampleIdx(0);
     scrollCanvasToTop();
   };
 
   const handleSampleSelect = async (i: number) => {
-    if (i === sampleIdx && !notesStage) return;
+    if (i === sampleIdx) return;
     await flushPending();
-    setNotesStage(false);
     setSampleIdx(i);
-    scrollCanvasToTop();
-  };
-
-  // "Notas rápidas": every path to submit passes through here first (footer on
-  // the last sample, the Results module tap). Skippable — the stage's own
-  // next button is the real submit (handleGoToResults, guard untouched).
-  const openNotesStage = async () => {
-    await flushPending();
-    setNotesStage(true);
-    scrollCanvasToTop();
-  };
-
-  const closeNotesStage = async () => {
-    await flushPending();
-    setNotesStage(false);
     scrollCanvasToTop();
   };
 
@@ -2534,14 +2493,13 @@ export function CupClient({
 
   const handleModuleSelect = async (key: string) => {
     // S5a (C-02): "Resultados" is a way out, never a submit. The footer's button is the
-    // one submit (notes stage, then handleGoToResults, unchanged).
+    // one submit (handleGoToResults, unchanged).
     const action = moduleAction(key);
     if (action.kind === "leave") {
       await requestLeave(action.target);
       return;
     }
     if (action.kind !== "tab") return;
-    if (notesStage) await closeNotesStage();
     setActiveTab(action.tab);
     scrollCanvasToTop();
   };
@@ -2551,40 +2509,19 @@ export function CupClient({
     isLastSampleInStep && !isLastStep
       ? stepsForFormat[stepsForFormat.indexOf(currentStep) + 1]
       : null;
-  // Inline fallbacks for the notes-stage copy (pre-upgrade cached prop blobs).
-  const expressNotesCopy = translations.expressNotes ?? (locale === "en"
-    ? {
-        title: "Quick notes",
-        body: "One free-text impression per sample. Optional — you can submit without writing anything.",
-        placeholder: "What did this cup leave you? Aromas, flavors, sensations…",
-        optional: "Optional",
-        open: "Quick notes",
-        back: "Back",
-        submit: "Submit evaluation",
-      }
-    : {
-        title: "Notas rápidas",
-        body: "Una impresión libre por muestra. Opcional: puedes enviar sin escribir nada.",
-        placeholder: "¿Qué te dejó esta taza? Aromas, sabores, sensaciones…",
-        optional: "Opcional",
-        open: "Notas rápidas",
-        back: "Volver",
-        submit: "Enviar evaluación",
-      });
+  // The last sample's button submits ("Notas rápidas" was removed, owner 2026-11-21).
+  const submitLabel =
+    translations.expressNotes?.submit ?? (locale === "en" ? "Submit evaluation" : "Enviar evaluación");
 
-  const nextLabel = notesStage
-    ? expressNotesCopy.submit
-    : isLastSampleOverall
-    ? expressNotesCopy.open
+  const nextLabel = isLastSampleOverall
+    ? submitLabel
     : nextStep
     ? `${translations.nextPhase} ${translations.phasesShort?.[nextStep] ?? translations.phaseLabels[nextStep]}`
     : translations.nextSample;
 
   const nextVariant: "next-sample" | "next-phase" | "view-results" =
-    notesStage
+    isLastSampleOverall
       ? "view-results"
-      : isLastSampleOverall
-      ? "next-phase"
       : isLastSampleInStep && !isLastStep
       ? "next-phase"
       : "next-sample";
@@ -2711,7 +2648,7 @@ export function CupClient({
       {referenceContext && <div className="flex items-center">{referenceContext}</div>}
       {editSampleButton && <div className="flex items-center pt-1">{editSampleButton}</div>}
       {/* F-05 (S5b): on a phone the owner's letter -> coffee key lives here, not above the form. */}
-      {isOwner && translations.sampleKey && !notesStage && (
+      {isOwner && translations.sampleKey && (
         <SampleKey
           rows={viewSamples.map((s) => ({
             id: s.id,
@@ -2881,30 +2818,11 @@ export function CupClient({
       compact
       ariaLabel={placeCopy.stepsLabel}
       stepOfTemplate={placeCopy.stepOf}
-      trailing={[placeCopy.notesStep, placeCopy.sendStep]}
+      trailing={[placeCopy.sendStep]}
     />
   );
 
-  // Notes stage: no stepper, no sample tabs — one compact title line (the
-  // samples are all on screen). Desktop keeps the clock column for continuity.
-  const notesTopBar = (
-    <div className="flex items-center gap-3 px-4 py-2 sm:px-6">
-      <span className="label-caps">
-        {expressNotesCopy.title}
-      </span>
-      <span className="text-outline-variant">·</span>
-      <span className="font-display text-body text-on-surface truncate">
-        {session.name}
-      </span>
-      <span className="ml-auto shrink-0 font-mono text-caption text-on-surface-variant tabular-nums">
-        {samples.length} {translations.samplesHeader.toLowerCase()}
-      </span>
-    </div>
-  );
-
-  const topBar = notesStage ? (
-    notesTopBar
-  ) : activeTab === "cupping" ? (
+  const topBar = activeTab === "cupping" ? (
       <>
         {/* Desktop: phases + samples (left) / session info (right) */}
         <div className="hidden lg:grid grid-cols-[1fr_auto] items-start gap-x-8 px-6 py-2">
@@ -2919,7 +2837,7 @@ export function CupClient({
               align="start"
               ariaLabel={placeCopy.stepsLabel}
               stepOfTemplate={placeCopy.stepOf}
-              trailing={[placeCopy.notesStep, placeCopy.sendStep]}
+              trailing={[placeCopy.sendStep]}
             />
             <div className="border-t border-outline-variant pt-1.5 flex items-center gap-3">
               <div className="min-w-0 flex-1">{sampleTabsBar}</div>
@@ -2987,19 +2905,13 @@ export function CupClient({
   // ─── Footer ───────────────────────────────────────────────────
   const footer = (
     <CanvasFooter
-      onPrev={notesStage ? closeNotesStage : handlePrev}
-      onNext={
-        notesStage
-          ? handleGoToResults
-          : isLastSampleOverall
-          ? openNotesStage
-          : handleNextSample
-      }
-      prevLabel={notesStage ? expressNotesCopy.back : translations.prev}
+      onPrev={handlePrev}
+      onNext={isLastSampleOverall ? handleGoToResults : handleNextSample}
+      prevLabel={translations.prev}
       nextLabel={
         isNavigating || isGoingToResults ? translations.submitting : nextLabel
       }
-      prevDisabled={(!notesStage && prevDisabled) || isNavigating}
+      prevDisabled={prevDisabled || isNavigating}
       nextDisabled={isNavigating || isGoingToResults}
       nextVariant={nextVariant}
     />
@@ -3018,8 +2930,8 @@ export function CupClient({
       exitLink={exitSlot}
       topBar={topBar}
       footer={footer}
-      mobileTitle={notesStage ? expressNotesCopy.title : session.name}
-      mobileBar={notesStage ? undefined : phoneBar}
+      mobileTitle={session.name}
+      mobileBar={phoneBar}
       mobileDetails={phoneDetails}
       mobileDetailsLabel={translations.sessionDetails}
       collapsed={keyboardOpen}
@@ -3029,7 +2941,7 @@ export function CupClient({
       onMobileExit={() => void requestLeave("sessions")}
       mobileExitLabel={translations.exitToSessions}
       mobileTool={
-        !notesStage && activeTab === "cupping" && !timerRunning
+        activeTab === "cupping" && !timerRunning
           ? { label: timerCopy.show, icon: <Timer size={18} aria-hidden />, onClick: () => setTimerOpen((v) => !v), expanded: timerOpen }
           : undefined
       }
@@ -3037,7 +2949,7 @@ export function CupClient({
       {/* B-03: the cupping screen's one h1, visually hidden: the session's name. */}
       <h1 className="sr-only">{session.name}</h1>
       {/* The step being cupped, between the h1 and the form's attribute headings (h3). */}
-      {activeTab === "cupping" && !notesStage && (
+      {activeTab === "cupping" && (
         <h2 className="sr-only">
           {`${stepsForFormat.indexOf(currentStep) + 1}. ${translations.phaseLabels[currentStep] ?? currentStep}`}
         </h2>
@@ -3132,7 +3044,7 @@ export function CupClient({
       {/* A4: the letters are drawn at random, so the owner (only) gets a
           collapsed letter -> coffee key. Participants never receive coffee
           names (cup/page.tsx ships `coffee` to the owner only). */}
-      {isOwner && translations.sampleKey && !notesStage && (
+      {isOwner && translations.sampleKey && (
         <div className="mx-4 mt-3 lg:mx-6 hidden min-[641px]:block">
           <SampleKey
             rows={viewSamples.map((s) => ({
@@ -3510,34 +3422,6 @@ export function CupClient({
               : translations.guard.continueAnyway,
         }}
       />
-      {notesStage && (
-        <ExpressNotesStep
-          samples={viewSamples.map((s) => ({
-            id: s.id,
-            label: s.label,
-            isReference: s.id === referenceSampleId,
-            // The quick note lives in the evaluation module: frozen once revealed (lib/revealFreeze.ts).
-            readOnly: isModuleFrozenForRevealed({ revealed: s.revealed, key: notesModuleKey }),
-          }))}
-          values={Object.fromEntries(
-            samples.map((s) => {
-              const v = s[notesModuleKey][EXPRESS_NOTE_KEY];
-              return [s.id, typeof v === "string" ? v : ""];
-            }),
-          )}
-          onChange={setSampleNote}
-          maxLength={EXPRESS_NOTE_MAX}
-          translations={{
-            title: expressNotesCopy.title,
-            body: expressNotesCopy.body,
-            placeholder: expressNotesCopy.placeholder,
-            optional: expressNotesCopy.optional,
-            referenceBadge: referenceBadgeLabel,
-            revealedNote: translations.revealedNote ?? REVEALED_NOTE_FALLBACK[locale === "en" ? "en" : "es"],
-          }}
-        />
-      )}
-      {!notesStage && (
       <div key={`${activeTab}-${currentStep}-${current.id}`}>
         {isEvaluationReadOnly({ revealed: isCurrentRevealed, activeTab }) && (
           <div
@@ -3610,7 +3494,6 @@ export function CupClient({
         )}
         </fieldset>
       </div>
-      )}
 
       <DevRoleBadge email={userEmail} />
     </SessionShell>
