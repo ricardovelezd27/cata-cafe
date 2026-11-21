@@ -152,7 +152,7 @@ export function ExplorerWorkspace({
   return (
     <div className="flex flex-col gap-5 pb-8">
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="inline-flex rounded-pill border border-outline-variant bg-surface-container p-1">
+        <div className="inline-flex rounded-pill bg-surface-container-high p-1">
           <button
             type="button"
             onClick={() => setMode("simple")}

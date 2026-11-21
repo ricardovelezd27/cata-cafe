@@ -546,7 +546,7 @@ export function PivotBuilder({ locale, t, loadedConfig, loadKey, onConfigChange 
       <div className={cardClasses()}>
         <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <div className="inline-flex rounded-pill border border-outline-variant bg-surface-container p-1">
+            <div className="inline-flex rounded-pill bg-surface-container-high p-1">
               {viewOptions.map((opt) => (
                 <button
                   key={opt.id}
