@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
-import { MARKET_KEY, MARKET_NOTE_KEY } from "@/lib/marketNote";
 import { DEFECT_TYPE_KEY } from "@/lib/cupDefects";
 import {
   PIN_OVERWRITTEN_KEYS,
@@ -29,11 +28,12 @@ function rated(value: number): Record<string, unknown> {
 }
 
 describe("PIN_OVERWRITTEN_KEYS is derived from the pin itself (M2)", () => {
-  it("every key the pin changes or removes is in the list, market note included", () => {
+  it("every key the pin changes or removes is in the list", () => {
     const full: Record<string, unknown> = {
       ...rated(7),
-      [MARKET_KEY]: "conocido",
-      [MARKET_NOTE_KEY]: "nota",
+      // the removed market note (owner, 2026-11-21): an old row may still hold it
+      mercado: "conocido",
+      mercado_nota: "nota",
       [DEFECT_TYPE_KEY]: ["moho", null],
       tazas_defectuosas: [true, false],
       notas: "x",
@@ -46,18 +46,19 @@ describe("PIN_OVERWRITTEN_KEYS is derived from the pin itself (M2)", () => {
     }
     expect(touched.size).toBeGreaterThan(8);
     for (const k of touched) expect(PIN_OVERWRITTEN_KEYS, k).toContain(k);
-    expect(PIN_OVERWRITTEN_KEYS).toContain(MARKET_KEY);
-    expect(PIN_OVERWRITTEN_KEYS).toContain(MARKET_NOTE_KEY);
+    expect(PIN_OVERWRITTEN_KEYS).not.toContain("mercado");
+    expect(PIN_OVERWRITTEN_KEYS).not.toContain("mercado_nota");
   });
 
-  it("the market note comes back with a restore", () => {
-    const stored = { ...rated(7), [MARKET_KEY]: "conocido", [MARKET_NOTE_KEY]: "n" };
+  it("an old market note is left as stored by the pin and the restore (unread, never rewritten)", () => {
+    const stored = { ...rated(7), mercado: "conocido", mercado_nota: "n" };
     const pinned = pinReferenceAffective(stored, 2);
-    expect(pinned[MARKET_KEY]).toBeUndefined();
+    expect(pinned.mercado).toBe("conocido");
+    expect(pinned.mercado_nota).toBe("n");
     const res = restoreFromStash({ ...pinned, [REF_STASH_KEY]: stashBeforePin(stored, pinned, NOW) });
     expect(res.restored).toBe(true);
-    expect(res.data[MARKET_KEY]).toBe("conocido");
-    expect(res.data[MARKET_NOTE_KEY]).toBe("n");
+    expect(res.data.mercado).toBe("conocido");
+    expect(res.data.mercado_nota).toBe("n");
   });
 });
 

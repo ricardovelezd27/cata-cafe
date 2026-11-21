@@ -9,11 +9,14 @@ import {
   timerStorageKey,
   type TimerCue,
 } from "@/lib/cuppingTimer";
+import { Button } from "@/components/ui/Button";
+import { TextAction } from "@/components/ui/TextAction";
 
 // The optional cupping timer (S10 WP3b, Kim A5, TODO(kim-validar:A5)): off by default,
 // started by the cupper when the water is poured, text cues only, no sound, no server
 // call. The start timestamp lives in localStorage (lib/cuppingTimer.ts), so a reload
-// keeps it. It is docked in the cup page's top bar, never over the form's controls.
+// keeps it. It is the organizer's, in the tasting info area left of the form on a
+// desktop (OR-C, owner 2026-11-21); a participant has no timer.
 
 export type TimerCopy = {
   title: string;
@@ -31,7 +34,7 @@ export type TimerCopy = {
 };
 
 /** Used only when the cup error boundary rehydrates an older cached prop blob without
- *  `timer` (same idea as MARKET_COPY_FALLBACK). tests/partialCopy.test.ts keeps it equal
+ *  `timer`. tests/partialCopy.test.ts keeps it equal
  *  to the message files. */
 export const TIMER_COPY_FALLBACK: Record<"es" | "en", TimerCopy> = {
   es: {
@@ -83,46 +86,14 @@ function subscribe(cb: () => void) {
   };
 }
 
-/** F-05 (S5b): whether a timer is running for this cupper, for the phone's header-row
- *  link (hidden while the running timer shows its own row). Display only. */
-export function useCuppingTimerRunning(sessionId: string, userId: string): boolean {
-  const key = timerStorageKey(sessionId, userId);
-  // The snapshot is a boolean read in the store callback (not during render), so it
-  // stays stable between the storage events that re-read it.
-  return useSyncExternalStore(
-    subscribe,
-    () => {
-      try {
-        const raw = window.localStorage.getItem(key);
-        return raw !== null && parseTimerStart(raw, Date.now()) !== null;
-      } catch {
-        return false;
-      }
-    },
-    () => false,
-  );
-}
-
-const BTN =
-  "inline-flex min-h-[44px] items-center rounded-input px-3 font-sans text-caption text-on-surface-variant underline underline-offset-2 hover:text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2";
-
 export function CuppingTimer({
   sessionId,
   userId,
   copy,
-  open: openProp,
-  onOpenChange,
-  phoneLinkInHeader = false,
 }: {
   sessionId: string;
   userId: string;
   copy: TimerCopy;
-  /** Controlled open state (the page shares it with the phone's header-row link). */
-  open?: boolean;
-  onOpenChange?: (open: boolean) => void;
-  /** F-05 (S5b): on a phone the closed link lives in the header row, so this row
-   *  takes no height until the timer is opened or running. */
-  phoneLinkInHeader?: boolean;
 }) {
   const key = timerStorageKey(sessionId, userId);
   // Private mode / blocked storage can throw: the timer then simply never starts.
@@ -138,9 +109,7 @@ export function CuppingTimer({
     () => null,
   );
   const [now, setNow] = useState<number | null>(null);
-  const [ownOpen, setOwnOpen] = useState(false);
-  const open = openProp ?? ownOpen;
-  const setOpen = (v: boolean) => (onOpenChange ? onOpenChange(v) : setOwnOpen(v));
+  const [open, setOpen] = useState(false);
   const [extraPasses, setExtraPasses] = useState(0);
 
   const start = now !== null ? parseTimerStart(raw, now) : null;
@@ -169,30 +138,27 @@ export function CuppingTimer({
 
   if (!running) {
     return (
-      <div
-        className={`px-4 lg:px-6 ${phoneLinkInHeader && !open ? "hidden min-[641px]:block" : ""}`}
-        data-testid="cupping-timer"
-      >
+      <div data-testid="cupping-timer">
         {!open ? (
-          <button type="button" className={BTN} onClick={() => setOpen(true)} aria-expanded={false}>
+          <TextAction tone="quiet" onClick={() => setOpen(true)} aria-expanded={false}>
             {copy.show}
-          </button>
+          </TextAction>
         ) : (
-          <div className="flex flex-wrap items-center gap-x-3">
+          <div className="flex flex-wrap items-center gap-x-[12px]">
             <span className="font-sans text-caption text-on-surface-variant">{copy.hint}</span>
-            <button
-              type="button"
-              className="inline-flex min-h-[44px] items-center rounded-pill border border-outline-variant px-4 font-sans text-caption font-semibold text-on-surface hover:bg-surface-container focus-visible:outline-2 focus-visible:outline-offset-2"
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={() => {
                 setExtraPasses(0);
                 write(String(Date.now()));
               }}
             >
               {copy.start}
-            </button>
-            <button type="button" className={BTN} onClick={() => setOpen(false)}>
+            </Button>
+            <TextAction tone="quiet" onClick={() => setOpen(false)}>
               {copy.hide}
-            </button>
+            </TextAction>
           </div>
         )}
       </div>
@@ -203,7 +169,7 @@ export function CuppingTimer({
   const cue = timerCue(elapsed, extraPasses);
 
   return (
-    <div className="flex flex-wrap items-center gap-x-3 px-4 lg:px-6" data-testid="cupping-timer">
+    <div className="flex flex-wrap items-center gap-x-[12px]" data-testid="cupping-timer">
       <span className="font-mono text-card font-semibold tabular-nums text-on-surface" role="timer" aria-label={copy.title}>
         {formatTimer(elapsed)}
       </span>
@@ -211,13 +177,12 @@ export function CuppingTimer({
         {copy[CUE_KEY[cue]]}
       </span>
       {canAdvancePass(elapsed, extraPasses) && (
-        <button type="button" className={BTN} onClick={() => setExtraPasses((n) => Math.min(2, n + 1))}>
+        <TextAction tone="quiet" onClick={() => setExtraPasses((n) => Math.min(2, n + 1))}>
           {copy.nextPass}
-        </button>
+        </TextAction>
       )}
-      <button
-        type="button"
-        className={BTN}
+      <TextAction
+        tone="quiet"
         onClick={() => {
           setExtraPasses(0);
           setOpen(false);
@@ -225,7 +190,7 @@ export function CuppingTimer({
         }}
       >
         {copy.reset}
-      </button>
+      </TextAction>
     </div>
   );
 }

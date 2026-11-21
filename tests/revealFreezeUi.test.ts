@@ -38,18 +38,12 @@ describe("isModuleFrozenForRevealed (H2)", () => {
   });
 });
 
-describe("quick notes step on a revealed sample (round 3)", () => {
+describe("the evaluation modules on a revealed sample (round 3)", () => {
   it("the note lives in the evaluation module, so a revealed sample is read-only there", () => {
     for (const key of ["descriptive", "affective", "combined"]) {
       expect(isModuleFrozenForRevealed({ revealed: true, key })).toBe(true);
       expect(isModuleFrozenForRevealed({ revealed: false, key })).toBe(false);
     }
-  });
-  it("CupClient hands the decision to the step and the step disables the textarea", () => {
-    const cup = read("app", "[locale]", "app", "sessions", "[id]", "cup", "CupClient.tsx");
-    expect(cup).toMatch(/readOnly: isModuleFrozenForRevealed\(\{ revealed: s\.revealed, key: notesModuleKey \}\)/);
-    const step = read("components", "cupping", "ExpressNotesStep.tsx");
-    expect(step).toMatch(/<fieldset disabled=\{s\.readOnly === true\}/);
   });
 });
 
