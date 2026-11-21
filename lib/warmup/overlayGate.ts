@@ -39,44 +39,6 @@ export function shouldShowWarmupOverlay(i: OverlayGateInput): boolean {
   return true;
 }
 
-export interface WarmupEntryInput {
-  /** CuppingSession.warmupExerciseId */
-  exerciseId: string | null | undefined;
-  /** The session is closed (or its status says so): nothing to warm up for. */
-  sessionClosed: boolean;
-  /** The pre-cupping interstitial is on screen right now. */
-  overlayOpen: boolean;
-  /** The viewer created the session. */
-  isOwner: boolean;
-  isGroup: boolean;
-  isAsync: boolean;
-  /** The live cupping has started (CuppingSession.startedAt is set). */
-  startedAt: boolean;
-}
-
-/**
- * S10 WP7 (Kim F1): the DISCREET entry to the warm-up once the interstitial is
- * not (or no longer) showing: one small text button on the cup page that opens
- * the same player in session mode. Never the interstitial: it appears only
- * when the session has an exercise, is not closed, and the overlay itself is
- * not open (so it covers a cupping that already started, a returning cupper,
- * a skipped or finished warm-up, and the master of a live group, whose own
- * run lives in the master panel). Closing the player changes nothing: it
- * marks nothing seen and never blocks the cupping.
- *
- * Never offered to the OWNER of a LIVE group session that has not started: the
- * master panel has its own synced "start warm-up" for the room, and a private
- * run on the master's device before the start would compete with it.
- * TODO(kim-validar:F1): simulated answer, awaiting Kim.
- */
-export function shouldOfferWarmupEntry(i: WarmupEntryInput): boolean {
-  if (!isWarmupId(i.exerciseId)) return false;
-  if (i.sessionClosed) return false;
-  if (i.overlayOpen) return false;
-  if (i.isOwner && i.isGroup && !i.isAsync && !i.startedAt) return false;
-  return true;
-}
-
 /** How long the waiting room lets an open player finish once the cupping
  *  has started (wall clock, pause ignored). */
 export const START_EXIT_CAP_MS = 30_000;

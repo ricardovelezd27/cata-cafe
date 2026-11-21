@@ -17,9 +17,6 @@ export interface NavItem {
   /** Renders a visual divider ABOVE this item in the Sidebar — separates the
    *  personal group (Inicio, Perfil) from the work group (Sesiones, Cafés, Grupos). */
   startsGroup?: boolean;
-  /** BottomNav has five tabs at most; this item is reached on phones from the
-   *  dashboard card and the Sesiones page link. */
-  hideOnMobile?: boolean;
 }
 
 /** Shared translations shape passed down from app/[locale]/app/layout.tsx (server) to
@@ -52,7 +49,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/app", icon: Home, i18nKey: "home", exact: true },
   { href: "/app/profile", icon: User, i18nKey: "profile" },
   { href: "/app/sessions", icon: Clipboard, i18nKey: "sessions", startsGroup: true },
-  { href: "/app/warmup", icon: PersonStanding, i18nKey: "warmup", hideOnMobile: true },
+  { href: "/app/warmup", icon: PersonStanding, i18nKey: "warmup" },
   { href: "/app/coffees", icon: Coffee, i18nKey: "coffees" },
   { href: "/app/groups", icon: Users, i18nKey: "groups" },
 ];

@@ -727,7 +727,7 @@ A tablet is a small desktop, in the app as on the landing. **(rule)**
 | Dialogs (centered modal ↔ bottom sheet) | 640px (`ResponsiveDialog` internal) |
 
 - **(rule) `sm:` changes a padding or a type size, never an arrangement.** No third, in-between layout.
-- **(rule) The phone's bottom bar has five tabs at most.** Insights lives inside Perfil for those who have it; the account and sign-out are reachable from the shell.
+- **(rule) The phone's bottom bar has six tabs at most.** Movimiento sensorial is one of them: the main navigation is its one entry, on phones too (the owner, 2026-11-21). Insights lives inside Perfil for those who have it; the account and sign-out are reachable from the shell.
 - As built, the app shell switches at `lg:` (1024 px) and content arrangements switch at `lg:` by window width; moving both to this rule is package P6 of the audit's plan.
 
 ### `PillTabs` / `SegmentedControl` / `InfoHint` (2026-08 results redesign — `components/ui/`)

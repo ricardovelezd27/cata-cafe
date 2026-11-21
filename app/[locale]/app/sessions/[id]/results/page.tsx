@@ -1423,11 +1423,7 @@ export default async function ResultsPage({
       translations={{
         title: tResults("title"),
         backToCupping: tResults("backToCupping"),
-        viewForm: tResults("viewForm"),
         downloadPdf: tResults("downloadPdf"),
-        downloadSummary: tResults("downloadSummary"),
-        downloadFicha: tResults("downloadFicha"),
-        downloadCsv: tResults("downloadCsv"),
         downloadCsvNoNames: tResults("downloadCsvNoNames"),
         needsConnection: tResults("needsConnection"),
         exportOpen: tResults("exportOpen"),

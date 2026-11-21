@@ -324,8 +324,7 @@
       "creating": "Creando…",
       "fullWizard": "Configurar sesión completa",
       "nameRequired": "Ponle un nombre a la cata para continuar.",
-      "offline": "Sin conexión: se necesita internet para crear la sesión.",
-      "warmup": "Calentar 1–2 min antes"
+      "offline": "Sin conexión: se necesita internet para crear la sesión."
     },
     "deleteSession": {
       "title": "Eliminar sesión",
@@ -876,10 +875,7 @@
     "title": "Resultados de la sesión",
     "adminViewNotice": "Vista de administrador (solo lectura): sesión de {owner}",
     "backToCupping": "Editar evaluación",
-    "viewForm": "Ver formulario",
     "downloadPdf": "Descargar PDF",
-    "downloadSummary": "Mi resumen (PDF)",
-    "downloadFicha": "Ficha técnica (PDF)",
     "refresh": "Actualizar",
     "refreshing": "Actualizando…",
     "refreshNew": "Actualizar ({count} nuevas)",
@@ -1211,7 +1207,6 @@
     "downloadCsvNoNames": "CSV sin nombres",
     "exportOpen": "Exportar",
     "exportTitle": "Exportar resultados",
-    "downloadCsv": "Datos por catador (CSV)",
     "needsConnection": "Necesita conexión",
     "closedUnsentNotice": "Tenías {count, plural, one {# muestra completa} other {# muestras completas}} sin enviar cuando se cerró la cata. No cuentan en los resultados.",
     "closedNotice": "La cata se cerró. Lo que enviaste cuenta en los resultados; lo que quedó sin enviar, no.",
@@ -2495,8 +2490,6 @@
       "steps": "{count} pasos",
       "back": "Todos los ejercicios",
       "open": "Abrir ejercicio",
-      "mobileLink": "Movimiento sensorial",
-      "count": "5 ejercicios",
       "eyesClosed": "Ojos cerrados",
       "intro": "Calmar y enfocar la atención antes de catar. El orden recomendado es del 1 al 5: el primero es la puerta de entrada. Cada ejercicio se puede hacer solo.",
       "kimLine": "«En mis clases veo que los catadores llegan más presentes a la mesa.» – Kim Ossenblok"
@@ -2633,9 +2626,6 @@
       "deleteConfirm": "Eliminar",
       "deleteCancel": "Cancelar",
       "deleteFailed": "No se pudo eliminar. Inténtalo de nuevo."
-    },
-    "entry": {
-      "label": "Movimiento Sensorial · {min} min"
     },
     "synced": {
       "listen": "Cierra los ojos y escucha",
