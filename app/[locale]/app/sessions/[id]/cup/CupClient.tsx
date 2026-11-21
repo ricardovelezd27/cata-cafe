@@ -27,7 +27,7 @@ import { shouldShowWarmupOverlay } from "@/lib/warmup/overlayGate";
 import { formatTimeLeft, isRunning as isWarmupRunning, parseDbTimestamp, resyncPositionMs, runLengthMs, seekFor, skewMs, timeLeftMs } from "@/lib/warmup/syncedRun";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
-import { Coffee, Scale, FileText, BarChart3, Timer, Languages } from "lucide-react";
+import { Coffee, Scale, FileText, BarChart3, Languages } from "lucide-react";
 import { CUP_PLACE_FALLBACK, cupStepIndexFrom, writePlaceToHistory, type CupPlaceCopy } from "@/lib/cupPlace";
 import type { ScaleCopy } from "@/components/ui/AffectiveBubbles";
 import { DescriptiveForm } from "@/components/cupping/DescriptiveForm";
@@ -108,7 +108,7 @@ import { PhaseStepper } from "@/components/cupping/PhaseStepper";
 import { useKeyboardOpen } from "@/hooks/useKeyboardOpen";
 import { isEvaluationReadOnly, isModuleFrozenForRevealed } from "@/lib/revealFreeze";
 import { PARTIAL_COPY_FALLBACK, type PartialCopy } from "@/components/cupping/AttributeExtras";
-import { CuppingTimer, TIMER_COPY_FALLBACK, useCuppingTimerRunning, type TimerCopy } from "@/components/cupping/CuppingTimer";
+import { CuppingTimer, TIMER_COPY_FALLBACK, type TimerCopy } from "@/components/cupping/CuppingTimer";
 import { isAffectiveDeclaredPartial } from "@/lib/affectivePartial";
 import { backupEntryFor, planHydration } from "@/lib/pinnedViewHydration";
 import { indexAfterReconcile, reconcileSamples, reconcileUnpinned } from "@/lib/sampleReconcile";
@@ -957,8 +957,6 @@ export function CupClient({
   const closedNoticeShownRef = useRef(false);
   const closedNoticeRef = useRef<() => void>(() => {});
   // F-05 (S5b): the timer's open state is shared by its row and the phone's header-row link.
-  const [timerOpen, setTimerOpen] = useState(false);
-  const timerRunning = useCuppingTimerRunning(session.id, userId);
   // IndexedDB has proven unreliable (quota, Safari private mode, …) — the
   // OfflineBanner surfaces this so the cupper knows local drafts aren't safe.
   // S10 WP8b: the OfflineBanner notice sits at the top of the scroll area; toast
@@ -2647,17 +2645,6 @@ export function CupClient({
       )}
       {referenceContext && <div className="flex items-center">{referenceContext}</div>}
       {editSampleButton && <div className="flex items-center pt-1">{editSampleButton}</div>}
-      {/* F-05 (S5b): on a phone the owner's letter -> coffee key lives here, not above the form. */}
-      {isOwner && translations.sampleKey && (
-        <SampleKey
-          rows={viewSamples.map((s) => ({
-            id: s.id,
-            label: s.label,
-            coffee: s.coffee?.name?.trim() || null,
-          }))}
-          translations={translations.sampleKey}
-        />
-      )}
     </>
   );
 
@@ -2807,6 +2794,52 @@ export function CupClient({
 
   // ─── Top bar content ──────────────────────────────────────────
   const timerCopy = translations.timer ?? TIMER_COPY_FALLBACK[locale === "en" ? "en" : "es"];
+  const tastingInfo = (
+    <>
+      <span className="label-caps">
+        {new Intl.DateTimeFormat(locale, { weekday: "short", day: "numeric", month: "short", year: "numeric" }).format(new Date(session.date))}
+      </span>
+      <span className="font-mono text-card font-semibold tabular-nums text-primary-container leading-none">
+        {clockTime}
+      </span>
+      {isGroup && (
+        <span className="font-mono text-caption text-on-surface-variant mt-0.5">
+          {participantCount} {participantCount === 1 ? "participante" : "participantes"}
+        </span>
+      )}
+      {userCountry && (
+        <span className="font-mono text-caption text-on-surface-variant">
+          {userCountry}
+        </span>
+      )}
+    </>
+  );
+  // OR-C (owner, 2026-11-21, 11.png): the organizer's tasting info area, left of the form on a
+  // desktop. Exactly what he named and nothing else: the timer, the coffee being cupped now,
+  // "Clave de muestras" and the information about the tasting.
+  const currentCoffee = current.coffee?.name?.trim() || null;
+  const ownerInfoArea = isOwner ? (
+    <div className="hidden lg:flex lg:flex-col lg:gap-5">
+      <CuppingTimer sessionId={session.id} userId={userId} copy={timerCopy} />
+      <div>
+        <div className="label-caps">
+          {translations.sample} {current.label}
+        </div>
+        {currentCoffee && <div className="font-display text-card text-on-surface">{currentCoffee}</div>}
+      </div>
+      {translations.sampleKey && (
+        <SampleKey
+          rows={viewSamples.map((s) => ({
+            id: s.id,
+            label: s.label,
+            coffee: s.coffee?.name?.trim() || null,
+          }))}
+          translations={translations.sampleKey}
+        />
+      )}
+      <div className="flex flex-col gap-0.5">{tastingInfo}</div>
+    </div>
+  ) : null;
   const phaseStepper = (
     <PhaseStepper
       phases={stepsForFormat}
@@ -2845,36 +2878,15 @@ export function CupClient({
               {editSampleButton}
             </div>
           </div>
-          <div className="flex flex-col items-end justify-center gap-0.5 text-right shrink-0 pt-0.5">
-            <span className="label-caps">
-              {new Intl.DateTimeFormat(locale, { weekday: "short", day: "numeric", month: "short", year: "numeric" }).format(new Date(session.date))}
-            </span>
-            <span className="font-mono text-card font-semibold tabular-nums text-primary-container leading-none">
-              {clockTime}
-            </span>
-            {isGroup && (
-              <span className="font-mono text-caption text-on-surface-variant mt-0.5">
-                {participantCount} {participantCount === 1 ? "participante" : "participantes"}
-              </span>
-            )}
-            {userCountry && (
-              <span className="font-mono text-caption text-on-surface-variant">
-                {userCountry}
-              </span>
-            )}
-          </div>
+          {!isOwner && (
+            <div className="flex flex-col items-end justify-center gap-0.5 text-right shrink-0 pt-0.5">
+              {tastingInfo}
+            </div>
+          )}
         </div>
         {/* Mobile/tablet: phase stepper + sample bar */}
         <div className="lg:hidden">{phaseStepper}</div>
         {mobileSampleBar}
-        <CuppingTimer
-          sessionId={session.id}
-          userId={userId}
-          copy={timerCopy}
-          open={timerOpen}
-          onOpenChange={setTimerOpen}
-          phoneLinkInHeader
-        />
       </>
     ) : (
       <>
@@ -2933,18 +2945,13 @@ export function CupClient({
       mobileTitle={session.name}
       mobileBar={phoneBar}
       mobileDetails={phoneDetails}
-      mobileDetailsLabel={translations.sessionDetails}
       collapsed={keyboardOpen}
       saveStatus={saveStatus}
       savePendingLabel={translations.savedLocally}
       navLabels={translations.openNav && translations.navTitle ? { open: translations.openNav, title: translations.navTitle } : undefined}
       onMobileExit={() => void requestLeave("sessions")}
       mobileExitLabel={translations.exitToSessions}
-      mobileTool={
-        activeTab === "cupping" && !timerRunning
-          ? { label: timerCopy.show, icon: <Timer size={18} aria-hidden />, onClick: () => setTimerOpen((v) => !v), expanded: timerOpen }
-          : undefined
-      }
+      wide={isOwner}
     >
       {/* B-03: the cupping screen's one h1, visually hidden: the session's name. */}
       <h1 className="sr-only">{session.name}</h1>
@@ -3045,7 +3052,7 @@ export function CupClient({
           collapsed letter -> coffee key. Participants never receive coffee
           names (cup/page.tsx ships `coffee` to the owner only). */}
       {isOwner && translations.sampleKey && (
-        <div className="mx-4 mt-3 lg:mx-6 hidden min-[641px]:block">
+        <div className="mx-4 mt-3 hidden min-[641px]:block lg:hidden">
           <SampleKey
             rows={viewSamples.map((s) => ({
               id: s.id,
@@ -3422,6 +3429,8 @@ export function CupClient({
               : translations.guard.continueAnyway,
         }}
       />
+      <div className={isOwner ? "lg:grid lg:grid-cols-[minmax(15rem,18rem)_minmax(0,1fr)] lg:items-start lg:gap-8" : undefined}>
+      {ownerInfoArea}
       <div key={`${activeTab}-${currentStep}-${current.id}`}>
         {isEvaluationReadOnly({ revealed: isCurrentRevealed, activeTab }) && (
           <div
@@ -3493,6 +3502,7 @@ export function CupClient({
           />
         )}
         </fieldset>
+      </div>
       </div>
 
       <DevRoleBadge email={userEmail} />

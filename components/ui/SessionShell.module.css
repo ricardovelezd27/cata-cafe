@@ -175,6 +175,11 @@
   padding: 32px 32px 24px;
 }
 
+/* OR-C: the organizer's canvas holds the tasting info and the form side by side. */
+.canvasInnerWide {
+  max-width: 80rem;
+}
+
 @media (max-width: 1023px) {
   /* Touch layouts: column so the sticky footer is pushed to the bottom edge
      even when the form is shorter than the viewport (otherwise it floated
@@ -197,14 +202,6 @@
   .canvasInner { padding: 12px 16px 0; }
 }
 
-/* F-05 (S5b): on a phone the form is flush to the screen (FormSection reaches into
-   these 16 px), so the canvas adds no top padding above it either. The rule that
-   made the side margin give way under 352 px is gone: with no card, nine 34 px
-   bubbles fit at 320 px (AffectiveBubbles reaches into the section's padding). */
-@media (max-width: 640px) {
-  .canvasInner { padding-top: 0; }
-}
-
 .mobileHeader {
   display: none;
 }
@@ -220,7 +217,8 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 5px 8px 5px 10px;
+    /* OR-C (owner, 2026-11-21): clear of the iPhone's Dynamic Island / notch. */
+    padding: calc(5px + env(safe-area-inset-top, 0px)) 8px 5px 10px;
     border-bottom: 1px solid var(--color-outline-variant);
     background: var(--color-surface);
   }
@@ -229,9 +227,7 @@
     min-width: 0;
   }
   .hamburger,
-  .detailsToggle,
-  .exitButton,
-  .toolButton {
+  .exitButton {
     flex-shrink: 0;
     display: inline-flex;
     align-items: center;
@@ -247,15 +243,11 @@
   /* The docked header stays 50 px: the 36 px buttons get a 44 px hit area.
      J-04: the phone's exit sits in the same row, the same size. */
   .hamburger,
-  .detailsToggle,
-  .exitButton,
-  .toolButton {
+  .exitButton {
     position: relative;
   }
   .hamburger::before,
-  .detailsToggle::before,
-  .exitButton::before,
-  .toolButton::before {
+  .exitButton::before {
     content: "";
     position: absolute;
     left: 50%;
@@ -263,12 +255,6 @@
     width: 44px;
     height: 44px;
     transform: translate(-50%, -50%);
-  }
-  .detailsToggle svg {
-    transition: transform var(--transition-fast);
-  }
-  .detailsToggleOpen svg {
-    transform: rotate(180deg);
   }
   .mobileDetails {
     display: flex;
@@ -281,14 +267,12 @@
   /* Keyboard up: only the stepper (topBar) and sample row collapse; the compact
      header row with the hamburger stays reachable. */
   .collapsed .mobileBarSlot,
-  .collapsed .detailsToggle,
   .collapsed .mobileDetails {
     display: none;
   }
   /* Keep the hamburger row, just thinner. */
-  .collapsed .mobileHeader { padding-block: 2px; }
-  /* The status dot/label sit above the chevron corner, not on top of it. */
-  .saveIndicator { top: 4px; right: 4px; }
+  .collapsed .mobileHeader { padding-top: calc(2px + env(safe-area-inset-top, 0px)); padding-bottom: 2px; }
+  .saveIndicator { top: calc(4px + env(safe-area-inset-top, 0px)); right: 4px; }
 }
 
 @media (max-width: 1023px) {

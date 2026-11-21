@@ -83,26 +83,6 @@ function subscribe(cb: () => void) {
   };
 }
 
-/** F-05 (S5b): whether a timer is running for this cupper, for the phone's header-row
- *  link (hidden while the running timer shows its own row). Display only. */
-export function useCuppingTimerRunning(sessionId: string, userId: string): boolean {
-  const key = timerStorageKey(sessionId, userId);
-  // The snapshot is a boolean read in the store callback (not during render), so it
-  // stays stable between the storage events that re-read it.
-  return useSyncExternalStore(
-    subscribe,
-    () => {
-      try {
-        const raw = window.localStorage.getItem(key);
-        return raw !== null && parseTimerStart(raw, Date.now()) !== null;
-      } catch {
-        return false;
-      }
-    },
-    () => false,
-  );
-}
-
 const BTN =
   "inline-flex min-h-[44px] items-center rounded-input px-3 font-sans text-caption text-on-surface-variant underline underline-offset-2 hover:text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2";
 
@@ -110,19 +90,10 @@ export function CuppingTimer({
   sessionId,
   userId,
   copy,
-  open: openProp,
-  onOpenChange,
-  phoneLinkInHeader = false,
 }: {
   sessionId: string;
   userId: string;
   copy: TimerCopy;
-  /** Controlled open state (the page shares it with the phone's header-row link). */
-  open?: boolean;
-  onOpenChange?: (open: boolean) => void;
-  /** F-05 (S5b): on a phone the closed link lives in the header row, so this row
-   *  takes no height until the timer is opened or running. */
-  phoneLinkInHeader?: boolean;
 }) {
   const key = timerStorageKey(sessionId, userId);
   // Private mode / blocked storage can throw: the timer then simply never starts.
@@ -138,9 +109,7 @@ export function CuppingTimer({
     () => null,
   );
   const [now, setNow] = useState<number | null>(null);
-  const [ownOpen, setOwnOpen] = useState(false);
-  const open = openProp ?? ownOpen;
-  const setOpen = (v: boolean) => (onOpenChange ? onOpenChange(v) : setOwnOpen(v));
+  const [open, setOpen] = useState(false);
   const [extraPasses, setExtraPasses] = useState(0);
 
   const start = now !== null ? parseTimerStart(raw, now) : null;
@@ -169,10 +138,7 @@ export function CuppingTimer({
 
   if (!running) {
     return (
-      <div
-        className={`px-4 lg:px-6 ${phoneLinkInHeader && !open ? "hidden min-[641px]:block" : ""}`}
-        data-testid="cupping-timer"
-      >
+      <div data-testid="cupping-timer">
         {!open ? (
           <button type="button" className={BTN} onClick={() => setOpen(true)} aria-expanded={false}>
             {copy.show}
@@ -203,7 +169,7 @@ export function CuppingTimer({
   const cue = timerCue(elapsed, extraPasses);
 
   return (
-    <div className="flex flex-wrap items-center gap-x-3 px-4 lg:px-6" data-testid="cupping-timer">
+    <div className="flex flex-wrap items-center gap-x-3" data-testid="cupping-timer">
       <span className="font-mono text-card font-semibold tabular-nums text-on-surface" role="timer" aria-label={copy.title}>
         {formatTimer(elapsed)}
       </span>

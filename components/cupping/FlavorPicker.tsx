@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronRight, ChevronLeft, Plus, X, Search, CornerDownLeft } from "lucide-react";
+import { ChevronRight, ChevronLeft, Plus, X, Search, CornerDownLeft } from "lucide-react";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
 import {
   flavorChildren,
@@ -37,8 +37,6 @@ const T: Record<Locale, Record<string, string>> = {
     otherNudge: "Has puesto {n} en «Otros» — ¿en qué categoría van?",
     otherNudgeCta: "Archivar",
     close: "Cerrar",
-    showAll: "Ver todos",
-    showLess: "Ocultar",
   },
   en: {
     add: "Add descriptors",
@@ -59,8 +57,6 @@ const T: Record<Locale, Record<string, string>> = {
     otherNudge: 'You put {n} under "Other" — which category do they go in?',
     otherNudgeCta: "File them",
     close: "Close",
-    showAll: "Show all",
-    showLess: "Hide",
   },
 };
 
@@ -151,9 +147,6 @@ export function FlavorPicker({
   const notesEnabled = notes !== undefined;
   const notesMap = notes ?? {};
   const [open, setOpen] = useState(false);
-  // F-06 (S5b): on a phone the picked chips fold to one line so the step's quality
-  // row is in the first fold. Display only: the chips and what they write are unchanged.
-  const [chipsOpen, setChipsOpen] = useState(false);
   const [navId, setNavId] = useState<string | null>(null); // current parent being viewed
   // "File under" mode: the modal is picking a category for a typed word. `from`
   // is the generic node the word currently sits under when re-filing.
@@ -166,6 +159,14 @@ export function FlavorPicker({
   const [focused, setFocused] = useState(false);
   const [hi, setHi] = useState(0); // highlighted dropdown row
   const inputRef = useRef<HTMLInputElement>(null);
+  // OR-C (owner, 2026-11-21): with a phone's keyboard up while typing a descriptor, the
+  // picked pills, the field and its suggestions stay on screen: once the keyboard has
+  // opened, the picker is scrolled to the top of the form's scroll area.
+  const rootRef = useRef<HTMLDivElement>(null);
+  const keepPickerInView = () => {
+    if (!window.matchMedia("(max-width: 640px)").matches) return;
+    window.setTimeout(() => rootRef.current?.scrollIntoView({ block: "start" }), 320);
+  };
 
   // Selection collapses to the deepest node on a drill path: choosing a node drops
   // any selected ancestor of it (deeper replaces shallower), but never removes its
@@ -381,7 +382,7 @@ export function FlavorPicker({
   const children = flavorChildren(navId);
 
   return (
-    <div className={pillStyles.root}>
+    <div ref={rootRef} className={pillStyles.root}>
       {/* Selected chips — persistent section, visible on the form */}
       <div className="mb-3">
         <div className="flex items-center justify-between mb-2">
@@ -393,41 +394,14 @@ export function FlavorPicker({
               </span>
             )}
           </span>
-          {value.length > 0 && chipsOpen && (
-            <button
-              type="button"
-              onClick={() => setChipsOpen(false)}
-              aria-expanded
-              className={`${HIT_Y44} min-[641px]:hidden text-caption font-medium text-primary-container underline underline-offset-2`}
-            >
-              {t.showLess}
-            </button>
-          )}
         </div>
         {value.length === 0 ? (
           <p className="text-caption text-on-surface-variant italic">{t.none}</p>
         ) : (
           <>
-          {!chipsOpen && (
-            // Phones: one line, the count is above; the first names, then "Ver todos".
-            <button
-              type="button"
-              onClick={() => setChipsOpen(true)}
-              aria-expanded={false}
-              className={`${HIT_Y44} min-[641px]:hidden flex w-full min-h-[30px] items-center gap-2 text-left text-caption text-on-surface`}
-            >
-              <span className="min-w-0 flex-1 truncate">
-                {value.map((id) => resolveDescriptor(id, locale)?.label ?? id).join(", ")}
-              </span>
-              <span className="inline-flex shrink-0 items-center gap-0.5 text-caption font-medium text-primary-container underline underline-offset-2">
-                {t.showAll}
-                <ChevronDown size={13} aria-hidden />
-              </span>
-            </button>
-          )}
           {/* Chips paint 30 px, 15 px apart in height: each one's 44 px hit area
               (HIT_Y44) meets the next row's at the midpoint (F-03). */}
-          <div className={`${chipsOpen ? "flex" : "hidden min-[641px]:flex"} flex-wrap gap-x-1.5 gap-y-[15px]`}>
+          <div className="flex flex-wrap gap-x-1.5 gap-y-[15px]">
             {value.map((id) => {
               const info = resolveDescriptor(id, locale);
               const color = info?.color ?? flavorNodeColor(id);
@@ -485,7 +459,10 @@ export function FlavorPicker({
               setQuery(e.target.value);
               setHi(0);
             }}
-            onFocus={() => setFocused(true)}
+            onFocus={() => {
+              setFocused(true);
+              keepPickerInView();
+            }}
             onBlur={() => setTimeout(() => setFocused(false), 120)}
             onKeyDown={onInputKeyDown}
             placeholder={t.search}
