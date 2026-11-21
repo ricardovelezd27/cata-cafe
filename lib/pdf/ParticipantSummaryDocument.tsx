@@ -54,7 +54,6 @@ type Copy = {
   notes: string;
   inclusion: (n: number, total: number) => string;
   indicative: string;
-  noClearGap: string;
   radarValues: string;
   formats: Record<string, string>;
   stages: Record<string, string>;
@@ -94,7 +93,6 @@ const TEXT: Record<Locale, Copy> = {
     notes: "Tus notas",
     inclusion: (n, total) => `${n} de ${total} incluidos`,
     indicative: "indicativo",
-    noClearGap: "sin diferencia clara con la muestra vecina",
     radarValues: "Valores del radar (tú / grupo)",
     formats: {
       descriptive: "Descriptivo",
@@ -154,7 +152,6 @@ const TEXT: Record<Locale, Copy> = {
     notes: "Your notes",
     inclusion: (n, total) => `${n} of ${total} included`,
     indicative: "indicative",
-    noClearGap: "no clear difference from the neighbouring sample",
     radarValues: "Radar values (you / group)",
     formats: {
       descriptive: "Descriptive",
@@ -473,7 +470,6 @@ function SampleCard({
                     {sample.indicative ? ` · ${t.indicative}` : ""}
                   </Text>
                 ) : null}
-                {sample.noClearGap ? <Text style={s.chipCap}>{t.noClearGap}</Text> : null}
                 {sample.sd !== null ? (
                   <View style={s.chipRow}>
                     <View style={s.sdChip}>

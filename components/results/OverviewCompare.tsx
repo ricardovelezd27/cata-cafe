@@ -3,13 +3,10 @@
 import { useState } from "react";
 import { Notice } from "@/components/ui";
 import type { WheelFamilyId } from "@/lib/flavorWheel";
-import type { CompareOption } from "@/lib/reports/coffeeCards";
+import { MAX_COMPARED, type CompareOption } from "@/lib/reports/coffeeCards";
 import type { CardsStrings } from "./cardsStrings";
 import { FlavorCompare, type FlavorCompareStrings } from "./FlavorCompare";
 import styles from "./SessionOverview.module.css";
-
-/** How many coffees one comparison draws (`compareGeometry`'s own limit). */
-const MAX_COMPARED = 3;
 
 export type OverviewCompareStrings = Pick<CardsStrings, "comparePick" | "compareNeedTwo">;
 

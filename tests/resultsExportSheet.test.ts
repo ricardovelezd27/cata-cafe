@@ -21,12 +21,13 @@ describe("results page: exports only in the sheet", () => {
     expect(client).toContain("resultsExportActions(");
   });
 
-  it("the sheet renders exactly the two export actions", () => {
-    const ids: ResultsExportId[] = ["cvaPdf", "csvNoNames"];
+  it("the sheet renders exactly the three export actions", () => {
+    const ids: ResultsExportId[] = ["cvaPdf", "resultsPdf", "csvNoNames"];
     for (const id of ids) expect(sheet).toContain(`case "${id}":`);
     // the removed entries stay removed: the form view, the summary, the technical sheet, the CSV with names
     for (const gone of ["/print", "/participant-summary", "/ficha-tecnica", "viewForm"]) expect(sheet, gone).not.toContain(gone);
     expect(sheet.match(/results-csv/g)).toHaveLength(1);
+    expect(sheet.match(/results-pdf/g)).toHaveLength(1);
     expect(sheet).toContain("names=0");
     expect(sheet).toContain("ResponsiveDialog");
   });

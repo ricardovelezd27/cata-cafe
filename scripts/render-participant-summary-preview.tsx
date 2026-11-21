@@ -27,7 +27,6 @@ const samples: ParticipantSummarySample[] = [
     sd: 0,
     inclusion: null,
     indicative: false,
-    noClearGap: false,
     deltaVsRef: null,
     radar: {
       mine: [5, 5, 5, 5, 5, 5, 5, 5],
@@ -50,7 +49,6 @@ const samples: ParticipantSummarySample[] = [
     sd: 2.3,
     inclusion: null,
     indicative: false,
-    noClearGap: false,
     deltaVsRef: 7.4,
     radar: {
       mine: [8, 7, 8, 7, 8, 7, 7, 8],
@@ -78,7 +76,6 @@ const samples: ParticipantSummarySample[] = [
     sd: 3.9,
     inclusion: null,
     indicative: false,
-    noClearGap: false,
     deltaVsRef: -4.8,
     radar: {
       mine: [6, 6, 5, 5, 6, 5, 6, 5],
@@ -101,7 +98,6 @@ const samples: ParticipantSummarySample[] = [
     sd: null,
     inclusion: null,
     indicative: false,
-    noClearGap: false,
     deltaVsRef: 3.0,
     radar: { mine: [7, 7, 7, 7, 7, 7, 7, 7], community: null },
     topDescriptors: desc(
@@ -125,7 +121,6 @@ const samples: ParticipantSummarySample[] = [
     sd: 1.2,
     inclusion: null,
     indicative: false,
-    noClearGap: false,
     deltaVsRef: 9.7,
     radar: {
       mine: [9, 8, 9, 8, 9, 8, 8, 9],
@@ -151,7 +146,6 @@ const samples: ParticipantSummarySample[] = [
     sd: 2.0,
     inclusion: null,
     indicative: false,
-    noClearGap: false,
     deltaVsRef: null,
     radar: { mine: null, community: [7, 6, 7, 6, 7, 6, 6, 7] },
     topDescriptors: desc(["Caramelo", 67, false], ["Cacao", 50, false]),

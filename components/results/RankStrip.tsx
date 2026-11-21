@@ -1,11 +1,8 @@
 import { fillPattern } from "@/lib/fillPattern";
 import { SCORE_SCALE, rankStripRow, scoreAxis } from "@/lib/resultsScales";
 import type { ScoreContext } from "@/lib/scoreContext";
-import {
-  ScoreWithContext,
-  formatScore,
-  type ScoreContextStrings,
-} from "@/components/ui/ScoreWithContext";
+import { ScoreWithContext, type ScoreContextStrings } from "@/components/ui/ScoreWithContext";
+import { formatScore } from "@/lib/scoreFormat";
 import styles from "./RankStrip.module.css";
 
 export type RankStripStrings = {

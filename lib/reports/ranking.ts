@@ -58,9 +58,9 @@ export type RankValue = {
 // S8-12 (F-resultados-6, F-informes-3): when a community number is trustworthy
 // enough to be ranked / called "best" / shown with a spread. Display-only —
 // scoring, the trigger and AggregateScore never read it. Setting
-// { minN: 1, indicativeBelow: 1, gapSdFactor: 0, gapFloor: 0 } restores the old behaviour.
+// { minN: 1, indicativeBelow: 1 } restores the old behaviour.
 // S10 WP5b (owner's decision, D3): "indicativo" with 3, 4 or 5 included cuppers
-// (firm from 6) and a tie floor of one point. TODO(kim-validar:D3): simulated.
+// (firm from 6). TODO(kim-validar:D3): simulated.
 export const RANKING_POLICY = {
   /** Below this many included cuppers: no SD, never "best". */
   minN: 3,
@@ -70,39 +70,13 @@ export const RANKING_POLICY = {
    *  this is ALSO "indicativo", in addition to the cupper-count rule above.
    *  The one definition lives in lib/indicativeCups.ts (shared with the coffee score). */
   indicativeBelowCups: INDICATIVE_BELOW_CUPS,
-  /** Neighbours closer than this x the larger sample SD have no clear gap... */
-  gapSdFactor: 0.5,
-  /** ...or closer than this many points, whichever is LARGER (S10 WP5b, D3). */
-  gapFloor: 1,
 } as const;
 
 export type RankPolicy = {
   minN: number;
   indicativeBelow: number;
   indicativeBelowCups?: number;
-  gapSdFactor: number;
-  /** Absolute floor of the tie rule, in points (0 = SD half only). */
-  gapFloor?: number;
 };
-
-/** THE tie rule (S10 WP5b, D3). Two neighbouring scores have "sin diferencia
- *  clara" when their gap is under the LARGER of `gapFloor` points (1) and
- *  `gapSdFactor` x the larger sample SD (half). Without any SD (n < 2) the
- *  floor alone applies. Display-only. TODO(kim-validar:D3) */
-export function hasNoClearGap(
-  gap: number,
-  spread: number | null,
-  policy: RankPolicy = RANKING_POLICY,
-): boolean {
-  const sdPart = spread === null ? 0 : policy.gapSdFactor * spread;
-  return gap < Math.max(policy.gapFloor ?? 0, sdPart);
-}
-
-/** Sample SD from the population SD (÷n): sd * sqrt(n / (n - 1)). */
-export function sampleSdFromPopulation(sd: number | null, n: number | null): number | null {
-  if (sd === null || n === null || n < 2) return null;
-  return sd * Math.sqrt(n / (n - 1));
-}
 
 /** Policy flags for ONE community number. "mine" scores (a single person) and
  *  unknown n are never flagged. */
@@ -198,8 +172,6 @@ export type RankedEntry<S> = {
   indicative: boolean;
   /** Community n below minN: no SD, never "best". */
   suppressed: boolean;
-  /** A neighbour is closer than the tie rule allows (hasNoClearGap). */
-  noClearGap: boolean;
 };
 
 /** The score as displayed (2 decimals): two samples that print the same number share a rank. */
@@ -262,7 +234,6 @@ export function rankSamples<S extends RankableSample>(
         rank: null as number | null,
         ...value,
         ...flags,
-        noClearGap: false,
       };
     })
     .sort((a, b) => {
@@ -294,8 +265,8 @@ export function rankSamples<S extends RankableSample>(
   };
 }
 
-/** Mutates the already-sorted list: shared ranks and the no-clear-gap flag. */
-function assignRanks<S>(ranked: RankedEntry<S>[], policy: RankPolicy = RANKING_POLICY): void {
+/** Mutates the already-sorted list: equal displayed scores share a rank. */
+function assignRanks<S>(ranked: RankedEntry<S>[]): void {
   const scored = ranked.filter((r) => r.score !== null);
   scored.forEach((entry, i) => {
     const prev = scored[i - 1];
@@ -304,19 +275,6 @@ function assignRanks<S>(ranked: RankedEntry<S>[], policy: RankPolicy = RANKING_P
         ? (prev.rank as number)
         : i + 1;
   });
-  if (policy.gapSdFactor <= 0 && (policy.gapFloor ?? 0) <= 0) return;
-  const sdOf = (r: RankedEntry<S>) => sampleSdFromPopulation(r.sd, r.n);
-  for (let i = 0; i < scored.length; i++) {
-    for (const j of [i - 1, i + 1]) {
-      const other = scored[j];
-      if (!other) continue;
-      const a = sdOf(scored[i]);
-      const b = sdOf(other);
-      const spread = a === null ? b : b === null ? a : Math.max(a, b);
-      const gap = Math.abs((scored[i].score as number) - (other.score as number));
-      if (hasNoClearGap(gap, spread, policy)) scored[i].noClearGap = true;
-    }
-  }
 }
 
 export type SessionStats = {

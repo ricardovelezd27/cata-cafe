@@ -316,6 +316,7 @@ export function ResultsClient({
     backToCupping: string;
     downloadPdf: string;
     downloadCsvNoNames: string;
+    downloadResultsPdf: string;
     needsConnection: string;
     /** S1: the one "Exportar" button and its sheet. */
     exportOpen: string;
@@ -787,8 +788,8 @@ export function ResultsClient({
       : []),
   ];
 
-  // S1: the exports this viewer gets (the CVA sheet for everyone, the CSV without names for the organizer).
-  const exportActions = resultsExportActions({ isOwner, isAdminViewer });
+  // S1: the exports this viewer gets (the CVA sheet for everyone, the page as a PDF once the group's results are readable, the CSV without names for the organizer).
+  const exportActions = resultsExportActions({ isOwner, isAdminViewer, resultsReadable: !isGroup || canViewGroup });
 
   // "Exportar": the one sheet with every export (S1). Beside the title on a session
   // that is over; in the row of work buttons while the cupping is open, so an open
@@ -804,6 +805,7 @@ export function ResultsClient({
         close: translations.exportClose,
         downloadPdf: translations.downloadPdf,
         downloadCsvNoNames: translations.downloadCsvNoNames,
+        downloadResultsPdf: translations.downloadResultsPdf,
         needsConnection: translations.needsConnection,
       }}
     />

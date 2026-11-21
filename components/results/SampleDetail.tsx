@@ -35,7 +35,8 @@ import { Pencil } from "lucide-react";
 import { DotPlot, type DotPlotItem } from "@/components/ui/DotPlot";
 import { CountBar } from "@/components/ui/CountBar";
 import { familyToneClass } from "@/components/ui/familyTone";
-import { ScoreWithContext, formatScore, formatSigned } from "@/components/ui/ScoreWithContext";
+import { ScoreWithContext } from "@/components/ui/ScoreWithContext";
+import { formatScore, formatSigned } from "@/lib/scoreFormat";
 import { Badge, Button, PaperSectionHeading, PillTabs, TextAction } from "@/components/ui";
 import { ExtrinsicSummary } from "@/components/results/ExtrinsicSummary";
 import {
