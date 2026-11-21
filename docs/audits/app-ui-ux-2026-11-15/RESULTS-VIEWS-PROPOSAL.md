@@ -192,6 +192,8 @@ The `overengineering-critic` (Opus) reviewed this proposal against REVIEW.md, th
 - **Second round: CHANGE, 2 wording fixes, both applied.** The mockup note on who gets tabs was corrected. Section 5 now says why the old notes and the new reflection never meet.
 - **What it confirmed:** Ricardo's decided items are kept exactly, nothing appears twice in one view, and both questions are his to answer.
 
-## 7. Questions for Ricardo (one word each, recommendation first)
+## 7. Ricardo's answers (2026-11-21)
 
-1. **Box A's wheel?** Box A repeats card 1's wheel and "Lo más encontrado". "Yes, remove them from box A" (recommended): the box keeps the coffee's name and score. "No" keeps them, and then card 1 should lose its wheel.
+1. The proposal: **"Approve"**.
+2. Box A: **the wheel lives on the card**, so "Primera del ranking" keeps only the coffee's name and score.
+3. The general reflection's new table and migration: **"Yes, I'll run it"** (its own pull request).

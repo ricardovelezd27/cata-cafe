@@ -446,6 +446,13 @@ White space is rhythm, not filler. Each kind of gap has a largest value; a gap a
 - In the app: a screen with two primary buttons, or the same action offered in two places of one screen, is a finding.
 - **(rule) A list's header carries its action; its empty state points to it.** A list page has its one action (create, add) in the `PageHeader`'s action slot. When the list is empty, `EmptyState` says what the list will hold and points to that action in words ("Crea tu primera sesión con el botón de arriba"); it does not repeat the button. A list that has no action of its own says why it is empty and where things come from.
 
+#### A fact appears once per view (the owner's review of 2026-11-21)
+
+- **(rule) The same information is never shown twice in one view.** A coffee's flavour wheel is on its card only; its score is in the ranking only; a reference has no tile beside its line in the ranking. When the same data is worth seeing from another perspective, it becomes another VIEW with its own layout (the results page: "Por café" and "Por catador"), reached by one switch (`PillTabs`).
+- **(rule) What waits in another view is a count on that view's tab**, not a tile that points at it.
+- **(rule) A ranking orders; it does not compare.** Nothing says that two neighbours of a ranking are "close" (two neighbours are not necessarily close in profile). Coffees are compared in one place, "Comparar": their territories over the wheel's dim family shades, with the exact counts in a table beside the wheel from 768 px and under it on a phone.
+- **(rule) A drawing that carries its own labels has no legend.** In "Comparar" each coffee's letter is on its territory and in the table's header.
+
 #### Two more from the second review (2026-11-15)
 
 The owner looked at the live page again the same day and walked back one decision of the day before. Both rules below replace what was built then.
