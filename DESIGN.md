@@ -585,20 +585,21 @@ font-medium transition-colors min-h-[44px] whitespace-nowrap`.
 
 | Prop | Values | Notes |
 |---|---|---|
-| `variant` | `primary` \| `secondary` \| `ghost` \| `accent` \| `accentOutline` \| `danger` | see classes below |
+| `variant` | `primary` \| `secondary` \| `ghost` \| `accent` \| `accentOutline` \| `danger` \| `destructive` | see classes below |
 | `size` | `md` (default) \| `sm` | `md` = `px-5 text-sm`, `sm` = `px-3.5 text-xs` — height stays 44px at both |
 | `icon` | `ReactNode` | leading icon, sized/`aria-hidden` by the caller |
 
 | Kind | Variant | Classes | Use |
 |---|---|---|---|
-| Primary | `primary` | `bg-primary-container text-on-primary hover:bg-primary active:bg-primary` | main CTA (Descargar PDF, Guardar) |
-| Secondary | `secondary` | `border border-primary-container text-primary-container hover:bg-primary-fixed active:bg-primary-fixed` | secondary action alongside a primary (Ver formulario, Editar) |
-| Text | `ghost` | `text-on-surface-variant hover:bg-surface-container hover:text-on-surface` (and the same on `active:`) | lowest-emphasis action (Cancelar, metadata edit) |
-| Primary | `accent` | `bg-secondary text-on-secondary hover:opacity-90 active:opacity-90` | terracotta emphasis when something needs attention (e.g. "Actualizar" with new submissions pending) |
-| Secondary | `accentOutline` | `border border-secondary text-secondary hover:bg-secondary-fixed active:bg-secondary-fixed` | the same action's resting/no-news state |
-| Secondary | `danger` | `border border-error text-error hover:bg-error-container active:bg-error-container` | destructive page action that opens a `ConfirmDialog` (Eliminar café, Eliminar seleccionados) |
+| Primary | `primary` | `bg-primary-container text-on-primary not-disabled:hover:bg-primary not-disabled:active:bg-primary` | main CTA (Descargar PDF, Guardar) |
+| Secondary | `secondary` | `border border-primary-container text-primary-container not-disabled:hover:bg-primary-fixed not-disabled:active:bg-primary-fixed` | secondary action alongside a primary (Ver formulario, Editar) |
+| Text | `ghost` | `text-on-surface-variant not-disabled:hover:bg-surface-container not-disabled:hover:text-on-surface` (and the same on `active:`) | lowest-emphasis action (Cancelar, metadata edit) |
+| Primary | `accent` | `bg-secondary text-on-secondary not-disabled:hover:opacity-90 not-disabled:active:opacity-90` | terracotta emphasis when something needs attention (e.g. "Actualizar" with new submissions pending) |
+| Secondary | `accentOutline` | `border border-secondary text-secondary not-disabled:hover:bg-secondary-fixed not-disabled:active:bg-secondary-fixed` | the same action's resting/no-news state |
+| Secondary | `danger` | `border border-error text-error not-disabled:hover:bg-error-container not-disabled:active:bg-error-container` | destructive page action that opens a `ConfirmDialog` (Eliminar café, Eliminar seleccionados) |
+| Primary | `destructive` | `bg-error text-on-error not-disabled:hover:bg-error/90 not-disabled:active:bg-error/90` | the confirm button of a destructive `ConfirmDialog` (filled: it is that dialog's one Primary-kind action) |
 
-Disabled state (native `disabled` attribute): `opacity-60 cursor-default`.
+Disabled state (native `disabled` attribute), for every control of this section, a tab or a chip included: `opacity-60 cursor-default`, and no hover or pressed tone.
 `ButtonLink` renders an `<a>` and takes `href` — no `disabled` (anchors don't
 support it); only use it for always-available links.
 
@@ -608,13 +609,15 @@ support it); only use it for always-available links.
 
 Pressed shows the hover tone, also on touch, where there is no hover. Focus is the same for every kind: the one indicator under "Accessibility".
 
-**Selected and not selected** (tabs, chips, choice cards, segments, switches):
+**Selected and not selected** (tabs, chips, choice cards, segments, toggles, switches). The boundary of a control that is not selected is `outline` (3 : 1 on `surface`), never `outline-variant`, which is for dividers and card frames.
 
 | Control | Not selected | Hover / pressed | Selected |
 |---|---|---|---|
-| Tab, chip, choice card (`PillTabs`, a choose-one row of cards; a disabled item is at 45 % opacity) | 1 px `outline-variant` border, `on-surface-variant` text, medium | `surface-container` fill, `on-surface` text | `primary-fixed` fill and border, `on-primary-fixed` text, semibold; `aria-selected` / `aria-checked` |
+| Pill tab, chip, choice card (`PillTabs`, a choose-one row of cards) | 1 px `outline` border, no fill, `on-surface-variant` text, medium | `surface-container` fill, `on-surface` text | `primary-fixed` fill and border, `on-primary-fixed` text, semibold; `aria-selected` / `aria-checked` |
+| Underline or list tab (`SampleTabs`, `ModuleSwitcher`, `RouteTabs`) | `on-surface-variant` text, no marker | `surface-container` wash (`RouteTabs`: `on-surface` text) | `primary-container` text, semibold, with its marker (side bar or underline); `aria-selected` / `aria-current` |
 | Segment (`SegmentedControl`) | `on-surface-variant` text on its `surface-container-high` track | `on-surface` text | raised on the track: `surface-container-lowest`, `shadow-card`, `on-surface` text; `aria-checked` |
-| Switch (on / off) | `outline-variant` track | | `primary-container` track |
+| Toggle (one button with `aria-pressed`, as in `MasterControls`) | as a chip | as a chip | as a chip, `aria-pressed` |
+| Switch (on / off) | `outline` track, `surface-container-lowest` thumb | none: pressing it is the change | `primary-container` track, same thumb |
 
 #### Interactive control vocabulary
 
@@ -636,8 +639,8 @@ counts the buttons. A selected item is marked with a tone
 (`primary-fixed` or `surface-container-lowest` on its track), a weight, an
 underline or a check, and with `aria-selected` / `aria-pressed`.
 
-**(rule) One green primary per fold.** One `Button variant="primary"` in
-view at a time. A "next" button keeps one colour whatever comes next (the
+**(rule) One Primary-kind button per fold.** One Primary-kind button
+(`primary`, `accent`, `destructive`) in view at a time. A "next" button keeps one colour whatever comes next (the
 next sample or the next stage of the form): its label says where it goes
 ("Siguiente: Aroma"), not its colour.
 

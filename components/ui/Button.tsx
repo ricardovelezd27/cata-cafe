@@ -8,7 +8,7 @@ import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from "reac
  * pages. A Button always PERFORMS AN ACTION (navigate, mutate, trigger); it
  * is never a selector — see PillTabs/SegmentedControl for that role.
  */
-export type ButtonVariant = "primary" | "secondary" | "ghost" | "accent" | "accentOutline" | "danger";
+export type ButtonVariant = "primary" | "secondary" | "ghost" | "accent" | "accentOutline" | "danger" | "destructive";
 export type ButtonSize = "md" | "sm";
 
 const BASE =
@@ -26,17 +26,23 @@ const SIZE_CLASSES: Record<ButtonSize, string> = {
 
 // The states of each kind are DESIGN.md "Button kinds and their states":
 // pressed (`active:`) shows the hover tone, so a touch screen, which has no
-// hover, still answers the tap.
+// hover, still answers the tap. A disabled button shows neither (`not-disabled:`
+// also matches an anchor, which is never disabled).
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
-  primary: "bg-primary-container text-on-primary hover:bg-primary active:bg-primary",
-  secondary: "border border-primary-container text-primary-container hover:bg-primary-fixed active:bg-primary-fixed",
+  primary: "bg-primary-container text-on-primary not-disabled:hover:bg-primary not-disabled:active:bg-primary",
+  secondary:
+    "border border-primary-container text-primary-container not-disabled:hover:bg-primary-fixed not-disabled:active:bg-primary-fixed",
   ghost:
-    "text-on-surface-variant hover:bg-surface-container hover:text-on-surface active:bg-surface-container active:text-on-surface",
-  accent: "bg-secondary text-on-secondary hover:opacity-90 active:opacity-90",
-  accentOutline: "border border-secondary text-secondary hover:bg-secondary-fixed active:bg-secondary-fixed",
+    "text-on-surface-variant not-disabled:hover:bg-surface-container not-disabled:hover:text-on-surface not-disabled:active:bg-surface-container not-disabled:active:text-on-surface",
+  accent: "bg-secondary text-on-secondary not-disabled:hover:opacity-90 not-disabled:active:opacity-90",
+  accentOutline:
+    "border border-secondary text-secondary not-disabled:hover:bg-secondary-fixed not-disabled:active:bg-secondary-fixed",
   // Destructive page-level action (Eliminar). Outline, never filled: the
   // ConfirmDialog that follows carries the filled error button.
-  danger: "border border-error text-error hover:bg-error-container active:bg-error-container",
+  danger: "border border-error text-error not-disabled:hover:bg-error-container not-disabled:active:bg-error-container",
+  // The confirm button of a destructive ConfirmDialog: filled, because it is the one
+  // Primary-kind action of that dialog.
+  destructive: "bg-error text-on-error not-disabled:hover:bg-error/90 not-disabled:active:bg-error/90",
 };
 
 /** Class string of a Button, for wrappers that must render their own element

@@ -32,7 +32,8 @@
   transition: opacity var(--transition-fast);
 }
 
-.row:hover:not(.active):not(:disabled) {
+.row:hover:not(.active):not(:disabled),
+.row:active:not(.active):not(:disabled) {
   background: color-mix(in oklch, var(--color-surface-container) 60%, transparent);
 }
 
