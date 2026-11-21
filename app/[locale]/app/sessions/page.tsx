@@ -1,6 +1,4 @@
 import { GuestGateLink } from "@/components/guest/GuestGateLink";
-import { cardClasses } from "@/components/ui/cardRecipe";
-import { ChevronRight, PersonStanding } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
@@ -22,7 +20,6 @@ export default async function SessionsList({
   setRequestLocale(locale);
   const t = await getTranslations("session");
   const tc = await getTranslations("common");
-  const tw = await getTranslations("warmup");
   const tg = await getTranslations("group");
 
   const supabase = await createClient();
@@ -238,17 +235,6 @@ export default async function SessionsList({
           </div>
         }
       />
-
-      {/* Phones have no sidebar: the warm-up library is reached from here. */}
-      <GuestGateLink
-        href={`/${locale}/app/warmup`}
-        className={`${cardClasses({ tone: "quiet", padding: "row" })} min-h-[44px] flex lg:hidden items-center gap-3 text-caption font-medium transition-[background-color] hover:bg-surface-container-high`}
-      >
-        <PersonStanding size={18} aria-hidden />
-        {tw("library.mobileLink")}
-        <span className="ml-auto text-caption text-on-surface-variant">{tw("library.count")}</span>
-        <ChevronRight size={16} className="text-on-surface-variant" aria-hidden />
-      </GuestGateLink>
 
       <SessionsTable
         rows={rows}

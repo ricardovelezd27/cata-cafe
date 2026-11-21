@@ -90,7 +90,7 @@ describe("hitArea.ts: the hit-area constants are 44 px", () => {
   });
 });
 
-describe("F-14: the phone's bottom bar has five tabs at most", () => {
+describe("F-14: the phone's bottom bar has six tabs at most", () => {
   const items = read("components/layout/navItems.ts");
   const bar = read("components/layout/BottomNav.tsx");
   it("the bar builds its tabs from NAV_ITEMS only, minus the items hidden on phones", () => {
@@ -98,13 +98,14 @@ describe("F-14: the phone's bottom bar has five tabs at most", () => {
     expect(bar).not.toMatch(/\[\s*\.\.\.NAV_ITEMS\s*,/); // nothing appended to the list
     expect(bar).toMatch(/NAV_ITEMS\.filter\(\s*\(?\s*\w+\s*\)?\s*=>\s*!\s*\w+\.hideOnMobile\s*\)/);
   });
-  it("NAV_ITEMS minus the hideOnMobile items is five or fewer", () => {
+  it("NAV_ITEMS minus the hideOnMobile items is six or fewer, Movimiento sensorial among them (the owner, 2026-11-21)", () => {
     const block = /export const NAV_ITEMS[^=]*=\s*\[([\s\S]*?)\n\];/.exec(items);
     expect(block).not.toBeNull();
     const entries = block![1].split("\n").filter((l) => /^\s*\{\s*href:/.test(l));
     const onPhone = entries.filter((l) => !/hideOnMobile:\s*true/.test(l));
     expect(entries.length).toBeGreaterThan(0);
-    expect(onPhone.length).toBeLessThanOrEqual(5);
+    expect(onPhone.length).toBeLessThanOrEqual(6);
+    expect(onPhone.some((l) => l.includes('"/app/warmup"'))).toBe(true);
   });
   it("labels paint the caption size (12.25 px, T4b) and the active tab is marked by more than colour", () => {
     const tab = classAfter(bar, "<GuestGateLink");
