@@ -31,7 +31,7 @@ export function FormSection({
   const [open, setOpen] = useState(collapsible ? defaultOpen : true);
 
   return (
-    <section className={`${cardClasses({ tone: "quiet" })} ${styles.section}`}>
+    <section className={`${cardClasses({ tone: "quiet" })} mb-[12px] md:mb-[16px] ${styles.section}`}>
       <div
         className={`${styles.header} ${collapsible ? styles.clickable : ""}`}
         onClick={() => collapsible && setOpen((v) => !v)}

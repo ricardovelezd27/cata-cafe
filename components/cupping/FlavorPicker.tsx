@@ -164,7 +164,7 @@ export function FlavorPicker({
   // opened, the picker is scrolled to the top of the form's scroll area.
   const rootRef = useRef<HTMLDivElement>(null);
   const keepPickerInView = () => {
-    if (!window.matchMedia("(max-width: 640px)").matches) return;
+    if (!window.matchMedia("(max-width: 767.98px)").matches) return;
     window.setTimeout(() => rootRef.current?.scrollIntoView({ block: "start" }), 320);
   };
 

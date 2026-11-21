@@ -729,7 +729,7 @@ A tablet is a small desktop, in the app as on the landing. **(rule)**
 | Dialogs (centered modal ↔ bottom sheet) | 640px (`ResponsiveDialog` internal) |
 
 - **(rule) `sm:` changes a padding or a type size, never an arrangement.** No third, in-between layout.
-- **(departure, the owner, 2026-11-21) On the cupping screen a tablet behaves like the phone.** The organizer's info area left of the form (the timer, the coffee being cupped, "Clave de muestras", the tasting info) exists from 1024 px only; under 1024 px there is no timer and no sample key, as on a phone.
+- **(departure, the owner, 2026-11-21) The cupping screen's info area is desktop only.** The organizer's info area left of the form (the timer, the coffee being cupped, "Clave de muestras", the tasting info) exists from 1024 px only; under 1024 px the form stands alone, with no timer and no sample key (a tablet follows the phone here, and only here).
 - **(rule) The phone's bottom bar has six tabs at most.** Movimiento sensorial is one of them: the main navigation is its one entry, on phones too (the owner, 2026-11-21). Insights lives inside Perfil for those who have it; the account and sign-out are reachable from the shell.
 - As built, the app shell switches at `lg:` (1024 px) and content arrangements switch at `lg:` by window width; moving both to this rule is package P6 of the audit's plan.
 
@@ -764,7 +764,7 @@ A tablet is a small desktop, in the app as on the landing. **(rule)**
 ### `CATAPills`
 
 - Unselected: `outline-variant` border, transparent fill, pill shape
-- Selected, as built: solid `primary-container` fill, `on-primary` text (the action fill: see "A selection never looks like an action")
+- Selected: the family's shade, with ink or cream text by measured contrast (`getContrastTextColor`; the owner's departure of 2026-11-21, "Flavor Family Colors")
 - At-limit: unselected at `opacity: 0.45`
 - A flavour's family is shown as a coloured dot in the pill, never as the pill's fill or its text colour ("Flavor Family Colors"), except the selected descriptors of the cupping screen, filled with their family's shade (the owner's departure of 2026-11-21, same section)
 

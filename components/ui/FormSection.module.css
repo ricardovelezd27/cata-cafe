@@ -1,12 +1,7 @@
 /* The card itself (ground, border, radius, padding) is the kit's quiet card,
-   `cardClasses({ tone: "quiet" })` in FormSection.tsx; this only spaces the sections. */
+   `cardClasses({ tone: "quiet" })` in FormSection.tsx, spaced 12 px / 16 px from 768 px there. */
 .section {
-  margin-bottom: 16px;
   overflow: hidden;
-}
-
-@media (max-width: 640px) {
-  .section { margin-bottom: 12px; }
 }
 
 .header {

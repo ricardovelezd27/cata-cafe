@@ -2753,7 +2753,7 @@ export function CupClient({
       <span className="label-caps">
         {new Intl.DateTimeFormat(locale, { weekday: "short", day: "numeric", month: "short", year: "numeric" }).format(new Date(session.date))}
       </span>
-      <span className="font-mono text-card font-semibold tabular-nums text-primary-container leading-none">
+      <span className="font-mono text-card font-semibold tabular-nums text-on-surface leading-none">
         {clockTime}
       </span>
       {isGroup && translations.participantsCount && (
@@ -2776,9 +2776,7 @@ export function CupClient({
     <div className="hidden lg:flex lg:flex-col lg:gap-[16px]">
       <CuppingTimer sessionId={session.id} userId={userId} copy={timerCopy} />
       <div>
-        <div className="label-caps">
-          {translations.sample} {current.label}
-        </div>
+        <div className="label-caps">{current.label}</div>
         {currentCoffee && <div className="font-display text-card text-on-surface">{currentCoffee}</div>}
       </div>
       {translations.sampleKey && (
