@@ -251,7 +251,7 @@ export type PostCloseNoteEval = {
   postCloseNoteAt: Date | null;
 };
 
-export type MyPostCloseNote = { evaluationId: string; text: string | null; at: string | null };
+export type MyPostCloseNote = { text: string | null; at: string | null };
 export type CupperPostCloseNote = { text: string; at: string | null };
 
 export type PostCloseNotesPayload = {
@@ -279,7 +279,6 @@ export function buildPostCloseNotes(input: {
     if (e.isDraft) continue;
     if (e.cupperId === input.viewerId) {
       mine[e.sessionSampleId] = {
-        evaluationId: e.id,
         text: e.postCloseNote,
         at: e.postCloseNoteAt ? e.postCloseNoteAt.toISOString() : null,
       };

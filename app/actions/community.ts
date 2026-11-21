@@ -1170,8 +1170,8 @@ export async function setSessionReflection(
       throw new Error("invalid_input");
     }
 
-    const at = note === null ? null : new Date();
-    if (note === null || at === null) {
+    const at = new Date();
+    if (note === null) {
       await prisma.sessionReflection.deleteMany({ where: { sessionId: id, userId: user.id } });
     } else {
       await prisma.sessionReflection.upsert({
@@ -1183,7 +1183,7 @@ export async function setSessionReflection(
 
     revalidatePath(`/es/app/sessions/${id}/results`);
     revalidatePath(`/en/app/sessions/${id}/results`);
-    return { text: note, at: at ? at.toISOString() : null };
+    return { text: note, at: note === null ? null : at.toISOString() };
   });
 }
 

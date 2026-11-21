@@ -57,10 +57,7 @@ export default async function ResultsPartsDevPage({
       ),
     } as unknown as PanelWords["late"],
     note: t.raw("postCloseNote") as PanelWords["note"],
-    reflection: {
-      ...(t.raw("reflection") as Record<string, string>),
-      oldDated: (t.raw("postCloseNote") as { added: string }).added,
-    } as PanelWords["reflection"],
+    reflection: t.raw("reflection") as PanelWords["reflection"],
     align: {
       title: tAlign("title"),
       subtitle: tAlign("subtitle"),

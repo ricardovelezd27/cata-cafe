@@ -1083,6 +1083,8 @@
       "pendingLateMany": "{n} late evaluations to decide",
       "pendingNotesOne": "1 note after the close",
       "pendingNotesMany": "{n} notes after the close",
+      "pendingReflectionsOne": "1 reflection on the tasting",
+      "pendingReflectionsMany": "{n} reflections on the tasting",
       "pendingBoth": "{a} and {b}",
       "matrixCaption": "Each cupper's score for each coffee, with the group's score and the spread.",
       "matrixRegion": "Scores by cupper",
@@ -1241,7 +1243,7 @@
     "postCloseNote": {
       "added": "Note added on {date}:",
       "ownerTitle": "Notes added after the close",
-      "ownerIntro": "Cuppers can leave a text note on their evaluation after the session closed. Only you and the person who wrote it can see it."
+      "ownerIntro": "Notes cuppers left on their evaluation after the session closed. Only you and the person who wrote it can see it."
     },
     "revealConfirm": {
       "title": "Reveal this sample?",
@@ -1427,6 +1429,8 @@
       "cancel": "Cancel",
       "edit": "Edit",
       "remove": "Delete",
+      "removeTitle": "Delete your reflection?",
+      "removeBody": "The text you wrote about this tasting is deleted. This cannot be undone.",
       "written": "Written on {date}:",
       "oldTitle": "Your notes after the close",
       "ownerTitle": "Reflections on the tasting",

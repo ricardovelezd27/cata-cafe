@@ -113,7 +113,7 @@ rule and tells each affected cupper. A 24 h reminder (`deadline_24h`) goes to th
 before an async deadline. `promote_complete` (submit complete drafts at close) is
 implemented as a constant only: off.
 
-**Close announced ahead, late evaluations, a note after close (S10 WP4b, Kim C1 / C2,
+**Close announced ahead, late evaluations, a note after close (replaced by the reflection about the tasting, below) (S10 WP4b, Kim C1 / C2,
 `TODO(kim-validar:C1)` / `TODO(kim-validar:C2)`).**
 
 ```mermaid

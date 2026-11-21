@@ -1,10 +1,11 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Card, PaperSectionHeading, useActionFeedback } from "@/components/ui";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { setSessionReflection } from "@/app/actions/community";
-import { PostCloseNoteReadOnly } from "@/components/results/PostCloseNote";
+import { PostCloseNoteReadOnly, formatNoteDate } from "@/components/results/PostCloseNote";
 import { SESSION_REFLECTION_MAX, type MyReflection } from "@/lib/sessionReflection";
 
 export type ReflectionStrings = {
@@ -20,12 +21,13 @@ export type ReflectionStrings = {
   cancel: string;
   edit: string;
   remove: string;
+  /** The confirmation before a reflection is deleted. */
+  removeTitle: string;
+  removeBody: string;
   /** RAW with "{date}". */
   written: string;
   /** The title over the notes per coffee of a tasting from before the reflection. */
   oldTitle: string;
-  /** RAW with "{date}": the date line of a note per coffee. */
-  oldDated: string;
 };
 
 /** A note per coffee the reader wrote before the reflection existed. */
@@ -42,35 +44,40 @@ export function Reflection({
   sessionId,
   mine,
   oldNotes,
+  oldDated,
   onlyReader,
   locale,
   userId,
+  closeLabel,
   t,
 }: {
   sessionId: string;
   mine: MyReflection | null;
   oldNotes: readonly OldCoffeeNote[];
+  /** RAW with "{date}": the date line of a note per coffee. */
+  oldDated: string;
   /** Nobody else reads it: a solo cupping, or the reader is the organizer. */
   onlyReader: boolean;
   locale: string;
   /** The user the page was rendered for (the shared-device guard). */
   userId: string;
+  /** The close button of the delete confirmation. */
+  closeLabel: string;
   t: ReflectionStrings;
 }) {
   const titleId = useId();
   if (mine) {
     return (
-      <section className="flex flex-col gap-3 font-sans" aria-labelledby={titleId} data-reflection="">
+      <section className="flex flex-col gap-3 font-sans md:gap-4" aria-labelledby={titleId} data-reflection="">
         <PaperSectionHeading id={titleId} title={t.title} flush />
         <ReflectionEditor
-          // after a save elsewhere (another tab, a refresh), show the saved text
-          key={`${mine.text ?? ""}|${mine.at ?? ""}`}
           sessionId={sessionId}
           mine={mine}
           labelledBy={titleId}
           who={onlyReader ? t.whoSolo : t.who}
           locale={locale}
           userId={userId}
+          closeLabel={closeLabel}
           t={t}
         />
       </section>
@@ -95,21 +102,12 @@ export function Reflection({
                 </>
               }
             />
-            <PostCloseNoteReadOnly text={n.text} at={n.at} locale={locale} dated={t.oldDated} />
+            <PostCloseNoteReadOnly text={n.text} at={n.at} locale={locale} dated={oldDated} />
           </li>
         ))}
       </ul>
     </section>
   );
-}
-
-function formatAt(at: string | null, locale: string): string {
-  if (!at) return "";
-  return new Date(at).toLocaleDateString(locale === "es" ? "es-CO" : "en-US", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
 }
 
 function ReflectionEditor({
@@ -119,6 +117,7 @@ function ReflectionEditor({
   who,
   locale,
   userId,
+  closeLabel,
   t,
 }: {
   sessionId: string;
@@ -127,6 +126,7 @@ function ReflectionEditor({
   who: string;
   locale: string;
   userId: string;
+  closeLabel: string;
   t: ReflectionStrings;
 }) {
   const router = useRouter();
@@ -137,10 +137,23 @@ function ReflectionEditor({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(mine.text ?? "");
   const [saving, setSaving] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  // Edit, Save, Cancel and Delete each replace the control that had focus: say
+  // where focus goes next, and move it once the new control is on the page.
+  const textRef = useRef<HTMLTextAreaElement>(null);
+  const actionsRef = useRef<HTMLDivElement>(null);
+  const focusNext = useRef<"text" | "edit" | null>(null);
+  useEffect(() => {
+    const next = focusNext.current;
+    focusNext.current = null;
+    if (next === "text") textRef.current?.focus();
+    else if (next === "edit") actionsRef.current?.querySelector("button")?.focus();
+  });
 
   const save = async (text: string) => {
     setSaving(true);
     await feedback.run(setSessionReflection(sessionId, text, userId), (data) => {
+      focusNext.current = data.text === null ? "text" : "edit";
       setSaved(data);
       setDraft(data.text ?? "");
       setEditing(false);
@@ -154,19 +167,36 @@ function ReflectionEditor({
       <Card tone="quiet" padding="compact">
         <div className="flex flex-col gap-2">
           <p className="font-sans text-caption text-on-surface-variant" suppressHydrationWarning>
-            {t.written.replace("{date}", formatAt(saved.at, locale))}
+            {t.written.replace("{date}", formatNoteDate(saved.at, locale))}
           </p>
           <p className="whitespace-pre-wrap font-sans text-body text-on-surface">{saved.text}</p>
           <p className="font-sans text-caption text-on-surface-variant">{who}</p>
-          <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>
+          <div ref={actionsRef} className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                focusNext.current = "text";
+                setEditing(true);
+              }}
+            >
               {t.edit}
             </Button>
-            <Button size="sm" variant="ghost" disabled={saving} onClick={() => void save("")}>
+            <Button size="sm" variant="ghost" disabled={saving} onClick={() => setConfirmRemove(true)}>
               {t.remove}
             </Button>
           </div>
         </div>
+        <ConfirmDialog
+          open={confirmRemove}
+          onOpenChange={setConfirmRemove}
+          title={t.removeTitle}
+          body={t.removeBody}
+          confirmLabel={t.remove}
+          cancelLabel={t.cancel}
+          closeLabel={closeLabel}
+          onConfirm={() => save("")}
+        />
       </Card>
     );
   }
@@ -175,6 +205,7 @@ function ReflectionEditor({
     <Card tone="quiet" padding="compact">
       <div className="flex flex-col gap-2">
         <textarea
+          ref={textRef}
           value={draft}
           maxLength={SESSION_REFLECTION_MAX}
           rows={4}
@@ -182,7 +213,7 @@ function ReflectionEditor({
           aria-labelledby={labelledBy}
           aria-describedby={hintId}
           onChange={(e) => setDraft(e.target.value)}
-          className="w-full rounded-input border border-outline-variant bg-surface px-3 py-2 font-sans text-caption text-on-surface"
+          className="w-full rounded-input border border-outline-variant bg-surface px-3 py-2 font-sans text-body text-on-surface"
         />
         <p id={hintId} className="font-sans text-caption text-on-surface-variant">
           {t.hint} {who}
@@ -197,6 +228,7 @@ function ReflectionEditor({
               variant="ghost"
               disabled={saving}
               onClick={() => {
+                focusNext.current = "edit";
                 setDraft(saved.text ?? "");
                 setEditing(false);
               }}

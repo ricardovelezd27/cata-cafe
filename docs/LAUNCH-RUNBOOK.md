@@ -2549,7 +2549,9 @@ Run the first; if it says 0 rows, run the second. Then run the read query to con
 ## §38. The reflection about a tasting: the `session_reflections` migration and PHASE 30 (2026-11-21, OR-D)
 
 **STATUS: OWED. Nothing has been run.** The pull request that adds this section must NOT be merged
-before step 1: the results page of every closed session reads the new table.
+before step 1. The code reads and writes the new table: without it the results page of every closed
+session fails, and so do a guest claim, an account deletion and the daily job's pass over never-used
+accounts.
 
 **What it does:** adds ONE new table, `session_reflections` (the reflection a person writes about a
 tasting after it closed: `sessionId` → `cupping_sessions` with `ON DELETE CASCADE`, `userId` →
@@ -2563,9 +2565,10 @@ It replaces the note per coffee. **The notes people already wrote per coffee are
 stay in `evaluations."postCloseNote"` and the page shows them read-only. A tasting that has such
 notes takes no reflection; every other closed tasting gets the one text box.
 
-**Order matters:** migration FIRST, then the deploy (merge); PHASE 30 any time after the migration
-(until it runs the table is only protected by Supabase's automatic RLS, which already denies the API
-roles; PHASE 30 makes that explicit and adds the revoke).
+**Order matters:** step 1 (the migration) FIRST, then step 6 (merge and deploy). Steps 2 to 5
+(PHASE 30) are written before step 6 because that is the safest order, but they may also be done
+after it: until PHASE 30 runs the table is only protected by Supabase's automatic RLS, which already
+denies the API roles; PHASE 30 makes that explicit and adds the revoke.
 
 1. **Migration.** On your machine, with `.env.local` pointing at the project (it is production):
    ```bash

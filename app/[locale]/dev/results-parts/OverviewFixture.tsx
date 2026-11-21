@@ -22,6 +22,8 @@ export function OverviewFixture({
   t,
   cards,
   reflection,
+  oldDated,
+  closeLabel,
 }: {
   scenario: OverviewScenario;
   locale: WheelLocale;
@@ -30,6 +32,8 @@ export function OverviewFixture({
   t: OverviewStrings;
   cards: CardsStrings;
   reflection: ReflectionStrings;
+  oldDated: string;
+  closeLabel: string;
 }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
@@ -78,6 +82,8 @@ export function OverviewFixture({
           onlyReader={!scenario.ctx.isGroup || scenario.id === "closed-owner"}
           locale={locale}
           userId="dev"
+          oldDated={oldDated}
+          closeLabel={closeLabel}
           t={reflection}
         />
       ) : null}

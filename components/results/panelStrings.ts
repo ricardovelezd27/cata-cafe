@@ -10,6 +10,8 @@ export const RESULTS_PANEL_KEYS = [
   "pendingLateMany",
   "pendingNotesOne",
   "pendingNotesMany",
+  "pendingReflectionsOne",
+  "pendingReflectionsMany",
   "pendingBoth",
   "matrixCaption",
   "matrixRegion",
@@ -36,11 +38,20 @@ export function buildPanelStrings(t: RawTranslator): PanelStrings {
 }
 
 /** "1 evaluación tardía por decidir y 2 notas después del cierre". */
-export function pendingSentence(pending: { late: number; notes: number }, t: PanelStrings): string {
+export function pendingSentence(pending: { late: number; notes: number; reflections: number }, t: PanelStrings): string {
   const fill = (pattern: string, n: number) => pattern.replace("{n}", String(n));
   const late = pending.late === 0 ? null : pending.late === 1 ? t.pendingLateOne : fill(t.pendingLateMany, pending.late);
+  // a tasting holds notes per coffee or reflections, never both
   const notes =
-    pending.notes === 0 ? null : pending.notes === 1 ? t.pendingNotesOne : fill(t.pendingNotesMany, pending.notes);
+    pending.reflections > 0
+      ? pending.reflections === 1
+        ? t.pendingReflectionsOne
+        : fill(t.pendingReflectionsMany, pending.reflections)
+      : pending.notes === 0
+        ? null
+        : pending.notes === 1
+          ? t.pendingNotesOne
+          : fill(t.pendingNotesMany, pending.notes);
   if (late && notes) return t.pendingBoth.replace("{a}", late).replace("{b}", notes);
   return late ?? notes ?? "";
 }

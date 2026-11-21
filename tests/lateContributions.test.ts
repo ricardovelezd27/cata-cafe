@@ -246,8 +246,8 @@ describe("buildPostCloseNotes (privacy gate)", () => {
     expect(Object.keys(p.mine).sort()).toEqual(["s1", "s2"]);
     expect(JSON.stringify(p)).not.toContain("secreto");
     expect(JSON.stringify(p)).not.toContain("other");
-    expect(p.mine.s1).toEqual({ evaluationId: "e1", text: "mi nota", at: at.toISOString() });
-    expect(p.mine.s2).toEqual({ evaluationId: "e3", text: null, at: null });
+    expect(p.mine.s1).toEqual({ text: "mi nota", at: at.toISOString() });
+    expect(p.mine.s2).toEqual({ text: null, at: null });
   });
   it("the owner lens also gets the other cuppers' notes (submitted rows with text only)", () => {
     const p = buildPostCloseNotes({ sessionStatus: "closed", ownerLens: true, viewerId: "me", evals });

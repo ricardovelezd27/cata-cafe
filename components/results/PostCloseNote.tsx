@@ -10,7 +10,8 @@ import { Card, PaperSectionHeading } from "@/components/ui";
 /** The words of the notes per coffee. `added` is RAW with "{date}". */
 export type PostCloseNoteTranslations = { added: string; ownerTitle: string; ownerIntro: string };
 
-function formatAt(at: string | null, locale: string): string {
+/** The date of a text written after the close, as the page prints it. */
+export function formatNoteDate(at: string | null, locale: string): string {
   if (!at) return "";
   return new Date(at).toLocaleDateString(locale === "es" ? "es-CO" : "en-US", {
     day: "numeric",
@@ -34,7 +35,7 @@ export function PostCloseNoteReadOnly({
   return (
     <Card tone="quiet" padding="compact">
       <p className="font-sans text-caption text-on-surface-variant" suppressHydrationWarning>
-        {dated.replace("{date}", formatAt(at, locale))}
+        {dated.replace("{date}", formatNoteDate(at, locale))}
       </p>
       <p className="mt-1 whitespace-pre-wrap font-sans text-body text-on-surface">{text}</p>
     </Card>

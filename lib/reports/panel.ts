@@ -211,8 +211,10 @@ export function panelMarks(matrix: PanelMatrix): { over1: number; over2: number 
 export type PanelPending = {
   /** Late evaluations the organizer has not decided on. */
   late: number;
-  /** Notes other cuppers added after the close. */
+  /** Notes per coffee other cuppers added after the close (a tasting from before the reflection). */
   notes: number;
+  /** Reflections about the tasting other cuppers wrote. */
+  reflections: number;
 };
 
 /**
@@ -227,11 +229,11 @@ export function panelPending(input: {
   reflectionsByCupper?: Readonly<Record<string, unknown>> | null;
 }): PanelPending | null {
   const late = input.lateRows?.length ?? 0;
-  const notes =
-    (input.notesByCupper
-      ? Object.values(input.notesByCupper).reduce((sum, bySample) => sum + Object.keys(bySample).length, 0)
-      : 0) + Object.keys(input.reflectionsByCupper ?? {}).length;
-  return late + notes > 0 ? { late, notes } : null;
+  const notes = input.notesByCupper
+    ? Object.values(input.notesByCupper).reduce((sum, bySample) => sum + Object.keys(bySample).length, 0)
+    : 0;
+  const reflections = Object.keys(input.reflectionsByCupper ?? {}).length;
+  return late + notes + reflections > 0 ? { late, notes, reflections } : null;
 }
 
 // ── Alignment: one neutral bar per cupper ────────────────────────────────────

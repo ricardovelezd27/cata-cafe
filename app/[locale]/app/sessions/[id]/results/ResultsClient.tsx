@@ -776,7 +776,7 @@ export function ResultsClient({
   // Two views of the same cupping (OR-D): "Por café" for everyone, "Por catador"
   // for the organizer and the admin's lens. A participant has ONE view: no tab
   // bar then. What waits for the organizer in "Por catador" is the count on its tab.
-  const waiting = panelWaiting ? panelWaiting.late + panelWaiting.notes : 0;
+  const waiting = panelWaiting ? panelWaiting.late + panelWaiting.notes + panelWaiting.reflections : 0;
   const tabItems = [
     { id: "resumen", label: translations.tabResultados },
     ...(canViewIndividual
@@ -1195,6 +1195,8 @@ export function ResultsClient({
               onlyReader={!isGroup || isOwner}
               locale={locale}
               userId={currentUserId}
+              oldDated={noteTranslations?.added ?? ""}
+              closeLabel={translations.detail.close}
               t={overview.reflectionT}
             />
           ) : null}

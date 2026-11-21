@@ -127,8 +127,16 @@ describe("the organizer's one notes block", () => {
 });
 
 describe("on the page", () => {
-  const strings = (m: typeof es): ReflectionStrings => ({ ...m.results.reflection, oldDated: m.results.postCloseNote.added });
-  const base = { sessionId: "s1", locale: "es", userId: "u1", t: strings(es), oldNotes: [] };
+  const strings = (m: typeof es): ReflectionStrings => m.results.reflection;
+  const base = {
+    sessionId: "s1",
+    locale: "es",
+    userId: "u1",
+    t: strings(es),
+    oldNotes: [],
+    oldDated: es.results.postCloseNote.added,
+    closeLabel: "Cerrar",
+  };
 
   it("one text area for the whole tasting, and who reads it", () => {
     const group = renderToStaticMarkup(createElement(Reflection, { ...base, mine: { text: null, at: null }, onlyReader: false }));
@@ -150,6 +158,11 @@ describe("on the page", () => {
     expect(saved).not.toContain("<textarea");
     expect(saved).toContain(es.results.reflection.edit);
     expect(saved).toContain(es.results.reflection.remove);
+    // deleting is confirmed (the kit's dialog), and every change says where focus goes next
+    const source = read("components", "results", "Reflection.tsx");
+    expect(source).toMatch(/<ConfirmDialog[\s\S]*onConfirm=\{\(\) => save\(""\)\}/);
+    expect(source).not.toMatch(/onClick=\{\(\) => void save\(""\)\}/);
+    expect(source.match(/focusNext\.current = /g)?.length).toBeGreaterThanOrEqual(4);
   });
 
   it("a tasting from before it: the reader's own notes per coffee, read-only, and no editor", () => {

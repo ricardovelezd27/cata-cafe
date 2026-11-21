@@ -250,7 +250,6 @@ export function SampleDetail({
   extrinsicNote?: string | null;
   /** A9 prep data, already gated on the server (organizer, or a revealed sample). */
   prep?: SamplePrep | null;
-  /** The note after the close (a slot: this component knows nothing of it). */
   familyLabels: Record<WheelFamilyId, string>;
   blockLabels: Readonly<Record<string, string>>;
   parts: ResultsPartsStrings;

@@ -1083,6 +1083,8 @@
       "pendingLateMany": "{n} evaluaciones tardías por decidir",
       "pendingNotesOne": "1 nota después del cierre",
       "pendingNotesMany": "{n} notas después del cierre",
+      "pendingReflectionsOne": "1 reflexión sobre la cata",
+      "pendingReflectionsMany": "{n} reflexiones sobre la cata",
       "pendingBoth": "{a} y {b}",
       "matrixCaption": "Puntaje de cada catador en cada café, con el puntaje del grupo y la dispersión.",
       "matrixRegion": "Tabla de puntajes por catador",
@@ -1241,7 +1243,7 @@
     "postCloseNote": {
       "added": "Nota añadida el {date}:",
       "ownerTitle": "Notas añadidas después del cierre",
-      "ownerIntro": "Los catadores pueden dejar una nota de texto sobre su evaluación después del cierre. Solo tú y quien la escribió la ven."
+      "ownerIntro": "Notas que los catadores dejaron sobre su evaluación después del cierre. Solo tú y quien la escribió la ven."
     },
     "revealConfirm": {
       "title": "¿Revelar esta muestra?",
@@ -1427,6 +1429,8 @@
       "cancel": "Cancelar",
       "edit": "Editar",
       "remove": "Borrar",
+      "removeTitle": "¿Borrar tu reflexión?",
+      "removeBody": "Se borra el texto que escribiste sobre esta cata. No se puede deshacer.",
       "written": "Escrita el {date}:",
       "oldTitle": "Tus notas después del cierre",
       "ownerTitle": "Reflexiones sobre la cata",
