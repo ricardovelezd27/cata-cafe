@@ -56,7 +56,7 @@ function stringsOf(locale: Locale): { cards: CardsStrings; parts: ReturnType<typ
 const cardsOf = (s: OverviewScenario) =>
   coffeeCards({ samples: s.samples, referenceId: s.referenceId, ctx: s.ctx, data: s.data });
 
-function render(s: OverviewScenario, locale: Locale = "es", canReveal = false): string {
+function render(s: OverviewScenario, locale: Locale = "es", canReveal = false, own = true): string {
   const { cards, parts } = stringsOf(locale);
   return html(
     createElement(CoffeeCards<OverviewScenario["samples"][number]>, {
@@ -64,6 +64,7 @@ function render(s: OverviewScenario, locale: Locale = "es", canReveal = false): 
       format: s.ctx.format,
       referencePinned: s.referencePinned,
       canReveal,
+      own,
       onReveal: () => {},
       onOpenSample: () => {},
       familyLabels: wheelFamilyLabels(locale),
@@ -117,7 +118,7 @@ describe("a participant's cards: counts and aggregates only", () => {
       "id", "place", "isReference", "context", "state", "partial", "wheel", "quality",
       // the context of a score (lib/scoreContext.ts)
       "score", "basis", "spread", "included", "n", "total", "mine", "difference", "deltaVsReference", "indicative",
-      "suppressed", "noClearGap", "canBeFirst",
+      "suppressed", "canBeFirst",
       // the wheel: people per node, the three most chosen, the viewer's own marks
       "status", "scope", "counts", "descriptors", "level", "family", "bar", "count", "share", "pct",
       // a quality row
@@ -281,16 +282,38 @@ describe("what a card shows, state by state (RESULTS-DESIGN section 4)", () => {
     expect((markup.match(/<dl/g) ?? []).length).toBe(cards.length);
   });
 
-  it("a fixed reference prints its number alone, and is marked outside the ranking", () => {
+  it("a reference's card is first and marked outside the ranking", () => {
     const s = overviewScenario("closed");
     const markup = render(s);
     const first = markup.slice(markup.indexOf("<li"), markup.indexOf("</li>"));
-    const { cards: t, parts } = stringsOf("es");
-    expect(first).toContain("79.00");
+    const { cards: t } = stringsOf("es");
     expect(first).toContain(t.outsideRanking);
     expect(first).toContain(t.referenceBadge);
-    expect(first).not.toContain(parts.score.included.split("{")[0].trim() || "incluidos");
-    expect(first).not.toMatch(/±/);
+  });
+
+  it("the admin's lens draws nothing as the reader's own: no \"elegido por ti\", no \"Sin evaluar\" or \"En curso\"", () => {
+    const { cards: t, parts } = stringsOf("es");
+    let own = 0;
+    for (const s of OVERVIEW_SCENARIOS) {
+      const mine = render(s);
+      const lens = render(s, "es", false, false);
+      if (mine.includes(parts.counted.chosenByYou) || mine.includes(t.notEvaluated) || mine.includes(t.inProgress)) own += 1;
+      expect(lens, s.id).not.toContain(parts.counted.chosenByYou);
+      expect(lens, s.id).not.toContain(`>${t.notEvaluated}<`);
+      expect(lens, s.id).not.toContain(`>${t.inProgress}<`);
+      // the group's counts are all still there
+      expect((lens.match(/data-card=""/g) ?? []).length).toBe((mine.match(/data-card=""/g) ?? []).length);
+    }
+    expect(own).toBeGreaterThan(0);
+    expect(read("app", "[locale]", "app", "sessions", "[id]", "results", "ResultsClient.tsx").match(/own=\{!isAdminViewer\}/g)).toHaveLength(2);
+  }, HEAVY_TEST_TIMEOUT_MS);
+
+  it("no card prints a score: every score is in the ranking box, on one scale (owner, 2026-11-21)", () => {
+    for (const s of OVERVIEW_SCENARIOS) {
+      const markup = render(s).replace(/<[^>]+>/g, " ");
+      expect(markup, s.id).not.toMatch(/\b\d{2}\.\d{2}\b/);
+      expect(markup, s.id).not.toMatch(/\d de \d+ incluidos|±|sin diferencia clara/);
+    }
   });
 });
 
@@ -322,12 +345,6 @@ describe("\"Comparar\": only once closed, only what this viewer may see", () => 
     const options = compareOptions({ closed: true, samples, data: s.data });
     expect(new Set(options?.map((o) => o.tag)).size).toBe(options?.length);
     expect(options?.every((o) => /^[0-9]+$/.test(o.tag))).toBe(true);
-  });
-
-  it("the ground under the territories is ONE prop, rings by default", () => {
-    const client = read("app", "[locale]", "app", "sessions", "[id]", "results", "ResultsClient.tsx");
-    expect(client.match(/const COMPARE_GROUND: "rings" \| "families" = "rings";/g)).toHaveLength(1);
-    expect(read("components", "results", "OverviewCompare.tsx")).toMatch(/ground = "rings"/);
   });
 });
 
@@ -427,7 +444,7 @@ describe("what the cards replace is gone", () => {
 
   it("the organizer keeps the matrix, on its own tab, and a viewer with one view gets no tab bar", () => {
     const client = read("app", "[locale]", "app", "sessions", "[id]", "results", "ResultsClient.tsx");
-    expect(client).toMatch(/\.\.\.\(canViewIndividual \? \[\{ id: "panel", label: overview\.cards\.tabPanel \}\] : \[\]\)/);
+    expect(client).toMatch(/\.\.\.\(canViewIndividual\s*\? \[\s*\{\s*id: "panel",\s*label: overview\.cards\.tabPanel,/);
     // since R5 the matrix is one part of the Panel's own view
     expect(client).toMatch(/<PanelView/);
     expect(read("components", "results", "PanelView.tsx")).toMatch(/<OwnerParticipantSection/);

@@ -26,7 +26,6 @@ describe("what a panel of n included cuppers shows", () => {
     groupIntensities: false,
     sharedDescriptors: false,
     youAndPanel: false,
-    panelLearnings: false,
     difference: false,
     spread: false,
     first: false,
@@ -50,7 +49,6 @@ describe("what a panel of n included cuppers shows", () => {
         groupIntensities: true,
         sharedDescriptors: true,
         youAndPanel: true,
-        panelLearnings: true,
         difference: true,
         spread: true,
         first: true,
@@ -92,7 +90,7 @@ describe("what a panel of n included cuppers shows", () => {
 describe("what is printed beside one score", () => {
   it("a firm community score: spread, n de N, mine, the difference, the delta", () => {
     expect(
-      scoreContext({ value: community(88.75, 7, 2.9), mine: 90.75, deltaVsReference: 9.75, noClearGap: true }),
+      scoreContext({ value: community(88.75, 7, 2.9), mine: 90.75, deltaVsReference: 9.75 }),
     ).toEqual({
       score: 88.75,
       basis: "community",
@@ -103,7 +101,6 @@ describe("what is printed beside one score", () => {
       deltaVsReference: 9.75,
       indicative: false,
       suppressed: false,
-      noClearGap: true,
       canBeFirst: true,
     });
   });
@@ -139,7 +136,6 @@ describe("what is printed beside one score", () => {
       deltaVsReference: 7,
       indicative: false,
       suppressed: true,
-      noClearGap: false,
       canBeFirst: false,
     });
   });
@@ -161,7 +157,7 @@ describe("what is printed beside one score", () => {
 
   it("a solo cupper's own score carries nothing but itself, and can be first of their ranking", () => {
     const mine: RankValue = { score: 84.25, sd: null, basis: "mine", n: null, total: null };
-    expect(scoreContext({ value: mine, mine: 84.25, noClearGap: true })).toEqual({
+    expect(scoreContext({ value: mine, mine: 84.25 })).toEqual({
       score: 84.25,
       basis: "mine",
       spread: null,
@@ -171,21 +167,18 @@ describe("what is printed beside one score", () => {
       deltaVsReference: null,
       indicative: false,
       suppressed: false,
-      noClearGap: true,
       canBeFirst: true,
     });
   });
 
-  it("a reference is outside the ranking: never first, never tied, no delta against itself", () => {
+  it("a reference is outside the ranking: never first, no delta against itself", () => {
     const pinned = scoreContext({
       value: community(79, 7, null),
       mine: 79,
       isReference: true,
-      noClearGap: true,
       deltaVsReference: 0,
     });
     expect(pinned.canBeFirst).toBe(false);
-    expect(pinned.noClearGap).toBe(false);
     expect(pinned.deltaVsReference).toBeNull();
     expect(pinned.spread).toBeNull();
     expect(pinned.included).toEqual({ n: 7, total: 8 });
@@ -198,7 +191,7 @@ describe("what is printed beside one score", () => {
 
   it("no score (a descriptive session, an unsent evaluation): nothing", () => {
     const none: RankValue = { score: null, sd: null, basis: null, n: null, total: null };
-    expect(scoreContext({ value: none, mine: null, noClearGap: true, deltaVsReference: 3 })).toEqual({
+    expect(scoreContext({ value: none, mine: null, deltaVsReference: 3 })).toEqual({
       score: null,
       basis: null,
       spread: null,
@@ -208,7 +201,6 @@ describe("what is printed beside one score", () => {
       deltaVsReference: 3,
       indicative: false,
       suppressed: false,
-      noClearGap: false,
       canBeFirst: false,
     });
   });
@@ -224,7 +216,6 @@ describe("what is printed beside one score", () => {
         "included",
         "indicative",
         "mine",
-        "noClearGap",
         "score",
         "spread",
         "suppressed",

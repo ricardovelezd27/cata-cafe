@@ -5,13 +5,11 @@ import type { SampleDetailTranslations, SheetCompareTranslations } from "@/compo
 import { buildSheetStrings } from "@/components/results/sheetStrings";
 import { buildPanelStrings } from "@/components/results/panelStrings";
 import type { PanelWords } from "./PanelFixtureView";
-import { buildLearningsStrings } from "@/components/results/learningsStrings";
 import { buildOverviewStrings, type OverviewStrings } from "@/components/results/overviewStrings";
 import { buildResultsPartsStrings } from "@/components/results/partsStrings";
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
 import { OVERVIEW_SCENARIOS } from "@/lib/dev/overviewFixtures";
 import { SHEET_BLOCK_IDS } from "@/lib/reports/coffeeSheet";
-import { referenceCopySuffix, referenceExplanation } from "@/lib/referenceRules";
 import { GALLERY_SECTIONS, ResultsPartsGallery, type GallerySection } from "./ResultsPartsGallery";
 
 // Dev-only review board for the results parts (package R1b): every part drawn
@@ -67,18 +65,13 @@ export default async function ResultsPartsDevPage({
       all: tDesc("filterSampleAll"),
     },
   };
-  // The words of each invented cupping, chosen as the results page chooses them
-  // (the reference's title and explanation depend on the format and the mode).
+  // The words of each invented cupping, built as the results page builds them.
   const overviewStrings: Record<string, OverviewStrings> = Object.fromEntries(
     OVERVIEW_SCENARIOS.map((s) => {
-      const suffix = referenceCopySuffix(referenceExplanation({ mode: s.referenceMode, moduleKey: s.ctx.format }));
       return [
         s.id,
         {
           ...buildOverviewStrings(t, {
-            referenceTitle: t(`dashboard.anchorTitle${suffix}`),
-            referenceHint: t(`dashboard.anchorHint${suffix}`),
-            notScored: t("dashboard.notScored"),
             rankHelp: t("dashboard.rankHelp"),
             communityPending: t("communityPending"),
             defectTypes: {
@@ -116,7 +109,6 @@ export default async function ResultsPartsDevPage({
           AFFECTIVE_ATTRIBUTES.map((a) => [a.id, tAttr(a.id as Parameters<typeof tAttr>[0])]),
         ),
       })}
-      learningsStrings={buildLearningsStrings(t)}
       panelWords={panelWords}
       // the sheet's words, read whole from the messages (the board has no session to shape them)
       sheetWords={{

@@ -55,7 +55,7 @@ This project uses **Tailwind CSS v4** (PostCSS-based). There is no `tailwind.con
 | `creating-sessions-and-coffees.md` | you touch the session wizard, blind letters, the reveal freeze, coffee short codes, sample or coffee metadata, or origin-data edits |
 | `reference-sample.md` | you touch the reference sample: order, pin, multi-reference, mode, the stash, the session lock order |
 | `session-lifecycle.md` | you touch closing, idle close, late evaluations, notes after close, express, start, `closesAt`, delete, join rules, the group notice, cron routes or realtime |
-| `results-page.md` | you touch the results page: overview, coffee cards, the sheet, learnings, the Panel, tabs and the address, personal comparisons, exclusion reasons |
+| `results-page.md` | you touch the results page: overview, coffee cards, the sheet, the reflection, the Panel, tabs and the address, personal comparisons, exclusion reasons |
 | `reports-pdf-csv.md` | you touch a PDF, a report model, the CVA sheet or the results CSV |
 | `offline-and-platform.md` | you touch offline drafts, the replay, the service worker, the save status, the reload notice or `lib/platform/` |
 | `warmup.md` | you touch Movimiento Sensorial (player, timeline, sound, voice, synced run, reflections) |

@@ -400,11 +400,11 @@ describe("what reaches a participant", () => {
     expect(panelPending({ lateRows: null, notesByCupper: null })).toBeNull();
     expect(buildPanelMatrix({ participants: [], format: "combined", cupsPerSample: 2 }).cuppers).toEqual([]);
     expect(client).toMatch(/const effectiveTab: Tab = tab === "panel" && !canViewIndividual \? "resumen" : tab;/);
-    expect(client).toMatch(/\.\.\.\(canViewIndividual \? \[\{ id: "panel", label: overview\.cards\.tabPanel \}\] : \[\]\),/);
+    expect(client).toMatch(/\.\.\.\(canViewIndividual\s*\? \[\s*\{\s*id: "panel",\s*label: overview\.cards\.tabPanel,/);
     // the Panel is drawn in one place, under that same condition
     expect(client.match(/<PanelView/g)).toHaveLength(1);
     expect(client).toMatch(/canViewIndividual && participants \? \(\s*<PanelView/);
-    // the tile that announces what waits is built from the same condition
+    // the count on the tab (what waits) is built from the same condition
     expect(client).toMatch(/const panelWaiting = canViewIndividual\s*\? panelPending\(\{ lateRows: isAdminViewer \? null : lateRows,/);
     // a late evaluation can never become unreachable: without a Panel it stays on the page
     expect(client).toMatch(/lateRows && lateRows\.length > 0 && lateTranslations && !isAdminViewer && !canViewIndividual && \(\s*<LateEvaluationsPanel/);

@@ -128,22 +128,6 @@
   stroke-linejoin: round;
 }
 
-/* The single tie bar: one bar down the left edge that joins the rows with no
-   clear difference between them. It is drawn in three pieces (the first row of
-   a run, the rows inside it, the last one) so that it needs no measuring. */
-.tieStart::before,
-.tieMid::before,
-.tieEnd::before {
-  content: "";
-  position: absolute;
-  left: 1px;
-  width: 3px;
-  background: var(--color-on-surface);
-}
-.tieStart::before { top: 16px; bottom: -1px; border-radius: 2px 2px 0 0; }
-.tieMid::before { top: 0; bottom: -1px; }
-.tieEnd::before { top: 0; height: 28px; border-radius: 0 0 2px 2px; }
-
 .legend {
   display: flex;
   flex-wrap: wrap;
@@ -162,7 +146,6 @@
   flex: none;
   overflow: visible;
 }
-.tieSwatch { stroke: var(--color-on-surface); stroke-width: 3; stroke-linecap: round; }
 .note {
   margin: 6px 0 0;
   color: var(--color-on-surface-variant);

@@ -44,7 +44,7 @@
   margin-top: 2px;
 }
 /* A neutral word in an outline. Not a quality: "indicativo" says how many
-   cuppers are behind the number, "sin diferencia clara" names a neighbour. */
+   cuppers are behind the number. */
 .flag {
   display: inline-flex;
   align-items: center;

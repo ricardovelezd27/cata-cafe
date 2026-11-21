@@ -1,12 +1,5 @@
 import { fillPattern } from "@/lib/fillPattern";
-import {
-  SCORE_SCALE,
-  rankStripRow,
-  scoreAxis,
-  tieBars,
-  tiesWithNext,
-  type TieEntry,
-} from "@/lib/resultsScales";
+import { SCORE_SCALE, rankStripRow, scoreAxis } from "@/lib/resultsScales";
 import type { ScoreContext } from "@/lib/scoreContext";
 import {
   ScoreWithContext,
@@ -22,12 +15,8 @@ export type RankStripStrings = {
   legendSpread: string;
   /** "referencia: {label}, {score}" */
   legendReference: string;
-  /** "une muestras sin diferencia clara" */
-  legendTie: string;
   /** "Escala fija de {min} a {max}. {neutral} es el punto neutro." */
   scaleNote: string;
-  /** Read out on a tied row: "Sin diferencia clara con {label}." */
-  tieWithNext: string;
   /** Read out on a row whose mark sits at an edge: "Fuera de la escala de {min} a {max}." */
   offScale: string;
   /** Printed in place of a score that does not exist: "–". */
@@ -44,8 +33,6 @@ export type RankStripItem = {
   name?: string | null;
   /** Everything said beside the score: `scoreContext` of lib/scoreContext.ts. */
   context: ScoreContext;
-  /** What the tie rule reads (`RankedEntry` satisfies it): score, SD, included n. */
-  tie: TieEntry;
 };
 
 const MID = 13;
@@ -54,12 +41,12 @@ const CAP = 5;
 /**
  * The ranking of a cupping: one row per coffee on the fixed scale of
  * `SCORE_SCALE`, in the order given. A filled dot is the group, a ring is the
- * reader, a whisker is the spread, a dashed line is the reference, and ONE bar
- * down the left edge joins the neighbours with no clear difference between them.
- * The number is printed at the end of every row, in ink.
+ * reader, a whisker is the spread, a dashed line is the reference. The number
+ * is printed at the end of every row, in ink. The ranking orders the scores; it
+ * does not say that neighbours are close (coffees are compared in "Comparar").
  *
- * It draws; it does not decide. Positions come from `rankStripRow`, the bars
- * from `tieBars`, the words beside each score from `ScoreWithContext`. A
+ * It draws; it does not decide. Positions come from `rankStripRow`, the words
+ * beside each score from `ScoreWithContext`. A
  * reference is a line, not a row. In a solo session the same rows carry the
  * reader's ring only. The rows are a real ordered list.
  */
@@ -81,14 +68,6 @@ export function RankStrip({
   onOpen?: (id: string) => void;
 }) {
   const axis = scoreAxis();
-  const entries = items.map((item) => item.tie);
-  const tied = tiesWithNext(entries);
-  const bars = tieBars(entries);
-  const tieClass = (i: number): string => {
-    const bar = bars.find((b) => i >= b.from && i <= b.to);
-    if (!bar) return "";
-    return i === bar.from ? styles.tieStart : i === bar.to ? styles.tieEnd : styles.tieMid;
-  };
   const scale = { min: SCORE_SCALE.min, max: SCORE_SCALE.max, neutral: SCORE_SCALE.neutral };
 
   const rows = items.map((item) => {
@@ -119,11 +98,10 @@ export function RankStrip({
         </div>
       </div>
       <ol className={styles.rows} aria-label={ariaLabel}>
-        {rows.map(({ item, row }, i) => {
+        {rows.map(({ item, row }) => {
           const off = row.offScale.group || row.offScale.mine;
-          const next = items[i + 1];
           return (
-            <li key={item.id} className={`${styles.row} ${tieClass(i)}`}>
+            <li key={item.id} className={styles.row}>
               <span className={styles.place}>{item.place ?? ""}</span>
               <span className={styles.name}>
                 <span className={styles.label}>{item.label}</span>
@@ -177,9 +155,6 @@ export function RankStrip({
               </div>
               <div className={styles.ctx}>
                 <ScoreWithContext context={item.context} strings={scoreStrings} showScore={false} detail="brief" />
-                {tied[i] && next ? (
-                  <span className="sr-only">{fillPattern(strings.tieWithNext, { label: next.label })}</span>
-                ) : null}
                 {off ? <span className="sr-only">{fillPattern(strings.offScale, scale)}</span> : null}
               </div>
             </li>
@@ -219,14 +194,6 @@ export function RankStrip({
               <line className={styles.reference} x1="11" x2="11" y1="0" y2="16" />
             </svg>
             {fillPattern(strings.legendReference, { label: reference.label, score: formatScore(reference.score) })}
-          </span>
-        ) : null}
-        {bars.length > 0 ? (
-          <span className={styles.legendItem}>
-            <svg className={styles.swatch} viewBox="0 0 22 16" aria-hidden="true" focusable="false">
-              <line className={styles.tieSwatch} x1="11" x2="11" y1="2" y2="14" />
-            </svg>
-            {strings.legendTie}
           </span>
         ) : null}
       </p>

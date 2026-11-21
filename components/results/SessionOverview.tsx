@@ -1,24 +1,19 @@
 "use client";
 
-import { useId, useState, type ReactNode } from "react";
-import { Button } from "@/components/ui/Button";
-import { ScoreWithContext, formatScore, formatSigned } from "@/components/ui/ScoreWithContext";
-import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { useId, type ReactNode } from "react";
+import { Notice, PaperSectionHeading } from "@/components/ui";
+import { formatScore, formatSigned } from "@/components/ui/ScoreWithContext";
 import { fillPattern } from "@/lib/fillPattern";
-import { countedFamilies, type WheelFamilyId } from "@/lib/flavorWheel";
+import type { WheelFamilyId } from "@/lib/flavorWheel";
 import { compareOptions, type CardSample } from "@/lib/reports/coffeeCards";
 import { overviewView, type OverviewData } from "@/lib/reports/overview";
 import type { RankContext } from "@/lib/reports/ranking";
 import { countBar } from "@/lib/resultsScales";
-import { scoreContext } from "@/lib/scoreContext";
 import type { CardsStrings } from "./cardsStrings";
-import { CountedList } from "./CountedList";
-import { FlavorWheel, WheelCaption } from "./FlavorWheel";
 import { OverviewCompare } from "./OverviewCompare";
 import type { OverviewStrings } from "./overviewStrings";
 import type { ResultsPartsStrings } from "./partsStrings";
 import { RankStrip } from "./RankStrip";
-import { captionParts, wheelCaptionText } from "./wheelCaption";
 import styles from "./SessionOverview.module.css";
 
 /** What the overview reads of a sample. The results route's `SampleResult` satisfies it. */
@@ -41,13 +36,18 @@ function Tile({ title, area, children }: { title: string; area: string; children
 }
 
 /**
- * The overview of a cupping: general first. A row of tiles, each with one fact
- * (the coffee the panel put first, the ranking on one scale, the flavour of
- * each coffee, the reader against the panel, the reference, who cupped, the
- * defective cups). It draws; it does not decide: WHAT each tile shows for this
- * viewer and this state is `overviewView` (lib/reports/overview.ts), from data
- * the server already gated. A score is a number in ink; a family's colour
- * paints the wheels only; nothing here moves.
+ * The "Por café" view of a cupping, in the owner's order (OR-D, 2026-11-21):
+ * the two boxes (the coffee that came first, and every score on one fixed
+ * scale), then the coffees one by one (`children`: the cards), then "Comparar"
+ * (the one place where coffees are compared), then the small facts that repeat
+ * nothing (the reader against the panel, who cupped, the defective cups).
+ *
+ * Nothing is said twice in the view: a coffee's wheel is on its card only, its
+ * score in the ranking only (the first coffee's also heads its own box, the
+ * owner's choice). It draws; it does not decide: WHAT each part
+ * shows for this viewer and this state is `overviewView`
+ * (lib/reports/overview.ts), from data the server already gated. A score is a
+ * number in ink; nothing here moves.
  */
 export function SessionOverview<S extends OverviewSampleProps>({
   samples,
@@ -56,14 +56,14 @@ export function SessionOverview<S extends OverviewSampleProps>({
   data,
   myAlignment,
   preliminary,
-  referencePinned,
+  own = true,
   compareSelector,
   compare,
   familyLabels,
   parts,
   t,
-  pending,
   onOpenSample,
+  children,
 }: {
   samples: S[];
   ctx: RankContext;
@@ -74,33 +74,30 @@ export function SessionOverview<S extends OverviewSampleProps>({
   myAlignment: { matches: number; opportunities: number } | null;
   /** The organizer's view of an OPEN group session: the numbers are preliminary. */
   preliminary: boolean;
-  /** The reference is fixed at 79.00 for everyone (`referenceExplanation` is
-   *  "pinned"): its number is a rule, not an average, so no spread is printed. */
-  referencePinned: boolean;
-  /** "Comparar con", when the session has several references. */
+  /** False in the admin's read-only lens: the "you" of the page is the organizer,
+   *  not the reader, so nothing is drawn as "tú" (no ring in the ranking, no
+   *  "Tú y el panel"). */
+  own?: boolean;
+  /** "Comparar con", when the session has several references: under the ranking,
+   *  where the reference's line is drawn. */
   compareSelector?: ReactNode;
-  /** "Cada café | Comparar" of the flavour tile. `closed` is the session's own
-   *  state: nothing is compared before the close. `ground` is what lies under
-   *  the territories (rings by default; one prop, the owner's to confirm). */
+  /** "Comparar". `closed` is the session's own state: nothing is compared before
+   *  the close. */
   compare?: {
     closed: boolean;
-    ground?: "rings" | "families";
-    t: Pick<
-      CardsStrings,
-      "compareLabel" | "compareEach" | "compare" | "comparePick" | "compareHint" | "compareNeedTwo"
-    >;
+    t: Pick<CardsStrings, "compare" | "comparePick" | "compareHint" | "compareNeedTwo">;
   };
   familyLabels: Record<WheelFamilyId, string>;
   parts: ResultsPartsStrings;
   t: OverviewStrings;
-  /** R5, the organizer only: what waits for them in the Panel, and the way to it. */
-  pending?: { title: string; text: string; action: string; onOpen: () => void } | null;
   onOpenSample: (sampleId: string) => void;
+  /** The coffees one by one (the cards), between the two boxes and "Comparar". */
+  children?: ReactNode;
 }) {
   const view = overviewView({ samples, referenceId, ctx, data });
+  const compareId = useId();
   const nameOf = (s: S) => (s.revealed && s.coffee ? s.coffee.name : null);
-  const [wheelMode, setWheelMode] = useState<"each" | "compare">("each");
-  // the coffees "Comparar" may draw, in the order of the ranking; null = no switch
+  // the coffees "Comparar" may draw, in the order of the ranking; null = no section
   const toCompare = compare
     ? compareOptions({
         closed: compare.closed,
@@ -109,134 +106,65 @@ export function SessionOverview<S extends OverviewSampleProps>({
         data,
       })
     : null;
-  const comparing = toCompare !== null && wheelMode === "compare";
   const openButton = (s: S, className: string) => (
     <button type="button" className={className} onClick={() => onOpenSample(s.id)}>
       <span className={styles.sampleLabel}>{s.label}</span>
       {nameOf(s) ? <span className={styles.sampleName}> {nameOf(s)}</span> : null}
     </button>
   );
-  const wheelOf = (s: S) => {
-    if (view.wheels.status !== "ok") return null;
-    const item = view.wheels.items.find((i) => i.sample.id === s.id);
-    return item && item.status === "ok" && item.headline !== null ? item : null;
-  };
   const groupOpenPending = ctx.isGroup && !ctx.canViewGroup;
   const hasScores = view.entries.some((e) => e.context.score !== null);
   // "First" is a place in a ranking: not in a descriptive session (no scores),
   // and not for a participant's own scores while the group's results are hidden.
-  // With no score at all the ranking tile already says so: no second tile for it.
-  const showFirst =
-    ctx.format !== "descriptive" && view.ranked && !(view.first.status === "none" && view.first.reason === "no_scores");
-  const smallTiles = view.references.length + (view.who ? 1 : 0) + (view.defects.length > 0 ? 1 : 0);
+  // With nothing to name (no score, or fewer than three cuppers) there is no box:
+  // the ranking says why, in one sentence.
+  const showFirst = ctx.format !== "descriptive" && view.ranked && view.first.status === "ok";
+  const you = own ? view.you : null;
+  const defectCups = view.defects.reduce((sum, d) => sum + d.summary.cups, 0);
+  const smallTiles = (you ? 1 : 0) + (view.who ? 1 : 0) + (view.defects.length > 0 ? 1 : 0);
+  const showBoxes = ctx.format !== "descriptive";
 
   return (
     <div className={styles.overview}>
-      {preliminary ? (
-        <p role="status" className={styles.notice}>
-          {t.preliminary}
-        </p>
-      ) : null}
-      {groupOpenPending ? (
-        <p role="status" className={styles.notice}>
-          {t.communityPending}
-        </p>
-      ) : null}
+      {preliminary || groupOpenPending || showBoxes ? (
+        <div className={styles.lead}>
+          {preliminary ? <Notice tone="info">{t.preliminary}</Notice> : null}
+          {groupOpenPending ? <Notice tone="info">{t.communityPending}</Notice> : null}
 
-      <div className={styles.grid} data-small-tiles={smallTiles}>
-        {/* 0. The organizer only: what waits for a decision, and the way to it. */}
-        {pending ? (
-          <Tile title={pending.title} area={styles.aWide}>
-            <div className={styles.pending} data-overview-pending="">
-              <p className={styles.line}>{pending.text}</p>
-              <Button size="sm" variant="secondary" onClick={pending.onOpen}>
-                {pending.action}
-              </Button>
-            </div>
-          </Tile>
-        ) : null}
-        {/* 1. The coffee the panel put first: the finding, in the first fold. */}
-        {showFirst ? (
-          view.first.status === "ok" ? (
-            <Tile title={view.scope === "group" ? t.firstTitle : t.firstTitleOwn} area={styles.aFirst}>
-              {(() => {
-                const { entry, tieWith } = view.first;
-                const [whole, decimals] = formatScore(entry.context.score as number).split(".");
-                const wheel = wheelOf(entry.sample);
-                return (
-                  <div className={styles.first}>
-                    <p className={styles.firstName}>
-                      <span className={styles.sampleLabel}>{entry.sample.label}</span>
-                      {nameOf(entry.sample) ? <span className={styles.sampleName}> {nameOf(entry.sample)}</span> : null}
-                    </p>
-                    <div className={styles.firstFact}>
+          {showBoxes ? (
+            <div className={styles.grid}>
+          {/* 1. The coffee that came first: its name and its score. Its wheel is on its card. */}
+          {showFirst && view.first.status === "ok" ? (
+              <Tile title={view.scope === "group" ? t.firstTitle : t.firstTitleOwn} area={styles.aFirst}>
+                {(() => {
+                  const { entry } = view.first;
+                  const [whole, decimals] = formatScore(entry.context.score as number).split(".");
+                  return (
+                    <div className={styles.first}>
+                      <p className={styles.firstName}>
+                        <span className={styles.sampleLabel}>{entry.sample.label}</span>
+                        {nameOf(entry.sample) ? <span className={styles.sampleName}> {nameOf(entry.sample)}</span> : null}
+                      </p>
                       <p className={styles.numeral} data-overview-score="">
                         {whole}
                         <span className={styles.decimal}>.{decimals}</span>
                       </p>
-                      {wheel ? (
-                        <FlavorWheel
-                          counts={wheel.wheel.rollup}
-                          n={wheel.wheel.n}
-                          familyLabels={familyLabels}
-                          strings={parts.wheel}
-                          size="medium"
-                          decorative
-                        />
-                      ) : null}
+                      {/* the whole box opens the coffee */}
+                      <button
+                        type="button"
+                        className={styles.cover}
+                        aria-label={
+                          nameOf(entry.sample) ? `${entry.sample.label} ${nameOf(entry.sample)}` : entry.sample.label
+                        }
+                        onClick={() => onOpenSample(entry.sample.id)}
+                      />
                     </div>
-                    <ScoreWithContext
-                      context={tieWith ? { ...entry.context, noClearGap: false } : entry.context}
-                      strings={parts.score}
-                      showScore={false}
-                    />
-                    {tieWith ? (
-                      <p className={styles.context}>
-                        {fillPattern(t.tieWith, { label: tieWith.sample.label, gap: tieWith.gap.toFixed(2) })}
-                      </p>
-                    ) : null}
-                    {wheel ? (
-                      <>
-                        {/* a phone gets the line; from 768 px, the three families most people found */}
-                        <p className={`${styles.context} ${styles.firstLine}`}>
-                          {parts.caption.mostFoundLabel}:{" "}
-                          <span className={styles.ink}>
-                            <WheelCaption text={wheelCaptionText(wheel.headline, familyLabels, parts.caption)} />
-                          </span>
-                        </p>
-                        <div className={styles.firstList}>
-                          <p className={styles.context}>{parts.caption.mostFoundLabel}</p>
-                          <CountedList
-                            items={countedFamilies(wheel.wheel.rollup, wheel.wheel.n, 3)}
-                            labels={familyLabels}
-                            strings={parts.counted}
-                            ariaLabel={parts.caption.mostFoundLabel}
-                          />
-                        </div>
-                      </>
-                    ) : null}
-                    {/* the whole tile opens the coffee */}
-                    <button
-                      type="button"
-                      className={styles.cover}
-                      aria-label={
-                        nameOf(entry.sample) ? `${entry.sample.label} ${nameOf(entry.sample)}` : entry.sample.label
-                      }
-                      onClick={() => onOpenSample(entry.sample.id)}
-                    />
-                  </div>
-                );
-              })()}
-            </Tile>
-          ) : (
-            <Tile title={view.scope === "group" ? t.firstTitle : t.firstTitleOwn} area={styles.aFirst}>
-              <p className={styles.context}>{view.first.reason === "too_few" ? t.firstTooFew : t.firstNoScores}</p>
-            </Tile>
-          )
-        ) : null}
+                  );
+                })()}
+              </Tile>
+          ) : null}
 
-        {/* 2. Every coffee on one fixed scale. */}
-        {ctx.format !== "descriptive" ? (
+          {/* 2. Every coffee on one fixed scale. */}
           <Tile
             title={!view.ranked ? t.rankingTitleOpen : view.scope === "group" ? t.rankingTitle : t.rankingTitleOwn}
             area={showFirst ? styles.aRank : styles.aWide}
@@ -252,8 +180,8 @@ export function SessionOverview<S extends OverviewSampleProps>({
                   place: e.place === null ? null : String(e.place),
                   label: e.sample.label,
                   name: nameOf(e.sample),
-                  context: e.context,
-                  tie: e.tie,
+                  // not the reader's own in the admin's lens: no "tú" ring
+                  context: own ? e.context : { ...e.context, mine: null, difference: null },
                 }))}
                 reference={
                   view.referenceLine
@@ -268,217 +196,127 @@ export function SessionOverview<S extends OverviewSampleProps>({
             ) : (
               <p className={styles.context}>{t.rankingEmpty}</p>
             )}
-            {/* the two words of the ranking, explained once, only where one is used */}
-            {view.entries.some((e) => e.context.indicative || e.context.suppressed || e.context.noClearGap) ? (
+            {/* "indicativo", explained once, only where it is used */}
+            {view.entries.some((e) => e.context.indicative || e.context.suppressed) ? (
               <p className={styles.context}>{t.rankHelp}</p>
             ) : null}
-          </Tile>
-        ) : null}
-
-        {/* 3. What was tasted, coffee by coffee. Never in an affective session. */}
-        {view.wheels.status !== "no_wheel" && !(view.wheels.status === "empty" && view.scope === "group") ? (
-          <Tile
-            title={view.scope === "group" ? t.wheelsTitle : t.wheelsTitleOwn}
-            area={view.you ? styles.aWheels : styles.aWide}
-          >
-            {view.wheels.status === "too_few" ? (
-              <p className={styles.context}>{t.wheelsTooFew}</p>
-            ) : view.wheels.status === "empty" ? (
-              <p className={styles.context}>{t.wheelsEmpty}</p>
-            ) : (
-              <>
-                {toCompare && compare ? (
-                  <SegmentedControl
-                    className={styles.wheelSwitch}
-                    items={[
-                      { id: "each", label: compare.t.compareEach },
-                      { id: "compare", label: compare.t.compare },
-                    ]}
-                    value={comparing ? "compare" : "each"}
-                    onChange={(id) => setWheelMode(id === "compare" ? "compare" : "each")}
-                    ariaLabel={compare.t.compareLabel}
-                  />
-                ) : null}
-                {comparing && toCompare && compare ? (
-                  <OverviewCompare
-                    options={toCompare}
-                    names={Object.fromEntries(
-                      samples.map((s) => [s.id, nameOf(s) ? `${s.label} ${nameOf(s)}` : s.label]),
-                    )}
-                    short={Object.fromEntries(samples.map((s) => [s.id, nameOf(s) ?? s.label]))}
-                    familyLabels={familyLabels}
-                    ground={compare.ground}
-                    strings={parts.compare}
-                    t={compare.t}
-                  />
-                ) : (
-                  <>
-                    <p className={styles.context}>{view.scope === "group" ? t.wheelsNote : t.wheelsNoteOwn}</p>
-                    <ul className={styles.wheels}>
-                      {view.wheels.items.map((item) => (
-                        <li key={item.sample.id}>
-                          <button
-                            type="button"
-                            className={styles.wheelButton}
-                            onClick={() => onOpenSample(item.sample.id)}
-                          >
-                            {item.status === "ok" ? (
-                              <FlavorWheel
-                                counts={item.wheel.rollup}
-                                n={item.wheel.n}
-                                familyLabels={familyLabels}
-                                strings={parts.wheel}
-                                size="mini"
-                                decorative
-                              />
-                            ) : (
-                              <span className={styles.wheelHole} aria-hidden="true" />
-                            )}
-                            <span className={styles.wheelLabel}>
-                              <span className={styles.sampleLabel}>{item.sample.label}</span>
-                              {nameOf(item.sample) ? (
-                                <span className={styles.wheelCoffee}>{nameOf(item.sample)}</span>
-                              ) : null}
-                            </span>
-                            <span className={styles.wheelLine}>
-                              {item.status === "ok" ? (
-                                view.scope === "own" ? (
-                                  // the reader's own marks: the families, with no "1 de 1"
-                                  captionParts(wheelCaptionText(item.headline, familyLabels, parts.caption)).names
-                                ) : (
-                                  <WheelCaption text={wheelCaptionText(item.headline, familyLabels, parts.caption)} />
-                                )
-                              ) : (
-                                t.wheelTooFew
-                              )}
-                            </span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                )}
-              </>
-            )}
-          </Tile>
-        ) : null}
-
-        {/* 4. The reader against the panel: differences in ink, never a grade. */}
-        {view.you ? (
-          <Tile title={t.youTitle} area={view.wheels.status !== "no_wheel" ? styles.aYou : styles.aWide}>
-            <p className={styles.fact}>{fillPattern(t.youAbove, { k: view.you.above, m: view.you.of })}</p>
-            <p className={styles.context}>{t.youAboveNote}</p>
-            <p className={styles.line}>{fillPattern(t.youMean, { d: formatSigned(view.you.meanDifference) })}</p>
-            {myAlignment && myAlignment.opportunities > 0 ? (
-              <div className={styles.alignment}>
-                <p className={styles.line}>
-                  {fillPattern(t.youAlignment, {
-                    k: myAlignment.matches,
-                    o: myAlignment.opportunities,
-                    p: Math.round((myAlignment.matches / myAlignment.opportunities) * 100),
-                  })}
-                </p>
-                {/* one neutral bar: a share, never a grade */}
-                <svg className={styles.bar} aria-hidden="true" focusable="false">
-                  <rect className={styles.barTrack} width="100%" height="100%" rx="4" />
-                  <rect
-                    className={styles.barFill}
-                    width={`${countBar(myAlignment.matches, myAlignment.opportunities).pct}%`}
-                    height="100%"
-                    rx="4"
-                  />
-                </svg>
-                <p className={styles.context}>{t.youAlignmentNote}</p>
-              </div>
+            {/* fewer than three included cuppers: no coffee is named first */}
+            {view.ranked && view.first.status === "none" && view.first.reason === "too_few" ? (
+              <p className={styles.context}>{t.firstTooFew}</p>
             ) : null}
+            {view.references.length > 1 ? compareSelector : null}
           </Tile>
-        ) : null}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
-        {/* 5. What everything is compared against. */}
-        {view.references.map((ref, i) => (
-          <Tile
-            key={ref.sample.id}
-            title={
-              view.references.length > 1 ? `${t.referenceTitle} ${ref.sample.referenceRank ?? i + 1}` : t.referenceTitle
-            }
-            area={styles.aSmall}
-          >
-            <p className={styles.firstName}>{openButton(ref.sample, styles.openInline)}</p>
-            {ref.value.score !== null ? (
-              referencePinned ? (
-                <p className={styles.fact}>{formatScore(ref.value.score)}</p>
-              ) : (
-                <ScoreWithContext
-                  context={scoreContext({ value: ref.value, mine: null, isReference: true })}
-                  strings={parts.score}
-                  size="md"
-                />
-              )
-            ) : ctx.format !== "descriptive" ? (
-              <p className={styles.context}>{t.notScored}</p>
-            ) : null}
-            <p className={styles.context}>{t.referenceHint}</p>
-            {view.references.length > 1 && ref.active ? <p className={styles.line}>{t.referenceCompared}</p> : null}
-            {view.references.length > 1 && i === view.references.length - 1 ? compareSelector : null}
-          </Tile>
-        ))}
+      {/* 3. The coffees, one by one. */}
+      {children}
 
-        {/* 6. How many cupped, and how many count. Numbers only. */}
-        {view.who ? (
-          <Tile title={t.whoTitle} area={styles.aSmall}>
-            {view.who.sent > 0 ? (
-              <>
-                <p className={styles.fact}>
-                  {fillPattern(t.whoIncluded, { n: view.who.included, total: view.who.sent })}
-                </p>
-                <p className={styles.context}>{t.whoIncludedNote}</p>
-              </>
-            ) : (
-              <p className={styles.context}>{t.whoNobody}</p>
-            )}
-            <p className={styles.line}>
-              {fillPattern(t.whoJoined, { n: view.who.joined })} · {fillPattern(t.whoSent, { n: view.who.sent })}
-              {view.who.excluded !== null && view.who.excluded > 0
-                ? ` · ${fillPattern(t.whoExcluded, { n: view.who.excluded })}`
-                : null}
-            </p>
-          </Tile>
-        ) : null}
+      {/* 4. Where coffees are compared: their territories on one wheel, the counts beside it. */}
+      {toCompare && compare ? (
+        <section className={styles.section} aria-labelledby={compareId}>
+          <div className={styles.sectionIntro}>
+            <PaperSectionHeading id={compareId} title={compare.t.compare} flush />
+            <p className={styles.context}>{compare.t.compareHint}</p>
+          </div>
+          <div className={styles.tile}>
+            <OverviewCompare
+              options={toCompare}
+              names={Object.fromEntries(samples.map((s) => [s.id, nameOf(s) ? `${s.label} ${nameOf(s)}` : s.label]))}
+              short={Object.fromEntries(samples.map((s) => [s.id, nameOf(s) ?? s.label]))}
+              familyLabels={familyLabels}
+              strings={parts.compare}
+              t={compare.t}
+            />
+          </div>
+        </section>
+      ) : null}
 
-        {/* 7. Only when a cup was marked defective. The one place the error red appears. */}
-        {view.defects.length > 0 ? (
-          <Tile title={t.defectsTitle} area={styles.aSmall}>
-            <ul className={styles.defects}>
-              {view.defects.map(({ sample, summary }) => (
-                <li key={sample.id} className={styles.defect}>
-                  <span className={styles.defectMark} aria-hidden="true" />
-                  <div className={styles.defectText}>
-                    <p className={styles.defectHead}>
-                      {openButton(sample, styles.openInline)}
-                      <span className={styles.defectCups}>
-                        {summary.cups === 1 ? t.defectCupsOne : fillPattern(t.defectCupsMany, { n: summary.cups })}
-                      </span>
-                    </p>
-                    <p className={styles.context}>
-                      {summary.types
-                        .map((type) =>
-                          fillPattern(t.defectType, {
-                            type: type.type === null ? t.defectUnspecified : (t.defectTypes[type.type] ?? type.type),
-                            n: type.cups,
-                          }),
-                        )
-                        .join(" · ")}
-                    </p>
-                    {view.scope === "group" ? (
-                      <p className={styles.context}>{fillPattern(t.defectBy, { k: summary.cuppers, n: summary.n })}</p>
-                    ) : null}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </Tile>
-        ) : null}
-      </div>
+      {/* 5. The small facts: each said once, here. */}
+      {smallTiles > 0 ? (
+        <div className={styles.grid} data-small-tiles={smallTiles}>
+          {/* The reader against the panel: differences in ink, never a grade. */}
+          {you ? (
+            <Tile title={t.youTitle} area={styles.aSmall}>
+              <p className={styles.fact}>{fillPattern(t.youAbove, { k: you.above, m: you.of })}</p>
+              <p className={styles.context}>{t.youAboveNote}</p>
+              <p className={styles.line}>{fillPattern(t.youMean, { d: formatSigned(you.meanDifference) })}</p>
+              {myAlignment && myAlignment.opportunities > 0 ? (
+                <div className={styles.alignment}>
+                  <p className={styles.line}>
+                    {fillPattern(t.youAlignment, {
+                      k: myAlignment.matches,
+                      o: myAlignment.opportunities,
+                      p: Math.round((myAlignment.matches / myAlignment.opportunities) * 100),
+                    })}
+                  </p>
+                  {/* one neutral bar: a share, never a grade */}
+                  <svg className={styles.bar} aria-hidden="true" focusable="false">
+                    <rect className={styles.barTrack} width="100%" height="100%" rx="4" />
+                    <rect
+                      className={styles.barFill}
+                      width={`${countBar(myAlignment.matches, myAlignment.opportunities).pct}%`}
+                      height="100%"
+                      rx="4"
+                    />
+                  </svg>
+                  <p className={styles.context}>{t.youAlignmentNote}</p>
+                </div>
+              ) : null}
+            </Tile>
+          ) : null}
+
+          {/* How many of those who joined sent. "n de N incluidos" is on every ranking row. */}
+          {view.who ? (
+            <Tile title={t.whoTitle} area={styles.aSmall}>
+              <p className={styles.fact}>{fillPattern(t.whoSentOf, { k: view.who.sent, n: view.who.joined })}</p>
+              <p className={styles.context}>{t.whoSentNote}</p>
+              {view.who.excluded !== null && view.who.excluded > 0 ? (
+                <p className={styles.line}>{fillPattern(t.whoExcluded, { n: view.who.excluded })}</p>
+              ) : null}
+            </Tile>
+          ) : null}
+
+          {/* Only when a cup was marked defective. The one place the error red appears. */}
+          {view.defects.length > 0 ? (
+            <Tile title={t.defectsTitle} area={styles.aSmall}>
+              <p className={styles.fact}>
+                {defectCups === 1 ? t.defectCupsOne : fillPattern(t.defectCupsMany, { n: defectCups })}
+              </p>
+              <ul className={styles.defects}>
+                {view.defects.map(({ sample, summary }) => (
+                  <li key={sample.id} className={styles.defect}>
+                    <span className={styles.defectMark} aria-hidden="true" />
+                    <div className={styles.defectText}>
+                      <p className={styles.defectHead}>
+                        {openButton(sample, styles.openInline)}
+                        <span className={styles.defectCups}>
+                          {summary.cups === 1 ? t.defectCupsOne : fillPattern(t.defectCupsMany, { n: summary.cups })}
+                        </span>
+                      </p>
+                      <p className={styles.context}>
+                        {summary.types
+                          .map((type) =>
+                            fillPattern(t.defectType, {
+                              type: type.type === null ? t.defectUnspecified : (t.defectTypes[type.type] ?? type.type),
+                              n: type.cups,
+                            }),
+                          )
+                          .join(" · ")}
+                      </p>
+                      {view.scope === "group" ? (
+                        <p className={styles.context}>{fillPattern(t.defectBy, { k: summary.cuppers, n: summary.n })}</p>
+                      ) : null}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </Tile>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

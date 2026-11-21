@@ -23,8 +23,6 @@ export const RESULTS_CARDS_KEYS = [
   "qualityTitle",
   "stepsLabel",
   "step",
-  "compareLabel",
-  "compareEach",
   "compare",
   "comparePick",
   "compareHint",

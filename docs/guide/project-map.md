@@ -52,7 +52,7 @@ cata-cafe/
 │   │   │       └── [id]/
 │   │   │           ├── cup/        # Main cupping interface (CupClient)
 │   │   │           ├── waiting/    # Pre-start waiting room (group/async sessions)
-│   │   │           ├── results/    # Resultados (overview tiles + a card per coffee, each opening its sheet) / Panel (organizer's matrix)
+│   │   │           ├── results/    # "Por café" (two boxes, a card per coffee, each opening its sheet, Comparar, small facts) / "Por catador" (organizer's matrix)
 │   │   │           ├── edit/, invite/  # owner edit form; invite link + QR
 │   │   │           └── print/      # HTML twin of the CVA form
 │   │   ├── join/[token]/page.tsx   # Invite join page (outside /app/ — no auth guard); join/coffee/[token] for coffee invites
@@ -107,7 +107,7 @@ cata-cafe/
 │   │   #   Pagination, FilterBar, ConfirmDialog — ALWAYS reuse these for list pages,
 │   │   #   status/score pills, page headers, and delete confirmations.
 │   ├── results/                    # SessionOverview + CoffeeCards (R2), the coffee's sheet (R3: SampleDetail in SampleDetailDialog),
-│   │   #   Learnings (R4b: "Aprendizajes" + the reflection, closed sessions),
+│   │   #   Reflection (the note after the close, one editor per coffee, closed sessions),
 │   │   #   CupperAlignment, ExtrinsicSummary, chartColors (Recharts palette, MD3-derived hex),
 │   │   #   PanelView (R5: the organizer's Panel) + PanelMatrix + OwnerParticipantSection (matrix + exclusion switches),
 │   │   #   ScoreBreakdownPanel ("¿Cómo se calculó?" — typed t prop, no private LABELS dict).
