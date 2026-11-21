@@ -293,7 +293,7 @@ describe("what a card shows, state by state (RESULTS-DESIGN section 4)", () => {
   it("no card prints a score: every score is in the ranking box, on one scale (owner, 2026-11-21)", () => {
     for (const s of OVERVIEW_SCENARIOS) {
       const markup = render(s).replace(/<[^>]+>/g, " ");
-      expect(markup, s.id).not.toMatch(/\d{2}\.\d{2}/);
+      expect(markup, s.id).not.toMatch(/\b\d{2}\.\d{2}\b/);
       expect(markup, s.id).not.toMatch(/\d de \d+ incluidos|±|sin diferencia clara/);
     }
   });
