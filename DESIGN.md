@@ -167,6 +167,8 @@ Anything else that tints a number or a rating by its value is a finding.
 
 **(rule)** A family colour marks a family with a shape: a dot, a bar, an arc of the wheel, a ring. It is never the colour of text and never the background of text. Used as text these tones measure from about 2 : 1 to 4.1 : 1, all under the 4.5 : 1 that body text needs, so a family's name is ink beside its coloured dot, and a selected flavour pill is a neutral pill with a coloured dot.
 
+**(departure, the owner, 2026-11-21)** One exception: on the cupping screen the descriptors a cupper has selected are pills FILLED with their family's shade (`FlavorPicker`, `CATAPills`), because he wants to see the families at a glance while cupping. Their text is ink or cream, whichever has the higher MEASURED contrast ratio against the fill (`getContrastTextColor`, `lib/constants.ts`; `tests/flavorPalette.test.ts` checks every family at its three levels). Six shades stay under 4.5 : 1 with either text (Frutal and Verde/Vegetal and Nueces/Cacao at level 1, Dulce and Ácido/Fermentado and Otro at level 2, between 4.1 and 4.4 : 1): that is his open question. Everywhere else the rule above holds.
+
 | Family | Hex |
 |---|---|
 | Floral | `#c2368f` |
@@ -727,6 +729,7 @@ A tablet is a small desktop, in the app as on the landing. **(rule)**
 | Dialogs (centered modal ↔ bottom sheet) | 640px (`ResponsiveDialog` internal) |
 
 - **(rule) `sm:` changes a padding or a type size, never an arrangement.** No third, in-between layout.
+- **(departure, the owner, 2026-11-21) On the cupping screen a tablet behaves like the phone.** The organizer's info area left of the form (the timer, the coffee being cupped, "Clave de muestras", the tasting info) exists from 1024 px only; under 1024 px there is no timer and no sample key, as on a phone.
 - **(rule) The phone's bottom bar has six tabs at most.** Movimiento sensorial is one of them: the main navigation is its one entry, on phones too (the owner, 2026-11-21). Insights lives inside Perfil for those who have it; the account and sign-out are reachable from the shell.
 - As built, the app shell switches at `lg:` (1024 px) and content arrangements switch at `lg:` by window width; moving both to this rule is package P6 of the audit's plan.
 
@@ -763,7 +766,7 @@ A tablet is a small desktop, in the app as on the landing. **(rule)**
 - Unselected: `outline-variant` border, transparent fill, pill shape
 - Selected, as built: solid `primary-container` fill, `on-primary` text (the action fill: see "A selection never looks like an action")
 - At-limit: unselected at `opacity: 0.45`
-- A flavour's family is shown as a coloured dot in the pill, never as the pill's fill or its text colour ("Flavor Family Colors")
+- A flavour's family is shown as a coloured dot in the pill, never as the pill's fill or its text colour ("Flavor Family Colors"), except the selected descriptors of the cupping screen, filled with their family's shade (the owner's departure of 2026-11-21, same section)
 
 ### `FlavorPicker`
 
@@ -907,7 +910,7 @@ A screen that writes the name by hand, or shows no mark where this list says one
 | Animate a count-up on an offer or a fact | Print the number |
 | Use `secondary` (terracotta) as a quality signal, or to single out a score | A score is ink; no colour signals quality ("No quality bands") |
 | Colour a difference green above and terracotta below | Ink with its sign |
-| Set a family colour as text or behind text | A coloured dot or bar beside ink text |
+| Set a family colour as text or behind text | A coloured dot or bar beside ink text (one departure: the cupping screen's selected descriptor pills, "Flavor Family Colors") |
 | Paint a terracotta banner to say something | `Notice` (info, warning, error) |
 | Fill a selected tab, chip or segment with the action green | A tone, a weight, an underline or a check |
 | Set text under 11 px, or data under 12 px | The six text roles ("Type Scale") |

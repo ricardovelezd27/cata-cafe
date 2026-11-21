@@ -52,8 +52,8 @@ import { SampleKey, type SampleKeyTranslations } from "@/components/cupping/Samp
 import type { SamplePrepTranslations } from "@/components/cupping/SamplePrepFields";
 import { prepFromForm, prepToForm, type SamplePrep } from "@/lib/samplePrep";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { TextAction } from "@/components/ui/TextAction";
-import Link from "next/link";
+import { TextAction, TextActionLink } from "@/components/ui/TextAction";
+import { Notice } from "@/components/ui/Notice";
 import { planFinish, soloCloseAsIsOffer } from "@/lib/closeRules";
 import { CoffeePicker, type UsableCoffee } from "@/components/coffees/CoffeePicker";
 import { canPickExistingCoffee } from "@/lib/cupCoffeePick";
@@ -2773,7 +2773,7 @@ export function CupClient({
   // "Clave de muestras" and the information about the tasting.
   const currentCoffee = current.coffee?.name?.trim() || null;
   const ownerInfoArea = isOwner ? (
-    <div className="hidden lg:flex lg:flex-col lg:gap-5">
+    <div className="hidden lg:flex lg:flex-col lg:gap-[16px]">
       <CuppingTimer sessionId={session.id} userId={userId} copy={timerCopy} />
       <div>
         <div className="label-caps">
@@ -2924,23 +2924,19 @@ export function CupClient({
         renderedUserId={userId}
       />
       {allReferencesStuck && translations.allReferencesNotice && (
-        <div role="status" className="mx-4 mt-2 rounded-card bg-surface-container px-4 py-2 font-sans text-body text-on-surface">
-          {translations.allReferencesNotice}
-        </div>
+        <Notice className="mx-4 mt-2">{translations.allReferencesNotice}</Notice>
       )}
       {closeAsIsApplies && translations.closeAsIs && (
-        <div
-          role="status"
-          className="mx-4 mt-2 flex flex-wrap items-center gap-2 rounded-card bg-surface-container px-4 py-2 font-sans text-body text-on-surface"
+        <Notice
+          className="mx-4 mt-2"
+          action={
+            <TextActionLink href={`/${locale}/app/sessions/${session.id}/results`}>
+              {translations.closeAsIs.go}
+            </TextActionLink>
+          }
         >
-          <span className="flex-1 min-w-[200px]">{translations.closeAsIs.line}</span>
-          <Link
-            href={`/${locale}/app/sessions/${session.id}/results`}
-            className="inline-flex min-h-[44px] items-center font-semibold text-primary-container hover:underline"
-          >
-            {translations.closeAsIs.go}
-          </Link>
-        </div>
+          {translations.closeAsIs.line}
+        </Notice>
       )}
       {translations.offline.bannerNewVersion && translations.offline.reloadNow && (
         <StaleBundleNotice
@@ -2950,12 +2946,9 @@ export function CupClient({
         />
       )}
       {terminalCount > 0 && translations.offline.terminalNotice && (
-        <div
-          role="status"
-          className="mx-4 mb-3 rounded-card bg-surface-container px-4 py-2 font-sans text-body text-on-surface lg:mx-6"
-        >
+        <Notice className="mx-4 mb-3 lg:mx-6">
           {translations.offline.terminalNotice.replace("{count}", String(terminalCount))}
-        </div>
+        </Notice>
       )}
       {isGroup && translations.closeAnnounce && !isOwner && (
         <CloseAnnounceBanner
@@ -3086,21 +3079,13 @@ export function CupClient({
         />
       )}
       {coffeeNotOwnedNotice && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="flex items-start gap-2 px-4 py-2 mb-3 rounded-card bg-surface-container font-sans text-body text-on-surface"
+        <Notice
+          className="mb-3"
+          onDismiss={() => setCoffeeNotOwnedNotice(false)}
+          dismissLabel={translations.cancel}
         >
-          <span className="flex-1">{translations.editSampleNotOwner}</span>
-          <button
-            type="button"
-            onClick={() => setCoffeeNotOwnedNotice(false)}
-            aria-label={translations.cancel}
-            className="shrink-0 font-semibold hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2"
-          >
-            <span aria-hidden>×</span>
-          </button>
-        </div>
+          {translations.editSampleNotOwner}
+        </Notice>
       )}
       {submitBlocked && (
         <div
@@ -3367,16 +3352,13 @@ export function CupClient({
               : translations.guard.continueAnyway,
         }}
       />
-      <div className={isOwner ? "lg:grid lg:grid-cols-[minmax(15rem,18rem)_minmax(0,1fr)] lg:items-start lg:gap-8" : undefined}>
+      <div className={isOwner ? "lg:grid lg:grid-cols-[minmax(15rem,18rem)_minmax(0,1fr)] lg:items-start lg:gap-[24px]" : undefined}>
       {ownerInfoArea}
       <div key={`${activeTab}-${currentStep}-${current.id}`}>
         {isEvaluationReadOnly({ revealed: isCurrentRevealed, activeTab }) && (
-          <div
-            role="note"
-            className="mb-4 rounded-card bg-surface-container px-4 py-3 font-sans text-body text-on-surface"
-          >
+          <Notice live={false} className="mb-4">
             {translations.revealedNote ?? REVEALED_NOTE_FALLBACK[locale === "en" ? "en" : "es"]}
-          </div>
+          </Notice>
         )}
         <fieldset
           disabled={isEvaluationReadOnly({ revealed: isCurrentRevealed, activeTab })}

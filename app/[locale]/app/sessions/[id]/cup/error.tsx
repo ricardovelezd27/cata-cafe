@@ -5,6 +5,8 @@ import { useParams } from "next/navigation";
 import { CupClient } from "./CupClient";
 import { OfflineFirstLoadError } from "@/components/offline/OfflineFirstLoadError";
 import { ErrorPanel } from "@/components/errors/ErrorPanel";
+import { Notice } from "@/components/ui/Notice";
+import { TextAction } from "@/components/ui/TextAction";
 import { loadCachedProps, loadSession, getLastUser } from "@/lib/offline/store";
 import { isStaleBundle, onStaleBundle } from "@/lib/staleBundle";
 import { isIdentityChanged, onIdentityChanged } from "@/lib/identityChange";
@@ -182,22 +184,12 @@ export default function CupError({
     return (
       <main className="flex flex-1 flex-col items-center justify-center gap-4 px-6 py-16">
         {(identityChanged || stale) && (
-          <div
-            role="status"
-            aria-live="polite"
-            className="flex max-w-md flex-wrap items-center gap-x-3 gap-y-1 rounded-card bg-surface-container px-4 py-2 text-body text-on-surface"
+          <Notice
+            className="w-full max-w-md"
+            action={<TextAction onClick={() => window.location.reload()}>{copy.reload}</TextAction>}
           >
-            <span className="flex-1 min-w-[12rem]">
-              {identityChanged ? copy.identityChanged : copy.newVersion}
-            </span>
-            <button
-              type="button"
-              onClick={() => window.location.reload()}
-              className="min-h-[44px] shrink-0 rounded-sm px-2 font-semibold underline underline-offset-2"
-            >
-              {copy.reload}
-            </button>
-          </div>
+            {identityChanged ? copy.identityChanged : copy.newVersion}
+          </Notice>
         )}
         <ErrorPanel
           title={copy.failedTitle}

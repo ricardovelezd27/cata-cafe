@@ -76,6 +76,7 @@ import {
 import { CUP_COPY_FALLBACK, cupSummary, type CupCopy } from "@/lib/cupCopy";
 import { applyDefectChoice, applyNonUniformToggle, formCupState } from "@/lib/cupDefects";
 import { SCALE_COPY_FALLBACK, type ScaleCopy } from "@/components/ui/AffectiveBubbles";
+import { Notice } from "@/components/ui/Notice";
 
 export function CombinedForm({
   sampleData,
@@ -140,12 +141,9 @@ export function CombinedForm({
 
   const lockedBanner =
     lockedAffective && lockedNote ? (
-      <div
-        role="note"
-        className="mb-4 rounded-card bg-surface-container px-4 py-3 font-sans text-body text-on-surface"
-      >
+      <Notice live={false} className="mb-4">
         {lockedNote}
-      </div>
+      </Notice>
     ) : null;
 
   const cupState = formCupState(d, cupsPerSample);

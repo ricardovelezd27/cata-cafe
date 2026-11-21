@@ -9,11 +9,14 @@ import {
   timerStorageKey,
   type TimerCue,
 } from "@/lib/cuppingTimer";
+import { Button } from "@/components/ui/Button";
+import { TextAction } from "@/components/ui/TextAction";
 
 // The optional cupping timer (S10 WP3b, Kim A5, TODO(kim-validar:A5)): off by default,
 // started by the cupper when the water is poured, text cues only, no sound, no server
 // call. The start timestamp lives in localStorage (lib/cuppingTimer.ts), so a reload
-// keeps it. It is docked in the cup page's top bar, never over the form's controls.
+// keeps it. It is the organizer's, in the tasting info area left of the form on a
+// desktop (OR-C, owner 2026-11-21); a participant has no timer.
 
 export type TimerCopy = {
   title: string;
@@ -31,7 +34,7 @@ export type TimerCopy = {
 };
 
 /** Used only when the cup error boundary rehydrates an older cached prop blob without
- *  `timer` (same idea as MARKET_COPY_FALLBACK). tests/partialCopy.test.ts keeps it equal
+ *  `timer`. tests/partialCopy.test.ts keeps it equal
  *  to the message files. */
 export const TIMER_COPY_FALLBACK: Record<"es" | "en", TimerCopy> = {
   es: {
@@ -82,9 +85,6 @@ function subscribe(cb: () => void) {
     window.removeEventListener(EVENT, cb);
   };
 }
-
-const BTN =
-  "inline-flex min-h-[44px] items-center rounded-input px-3 font-sans text-caption text-on-surface-variant underline underline-offset-2 hover:text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2";
 
 export function CuppingTimer({
   sessionId,
@@ -140,25 +140,25 @@ export function CuppingTimer({
     return (
       <div data-testid="cupping-timer">
         {!open ? (
-          <button type="button" className={BTN} onClick={() => setOpen(true)} aria-expanded={false}>
+          <TextAction tone="quiet" onClick={() => setOpen(true)} aria-expanded={false}>
             {copy.show}
-          </button>
+          </TextAction>
         ) : (
           <div className="flex flex-wrap items-center gap-x-3">
             <span className="font-sans text-caption text-on-surface-variant">{copy.hint}</span>
-            <button
-              type="button"
-              className="inline-flex min-h-[44px] items-center rounded-pill border border-outline-variant px-4 font-sans text-caption font-semibold text-on-surface hover:bg-surface-container focus-visible:outline-2 focus-visible:outline-offset-2"
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={() => {
                 setExtraPasses(0);
                 write(String(Date.now()));
               }}
             >
               {copy.start}
-            </button>
-            <button type="button" className={BTN} onClick={() => setOpen(false)}>
+            </Button>
+            <TextAction tone="quiet" onClick={() => setOpen(false)}>
               {copy.hide}
-            </button>
+            </TextAction>
           </div>
         )}
       </div>
@@ -177,13 +177,12 @@ export function CuppingTimer({
         {copy[CUE_KEY[cue]]}
       </span>
       {canAdvancePass(elapsed, extraPasses) && (
-        <button type="button" className={BTN} onClick={() => setExtraPasses((n) => Math.min(2, n + 1))}>
+        <TextAction tone="quiet" onClick={() => setExtraPasses((n) => Math.min(2, n + 1))}>
           {copy.nextPass}
-        </button>
+        </TextAction>
       )}
-      <button
-        type="button"
-        className={BTN}
+      <TextAction
+        tone="quiet"
         onClick={() => {
           setExtraPasses(0);
           setOpen(false);
@@ -191,7 +190,7 @@ export function CuppingTimer({
         }}
       >
         {copy.reset}
-      </button>
+      </TextAction>
     </div>
   );
 }

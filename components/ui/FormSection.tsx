@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 import styles from "./FormSection.module.css";
+import { cardClasses } from "./cardRecipe";
 
 interface FormSectionProps {
   /** Eyebrow label, in capitals. e.g. "FRAGANCIA" */
@@ -30,7 +31,7 @@ export function FormSection({
   const [open, setOpen] = useState(collapsible ? defaultOpen : true);
 
   return (
-    <section className={styles.section}>
+    <section className={`${cardClasses({ tone: "quiet" })} ${styles.section}`}>
       <div
         className={`${styles.header} ${collapsible ? styles.clickable : ""}`}
         onClick={() => collapsible && setOpen((v) => !v)}

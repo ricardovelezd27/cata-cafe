@@ -177,7 +177,7 @@
 
 /* OR-C: the organizer's canvas holds the tasting info and the form side by side. */
 .canvasInnerWide {
-  max-width: 80rem;
+  max-width: 1200px; /* PageContainer's `wide` */
 }
 
 @media (max-width: 1023px) {
