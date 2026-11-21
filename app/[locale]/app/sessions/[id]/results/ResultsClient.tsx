@@ -322,11 +322,7 @@ export function ResultsClient({
   translations: {
     title: string;
     backToCupping: string;
-    viewForm: string;
     downloadPdf: string;
-    downloadSummary: string;
-    downloadFicha: string;
-    downloadCsv: string;
     downloadCsvNoNames: string;
     needsConnection: string;
     /** S1: the one "Exportar" button and its sheet. */
@@ -791,14 +787,8 @@ export function ResultsClient({
     ...(canViewIndividual ? [{ id: "panel", label: overview.cards.tabPanel }] : []),
   ];
 
-  // S1: the exports this viewer gets, by the same rules as the footer it replaced.
-  const exportActions = resultsExportActions({
-    isGroup,
-    canViewGroup,
-    isOwner,
-    isAdminViewer,
-    hasSubmitted: session.samples.some((s) => s.myEvaluation?.status === "submitted"),
-  });
+  // S1: the exports this viewer gets (the CVA sheet for everyone, the CSV without names for the organizer).
+  const exportActions = resultsExportActions({ isOwner, isAdminViewer });
 
   // "Exportar": the one sheet with every export (S1). Beside the title on a session
   // that is over; in the row of work buttons while the cupping is open, so an open
@@ -812,11 +802,7 @@ export function ResultsClient({
         open: translations.exportOpen,
         title: translations.exportTitle,
         close: translations.exportClose,
-        viewForm: translations.viewForm,
         downloadPdf: translations.downloadPdf,
-        downloadSummary: translations.downloadSummary,
-        downloadFicha: translations.downloadFicha,
-        downloadCsv: translations.downloadCsv,
         downloadCsvNoNames: translations.downloadCsvNoNames,
         needsConnection: translations.needsConnection,
       }}
