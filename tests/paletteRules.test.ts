@@ -40,15 +40,16 @@ describe("T5: people, processes and formats take the system's colours", () => {
 describe("T5: the cup page's stepper keeps its states apart, with tokens", () => {
   const src = read("components/cupping/PhaseStepper.tsx");
 
-  it("done, pending and to-do keep their marks (✓, ●, none); the current step stays bold with its outline", () => {
+  it("done, pending and to-do keep their marks (✓, ●, none); the current step is the pill tab's selected look", () => {
     expect(src).toContain('symbol: "✓"');
     expect(src).toContain('symbol: "●", color: "var(--color-secondary)"');
-    expect(src).toContain('fontWeight: isActive ? 700 : 400');
-    expect(src).toContain('"1px solid var(--color-primary-container)"');
+    // OR-C: DESIGN.md "Selected and not selected", pill-tab row (as PillTabs).
+    expect(src).toContain('active: "border border-primary-fixed bg-primary-fixed font-semibold text-on-primary-fixed"');
+    expect(src).toMatch(/idle: "border border-outline font-medium text-on-surface-variant[^"]*hover:bg-surface-container[^"]*active:bg-surface-container/);
   });
 
   it("paints with tokens only", () => {
     expect(src).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
-    expect(src).toContain('"var(--color-on-surface-variant)"');
+    expect(src).not.toContain("outline-variant");
   });
 });

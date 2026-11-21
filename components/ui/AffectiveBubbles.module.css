@@ -25,12 +25,16 @@
 }
 /* A column that cannot hold nine 34 px bubbles with 4 px between them
    (9 x 34 + 8 x 4 = 338 px): the row reaches 12 px into the
-   section's own padding on each side (FormSection: 16 px on a phone, where the
-   form is flush to the screen since S5b; 20 px wider), never past it. On a
-   375 px phone the column is 343 px and this never applies; at 320 px it is
-   288 px and the row spans 312 px. The page's side margin no longer gives way. */
+   section's own padding on each side (FormSection, the kit's card: 16 px on a
+   phone, 20 px from 768 px, 12 px under 360 px where the card also reaches
+   12 px into the page's margin), never past it. On a 375 px phone the column
+   is 309 px and the row spans 333 px; at 320 px the column is 286 px and the
+   row spans 310 px, which leaves about 0.4 px between two bubbles, so the
+   selected bubble's outer halo is dropped there (it would paint over its
+   neighbours; the fill still marks the choice). */
 @container (max-width: 337.98px) {
   .row { width: calc(100% + 24px); margin-inline: -12px; --row-w: calc(100cqw + 24px); }
+  .selected { box-shadow: none; }
 }
 /* Browsers without container queries (Safari < 16): the phone sizes by window. */
 @supports not (container-type: inline-size) {

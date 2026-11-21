@@ -444,14 +444,6 @@
     "referenceLockedAffective": "Fixed reference: quality is pinned at 5 (neither high nor low) on every attribute, so there is nothing to score here. Taste it calmly, note what you perceive and move on to the next sample.",
     "referenceCupsLocked": "Cups are not marked on the reference: its score stays fixed at 79.00.",
     "revealedNote": "Sample revealed: it can no longer be evaluated.",
-    "market": {
-      "title": "Which point of view did you rate from?",
-      "optional": "Optional",
-      "own": "My preference",
-      "known": "A market I know",
-      "noteLabel": "Which market?",
-      "notePlaceholder": "E.g. specialty cafés in Madrid"
-    },
     "partial": {
       "notEvaluated": "Not evaluated",
       "notEvaluatedOn": "This section was left unevaluated.",
@@ -484,12 +476,6 @@
     },
     "referenceFirstHint": "The tasting starts with the reference.",
     "expressNotes": {
-      "title": "Quick notes",
-      "body": "One free-text impression per sample. Optional — you can submit without writing anything.",
-      "placeholder": "What did this cup leave you? Aromas, flavors, sensations…",
-      "optional": "Optional",
-      "open": "Quick notes",
-      "back": "Back",
       "submit": "Submit evaluation"
     },
     "phases": {
@@ -539,8 +525,7 @@
       "copied": "Copied",
       "copyImage": "Copy QR",
       "downloadQr": "Download QR",
-      "currentSample": "Current sample",
-      "sessionDetails": "Session details"
+      "currentSample": "Current sample"
     },
     "cups": {
       "title": "Cups",
@@ -590,7 +575,6 @@
       "stepsLabel": "Cupping steps",
       "stepOf": "step {n} of {total}",
       "sampleOf": "sample {n} of {total}",
-      "notesStep": "Notes",
       "sendStep": "Send",
       "language": "Español",
       "languageLabel": "Switch the language to Spanish"
@@ -792,6 +776,7 @@
     "masterControls": "Organizer controls",
     "masterRole": "Organizer",
     "participantRole": "Cupper",
+    "participantsCount": "{count, plural, one {# participant} other {# participants}}",
     "copyImage": "Copy QR",
     "downloadQr": "Download QR",
     "inviteMissing": "This tasting has no active invite link. Generate one from the tasting panel.",
@@ -1266,10 +1251,6 @@
       "body": "Everyone will see which coffee it is and nobody will be able to keep evaluating this sample. Draft evaluations of this sample will stay as they are. If you have not evaluated it yet, you will not be able to.",
       "confirm": "Reveal sample",
       "cancel": "Cancel"
-    },
-    "market": {
-      "label": "Point of view",
-      "known": "A market I know"
     },
     "partial": {
       "label": "Partial · no score",

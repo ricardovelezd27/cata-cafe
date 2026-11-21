@@ -2,7 +2,7 @@
 
 import { useState, type MouseEvent, type ReactNode } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { ChevronDown, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { useCoverShell } from "@/hooks/useShellLayer";
 import styles from "./SessionShell.module.css";
 
@@ -23,18 +23,12 @@ interface SessionShellProps {
   children: ReactNode;
   /** Optional sticky in-canvas footer (e.g. CanvasFooter). */
   footer?: ReactNode;
-  /** Optional title shown next to hamburger on mobile. */
-  mobileTitle?: string;
-  /** Phone-only (<640px) content rendered in the hamburger row INSTEAD of
-   *  `mobileTitle` — e.g. the sample tabs, so header + sample bar share one
-   *  compact row (CP-C1). */
+  /** Phone-only (<640px) content rendered in the hamburger row — e.g. the sample
+   *  tabs, so header + sample bar share one compact row (CP-C1). */
   mobileBar?: ReactNode;
-  /** Phone-only panel behind a chevron at the right of the hamburger row:
-   *  session name, role, reference context, edit button… Rendered in flow
-   *  under the row while open. Requires `mobileBar`. */
+  /** Phone-only panel under the hamburger row, always shown (owner, 2026-11-21: no
+   *  accordion): session name, role, reference context, edit button… Requires `mobileBar`. */
   mobileDetails?: ReactNode;
-  /** aria-label for the chevron that toggles `mobileDetails`. */
-  mobileDetailsLabel?: string;
   /** While true (on-screen keyboard up), the phone header row and the top bar
    *  are hidden so the focused field gets the space. */
   collapsed?: boolean;
@@ -49,8 +43,9 @@ interface SessionShellProps {
   /** J-04: the phone's way out, in the header row (the page's guarded exit). */
   onMobileExit?: () => void;
   mobileExitLabel?: string;
-  /** F-05 (S5b): one tool in the phone's header row (the cupping timer's link). */
-  mobileTool?: { label: string; icon: ReactNode; onClick: () => void; expanded?: boolean };
+  /** OR-C (owner, 2026-11-21): the organizer's two columns (tasting info + form) need a
+   *  wider canvas on a desktop. */
+  wide?: boolean;
 }
 
 export function SessionShell({
@@ -62,20 +57,17 @@ export function SessionShell({
   topBar,
   children,
   footer,
-  mobileTitle,
   mobileBar,
   mobileDetails,
-  mobileDetailsLabel,
   collapsed = false,
   saveStatus = "idle",
   savePendingLabel,
   navLabels,
   onMobileExit,
   mobileExitLabel,
-  mobileTool,
+  wide = false,
 }: SessionShellProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [detailsOpen, setDetailsOpen] = useState(false);
   // H-03: this layer is fixed over the whole app layout; while it is mounted
   // the layout's sidebar, bars and notices are inert (they read the same
   // store). Focusability only: no saving, guard or realtime code is involved.
@@ -137,40 +129,7 @@ export function SessionShell({
                 <Menu size={18} aria-hidden />
               </button>
             </Dialog.Trigger>
-            {mobileBar ? (
-              <div className={styles.mobileBarSlot}>{mobileBar}</div>
-            ) : (
-              mobileTitle && (
-                <span
-                  className="font-display text-body text-on-surface truncate"
-                  style={{ flex: 1, minWidth: 0 }}
-                >
-                  {mobileTitle}
-                </span>
-              )
-            )}
-            {mobileTool && (
-              <button
-                type="button"
-                className={styles.toolButton}
-                onClick={mobileTool.onClick}
-                aria-label={mobileTool.label}
-                aria-expanded={mobileTool.expanded}
-              >
-                {mobileTool.icon}
-              </button>
-            )}
-            {mobileBar && mobileDetails && (
-              <button
-                type="button"
-                className={`${styles.detailsToggle} ${detailsOpen ? styles.detailsToggleOpen : ""}`}
-                onClick={() => setDetailsOpen((v) => !v)}
-                aria-label={mobileDetailsLabel ?? "Session details"}
-                aria-expanded={detailsOpen}
-              >
-                <ChevronDown size={16} aria-hidden />
-              </button>
-            )}
+            {mobileBar && <div className={styles.mobileBarSlot}>{mobileBar}</div>}
             {onMobileExit && (
               <button
                 type="button"
@@ -183,7 +142,7 @@ export function SessionShell({
               </button>
             )}
           </div>
-          {mobileBar && mobileDetails && detailsOpen && (
+          {mobileBar && mobileDetails && (
             <div className={styles.mobileDetails}>{mobileDetails}</div>
           )}
           {/* A-08: the pending state sits in the flow of the header, never over the tabs. */}
@@ -196,7 +155,7 @@ export function SessionShell({
           {topBar && <div className={styles.topBar}>{topBar}</div>}
 
           <div className={styles.canvas} data-session-canvas>
-            <div className={styles.canvasInner}>{children}</div>
+            <div className={`${styles.canvasInner} ${wide ? styles.canvasInnerWide : ""}`}>{children}</div>
             {footer}
           </div>
         </div>

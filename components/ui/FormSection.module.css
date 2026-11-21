@@ -1,27 +1,7 @@
+/* The card itself (ground, border, radius, padding) is the kit's quiet card,
+   `cardClasses({ tone: "quiet" })` in FormSection.tsx, spaced 12 px / 16 px from 768 px there. */
 .section {
-  background: var(--color-surface-container-lowest);
-  border: 1px solid var(--color-outline-variant);
-  border-radius: var(--radius-card);
-  box-shadow: var(--shadow-card);
-  padding: 20px;
-  margin-bottom: 16px;
   overflow: hidden;
-}
-
-@media (max-width: 640px) {
-  .section { padding: 14px; margin-bottom: 12px; }
-  /* F-05 (S5b): on the cupping screen a phone gets the form flush to the screen. No
-     card inside a padded canvas: each section reaches into the canvas's 16 px side
-     padding, keeps 16 px of its own and is separated by a hairline, so the text
-     sits 16 px from the edge instead of 31. Other screens keep the card. */
-  :global([data-session-canvas]) .section {
-    margin: 0 -16px;
-    padding: 16px;
-    border: 0;
-    border-bottom: 1px solid var(--color-outline-variant);
-    border-radius: 0;
-    box-shadow: none;
-  }
 }
 
 .header {

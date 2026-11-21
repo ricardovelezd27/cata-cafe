@@ -387,6 +387,7 @@ export default async function CupPage({
         startGroupNoticePartial: tg("startGroupNoticePartial"),
         masterRole: tg("masterRole"),
         participantRole: tg("participantRole"),
+        participantsCount: tg("participantsCount", { count: session.participants.length }),
         referenceSelect: tg("referenceSelect"),
         referenceNone: tg("referenceNone"),
         referenceRevealed: tg("referenceRevealed"),
@@ -423,14 +424,6 @@ export default async function CupPage({
         referenceLockedAffective: t("cupping.referenceLockedAffective"),
         referenceCupsLocked: t("cupping.referenceCupsLocked"),
         revealedNote: t("cupping.revealedNote"),
-        market: {
-          title: t("cupping.market.title"),
-          optional: t("cupping.market.optional"),
-          own: t("cupping.market.own"),
-          known: t("cupping.market.known"),
-          noteLabel: t("cupping.market.noteLabel"),
-          notePlaceholder: t("cupping.market.notePlaceholder"),
-        },
         // P5b: the 1-9 scale's words and the place copy ({n}/{total} replaced client-side).
         scale: t.raw("cupping.scale") as ScaleCopy,
         place: t.raw("cupping.place") as CupPlaceCopy,
@@ -497,19 +490,12 @@ export default async function CupPage({
           },
           scoreLater: t("cupping.cups.scoreLater"),
         },
-        // "Notas rápidas" end step (WP-B). CupClient has inline fallbacks.
+        // The last sample's button ("Notas rápidas" was removed, owner 2026-11-21).
         expressNotes: {
-          title: t("cupping.expressNotes.title"),
-          body: t("cupping.expressNotes.body"),
-          placeholder: t("cupping.expressNotes.placeholder"),
-          optional: t("cupping.expressNotes.optional"),
-          open: t("cupping.expressNotes.open"),
-          back: t("cupping.expressNotes.back"),
           submit: t("cupping.expressNotes.submit"),
         },
         // Shell (Phase 3)
         samplesHeader: t("cupping.shell.samplesHeader"),
-        sessionDetails: t("cupping.shell.sessionDetails"),
         evaluationHeader: t("cupping.shell.evaluationHeader"),
         phaseTitle: t("cupping.shell.phaseTitle"),
         cuppingModule: t("cupping.shell.cuppingModule"),
