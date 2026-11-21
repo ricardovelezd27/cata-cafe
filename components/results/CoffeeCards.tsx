@@ -2,7 +2,6 @@
 
 import { useEffect, useId, useRef, useState, useSyncExternalStore, type KeyboardEvent } from "react";
 import { Check, ChevronRight, Eye } from "lucide-react";
-import { ScoreWithContext } from "@/components/ui/ScoreWithContext";
 import { PaperSectionHeading } from "@/components/ui";
 import { PHONE_MAX, carouselIndex } from "@/components/landing/carouselIndex";
 import { fillPattern } from "@/lib/fillPattern";
@@ -102,6 +101,7 @@ export function CoffeeCards<S extends CardSampleProps>({
   format,
   referencePinned,
   canReveal,
+  own = true,
   onReveal,
   onOpenSample,
   familyLabels,
@@ -116,6 +116,9 @@ export function CoffeeCards<S extends CardSampleProps>({
   referencePinned: boolean;
   /** The organizer of a cupping that is still open: "Revelar" on a card, as before. */
   canReveal: boolean;
+  /** False in the admin's read-only lens: the "you" of the page is the organizer,
+   *  not the reader, so no card says "elegido por ti", "Sin evaluar" or "En curso". */
+  own?: boolean;
   onReveal: (sampleId: string) => void;
   onOpenSample: (sampleId: string) => void;
   familyLabels: Record<WheelFamilyId, string>;
@@ -177,7 +180,7 @@ export function CoffeeCards<S extends CardSampleProps>({
   const renderCard = (card: CoffeeCard<S>, index: number) => {
     const { sample } = card;
     const name = nameOf(sample);
-    const stateChip = card.state === "draft" ? t.inProgress : card.state === "none" ? t.notEvaluated : null;
+    const stateChip = !own ? null : card.state === "draft" ? t.inProgress : card.state === "none" ? t.notEvaluated : null;
     return (
       <li key={sample.id} className={styles.card} data-card="" data-reference={card.isReference ? "" : undefined}>
         {/* the whole card opens its coffee: first in the card, so it is laid under the organizer's button */}
@@ -223,26 +226,6 @@ export function CoffeeCards<S extends CardSampleProps>({
             </div>
           </div>
 
-          {card.context ? (
-            <ScoreWithContext
-              context={
-                // a fixed reference's number is a rule, not an average: the number alone
-                card.isReference && referencePinned
-                  ? {
-                      ...card.context,
-                      spread: null,
-                      included: null,
-                      mine: null,
-                      difference: null,
-                      indicative: false,
-                      suppressed: false,
-                    }
-                  : card.context
-              }
-              strings={parts.score}
-              size="md"
-            />
-          ) : null}
           {card.partial ? <p className={styles.caption}>{t.partialLabel}</p> : null}
         </div>
 
@@ -263,7 +246,7 @@ export function CoffeeCards<S extends CardSampleProps>({
                   items={card.wheel.descriptors}
                   labels={nodeLabels}
                   strings={parts.counted}
-                  marked={card.wheel.mine}
+                  marked={own ? card.wheel.mine : []}
                   ariaLabel={`${t.mostChosen}: ${sample.label}`}
                 />
               </div>
@@ -331,7 +314,7 @@ export function CoffeeCards<S extends CardSampleProps>({
         {cards.map(renderCard)}
       </ul>
       {/* what "En curso" means, said once, only where a card carries it */}
-      {cards.some((card) => card.state === "draft") ? <p className={styles.note}>{t.inProgressLegend}</p> : null}
+      {own && cards.some((card) => card.state === "draft") ? <p className={styles.note}>{t.inProgressLegend}</p> : null}
       {cards.length > 1 ? (
         <nav className={styles.steps} aria-label={t.stepsLabel} onKeyDown={onStepsKey}>
           {cards.map((card, index) => (

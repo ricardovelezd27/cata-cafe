@@ -23,7 +23,6 @@ export type ScoreContextStrings = {
   /** Printed in place of a score that does not exist: "–". */
   none: string;
   indicative: string;
-  noClearGap: string;
 };
 
 /** Two decimals, as every score of the app is printed. */
@@ -59,8 +58,7 @@ function withNumber(pattern: string, key: string, value: string): ReactNode {
  *
  * It decides NOTHING: every field comes from `scoreContext` (lib/scoreContext.ts),
  * which already applied the rules (a spread and a difference from three included
- * cuppers, "n de N incluidos" beside every community score, a reference never
- * tied). A field that is null is simply not printed. The number is ink.
+ * cuppers, "n de N incluidos" beside every community score). A field that is null is simply not printed. The number is ink.
  */
 export function ScoreWithContext({
   context,
@@ -76,7 +74,7 @@ export function ScoreWithContext({
   showScore?: boolean;
   /** "brief": only what tells how firm the number is (the spread, the n, and
    *  "indicativo"). For a row of a ranking, where the reader's own score is the
-   *  ring on the strip and a tie is the bar that joins the rows. */
+   *  ring on the strip. */
   detail?: "full" | "brief";
 }) {
   const full = detail === "full";
@@ -102,7 +100,6 @@ export function ScoreWithContext({
       : [withNumber(strings.deltaVsReference, "delta", formatSigned(context.deltaVsReference))];
   const flags: string[] = [];
   if (context.indicative || context.suppressed) flags.push(strings.indicative);
-  if (full && context.noClearGap) flags.push(strings.noClearGap);
 
   const line = (parts: ReactNode[], key: string) =>
     parts.length === 0 ? null : (

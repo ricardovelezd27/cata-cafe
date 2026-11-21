@@ -1,24 +1,34 @@
-/* The overview of a cupping: a row of tiles, general first. Paper rhythm in
-   pixels (the root is 14 px): 12 / 16 px between tiles, 16 / 20 px inside one.
+/* The "Por café" view of a cupping: the two boxes, the coffees, "Comparar",
+   the small facts. Paper rhythm in pixels (the root is 14 px): 32 px between
+   its sections (40 px from 768 px), 12 / 16 px between tiles, 16 / 20 px
+   inside one.
    One anatomy for every tile: its name, the fact, a line of context, at most
    one drawing. Sizes differ because the content does, never for emphasis.
    Every number is ink; a family's colour is in the wheels only. */
 .overview {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 32px;
   min-width: 0;
 }
-/* A sentence about the page: not a card, never the accent colour. */
-.notice {
-  margin: 0;
-  padding: 10px 12px;
-  border-radius: var(--radius-sm);
-  background: var(--color-surface-container);
-  font-family: var(--font-ui);
-  font-size: var(--text-caption);
-  line-height: 1.4;
-  color: var(--color-on-surface-variant);
+/* The notices about the page and the two boxes they speak of: one block. */
+.lead {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 12px;
+}
+/* A section that opens with the page's section heading ("Comparar"). */
+.section {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 12px;
+}
+.sectionIntro {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .grid {
@@ -75,29 +85,10 @@
   gap: 4px;
   min-width: 0;
 }
-/* The number beside the coffee's wheel: the finding in one look. */
-.firstFact {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px 16px;
-}
 .firstName {
   margin: 0;
   font-size: var(--text-body);
   line-height: 1.3;
-}
-.ink { color: var(--color-on-surface); }
-/* What most people found in that coffee: a line on a phone, three counted bars
-   from 768 px (the same facts, in the room the tile has). */
-.firstList {
-  display: none;
-  flex-direction: column;
-  gap: 2px;
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid var(--color-surface-container-highest);
 }
 /* The whole tile opens its coffee: one button laid over it, named by the
    coffee's visible name. */
@@ -116,7 +107,7 @@
 .cover:hover { background: color-mix(in srgb, var(--color-on-surface) 3%, transparent); }
 .cover:focus-visible { outline-offset: -2px; }
 /* The score: the display numeral of DESIGN.md, ink, with its decimals a step
-   quieter. 72 px on a phone so the finding and its wheel share the first fold. */
+   quieter. */
 .numeral {
   margin: 0;
   font-family: var(--font-display);
@@ -155,78 +146,12 @@
 .sampleLabel { font-weight: 600; }
 .sampleName { color: var(--color-on-surface-variant); }
 
-/* ── The flavour of each coffee ───────────────────────────────────────────── */
-.wheels {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
-  gap: 8px 4px;
-  margin: 6px 0 0;
-  padding: 0;
-  list-style: none;
-}
-.wheelButton {
-  appearance: none;
-  display: flex;
-  width: 100%;
-  min-height: 44px;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  margin: 0;
-  padding: 8px 4px;
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: none;
-  color: inherit;
-  font: inherit;
-  font-size: var(--text-caption);
-  line-height: 1.3;
-  text-align: center;
-  cursor: pointer;
-}
-.wheelButton:hover { background: var(--color-surface-container-low); }
-.wheelLabel {
-  display: flex;
-  max-width: 100%;
-  flex-direction: column;
-  font-size: var(--text-caption);
-}
-/* The coffee's name, on one line of its own. */
-.wheelCoffee {
-  overflow: hidden;
-  color: var(--color-on-surface-variant);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.wheelLine {
-  margin: 0;
-  font-size: var(--text-caption);
-  line-height: 1.3;
-  color: var(--color-on-surface-variant);
-  font-variant-numeric: lining-nums tabular-nums;
-}
-/* A coffee whose counts this reader may not see: the ring, and why. */
-.wheelHole {
-  display: block;
-  width: 72px;
-  height: 72px;
-  flex: none;
-  border: 1.25px dashed var(--color-outline);
-  border-radius: 50%;
-}
-
-/* "Cada café | Comparar": the tile's one switch, then the chips of the coffees. */
-.wheelSwitch {
-  width: 100%;
-  max-width: 320px;
-  align-self: flex-start;
-  margin: 4px 0;
-}
+/* ── "Comparar": the chips of the coffees, then the wheel and its table ──── */
 .compare {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 .chips {
   display: flex;
@@ -234,8 +159,10 @@
   gap: 8px;
 }
 /* A coffee to compare: its letter (the one drawn on its territory) and its
-   name. Chosen = a filled letter and a darker outline, so the state is not
-   carried by colour alone. */
+   name. The states are the chip's of DESIGN.md ("Selected and not selected"):
+   an outline when not chosen, a wash on hover and press, the selected fill and
+   a heavier weight when chosen, the one disabled look when a fourth cannot be
+   added. */
 .pick {
   appearance: none;
   display: inline-flex;
@@ -245,25 +172,30 @@
   gap: 8px;
   margin: 0;
   padding: 0 14px 0 8px;
-  border: 1px solid var(--color-outline-variant);
+  border: 1px solid var(--color-outline);
   border-radius: var(--radius-pill);
-  background: var(--color-surface-container-lowest);
+  background: none;
   color: var(--color-on-surface-variant);
   font: inherit;
   font-size: var(--text-body);
+  font-weight: 500;
   line-height: 1.2;
   text-align: left;
   cursor: pointer;
 }
-.pick[aria-pressed="true"] {
-  border-color: var(--color-on-surface);
+.pick:hover:not(:disabled):not([aria-pressed="true"]),
+.pick:active:not(:disabled):not([aria-pressed="true"]) {
+  background: var(--color-surface-container);
   color: var(--color-on-surface);
+}
+.pick[aria-pressed="true"] {
+  border-color: var(--color-primary-fixed);
+  background: var(--color-primary-fixed);
+  color: var(--color-on-primary-fixed);
   font-weight: 600;
 }
-/* Three are chosen: the others cannot be added. Said by a dashed outline, not
-   by fading the name (it must stay readable). */
-.pick[aria-disabled="true"] {
-  border-style: dashed;
+.pick:disabled {
+  opacity: 0.6;
   cursor: default;
 }
 .pickTag {
@@ -280,9 +212,9 @@
   line-height: 1;
 }
 .pick[aria-pressed="true"] .pickTag {
-  background: var(--color-on-surface);
-  border-color: var(--color-on-surface);
-  color: var(--color-surface-container-lowest);
+  background: var(--color-on-primary-fixed);
+  border-color: var(--color-on-primary-fixed);
+  color: var(--color-primary-fixed);
 }
 .pickName {
   min-width: 0;
@@ -291,22 +223,13 @@
   white-space: nowrap;
 }
 
-/* ── What waits for the organizer in the Panel ─────────────────────────────── */
-.pending {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px 16px;
-}
-
 /* ── The reader against the panel ─────────────────────────────────────────── */
 .alignment {
   display: flex;
   flex-direction: column;
   gap: 4px;
   margin-top: 8px;
-  padding-top: 10px;
+  padding-top: 12px;
   border-top: 1px solid var(--color-surface-container-highest);
 }
 
@@ -322,8 +245,8 @@
 .defects {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin: 4px 0 0;
+  gap: 12px;
+  margin: 8px 0 0;
   padding: 0;
   list-style: none;
 }
@@ -350,7 +273,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 2px 10px;
+  gap: 2px 12px;
   margin: 0;
   font-size: var(--text-body);
   line-height: 1.3;
@@ -360,9 +283,9 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* From 768 px: two columns; the small tiles share a row. */
+/* From 768 px: the small tiles share a row. */
 @media (min-width: 768px) {
-  .overview { gap: 16px; }
+  .overview { gap: 40px; }
   .grid {
     grid-template-columns: repeat(12, minmax(0, 1fr));
     gap: 16px;
@@ -370,27 +293,19 @@
   .tile { padding: 20px; }
   .aFirst,
   .aRank,
-  .aWheels,
-  .aYou,
   .aWide { grid-column: span 12; }
   .aSmall { grid-column: span 6; }
   .grid[data-small-tiles="1"] .aSmall { grid-column: span 12; }
   .grid[data-small-tiles="3"] .aSmall { grid-column: span 4; }
   .numeral { font-size: 88px; }
   .decimal { font-size: 56px; }
-  .aFirst { --wheel-medium: 144px; }
-  .firstLine { display: none; }
-  .firstList { display: flex; }
 }
-/* From 1024 px: the finding beside the ranking, the wheels beside "you". */
+/* From 1024 px: the first coffee beside the ranking (the owner's two boxes).
+   The box is as tall as its name and its score, not as the ranking beside it. */
 @media (min-width: 1024px) {
-  .aFirst { grid-column: span 5; }
+  .aFirst {
+    grid-column: span 5;
+    align-self: start;
+  }
   .aRank { grid-column: span 7; }
-  .aWheels { grid-column: span 8; }
-  .aYou { grid-column: span 4; }
-  .grid[data-small-tiles="2"] .aSmall { grid-column: span 6; }
-  .grid[data-small-tiles="4"] .aSmall { grid-column: span 3; }
-  .aFirst { --wheel-medium: 168px; }
-  /* beside the ranking the tile is tall: the number and the wheel take the room */
-  .aFirst .first { flex: 1; justify-content: center; gap: 8px; }
 }

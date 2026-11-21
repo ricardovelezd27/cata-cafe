@@ -111,7 +111,6 @@ function hits(f: string): string[] {
 
 /** A literal the area keeps, and why. May only shrink. */
 const ALLOWED: Record<string, { kind: string; n: number; reason: string }[]> = {
-  "components/results/RankStrip.module.css": [{ kind: "radius", n: 1, reason: "the 2 px corners of a tie's mark, a mark's corner and not a component radius" }],
   "components/ui/Avatar.tsx": [{ kind: "inline", n: 1, reason: "the initials' size follows the avatar's size (size x 0.35); DESIGN.md does not size them yet" }],
 };
 /** Text coloured through `style={{ color }}` that stays, and why. May only shrink. */

@@ -33,7 +33,7 @@ import type { SessionFormat } from "@/lib/constants";
 import type { WheelFamilyId } from "@/lib/flavorWheel";
 import type { CoffeeCard, CompareOption } from "@/lib/reports/coffeeCards";
 import type { SheetData } from "@/lib/reports/coffeeSheet";
-import type { DefectSummary } from "@/lib/reports/learnings";
+import type { DefectSummary } from "@/lib/reports/defectSummary";
 import type { WheelData } from "@/lib/reports/wheelData";
 import { referenceBadgeText } from "@/lib/referenceRules";
 import type { ScoreRule } from "@/lib/scoreRule";
@@ -92,7 +92,6 @@ export type SheetGroupProps = {
     /** What a chip prints beside the letter: the name once revealed, else the label. */
     short: Readonly<Record<string, string>>;
   } | null;
-  compareGround: "rings" | "families";
 };
 
 export function SampleDetailDialog({
@@ -253,7 +252,6 @@ export function SampleDetailDialog({
           comparison={activeParticipant ? null : (sample.comparison ?? null)}
           repeatDiffs={activeParticipant ? [] : (sample.repeatDiffs ?? [])}
           compare={activeParticipant ? null : group.compare}
-          compareGround={group.compareGround}
           extrinsic={sample.extrinsic}
           extrinsicNote={sample.extrinsicEditedLabel ?? null}
           prep={sample.prep ?? null}

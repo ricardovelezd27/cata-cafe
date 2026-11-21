@@ -216,7 +216,7 @@ export type PanelPending = {
 };
 
 /**
- * What the overview's "Pendiente en el panel" tile counts. Null when there is
+ * What the count on the "Por catador" tab adds up. Null when there is
  * nothing, and always null for a viewer whose page holds neither list (a
  * participant, a solo session): the rows exist only in the organizer's payload.
  */

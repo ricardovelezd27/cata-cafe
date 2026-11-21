@@ -1,6 +1,6 @@
 // Pure scales and layouts for the results page's small drawings (package R1a of
 // docs/audits/app-ui-ux-2026-11-15/RESULTS-DESIGN.md, sections 2, 3 and 0):
-// the ranking strip on the fixed 58 to 100 scale, the single tie bar, the dot
+// the ranking strip on the fixed 58 to 100 scale, the dot
 // plot (quality 1 to 9, intensities 0 to 15) and the counted bars.
 //
 // Numbers in, numbers out. No React, no DOM, no colour, no text: a position is
@@ -10,13 +10,6 @@
 //
 // A score is a number only: nothing here names or colours a score by quality.
 // Display-only: scoring, the trigger and AggregateScore never read this file.
-
-import {
-  RANKING_POLICY,
-  hasNoClearGap,
-  sampleSdFromPopulation,
-  type RankPolicy,
-} from "@/lib/reports/ranking";
 
 /** Two decimals, and never "-0" (the PDF and the page must print the same). */
 export function round2(n: number): number {
@@ -115,57 +108,6 @@ export function rankStripRow(input: RankStripInput): RankStripRow {
       reference: reference !== null && isOffScoreScale(reference),
     },
   };
-}
-
-// ── The single tie bar (choice 7) ────────────────────────────────────────────
-
-/** What the tie rule reads of one ranked row: `RankedEntry` satisfies it. */
-export type TieEntry = { score: number | null; sd: number | null; n: number | null };
-
-/**
- * For the ranked rows in order: `true` at i when row i and row i + 1 have no
- * clear difference between THEM. It is THE tie rule of lib/reports/ranking.ts
- * (`hasNoClearGap` over the larger of the two sample SDs), asked per pair, so a
- * row's `noClearGap` flag there equals "tied with the row above or the row
- * below" here (tested against `rankSamples`). Unscored rows never tie.
- */
-export function tiesWithNext(
-  entries: readonly TieEntry[],
-  policy: RankPolicy = RANKING_POLICY,
-): boolean[] {
-  return entries.map((entry, i) => {
-    const next = entries[i + 1];
-    if (!next || entry.score === null || next.score === null) return false;
-    const a = sampleSdFromPopulation(entry.sd, entry.n);
-    const b = sampleSdFromPopulation(next.sd, next.n);
-    const spread = a === null ? b : b === null ? a : Math.max(a, b);
-    return hasNoClearGap(Math.abs(entry.score - next.score), spread, policy);
-  });
-}
-
-export type TieBar = { from: number; to: number };
-
-/**
- * The bars drawn beside the ranking: one bar per unbroken run of tied
- * neighbours, from the first row of the run to the last (both inclusive).
- * A bar says "each row on it has no clear difference with the row next to it";
- * it does not say the first and the last row of a long bar are tied.
- */
-export function tieBars(
-  entries: readonly TieEntry[],
-  policy: RankPolicy = RANKING_POLICY,
-): TieBar[] {
-  const ties = tiesWithNext(entries, policy);
-  const bars: TieBar[] = [];
-  let from: number | null = null;
-  ties.forEach((tied, i) => {
-    if (tied && from === null) from = i;
-    if (!tied && from !== null) {
-      bars.push({ from, to: i });
-      from = null;
-    }
-  });
-  return bars;
 }
 
 // ── The dot plot (the sheet: "tú y el grupo") ────────────────────────────────

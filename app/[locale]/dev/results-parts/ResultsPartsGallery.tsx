@@ -29,12 +29,10 @@ import {
 import { countedDescriptors, countedFamilies } from "@/lib/flavorWheel";
 import { wheelHeadline } from "@/lib/flavorWheelLayout";
 import { INTENSITY_SCALE, QUALITY_SCALE, countBar } from "@/lib/resultsScales";
-import { LEARNINGS_REPEAT_SCENARIO, OVERVIEW_SCENARIOS } from "@/lib/dev/overviewFixtures";
+import { OVERVIEW_SCENARIOS } from "@/lib/dev/overviewFixtures";
 import { PANEL_CLASS, PANEL_DESCRIPTIVE, PANEL_LARGE, PANEL_TWO } from "@/lib/dev/panelFixtures";
-import { pendingSentence } from "@/components/results/panelStrings";
 import css from "./gallery.module.css";
-import type { LearningsStrings } from "@/components/results/learningsStrings";
-import { LearningsSwitchFixture, OverviewFixture } from "./OverviewFixture";
+import { OverviewFixture } from "./OverviewFixture";
 import { PanelFixtureView, type PanelWords } from "./PanelFixtureView";
 import { SheetFixture, type SheetWords } from "./SheetFixture";
 
@@ -50,10 +48,6 @@ const COPY = {
     panelBuilt: "Construido: una fila por catador (PANEL_MATRIX_ROWS = \"cuppers\")",
     panelOther: "Alternativa: una fila por café, como estaba (PANEL_MATRIX_ROWS = \"coffees\")",
     panelLens: "La vista de solo lectura del administrador: sin interruptores ni evaluaciones tardías",
-    learnings: "Aprendizajes: el tope de cinco frases propias",
-    learningsNote: "Cuando hay un café repetido, el catador tiene seis frases propias y la sección muestra cinco. Arriba, lo construido: la del café repetido va primero. Abajo, la alternativa: el orden de la tabla aprobada, donde esa frase es la que se corta.",
-    learningsFirst: "Construido: el café repetido primero (REPEATED_COFFEE_FIRST = true)",
-    learningsApproved: "Alternativa: el orden aprobado (REPEATED_COFFEE_FIRST = false)",
     sheet: "La ficha de un café",
     sheetNote: "El cuerpo de la ficha, con las mismas catas inventadas y los mismos filtros que la página: lo que ve un participante ante una cata cerrada, con dos catadores, con la cata abierta, y quien organiza.",
     overviewNote: "La parte de arriba de la página de resultados, con catas inventadas: los estados que ninguna cuenta de prueba puede mostrar (un participante ante una cata cerrada, dos catadores, una referencia libre).",
@@ -64,9 +58,9 @@ const COPY = {
     solo: "Cata individual",
     noScore: "Sin puntaje",
     rank: "El ranking",
-    rankNote: "Una fila por café en una escala fija. El punto es el grupo, el anillo eres tú, el bigote es la dispersión, la línea de trazos es la referencia y una barra une a los vecinos sin diferencia clara.",
+    rankNote: "Una fila por café en una escala fija. El punto es el grupo, el anillo eres tú, el bigote es la dispersión, y la línea de trazos es la referencia.",
     rankPanel: "Siete de ocho catadores",
-    rankPanelNote: "Tres vecinos sin diferencia clara, una referencia fija y un café por debajo de la escala.",
+    rankPanelNote: "Una referencia fija y un café por debajo de la escala.",
     rankTwo: "Dos catadores",
     rankTwoNote: "Sin dispersión y sin diferencia.",
     rankSolo: "Cata individual",
@@ -94,19 +88,13 @@ const COPY = {
     minis: "La fila de ruedas pequeñas",
     minisNote: "La misma rueda sin palabras: los nueve sectores pálidos, los pétalos y el anillo exterior. Su letra y lo más encontrado van escritos debajo.",
     compare: "La comparación",
-    compareNote: "Sin números en el dibujo: la tabla de abajo es la lectura exacta. Cada café lleva su letra sobre su propio borde y un estilo de línea distinto.",
+    compareNote: "Sin números en el dibujo: la tabla es la lectura exacta. Cada café lleva su letra sobre su propio borde.",
     aloneTwo: "Dos cafés, solos",
     aloneThree: "Tres cafés, solos",
     overOne: "Sobre los pétalos de un café: otro café",
     overTwo: "Sobre los pétalos: otros dos (paneles de 7, 6 y 4)",
     hard: "Caso difícil: tres paneles planos o pequeños",
     mixed: "Paneles de 7 y 12 en una misma escala de personas",
-    choice: "Una decisión abierta: el fondo de la comparación",
-    choiceNote: "La rueda de un café ya no lleva anillos por dentro porque cada pétalo tiene su número al lado. La comparación no imprime números en el dibujo, así que hay dos caminos. Está construida la A.",
-    choiceRings: "A · con un anillo por persona (recomendada)",
-    choiceRingsNote: "El borde de cada territorio corre sobre el anillo de su cuenta: el anillo es la única escala del dibujo.",
-    choiceFamilies: "B · como la rueda: sectores pálidos, sin anillos",
-    choiceFamiliesNote: "Igual que la rueda de un café. La altura de un territorio solo se lee en la tabla.",
     compareRest: "Los demás casos, con el fondo A",
     narrow: "En una columna de 288 px",
     narrowNote: "El ancho del contenido en un teléfono de 320 px. El texto pinta al mismo tamaño; lo que se achica es la rueda.",
@@ -121,10 +109,6 @@ const COPY = {
     panelBuilt: "Built: a row per cupper (PANEL_MATRIX_ROWS = \"cuppers\")",
     panelOther: "Alternative: a row per coffee, as it was (PANEL_MATRIX_ROWS = \"coffees\")",
     panelLens: "The admin's read-only lens: no switches, no late evaluations",
-    learnings: "Learnings: the cap of five sentences of your own",
-    learningsNote: "With a repeated coffee the cupper has six sentences of their own and the section shows five. Above, what is built: the repeated coffee comes first. Below, the alternative: the approved table's order, where that sentence is the one cut.",
-    learningsFirst: "Built: the repeated coffee first (REPEATED_COFFEE_FIRST = true)",
-    learningsApproved: "Alternative: the approved order (REPEATED_COFFEE_FIRST = false)",
     sheet: "A coffee's sheet",
     sheetNote: "The body of the sheet, with the same invented cuppings and the same gates as the page: what a participant sees at a closed cupping, with two cuppers, at an open cupping, and what the organizer sees.",
     overviewNote: "The top of the results page, with invented cuppings: the states no test account can show (a participant looking at a closed cupping, two cuppers, a free reference).",
@@ -135,9 +119,9 @@ const COPY = {
     solo: "Solo cupping",
     noScore: "No score",
     rank: "The ranking",
-    rankNote: "One row per coffee on a fixed scale. The dot is the group, the ring is you, the whisker is the spread, the dashed line is the reference, and one bar joins neighbours with no clear difference.",
+    rankNote: "One row per coffee on a fixed scale. The dot is the group, the ring is you, the whisker is the spread, and the dashed line is the reference.",
     rankPanel: "Seven of eight cuppers",
-    rankPanelNote: "Three neighbours with no clear difference, a fixed reference and a coffee under the scale.",
+    rankPanelNote: "A fixed reference and a coffee under the scale.",
     rankTwo: "Two cuppers",
     rankTwoNote: "No spread and no difference.",
     rankSolo: "Solo cupping",
@@ -165,19 +149,13 @@ const COPY = {
     minis: "The row of small wheels",
     minisNote: "The same wheel with no words: the nine pale sectors, the petals and the outer ring. Its letter and the most found family are written under it.",
     compare: "The comparison",
-    compareNote: "No numbers on the drawing: the table under it is the exact reading. Each coffee carries its letter on its own edge and its own line style.",
+    compareNote: "No numbers on the drawing: the table is the exact reading. Each coffee carries its letter on its own edge.",
     aloneTwo: "Two coffees, alone",
     aloneThree: "Three coffees, alone",
     overOne: "Over one coffee's petals: one other",
     overTwo: "Over the petals: two others (panels of 7, 6 and 4)",
     hard: "Hard case: three flat or small panels",
     mixed: "Panels of 7 and 12 on one scale of people",
-    choice: "One open choice: the ground of the comparison",
-    choiceNote: "A coffee's wheel no longer has rings inside because every petal has its number beside it. The comparison prints no numbers on the drawing, so there are two ways. A is the one built.",
-    choiceRings: "A · a ring per person (recommended)",
-    choiceRingsNote: "Each territory's edge runs on the ring of its count: the ring is the only scale on the drawing.",
-    choiceFamilies: "B · as the wheel: pale sectors, no rings",
-    choiceFamiliesNote: "The same as a coffee's wheel. How far a territory reaches is read in the table only.",
     compareRest: "The other cases, on ground A",
     narrow: "In a 288 px column",
     narrowNote: "The width of the content on a 320 px phone. Text paints at the same size; what shrinks is the wheel.",
@@ -209,7 +187,7 @@ function Card({ title, note, option, children }: { title?: string; note?: string
 }
 
 /** The groups of parts the board can show, in the order of the page. */
-export const GALLERY_SECTIONS = ["overview", "learnings", "panel", "sheet", "wheel", "minis", "compare", "rank", "dots", "score", "narrow"] as const;
+export const GALLERY_SECTIONS = ["overview", "panel", "sheet", "wheel", "minis", "compare", "rank", "dots", "score", "narrow"] as const;
 export type GallerySection = (typeof GALLERY_SECTIONS)[number];
 
 /** Scenario and coffee (by its index) of each sheet shown on the board. */
@@ -231,7 +209,6 @@ export function ResultsPartsGallery({
   strings,
   overviewStrings,
   cardsStrings,
-  learningsStrings,
   panelWords,
   sheetWords,
   only,
@@ -241,8 +218,6 @@ export function ResultsPartsGallery({
   /** The overview's words for each invented cupping, by scenario id. */
   overviewStrings: Record<string, OverviewStrings>;
   cardsStrings: CardsStrings;
-  /** The words of "Aprendizajes" (package R4b). */
-  learningsStrings: LearningsStrings;
   /** The words of the organizer's Panel (package R5). */
   panelWords: PanelWords;
   /** The words of a coffee's sheet (package R3). */
@@ -317,29 +292,14 @@ export function ResultsPartsGallery({
       ariaLabel={c.descriptors}
     />
   );
-  const compare = (
-    set: { base?: WheelFixtureName; others: WheelFixtureName[] },
-    ground: "rings" | "families" = "rings",
-  ) => (
+  const compare = (set: { base?: WheelFixtureName; others: WheelFixtureName[] }) => (
     <FlavorCompare
       base={set.base ? coffee(set.base) : null}
       others={set.others.map(coffee)}
       familyLabels={families}
       strings={strings.compare}
-      ground={ground}
     />
   );
-  const choice = (set: { base?: WheelFixtureName; others: WheelFixtureName[] }) => (
-    <div className={css.grid}>
-      <Card option={c.choiceRings} note={c.choiceRingsNote}>
-        {compare(set, "rings")}
-      </Card>
-      <Card option={c.choiceFamilies} note={c.choiceFamiliesNote}>
-        {compare(set, "families")}
-      </Card>
-    </div>
-  );
-
   const rankOf = (id: "panel" | "two" | "solo") => {
     const f = ranks.find((r) => r.id === id) ?? ranks[0];
     return <RankStrip items={f.rows} reference={f.reference} strings={strings.rank} scoreStrings={strings.score} ariaLabel={c.rank} />;
@@ -365,17 +325,6 @@ export function ResultsPartsGallery({
                 parts={strings}
                 t={overviewStrings[scenario.id]}
                 cards={cardsStrings}
-                learningsT={learningsStrings}
-                // the organizer's tile: what waits for them in the Panel
-                pending={
-                  scenario.id === "closed-owner"
-                    ? {
-                        title: panelWords.panel.pendingTitle,
-                        text: pendingSentence({ late: 1, notes: 2 }, panelWords.panel),
-                        action: panelWords.panel.pendingOpen,
-                      }
-                    : null
-                }
               />
             </div>
           ))}
@@ -403,24 +352,6 @@ export function ResultsPartsGallery({
               <PanelFixtureView fixture={fixture} locale={locale} rows={rows} readOnly={readOnly} words={panelWords} />
             </div>
           ))}
-        </section>
-      ) : null}
-
-      {show("learnings") ? (
-        <section className={css.section}>
-          <h2 className={css.sectionTitle}>{c.learnings}</h2>
-          <p className={css.sectionNote}>{c.learningsNote}</p>
-          <div className={css.scenario} data-scenario={LEARNINGS_REPEAT_SCENARIO.id}>
-            <p className={css.listTitle}>{LEARNINGS_REPEAT_SCENARIO.title[locale]}</p>
-            <LearningsSwitchFixture
-              scenario={LEARNINGS_REPEAT_SCENARIO}
-              locale={locale}
-              labels={{ repeatedFirst: c.learningsFirst, approved: c.learningsApproved }}
-              cards={cardsStrings}
-              t={overviewStrings.closed}
-              learningsT={learningsStrings}
-            />
-          </div>
         </section>
       ) : null}
 
@@ -515,12 +446,7 @@ export function ResultsPartsGallery({
 
       {show("compare") ? (
         <section className={css.section}>
-          <h2 className={css.sectionTitle}>{c.choice}</h2>
-          <p className={css.sectionNote}>{c.choiceNote}</p>
-          {choice({ others: ["ambar", "musgo"] })}
-          {choice({ base: "ambar", others: ["cedro"] })}
-
-          <h2 className={`${css.sectionTitle} ${css.sectionTitleNext}`}>{c.compare}</h2>
+          <h2 className={css.sectionTitle}>{c.compare}</h2>
           <p className={css.sectionNote}>{c.compareNote}</p>
           <p className={css.listTitle}>{c.compareRest}</p>
           <div className={css.grid}>

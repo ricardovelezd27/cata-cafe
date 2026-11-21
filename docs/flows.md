@@ -1169,23 +1169,25 @@ participants and members only take part.
 `/sessions/[id]/results` is one shell (`ResultsClient.tsx`) shown to **every**
 viewer, owner and participant alike. There is no separate participant-only or
 owner-only page; gating happens *inside* the views and the drill-down dialog.
-Since R2 (2026-11) the first view is the results themselves: the overview's tiles,
-then one card per coffee; a card opens the coffee's SHEET (R3). The only other
-tab is "Panel" (the organizer, or the admin's read-only lens, of a group session
-with participants; `PanelView`, R5): what waits for a decision (the evaluations
+The page has two VIEWS of the same cupping, named by their perspective (OR-D,
+2026-11-21). **"Por café"** (every viewer), in this order: two boxes (the coffee
+that came first: its name and score; and every score on one fixed scale), one
+card per coffee (a card opens the coffee's SHEET, R3, and prints no score),
+"Comparar" (closed sessions: the coffees' territories on one wheel, the counts
+beside it), then the small facts (you and the panel, who cupped, defective cups).
+Nothing is said twice in the view, and coffees are compared only in "Comparar":
+the ranking makes no claim about how close two neighbours are. **"Por catador"**
+(the organizer, or the admin's read-only lens, of a group session with
+participants; `PanelView`, R5): what waits for a decision (the evaluations
 received late), every cupper's total beside the group's with a mark on the cells
 far from the group, who counts (the exclusion switches), the notes after the close
-and the alignment on one neutral bar per cupper. The overview announces what waits
-there in a "Pendiente en el panel" tile (the organizer only). A participant has ONE
-view and no tab bar, and their page holds none of the Panel's rows. The Descriptores
+and the alignment on one neutral bar per cupper. What waits there is the count on
+its tab. A participant has ONE view and no tab bar, and their page holds none of
+the second view's rows. The Descriptores
 tab, the word cloud, the roll-up lists with typed words and their sentences are
 gone (R3): what a panel found in a coffee is on that coffee's sheet, counted by
 people.
-Once the session is CLOSED the first view ends with "Aprendizajes" (R4b): sentences
-computed by fixed rules (`lib/reports/learnings.ts`), each with its numbers, in two
-columns: the panel's (group view and three included cuppers; under three, one line
-says why) and the reader's own (built from their own rows; absent in the admin's
-lens). Under them, the REFLECTION: the existing note after the close
+Once the session is CLOSED the first view ends with the REFLECTION: the existing note after the close
 (`setPostCloseNote`, sanctioned post-close write 7 of section 1), one editor per
 coffee the reader sent an evaluation of, with the line that says who reads it. The
 same note is still on each coffee's sheet. Nothing new is stored or queried.
@@ -1207,25 +1209,26 @@ the viewer already saw.
 
 ```mermaid
 flowchart TD
-    subgraph T1 ["Resultados — the overview, then a card per coffee (every viewer)"]
-        R1["Overview tiles (SessionOverview):\nthe first of the ranking, every coffee on one scale,\nthe flavour of each coffee, you and the panel,\nthe reference, who cupped, defective cups"]
-        R1b["'Cada café | Comparar' in the flavour tile:\nup to 3 coffees on one wheel, counts in a table\n(closed sessions only)"]
-        R2["Café por café (CoffeeCards):\none card per coffee, references first;\na sideways row with numbered steps on phones,\na grid from 768 px"]
+    subgraph T1 ["Por café — every viewer"]
+        R1["Two boxes (SessionOverview):\nthe first of the ranking (name and score),\nevery coffee on one fixed scale"]
+        R2["Café por café (CoffeeCards):\none card per coffee, references first, no score;\na sideways row with numbered steps on phones,\na grid from 768 px"]
         R2o{"organizer of an\nopen cupping?"}
         R2r["'Revelar' on the card"]
         R4{"session closed?"}
-        R4l["Aprendizajes (Learnings): up to 4 sentences about the panel\n(group view, 3 included cuppers) and up to 5 of the reader's own;\nnever a cupper's name"]
+        R1b["Comparar: up to 3 coffees on one wheel\nover the dim family shades,\nthe counts in a table beside it"]
+        R3f["The small facts: you and the panel,\nwho cupped, defective cups"]
         R4r["Reflexión (Reflection): the note after the close,\none per coffee the reader sent\n(PostCloseNoteEditor, setPostCloseNote)"]
-        R1 --> R1b
         R1 --> R2
         R2 --> R2o
         R2o -- yes --> R2r
         R2 --> R4
-        R4 -- yes --> R4l
-        R4l --> R4r
+        R4 -- yes --> R1b
+        R1b --> R3f
+        R4 -- no --> R3f
+        R3f --> R4r
     end
 
-    subgraph T2 ["Panel — the organizer (or the admin's lens) of a group session"]
+    subgraph T2 ["Por catador — the organizer (or the admin's lens) of a group session"]
         S2["Evaluations received late\n(the organizer only): accept one by one,\nlabelled 'saved before' / 'received after the close'"]
         S3["Análisis por catador: every cupper's total per coffee,\nthe group's score and the spread (DE),\na mark on the cells 1 SD and 2 SD from the mean;\none coffee at a time on a phone"]
         S3b["Who counts: the exclusion switches\n(reason list + confirmation; the organizer only)"]
@@ -1237,8 +1240,8 @@ flowchart TD
         S4 --> S5
     end
 
-    R1 -.->|"'Pendiente en el panel' (organizer)"| S2
-    R1 -.->|open a tile or a ranking row| DET
+    R1 -.->|"the count on the 'Por catador' tab (organizer)"| S2
+    R1 -.->|open the first box or a ranking row| DET
     R2 -.->|open a card| DET
     S3 -.->|open matrix cell| DET
 
@@ -1259,14 +1262,15 @@ that coffee's wheel reached them as the group's counts (`buildSheetData`,
 of an open session and a solo cupper see what they marked themselves instead.
 
 The owner's reference sample (if set), cupped first (see §1), is outside the
-ranking, the session average and "first": it has its own tile in the overview and
-its card comes first, marked "Fuera del ranking". Every other coffee's card shows
-a display-only signed difference against it (the score the card shows against the
-reference's same kind of score); with several references the "Comparar con"
-selector lives in the reference's tile. The sheet's score section adds the
+ranking, the session average and "first": it has no tile of its own (OR-D): its
+score is the dashed line of the ranking, said once in the ranking's legend, and
+its card comes first, marked "Fuera del ranking". Every other coffee's row in the
+ranking shows a display-only signed difference against it (the score the row
+shows against the reference's same kind of score); with several references the
+"Comparar con" selector sits under the ranking. The sheet's score section adds the
 viewer's own score against their own score of the reference.
 
-A card and its tile can never disagree: both read `overviewView`
+A card and the ranking can never disagree: both read `overviewView`
 (`lib/reports/overview.ts`), and a card's own additions (the viewer's state, the
 three most chosen descriptors, the value per quality attribute) are
 `coffeeCards` (`lib/reports/coffeeCards.ts`), built from the data the server
@@ -1313,8 +1317,10 @@ share a coffee, "La misma muestra, dos veces" (own two evaluations, tolerance 2 
 Display rules for community numbers live in `lib/reports/ranking.ts`
 (`RANKING_POLICY`, TODO(kim-validar:D3): min n 3, "indicativo" with 3 to 5 cuppers and firm from 6, gap threshold the larger of 1 point and 0.5 × the larger
 sample SD; 1 point alone without an SD). Equal displayed scores share a rank (1, 1, 3); a community score built from
-fewer than 3 cuppers has no SD and is never "mejor muestra"; neighbours closer than the
-gap threshold read "sin diferencia clara". Every community number says **"n de N
+fewer than 3 cuppers has no SD and is never "mejor muestra". The gap rule ("sin
+diferencia clara") is no longer shown on the results page (the owner, 2026-11-21:
+two neighbours in the ranking are not necessarily close in profile; coffees are
+compared in "Comparar"); only the participant-summary PDF still reads it. Every community number says **"n de N
 incluidos"**: n = complete evaluations of non-excluded cuppers, N = every submitted
 evaluation (excluded ones too, computed separately from `submittedCount`). Resumen, the
 radar card, the score breakdown, the owner matrix, the participant summary and the ficha

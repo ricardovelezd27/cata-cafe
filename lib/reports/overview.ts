@@ -20,8 +20,7 @@
 // before sending is `myScoreFor` -> `canShowMyScore`. Display-only: scoring,
 // the trigger and AggregateScore never read this file. Nothing is stored.
 
-import { wheelHeadline, type WheelHeadline } from "@/lib/flavorWheelLayout";
-import { buildDefectSummary, type DefectSummary } from "@/lib/reports/learnings";
+import { buildDefectSummary, type DefectSummary } from "@/lib/reports/defectSummary";
 import {
   myScoreFor,
   rankSamples,
@@ -30,7 +29,7 @@ import {
   type RankableSample,
 } from "@/lib/reports/ranking";
 import { buildOwnWheelData, buildWheelData, type WheelData } from "@/lib/reports/wheelData";
-import { round2, tiesWithNext, type TieEntry } from "@/lib/resultsScales";
+import { round2 } from "@/lib/resultsScales";
 import { scoreContext, type ScoreContext } from "@/lib/scoreContext";
 
 // ── On the server ────────────────────────────────────────────────────────────
@@ -171,33 +170,13 @@ export type OverviewEntry<S> = {
   place: number | null;
   /** Everything said beside its score. */
   context: ScoreContext;
-  /** What the tie rule reads. */
-  tie: TieEntry;
 };
 
 export type OverviewFirst<S> =
-  | {
-      status: "ok";
-      entry: OverviewEntry<S>;
-      /** The next coffee, when there is no clear difference between the two. */
-      tieWith: { sample: S; gap: number } | null;
-    }
+  | { status: "ok"; entry: OverviewEntry<S> }
   /** `descriptive`: the session has no scores. `no_scores`: nothing to rank yet.
    *  `too_few`: scores exist, but none rests on enough cuppers to be "first". */
   | { status: "none"; reason: "descriptive" | "no_scores" | "too_few" };
-
-export type OverviewWheelItem<S> =
-  | { sample: S; status: "ok"; wheel: Extract<WheelData, { status: "ok" }>; headline: WheelHeadline | null }
-  | { sample: S; status: "too_few"; included: number };
-
-export type OverviewWheels<S> =
-  /** An affective session: no wheel, no words about descriptors. */
-  | { status: "no_wheel" }
-  /** Every coffee is under the wheel's minimum for this viewer. */
-  | { status: "too_few" }
-  /** Nothing to draw yet: no sent evaluation, or none of the viewer's own marks. */
-  | { status: "empty" }
-  | { status: "ok"; scope: "group" | "own"; items: OverviewWheelItem<S>[] };
 
 export type OverviewView<S> = {
   scope: "group" | "own";
@@ -212,7 +191,6 @@ export type OverviewView<S> = {
   referenceLine: { sample: S; score: number } | null;
   /** Every reference, in the order the organizer named them. */
   references: { sample: S; value: RankValue; active: boolean }[];
-  wheels: OverviewWheels<S>;
   /** The viewer against the panel; null under three cuppers or with no score of their own. */
   you: { above: number; of: number; meanDifference: number } | null;
   /** Coffees with a defective cup, the most flagged first. */
@@ -245,10 +223,8 @@ export function overviewView<S extends OverviewSample>(input: {
           context: scoreContext({
             value: r,
             mine: myScoreFor(r.sample, ctx.format, ctx.cupsPerSample),
-            noClearGap: ranked && r.noClearGap,
             deltaVsReference: ranking.refDeltas.get(r.sample.id) ?? null,
           }),
-          tie: { score: r.score, sd: r.sd, n: r.n },
         }));
 
   const first = ((): OverviewFirst<S> => {
@@ -256,16 +232,7 @@ export function overviewView<S extends OverviewSample>(input: {
     if (!ranked || !entries.some((e) => e.context.score !== null)) return { status: "none", reason: "no_scores" };
     const candidates = entries.filter((e) => e.context.canBeFirst);
     if (candidates.length === 0) return { status: "none", reason: "too_few" };
-    const [entry, next] = candidates;
-    const tied = next ? tiesWithNext([entry.tie, next.tie])[0] : false;
-    return {
-      status: "ok",
-      entry,
-      tieWith:
-        tied && next
-          ? { sample: next.sample, gap: round2(Math.abs((entry.tie.score as number) - (next.tie.score as number))) }
-          : null,
-    };
+    return { status: "ok", entry: candidates[0] };
   })();
 
   const referenceLine =
@@ -274,30 +241,6 @@ export function overviewView<S extends OverviewSample>(input: {
       : null;
 
   const inOrder = [...ranking.anchors.map((a) => a.sample), ...ordered.map((r) => r.sample)];
-  const wheels = ((): OverviewWheels<S> => {
-    const items: OverviewWheelItem<S>[] = [];
-    let hasWheel = false;
-    for (const sample of inOrder) {
-      const wheel = data.samples[sample.id]?.wheel;
-      if (!wheel || wheel.status === "no_wheel") continue;
-      hasWheel = true;
-      if (wheel.status === "too_few") {
-        items.push({ sample, status: "too_few", included: wheel.included });
-        continue;
-      }
-      // nobody has sent this coffee yet: there is nothing to draw for it
-      if (wheel.n === 0) continue;
-      const headline = wheelHeadline(wheel.rollup, wheel.n);
-      // the viewer's own marks: a coffee they marked nothing on is left out
-      if (data.scope === "own" && headline === null) continue;
-      items.push({ sample, status: "ok", wheel, headline });
-    }
-    if (!hasWheel) return { status: "no_wheel" };
-    if (items.length === 0) return { status: "empty" };
-    if (items.every((item) => item.status === "too_few")) return { status: "too_few" };
-    return { status: "ok", scope: data.scope, items };
-  })();
-
   const differences = entries
     .map((e) => e.context.difference)
     .filter((d): d is number => typeof d === "number");
@@ -326,7 +269,6 @@ export function overviewView<S extends OverviewSample>(input: {
       value: a.rank,
       active: ranking.referenceSample?.id === a.sample.id,
     })),
-    wheels,
     you,
     defects,
     who: data.who,

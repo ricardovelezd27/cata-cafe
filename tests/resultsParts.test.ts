@@ -35,7 +35,7 @@ import {
   fitWheelLabels,
   wheelHeadline,
 } from "@/lib/flavorWheelLayout";
-import { INTENSITY_SCALE, QUALITY_SCALE, SCORE_SCALE, countBar, tieBars, tiesWithNext } from "@/lib/resultsScales";
+import { INTENSITY_SCALE, QUALITY_SCALE, SCORE_SCALE, countBar } from "@/lib/resultsScales";
 import es from "@/messages/es.json";
 import en from "@/messages/en.json";
 import { HEAVY_TEST_TIMEOUT_MS, SCAN_TIMEOUT_MS } from "./helpers/timeouts";
@@ -420,23 +420,16 @@ describe("RankStrip", () => {
     }
   });
 
-  it("joins tied neighbours with one bar and says the tie in words for a screen reader", () => {
-    const s = stringsOf("es");
-    const panel = rankFixtures("es")[0];
-    const entries = panel.rows.map((r) => r.tie);
-    expect(tieBars(entries)).toEqual([{ from: 0, to: 2 }]);
-    const markup = html(
-      createElement(RankStrip, { items: panel.rows, reference: panel.reference, strings: s.rank, scoreStrings: s.score }),
-    );
-    const tied = tiesWithNext(entries);
-    panel.rows.forEach((row, i) => {
-      const sentence = fillPattern(s.rank.tieWithNext, { label: panel.rows[i + 1]?.label ?? "" });
-      if (tied[i]) expect(markup).toContain(sentence);
-    });
-    expect((markup.match(/Sin diferencia clara con/g) ?? []).length).toBe(tied.filter(Boolean).length);
-    expect(markup).toContain(s.rank.legendTie);
-    // the words of the tie are the bar's, not a badge on every row
-    expect(markup).not.toContain(`>${s.score.noClearGap}<`);
+  it("orders the scores and claims nothing about neighbours: no tie bar, no tie words (owner, 2026-11-21)", () => {
+    for (const locale of LOCALES) {
+      const s = stringsOf(locale);
+      const panel = rankFixtures(locale)[0];
+      const markup = html(
+        createElement(RankStrip, { items: panel.rows, reference: panel.reference, strings: s.rank, scoreStrings: s.score }),
+      );
+      expect(markup).not.toMatch(/sin diferencia clara|no clear difference/i);
+      expect(markup).not.toMatch(/tie(Start|Mid|End)/);
+    }
   });
 
   it("draws the group only where there is one, and a reference as a line with its legend", () => {
@@ -512,7 +505,7 @@ describe("ScoreWithContext", () => {
     expect(three).toContain("vs. referencia");
     const six = render("six");
     expect(six).toContain("−2.00");
-    expect(six).toContain("sin diferencia clara");
+    expect(six).not.toContain("sin diferencia clara");
     expect(six).not.toContain("indicativo");
   });
   it("a solo cupper's score carries its own words and nothing of a group", () => {

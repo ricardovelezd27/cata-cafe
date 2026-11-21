@@ -52,26 +52,22 @@ const TAG_TEXT_PX = CHART_CAPTION_PX;
  * paper, each coffee's letter sits on its own edge inside the outer ring, and
  * the coffees are told apart by line style and by letter, never by colour alone.
  *
- * `ground`: what lies under the territories.
- * - "rings" (the default): a ring per person. The one-coffee wheel lost its
- *   rings in package R1d because a count is printed beside every petal; here no
- *   count is printed, so the rings are the only scale on the drawing: a
- *   territory's edge runs ON the ring of its count.
- * - "families": as the one-coffee wheel, the nine tinted sectors and the outer
- *   ring alone. Kept so the owner can compare the two; not the recommendation.
+ * Under the territories lie the nine dim family shades of the one-coffee wheel
+ * and the outer ring alone (the owner's choice, 2026-11-21).
  */
 export function FlavorCompare({
   base = null,
   others,
   familyLabels,
   strings,
-  ground = "rings",
+  beside = false,
 }: {
   base?: CompareCoffee | null;
   others: readonly CompareCoffee[];
   familyLabels: FamilyLabels;
   strings: FlavorCompareStrings;
-  ground?: "rings" | "families";
+  /** From 768 px, the table sits beside the wheel (two columns) instead of under it. */
+  beside?: boolean;
 }) {
   const { ref, width } = useElementWidth();
   const frame = WHEEL_FRAMES.compare;
@@ -97,8 +93,10 @@ export function FlavorCompare({
         { line: styles.lineO1, fill: null },
       ]
     : [
-        { line: styles.lineA0, fill: styles.fillA0 },
-        { line: styles.lineA1, fill: styles.fillA1 },
+        // a fill only while ONE territory is drawn: two fills stacked over the
+        // family shades turn into one wash that hides each family's hue
+        { line: styles.lineA0, fill: g.territories.length < 2 ? styles.fillA0 : null },
+        { line: styles.lineA1, fill: null },
         { line: styles.lineA2, fill: null },
       ];
   const styleOf = (order: number) => lineStyles[order % lineStyles.length];
@@ -110,7 +108,7 @@ export function FlavorCompare({
   });
 
   return (
-    <figure className={styles.figure}>
+    <figure className={beside ? `${styles.figure} ${styles.beside}` : styles.figure}>
       <div ref={ref} className={styles.frame}>
         <svg
           className={styles.svg}
@@ -120,17 +118,11 @@ export function FlavorCompare({
           focusable="false"
         >
           <g aria-hidden="true">
-            {ground === "families" ? <WheelGrounds grounds={familyGrounds(frame, g.n)} /> : null}
+            <WheelGrounds grounds={familyGrounds(frame, g.n)} />
             {g.rings
-              .filter((ring) => ring.outer || ground === "rings")
+              .filter((ring) => ring.outer)
               .map((ring) => (
-                <circle
-                  key={ring.people}
-                  className={ring.outer ? styles.ringOuter : styles.ring}
-                  cx={frame.cx}
-                  cy={frame.cy}
-                  r={ring.radius}
-                />
+                <circle key={ring.people} className={styles.ringOuter} cx={frame.cx} cy={frame.cy} r={ring.radius} />
               ))}
             {g.petals.map((p) =>
               p.d === null ? null : (
@@ -177,7 +169,10 @@ export function FlavorCompare({
         </svg>
       </div>
 
-      {/* The legend tells the coffees apart by SHAPE: petals, or a line style. */}
+      {/* With a base, the legend tells the petals from the outlines. Without one
+          every coffee is a territory with its letter ON it, and the table's
+          header carries the same letters: no legend is needed. */}
+      {base ? (
       <ul className={styles.legend}>
         {drawn.map((d, i) => {
           const isBase = d.series.role === "petals";
@@ -198,6 +193,7 @@ export function FlavorCompare({
           );
         })}
       </ul>
+      ) : null}
 
       {g.table.rows.length > 0 ? (
         <div className={styles.tableWrap}>

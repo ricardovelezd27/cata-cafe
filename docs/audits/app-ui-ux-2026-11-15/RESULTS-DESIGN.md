@@ -1,5 +1,17 @@
 # Results: the design proposal (package R0)
 
+> **2026-11-21, the owner's review (OR-D).** The page is now two views, "Por café"
+> and "Por catador", and nothing is said twice in one view:
+> `RESULTS-VIEWS-PROPOSAL.md` (approved) is the design that governs. Where this
+> document differs, the proposal wins. Removed: "Aprendizajes" (section 7), the
+> "Each coffee" view and its switch, "no clear difference" (the tie bar, its legend,
+> the chips and the sentence), the reference tile, the score on each card, and the
+> "Pendiente en el panel" tile (now the count on the "Por catador" tab). "Primera
+> del ranking" holds the coffee's name and score only. "Comparar" is a section of
+> its own, over the dim family shades, with its table beside the wheel on desktop.
+> The reflection becomes one per tasting (section 8) in the next package.
+
+
 > Part of the app UI/UX audit of 2026-11-15 (`REPORT.md`, `RESULTS-DIAGNOSIS.md`, `PLAN.md`,
 > `DECISIONS.md` in this folder). A proposal and a mock: no app code was changed.
 > It builds on what Ricardo decided on 2026-11-16 (decisions 4, 5, 6, 7, 11, 12, 13).
