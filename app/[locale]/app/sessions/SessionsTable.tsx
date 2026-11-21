@@ -239,7 +239,9 @@ export function SessionsTable({
         // stretches over the card through an ::after layer. The owner's three 44 px
         // actions stay as a row above that layer (DESIGN.md: an interactive card is the
         // link itself, so the actions cannot live inside a second, nested control).
-        <div className="relative space-y-2 rounded-card border border-outline-variant bg-surface-container-lowest p-4">
+        // `isolate` keeps that z-10 inside the card, so the phone's fixed bottom bar
+        // still paints over a card that scrolls under it.
+        <div className="relative isolate space-y-2 rounded-card border border-outline-variant bg-surface-container-lowest p-4">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 space-y-1">
               <Link
