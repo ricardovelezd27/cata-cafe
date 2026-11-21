@@ -23,11 +23,8 @@ interface SessionShellProps {
   children: ReactNode;
   /** Optional sticky in-canvas footer (e.g. CanvasFooter). */
   footer?: ReactNode;
-  /** Optional title shown next to hamburger on mobile. */
-  mobileTitle?: string;
-  /** Phone-only (<640px) content rendered in the hamburger row INSTEAD of
-   *  `mobileTitle` — e.g. the sample tabs, so header + sample bar share one
-   *  compact row (CP-C1). */
+  /** Phone-only (<640px) content rendered in the hamburger row — e.g. the sample
+   *  tabs, so header + sample bar share one compact row (CP-C1). */
   mobileBar?: ReactNode;
   /** Phone-only panel under the hamburger row, always shown (owner, 2026-11-21: no
    *  accordion): session name, role, reference context, edit button… Requires `mobileBar`. */
@@ -60,7 +57,6 @@ export function SessionShell({
   topBar,
   children,
   footer,
-  mobileTitle,
   mobileBar,
   mobileDetails,
   collapsed = false,
@@ -133,18 +129,7 @@ export function SessionShell({
                 <Menu size={18} aria-hidden />
               </button>
             </Dialog.Trigger>
-            {mobileBar ? (
-              <div className={styles.mobileBarSlot}>{mobileBar}</div>
-            ) : (
-              mobileTitle && (
-                <span
-                  className="font-display text-body text-on-surface truncate"
-                  style={{ flex: 1, minWidth: 0 }}
-                >
-                  {mobileTitle}
-                </span>
-              )
-            )}
+            {mobileBar && <div className={styles.mobileBarSlot}>{mobileBar}</div>}
             {onMobileExit && (
               <button
                 type="button"

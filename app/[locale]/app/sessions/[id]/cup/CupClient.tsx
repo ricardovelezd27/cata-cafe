@@ -390,7 +390,6 @@ export function CupClient({
     // Shell (Phase 3)
     samplesHeader: string;
     /** aria-label of the phone chevron that reveals session details. */
-    sessionDetails?: string;
     evaluationHeader: string;
     phaseTitle: string;
     cuppingModule: string;
@@ -956,7 +955,6 @@ export function CupClient({
   const leaveTargetRef = useRef<CupExitTarget>("sessions");
   const closedNoticeShownRef = useRef(false);
   const closedNoticeRef = useRef<() => void>(() => {});
-  // F-05 (S5b): the timer's open state is shared by its row and the phone's header-row link.
   // IndexedDB has proven unreliable (quota, Safari private mode, …) — the
   // OfflineBanner surfaces this so the cupper knows local drafts aren't safe.
   // S10 WP8b: the OfflineBanner notice sits at the top of the scroll area; toast
@@ -2596,9 +2594,8 @@ export function CupClient({
     </div>
   );
 
-  // Phone (<sm): sample tabs + counter share the hamburger row. Everything
-  // that used to need its own line (session name, role, reference context,
-  // edit button) sits behind the chevron (`phoneDetails`).
+  // Phone (<sm): sample tabs + counter share the hamburger row. The session name,
+  // role, reference context and edit button sit under it, always shown (`phoneDetails`).
   const phoneBar = (
     <div className="flex items-center gap-2 min-w-0">
       <div className="min-w-0 flex-1">
@@ -2942,7 +2939,6 @@ export function CupClient({
       exitLink={exitSlot}
       topBar={topBar}
       footer={footer}
-      mobileTitle={session.name}
       mobileBar={phoneBar}
       mobileDetails={phoneDetails}
       collapsed={keyboardOpen}

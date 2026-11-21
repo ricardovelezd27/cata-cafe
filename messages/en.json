@@ -526,8 +526,7 @@
       "copied": "Copied",
       "copyImage": "Copy QR",
       "downloadQr": "Download QR",
-      "currentSample": "Current sample",
-      "sessionDetails": "Session details"
+      "currentSample": "Current sample"
     },
     "cups": {
       "title": "Cups",
