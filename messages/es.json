@@ -1195,6 +1195,7 @@
     "exclusionNotice": "El organizador dejó tu evaluación fuera del resultado del grupo ({reason}). Tus propios resultados no cambian.",
     "exclusionNoticeNoReason": "El organizador dejó tu evaluación fuera del resultado del grupo. Tus propios resultados no cambian.",
     "downloadCsvNoNames": "CSV sin nombres",
+    "downloadResultsPdf": "PDF de los resultados",
     "exportOpen": "Exportar",
     "exportTitle": "Exportar resultados",
     "needsConnection": "Necesita conexión",

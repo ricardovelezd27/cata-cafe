@@ -11,7 +11,8 @@ import { RankStrip } from "@/components/results/RankStrip";
 import { joinNames, wheelCaptionText } from "@/components/results/wheelCaption";
 import { CountBar } from "@/components/ui/CountBar";
 import { DotPlot } from "@/components/ui/DotPlot";
-import { ScoreWithContext, formatSigned } from "@/components/ui/ScoreWithContext";
+import { ScoreWithContext } from "@/components/ui/ScoreWithContext";
+import { formatSigned } from "@/lib/scoreFormat";
 import {
   SCORE_FIXTURES,
   intensityFixture,

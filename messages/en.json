@@ -1195,6 +1195,7 @@
     "exclusionNotice": "The organizer left your evaluation out of the group result ({reason}). Your own results do not change.",
     "exclusionNoticeNoReason": "The organizer left your evaluation out of the group result. Your own results do not change.",
     "downloadCsvNoNames": "CSV without names",
+    "downloadResultsPdf": "Results PDF",
     "exportOpen": "Export",
     "exportTitle": "Export results",
     "needsConnection": "Needs a connection",

@@ -38,6 +38,9 @@ export type CardSample = OverviewSample & {
     | null;
 };
 
+/** How many coffees one comparison draws (`compareGeometry`'s own limit); the page's default pick. */
+export const MAX_COMPARED = 3;
+
 /** One quality attribute (1 to 9): the viewer's value and the group's. */
 export type QualityRow = { id: string; mine: number | null; group: number | null };
 

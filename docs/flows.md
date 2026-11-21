@@ -1315,12 +1315,11 @@ share a coffee, "La misma muestra, dos veces" (own two evaluations, tolerance 2 
 ### Ranking honesty & n of N (S8-12)
 
 Display rules for community numbers live in `lib/reports/ranking.ts`
-(`RANKING_POLICY`, TODO(kim-validar:D3): min n 3, "indicativo" with 3 to 5 cuppers and firm from 6, gap threshold the larger of 1 point and 0.5 × the larger
-sample SD; 1 point alone without an SD). Equal displayed scores share a rank (1, 1, 3); a community score built from
+(`RANKING_POLICY`, TODO(kim-validar:D3): min n 3, "indicativo" with 3 to 5 cuppers and firm from 6). Equal displayed scores share a rank (1, 1, 3); a community score built from
 fewer than 3 cuppers has no SD and is never "mejor muestra". The gap rule ("sin
-diferencia clara") is no longer shown on the results page (the owner, 2026-11-21:
+diferencia clara") is gone from every surface (the owner, 2026-11-21:
 two neighbours in the ranking are not necessarily close in profile; coffees are
-compared in "Comparar"); only the participant-summary PDF still reads it. Every community number says **"n de N
+compared in "Comparar"). Every community number says **"n de N
 incluidos"**: n = complete evaluations of non-excluded cuppers, N = every submitted
 evaluation (excluded ones too, computed separately from `submittedCount`). Resumen, the
 radar card, the score breakdown, the owner matrix, the participant summary and the ficha
@@ -1346,8 +1345,16 @@ flowchart LR
     FT --> R2["/api/sessions/[id]/ficha-tecnica\nowner|admin · others 404"]
     TN --> R2
     CF["loadCoffeeAggregateSamples(viewer) →\nfilterCoffeeSamples (closed + revealed,\nno excluded cuppers) → computeCoffeeAggregate"] --> R3["/api/coffees/[id]/ficha\nusableCoffeeWhere · community block if\nresultsPublished || owner"]
+    RP["buildResultsPdfModel
+(the results page's own models: overviewView, coffeeCards,
+compareOptions over buildOverviewData)"]
+    SRC --> RP
+    RP --> R5["/api/sessions/[id]/results-pdf
+member|owner|admin · canViewGroupResults else 409"]
     CVA["buildCvaFormData(ownerView)\nphysical: owner only · extrinsic: owner || revealed"] --> R4["/api/sessions/[id]/cva-pdf\n+ /print page (HTML twin)"]
 ```
+
+**Results PDF (OR-E part 3).** The "Exportar" sheet's second file is the "Por café" view of the results page as a PDF (`results-pdf`, `lib/pdf/ResultsDocument.tsx`). It adds no rule and no query: `buildResultsPdfModel` (`lib/reports/resultsPdf.ts`) assembles the page's own inputs from the report fetch and runs the page's own pure models over them, so a participant's file holds what a participant's page holds (counts and aggregates only, the wheel hidden under three cuppers, no group number before the close, references outside the ranking). The route gates first, as `participant-summary` does. A participant's unsent drafts are not in the report fetch, so they read as "no evaluation yet" (less than the page, never more).
 
 Tiers are entitlements, not billing: **participant** = `participant-summary`
 (never another cupper's name/id, never physical data — asserted in

@@ -2,7 +2,7 @@
 
 // S1 (F-01): every export of the results page lives in ONE sheet opened by one
 // "Exportar" button (a bottom sheet on phones, a centred dialog from 640 px:
-// ResponsiveDialog). Two files: the CVA sheet PDF and the CSV without names.
+// ResponsiveDialog). Three files: the CVA sheet PDF, a PDF of the results page and the CSV without names.
 // Which ones a viewer gets is decided by lib/resultsExports.ts; each is a
 // ReportLink (offline-aware, lib/platform underneath).
 //
@@ -22,6 +22,7 @@ export type ResultsExportSheetTranslations = {
   close: string;
   downloadPdf: string;
   downloadCsvNoNames: string;
+  downloadResultsPdf: string;
   needsConnection: string;
 };
 
@@ -55,6 +56,21 @@ export function ResultsExportSheet({
             className="w-full"
           >
             {t.downloadPdf}
+          </ReportLink>
+        );
+      case "resultsPdf":
+        // The "Por café" view of this page, with its look: the page's own models, gated like the page.
+        return (
+          <ReportLink
+            href={`/api/sessions/${sessionId}/results-pdf?locale=${locale}`}
+            filename={`${locale === "en" ? "results" : "resultados"}-${sessionId}.pdf`}
+            offlineLabel={t.needsConnection}
+            size="md"
+            variant="secondary"
+            icon={<FileDown size={16} aria-hidden />}
+            className="w-full"
+          >
+            {t.downloadResultsPdf}
           </ReportLink>
         );
       case "csvNoNames":

@@ -2,7 +2,7 @@
 
 import { useId, type ReactNode } from "react";
 import { Notice, PaperSectionHeading } from "@/components/ui";
-import { formatScore, formatSigned } from "@/components/ui/ScoreWithContext";
+import { formatScore, formatSigned } from "@/lib/scoreFormat";
 import { fillPattern } from "@/lib/fillPattern";
 import type { WheelFamilyId } from "@/lib/flavorWheel";
 import { compareOptions, type CardSample } from "@/lib/reports/coffeeCards";

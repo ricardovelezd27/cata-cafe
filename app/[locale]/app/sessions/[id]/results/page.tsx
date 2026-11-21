@@ -1399,6 +1399,7 @@ export default async function ResultsPage({
         backToCupping: tResults("backToCupping"),
         downloadPdf: tResults("downloadPdf"),
         downloadCsvNoNames: tResults("downloadCsvNoNames"),
+        downloadResultsPdf: tResults("downloadResultsPdf"),
         needsConnection: tResults("needsConnection"),
         exportOpen: tResults("exportOpen"),
         exportTitle: tResults("exportTitle"),

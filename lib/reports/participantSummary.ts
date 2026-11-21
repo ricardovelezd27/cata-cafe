@@ -49,8 +49,6 @@ export type ParticipantSummarySample = {
   inclusion: { included: number; total: number } | null;
   /** Community n in the "indicativo" band, or too few cuppers for an SD. */
   indicative: boolean;
-  /** Neighbour in the ranking is closer than half the panel spread. */
-  noClearGap: boolean;
   deltaVsRef: number | null;
   /** 8 values in AFFECTIVE_ATTRIBUTES order; null side = nothing to draw. */
   radar: { mine: number[] | null; community: number[] | null } | null;
@@ -167,7 +165,7 @@ export function buildParticipantSummary(
     r: { id: string },
     score: number | null,
     sd: number | null,
-    flags: { indicative: boolean; noClearGap: boolean; n: number | null; total: number | null },
+    flags: { indicative: boolean; n: number | null; total: number | null },
   ): ParticipantSummarySample => {
     const sample = sampleById.get(r.id)!;
     const ev = mine.get(r.id);
@@ -235,7 +233,6 @@ export function buildParticipantSummary(
           ? { included: flags.n, total: flags.total }
           : null,
       indicative: flags.indicative,
-      noClearGap: flags.noClearGap,
       deltaVsRef: refDeltas.get(r.id) ?? null,
       radar,
       topDescriptors,
@@ -250,7 +247,6 @@ export function buildParticipantSummary(
     samples.push(
       build(a.sample, a.rank.score, a.rank.sd, {
         indicative: false,
-        noClearGap: false,
         n: a.rank.n,
         total: a.rank.total,
       }),
@@ -260,7 +256,6 @@ export function buildParticipantSummary(
     samples.push(
       build(r.sample, r.score, r.sd, {
         indicative: r.indicative || r.suppressed,
-        noClearGap: r.noClearGap,
         n: r.n,
         total: r.total,
       }),
