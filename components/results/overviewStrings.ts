@@ -34,7 +34,6 @@ export const RESULTS_OVERVIEW_KEYS = [
   "defectType",
   "defectUnspecified",
   "defectBy",
-  "referenceScore",
   "preliminary",
 ] as const;
 

@@ -85,8 +85,8 @@ export function rankFixtures(locale: FixtureLocale): RankFixture[] {
   const sample = locale === "en" ? "Sample" : "Muestra";
   return [
     {
-      // seven of eight cuppers: three neighbours with no clear difference, a
-      // fixed reference, and a coffee under the scale (two defective cups)
+      // seven of eight cuppers: a fixed reference, and a coffee under the scale
+      // (two defective cups)
       id: "panel",
       reference: { label: `${sample} E`, score: 79 },
       rows: rankRows(

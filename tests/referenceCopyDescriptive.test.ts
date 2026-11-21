@@ -30,13 +30,8 @@ describe("reference wording follows format AND mode (S10 WP6b)", () => {
   it("the copy keys of a descriptive anchor-mode session carry no 79 or fixed claim", () => {
     const suffix = referenceCopySuffix(referenceExplanation({ mode: "anchor", moduleKey: "descriptive" }));
     expect(suffix).toBe("Descriptive");
-    for (const m of [es, en] as Array<{ results: { dashboard: Record<string, string>; help: { referencia: Record<string, string> } } }>) {
-      const dash = m.results.dashboard;
-      const strings = [
-        dash[`anchorTitle${suffix}`],
-        dash[`anchorHint${suffix}`],
-        m.results.help.referencia[`body${suffix}`],
-      ];
+    for (const m of [es, en] as Array<{ results: { help: { referencia: Record<string, string> } } }>) {
+      const strings = [m.results.help.referencia[`body${suffix}`]];
       for (const s of strings) {
         expect(typeof s).toBe("string");
         expect(s).not.toMatch(/79|fija|fijad|fixed|pinned/i);

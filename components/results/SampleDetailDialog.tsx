@@ -92,7 +92,6 @@ export type SheetGroupProps = {
     /** What a chip prints beside the letter: the name once revealed, else the label. */
     short: Readonly<Record<string, string>>;
   } | null;
-  compareGround: "rings" | "families";
 };
 
 export function SampleDetailDialog({
@@ -253,7 +252,6 @@ export function SampleDetailDialog({
           comparison={activeParticipant ? null : (sample.comparison ?? null)}
           repeatDiffs={activeParticipant ? [] : (sample.repeatDiffs ?? [])}
           compare={activeParticipant ? null : group.compare}
-          compareGround={group.compareGround}
           extrinsic={sample.extrinsic}
           extrinsicNote={sample.extrinsicEditedLabel ?? null}
           prep={sample.prep ?? null}

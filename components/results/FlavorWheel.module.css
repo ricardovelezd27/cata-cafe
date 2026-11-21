@@ -79,7 +79,6 @@
   fill: none;
   vector-effect: non-scaling-stroke;
 }
-.ring { stroke: var(--color-outline-variant); stroke-width: 1; }
 .ringOuter { stroke: var(--color-outline); stroke-width: 1.25; }
 /* A petal: the family's tone, as long as the people who found it. */
 .petal { fill: var(--family-tone); }

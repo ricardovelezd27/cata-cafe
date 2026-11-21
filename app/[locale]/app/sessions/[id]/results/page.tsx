@@ -1096,8 +1096,7 @@ export default async function ResultsPage({
     ownerIntro: tResults("postCloseNote.ownerIntro"),
   };
 
-  // The samples as the page sends them. Built before the return so that the
-  // learnings below read the very rows the overview, the cards and the sheet show.
+  // The samples as the page sends them: the rows the overview, the cards and the sheet show.
   const sampleResults = session.samples.map((s) => {
           const ev = s.evaluations[0];
           const agg = s.aggregateScore;

@@ -196,4 +196,4 @@ The `overengineering-critic` (Opus) reviewed this proposal against REVIEW.md, th
 
 1. The proposal: **"Approve"**.
 2. Box A: **the wheel lives on the card**, so "Primera del ranking" keeps only the coffee's name and score.
-3. The general reflection's new table and migration: **"Yes, I'll run it"** (its own pull request).
+3. The general reflection's new table and migration: **"Yes, I'll run it"** (its own pull request). Until that pull request the per-coffee editors stay as they are.

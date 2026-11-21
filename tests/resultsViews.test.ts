@@ -54,7 +54,7 @@ describe("two views, named by their perspective", () => {
     );
     // the number is for the eye; a screen reader hears what it counts
     expect(markup).toMatch(/<span aria-hidden="true">3<\/span>/);
-    expect(markup).toContain('<span class="sr-only">1 evaluación tardía por decidir y 2 notas después del cierre</span>');
+    expect(markup).toMatch(/<span class="sr-only">, (<!-- -->)?1 evaluación tardía por decidir y 2 notas después del cierre<\/span>/);
   });
 });
 

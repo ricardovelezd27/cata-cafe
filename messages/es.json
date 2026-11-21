@@ -973,15 +973,12 @@
     },
     "dashboard": {
       "statSamples": "Muestras evaluadas",
-      "anchorTitle": "Referencia fija",
-      "anchorHint": "Calidad fijada en 5 en todos los atributos · siempre 79.00 · fuera del ranking, del promedio y de la mejor muestra. La referencia fija es un ejercicio de Café Sensible para alinear al grupo: todos le dan 79.00. No es parte del CVA, donde cada persona puntúa su propia impresión.",
       "statParticipation": "Participación",
       "statAvg": "Promedio de sesión",
       "statBest": "Mejor muestra",
       "statAvgMine": "según tus evaluaciones",
       "statAvgCommunity": "promedio comunitario",
       "ranking": "Ranking de muestras",
-      "notScored": "Sin puntaje",
       "performance": "Mi desempeño",
       "myAvg": "Mi promedio",
       "communityAvg": "Promedio del grupo",
@@ -994,11 +991,7 @@
       "rankIndicative": "indicativo",
       "basisMine": "tu puntaje",
       "rankHelp": "\"Indicativo\": hay menos de 6 catadores o menos de 5 tazas, así que el puntaje es una primera señal.",
-      "fewNote": "Con menos de 3 catadores el puntaje es indicativo: no se muestra dispersión ni se elige mejor muestra.",
-      "anchorTitleFree": "Referencia",
-      "anchorHintFree": "Puntuada como cualquier otra muestra · fuera del ranking, del promedio y de la mejor muestra",
-      "anchorTitleDescriptive": "Referencia",
-      "anchorHintDescriptive": "Punto de comparación · fuera del ranking, del promedio y de la mejor muestra"
+      "fewNote": "Con menos de 3 catadores el puntaje es indicativo: no se muestra dispersión ni se elige mejor muestra."
     },
     "table": {
       "sample": "Muestra",
@@ -1370,7 +1363,6 @@
       "defectType": "{type}: {n}",
       "defectUnspecified": "sin especificar",
       "defectBy": "Catadores que marcaron un defecto: {k} de {n}",
-      "referenceScore": "{score}",
       "preliminary": "Resultados preliminares: solo tú los ves. Se actualizan al pulsar «{button}»."
     },
     "cards": {

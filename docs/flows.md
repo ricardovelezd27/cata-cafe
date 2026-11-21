@@ -1261,14 +1261,15 @@ that coffee's wheel reached them as the group's counts (`buildSheetData`,
 of an open session and a solo cupper see what they marked themselves instead.
 
 The owner's reference sample (if set), cupped first (see §1), is outside the
-ranking, the session average and "first": it has its own tile in the overview and
-its card comes first, marked "Fuera del ranking". Every other coffee's card shows
-a display-only signed difference against it (the score the card shows against the
-reference's same kind of score); with several references the "Comparar con"
-selector lives in the reference's tile. The sheet's score section adds the
+ranking, the session average and "first": it has no tile of its own (OR-D): its
+score is the dashed line of the ranking, said once in the ranking's legend, and
+its card comes first, marked "Fuera del ranking". Every other coffee's row in the
+ranking shows a display-only signed difference against it (the score the row
+shows against the reference's same kind of score); with several references the
+"Comparar con" selector sits under the ranking. The sheet's score section adds the
 viewer's own score against their own score of the reference.
 
-A card and its tile can never disagree: both read `overviewView`
+A card and the ranking can never disagree: both read `overviewView`
 (`lib/reports/overview.ts`), and a card's own additions (the viewer's state, the
 three most chosen descriptors, the value per quality attribute) are
 `coffeeCards` (`lib/reports/coffeeCards.ts`), built from the data the server

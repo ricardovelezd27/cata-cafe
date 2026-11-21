@@ -42,7 +42,8 @@ function Tile({ title, area, children }: { title: string; area: string; children
  * nothing (the reader against the panel, who cupped, the defective cups).
  *
  * Nothing is said twice in the view: a coffee's wheel is on its card only, its
- * score in the ranking only. It draws; it does not decide: WHAT each part
+ * score in the ranking only (the first coffee's also heads its own box, the
+ * owner's choice). It draws; it does not decide: WHAT each part
  * shows for this viewer and this state is `overviewView`
  * (lib/reports/overview.ts), from data the server already gated. A score is a
  * number in ink; nothing here moves.
@@ -75,10 +76,9 @@ export function SessionOverview<S extends OverviewSampleProps>({
    *  where the reference's line is drawn. */
   compareSelector?: ReactNode;
   /** "Comparar". `closed` is the session's own state: nothing is compared before
-   *  the close. `ground` is what lies under the territories. */
+   *  the close. */
   compare?: {
     closed: boolean;
-    ground?: "rings" | "families";
     t: Pick<CardsStrings, "compare" | "comparePick" | "compareHint" | "compareNeedTwo">;
   };
   familyLabels: Record<WheelFamilyId, string>;
@@ -218,7 +218,6 @@ export function SessionOverview<S extends OverviewSampleProps>({
               names={Object.fromEntries(samples.map((s) => [s.id, nameOf(s) ? `${s.label} ${nameOf(s)}` : s.label]))}
               short={Object.fromEntries(samples.map((s) => [s.id, nameOf(s) ?? s.label]))}
               familyLabels={familyLabels}
-              ground={compare.ground}
               strings={parts.compare}
               t={compare.t}
             />

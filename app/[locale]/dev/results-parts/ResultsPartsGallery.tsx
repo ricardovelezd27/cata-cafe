@@ -58,9 +58,9 @@ const COPY = {
     solo: "Cata individual",
     noScore: "Sin puntaje",
     rank: "El ranking",
-    rankNote: "Una fila por café en una escala fija. El punto es el grupo, el anillo eres tú, el bigote es la dispersión, la línea de trazos es la referencia y una barra une a los vecinos sin diferencia clara.",
+    rankNote: "Una fila por café en una escala fija. El punto es el grupo, el anillo eres tú, el bigote es la dispersión, y la línea de trazos es la referencia.",
     rankPanel: "Siete de ocho catadores",
-    rankPanelNote: "Tres vecinos sin diferencia clara, una referencia fija y un café por debajo de la escala.",
+    rankPanelNote: "Una referencia fija y un café por debajo de la escala.",
     rankTwo: "Dos catadores",
     rankTwoNote: "Sin dispersión y sin diferencia.",
     rankSolo: "Cata individual",
@@ -95,12 +95,6 @@ const COPY = {
     overTwo: "Sobre los pétalos: otros dos (paneles de 7, 6 y 4)",
     hard: "Caso difícil: tres paneles planos o pequeños",
     mixed: "Paneles de 7 y 12 en una misma escala de personas",
-    choice: "Una decisión abierta: el fondo de la comparación",
-    choiceNote: "La rueda de un café ya no lleva anillos por dentro porque cada pétalo tiene su número al lado. La comparación no imprime números en el dibujo, así que hay dos caminos. Está construida la A.",
-    choiceRings: "A · con un anillo por persona (recomendada)",
-    choiceRingsNote: "El borde de cada territorio corre sobre el anillo de su cuenta: el anillo es la única escala del dibujo.",
-    choiceFamilies: "B · como la rueda: sectores pálidos, sin anillos",
-    choiceFamiliesNote: "Igual que la rueda de un café. La altura de un territorio solo se lee en la tabla.",
     compareRest: "Los demás casos, con el fondo A",
     narrow: "En una columna de 288 px",
     narrowNote: "El ancho del contenido en un teléfono de 320 px. El texto pinta al mismo tamaño; lo que se achica es la rueda.",
@@ -125,9 +119,9 @@ const COPY = {
     solo: "Solo cupping",
     noScore: "No score",
     rank: "The ranking",
-    rankNote: "One row per coffee on a fixed scale. The dot is the group, the ring is you, the whisker is the spread, the dashed line is the reference, and one bar joins neighbours with no clear difference.",
+    rankNote: "One row per coffee on a fixed scale. The dot is the group, the ring is you, the whisker is the spread, and the dashed line is the reference.",
     rankPanel: "Seven of eight cuppers",
-    rankPanelNote: "Three neighbours with no clear difference, a fixed reference and a coffee under the scale.",
+    rankPanelNote: "A fixed reference and a coffee under the scale.",
     rankTwo: "Two cuppers",
     rankTwoNote: "No spread and no difference.",
     rankSolo: "Solo cupping",
@@ -162,12 +156,6 @@ const COPY = {
     overTwo: "Over the petals: two others (panels of 7, 6 and 4)",
     hard: "Hard case: three flat or small panels",
     mixed: "Panels of 7 and 12 on one scale of people",
-    choice: "One open choice: the ground of the comparison",
-    choiceNote: "A coffee's wheel no longer has rings inside because every petal has its number beside it. The comparison prints no numbers on the drawing, so there are two ways. A is the one built.",
-    choiceRings: "A · a ring per person (recommended)",
-    choiceRingsNote: "Each territory's edge runs on the ring of its count: the ring is the only scale on the drawing.",
-    choiceFamilies: "B · as the wheel: pale sectors, no rings",
-    choiceFamiliesNote: "The same as a coffee's wheel. How far a territory reaches is read in the table only.",
     compareRest: "The other cases, on ground A",
     narrow: "In a 288 px column",
     narrowNote: "The width of the content on a 320 px phone. Text paints at the same size; what shrinks is the wheel.",
@@ -304,29 +292,14 @@ export function ResultsPartsGallery({
       ariaLabel={c.descriptors}
     />
   );
-  const compare = (
-    set: { base?: WheelFixtureName; others: WheelFixtureName[] },
-    ground: "rings" | "families" = "rings",
-  ) => (
+  const compare = (set: { base?: WheelFixtureName; others: WheelFixtureName[] }) => (
     <FlavorCompare
       base={set.base ? coffee(set.base) : null}
       others={set.others.map(coffee)}
       familyLabels={families}
       strings={strings.compare}
-      ground={ground}
     />
   );
-  const choice = (set: { base?: WheelFixtureName; others: WheelFixtureName[] }) => (
-    <div className={css.grid}>
-      <Card option={c.choiceRings} note={c.choiceRingsNote}>
-        {compare(set, "rings")}
-      </Card>
-      <Card option={c.choiceFamilies} note={c.choiceFamiliesNote}>
-        {compare(set, "families")}
-      </Card>
-    </div>
-  );
-
   const rankOf = (id: "panel" | "two" | "solo") => {
     const f = ranks.find((r) => r.id === id) ?? ranks[0];
     return <RankStrip items={f.rows} reference={f.reference} strings={strings.rank} scoreStrings={strings.score} ariaLabel={c.rank} />;
@@ -473,12 +446,7 @@ export function ResultsPartsGallery({
 
       {show("compare") ? (
         <section className={css.section}>
-          <h2 className={css.sectionTitle}>{c.choice}</h2>
-          <p className={css.sectionNote}>{c.choiceNote}</p>
-          {choice({ others: ["ambar", "musgo"] })}
-          {choice({ base: "ambar", others: ["cedro"] })}
-
-          <h2 className={`${css.sectionTitle} ${css.sectionTitleNext}`}>{c.compare}</h2>
+          <h2 className={css.sectionTitle}>{c.compare}</h2>
           <p className={css.sectionNote}>{c.compareNote}</p>
           <p className={css.listTitle}>{c.compareRest}</p>
           <div className={css.grid}>

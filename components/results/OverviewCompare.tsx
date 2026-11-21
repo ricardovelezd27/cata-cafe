@@ -27,7 +27,6 @@ export function OverviewCompare({
   names,
   short,
   familyLabels,
-  ground = "rings",
   strings,
   t,
 }: {
@@ -37,8 +36,6 @@ export function OverviewCompare({
   /** What a chip prints beside the letter: the coffee's name once revealed, else its label. */
   short: Readonly<Record<string, string>>;
   familyLabels: Record<WheelFamilyId, string>;
-  /** What lies under the territories. One prop on purpose: the owner's to confirm. */
-  ground?: "rings" | "families";
   strings: FlavorCompareStrings;
   t: OverviewCompareStrings;
 }) {
@@ -87,7 +84,6 @@ export function OverviewCompare({
           }))}
           familyLabels={familyLabels}
           strings={strings}
-          ground={ground}
           beside
         />
       ) : (

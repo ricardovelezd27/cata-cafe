@@ -112,11 +112,6 @@ type MatrixTranslations = {
 // page. A participant has ONE view and no tab bar.
 type Tab = "resumen" | "panel";
 
-// What lies under the territories of "Comparar" (FlavorCompare's `ground`): the
-// dim family shades of the small wheels (the owner's choice, 2026-11-21). One
-// line for the overview's "Comparar" and the sheet's "Comparar con".
-const COMPARE_GROUND: "rings" | "families" = "families";
-
 // "Comparar con" pick (S6 multi-reference): which reference the Δ chips use.
 // Same external-store pattern; "" = nothing chosen → the active reference.
 const COMPARE_REF_KEY = "cata_results_ref";
@@ -1151,7 +1146,7 @@ export function ResultsClient({
             familyLabels={overview.familyLabels}
             parts={overview.parts}
             t={overview.t}
-            compare={{ closed: sessionClosed, ground: COMPARE_GROUND, t: overview.cards }}
+            compare={{ closed: sessionClosed, t: overview.cards }}
             onOpenSample={(id) => openSheet(id)}
           >
           <CoffeeCards
@@ -1302,7 +1297,6 @@ export function ResultsClient({
                       ),
                     }
                   : null,
-              compareGround: COMPARE_GROUND,
             };
           })()}
           familyLabels={overview.familyLabels}

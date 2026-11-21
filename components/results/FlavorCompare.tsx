@@ -52,26 +52,20 @@ const TAG_TEXT_PX = CHART_CAPTION_PX;
  * paper, each coffee's letter sits on its own edge inside the outer ring, and
  * the coffees are told apart by line style and by letter, never by colour alone.
  *
- * `ground`: what lies under the territories.
- * - "rings" (the default): a ring per person: a territory's edge runs ON the
- *   ring of its count.
- * - "families": the nine dim family shades of the one-coffee wheel and the
- *   outer ring alone, the territories laid over them. The owner's choice for
- *   the overview's "Comparar" (2026-11-21).
+ * Under the territories lie the nine dim family shades of the one-coffee wheel
+ * and the outer ring alone (the owner's choice, 2026-11-21).
  */
 export function FlavorCompare({
   base = null,
   others,
   familyLabels,
   strings,
-  ground = "rings",
   beside = false,
 }: {
   base?: CompareCoffee | null;
   others: readonly CompareCoffee[];
   familyLabels: FamilyLabels;
   strings: FlavorCompareStrings;
-  ground?: "rings" | "families";
   /** From 768 px, the table sits beside the wheel (two columns) instead of under it. */
   beside?: boolean;
 }) {
@@ -122,17 +116,11 @@ export function FlavorCompare({
           focusable="false"
         >
           <g aria-hidden="true">
-            {ground === "families" ? <WheelGrounds grounds={familyGrounds(frame, g.n)} /> : null}
+            <WheelGrounds grounds={familyGrounds(frame, g.n)} />
             {g.rings
-              .filter((ring) => ring.outer || ground === "rings")
+              .filter((ring) => ring.outer)
               .map((ring) => (
-                <circle
-                  key={ring.people}
-                  className={ring.outer ? styles.ringOuter : styles.ring}
-                  cx={frame.cx}
-                  cy={frame.cy}
-                  r={ring.radius}
-                />
+                <circle key={ring.people} className={styles.ringOuter} cx={frame.cx} cy={frame.cy} r={ring.radius} />
               ))}
             {g.petals.map((p) =>
               p.d === null ? null : (

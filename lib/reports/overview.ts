@@ -20,7 +20,6 @@
 // before sending is `myScoreFor` -> `canShowMyScore`. Display-only: scoring,
 // the trigger and AggregateScore never read this file. Nothing is stored.
 
-import { wheelHeadline, type WheelHeadline } from "@/lib/flavorWheelLayout";
 import { buildDefectSummary, type DefectSummary } from "@/lib/reports/defectSummary";
 import {
   myScoreFor,

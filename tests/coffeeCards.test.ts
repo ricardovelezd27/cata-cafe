@@ -117,7 +117,7 @@ describe("a participant's cards: counts and aggregates only", () => {
       "id", "place", "isReference", "context", "state", "partial", "wheel", "quality",
       // the context of a score (lib/scoreContext.ts)
       "score", "basis", "spread", "included", "n", "total", "mine", "difference", "deltaVsReference", "indicative",
-      "suppressed", "noClearGap", "canBeFirst",
+      "suppressed", "canBeFirst",
       // the wheel: people per node, the three most chosen, the viewer's own marks
       "status", "scope", "counts", "descriptors", "level", "family", "bar", "count", "share", "pct",
       // a quality row
@@ -327,11 +327,6 @@ describe("\"Comparar\": only once closed, only what this viewer may see", () => 
     const options = compareOptions({ closed: true, samples, data: s.data });
     expect(new Set(options?.map((o) => o.tag)).size).toBe(options?.length);
     expect(options?.every((o) => /^[0-9]+$/.test(o.tag))).toBe(true);
-  });
-
-  it("the ground under the territories is ONE line: the dim family shades (owner, 2026-11-21)", () => {
-    const client = read("app", "[locale]", "app", "sessions", "[id]", "results", "ResultsClient.tsx");
-    expect(client.match(/const COMPARE_GROUND: "rings" \| "families" = "families";/g)).toHaveLength(1);
   });
 });
 

@@ -195,7 +195,6 @@ export function SampleDetail({
   comparison = null,
   repeatDiffs = [],
   compare = null,
-  compareGround = "rings",
   extrinsic,
   extrinsicNote = null,
   prep = null,
@@ -247,7 +246,6 @@ export function SampleDetail({
     /** What a chip prints beside the letter: the name once revealed, else the label. */
     short: Readonly<Record<string, string>>;
   } | null;
-  compareGround?: "rings" | "families";
   extrinsic: Data;
   /** "Datos de origen editados el <fecha>". */
   extrinsicNote?: string | null;
@@ -494,7 +492,6 @@ export function SampleDetail({
                 }))}
                 familyLabels={familyLabels}
                 strings={parts.compare}
-                ground={compareGround}
               />
             ) : (
               groupWheel ? (

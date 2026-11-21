@@ -335,7 +335,7 @@ describe("the page and the PDF draw the same wheel", () => {
   });
 });
 
-describe("the comparison keeps its rings (and can follow the wheel)", () => {
+describe("the comparison follows the wheel: the dim family shades and the outer ring alone", () => {
   const coffee = (name: WheelFixtureName, tag: string): CompareCoffee => ({
     id: name,
     tag,
@@ -348,33 +348,18 @@ describe("the comparison keeps its rings (and can follow the wheel)", () => {
     { base: coffee("ambar", "A"), others: [coffee("cedro", "D")] },
     { base: coffee("niebla", "B"), others: [coffee("doce", "G")] },
   ];
-  const render = (set: (typeof sets)[number], ground?: "rings" | "families") =>
+  const render = (set: (typeof sets)[number]) =>
     html(
       createElement(FlavorCompare, {
         ...set,
         familyLabels: wheelFamilyLabels("es"),
         strings: stringsOf("es").compare,
-        ...(ground ? { ground } : {}),
       }),
     );
 
-  it("by default a ring per person: the only scale of a drawing that prints no counts", () => {
+  it("nine grounds and the outer ring alone on the page; the PDF keeps both grounds", () => {
     for (const set of sets) {
-      const g = compareGeometry({
-        base: set.base ? { id: set.base.id, counts: set.base.counts, n: set.base.n } : null,
-        others: set.others.map((c) => ({ id: c.id, counts: c.counts, n: c.n })),
-      });
       const marks = pageMarks(render(set));
-      expect(marks.filter((m) => m.kind === "ring" || m.kind === "ringOuter").length).toBe(g.rings.length);
-      expect(g.rings.length).toBeGreaterThan(1);
-      expect(marks.some((m) => m.kind === "ground")).toBe(false);
-      expect(render(set)).toBe(render(set, "rings"));
-    }
-  });
-
-  it('with ground="families" it follows the wheel: nine grounds and the outer ring alone, on the page and in the PDF', () => {
-    for (const set of sets) {
-      const marks = pageMarks(render(set, "families"));
       expect(marks.filter((m) => m.kind === "ground").length).toBe(9);
       expect(marks.filter((m) => m.kind === "ring").length).toBe(0);
       expect(marks.filter((m) => m.kind === "ringOuter").length).toBe(1);

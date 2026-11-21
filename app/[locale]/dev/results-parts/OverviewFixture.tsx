@@ -36,7 +36,7 @@ export function OverviewFixture({
         data={scenario.data}
         myAlignment={scenario.myAlignment}
         preliminary={scenario.preliminary}
-        compare={{ closed: scenario.closed, ground: "families", t: cards }}
+        compare={{ closed: scenario.closed, t: cards }}
         familyLabels={familyLabels}
         parts={parts}
         t={t}

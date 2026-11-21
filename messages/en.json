@@ -973,15 +973,12 @@
     },
     "dashboard": {
       "statSamples": "Samples evaluated",
-      "anchorTitle": "Fixed reference",
-      "anchorHint": "Quality pinned at 5 on every attribute · always 79.00 · outside the ranking, the average and the best sample. The fixed reference is a Café Sensible exercise to align the group: everyone gives it 79.00. It is not part of the CVA, where each person scores their own impression.",
       "statParticipation": "Participation",
       "statAvg": "Session average",
       "statBest": "Best sample",
       "statAvgMine": "based on your evaluations",
       "statAvgCommunity": "community average",
       "ranking": "Sample ranking",
-      "notScored": "Not scored",
       "performance": "My performance",
       "myAvg": "My average",
       "communityAvg": "Group average",
@@ -994,11 +991,7 @@
       "rankIndicative": "indicative",
       "basisMine": "your score",
       "rankHelp": "\"Indicative\": fewer than 6 cuppers or fewer than 5 cups, so the score is a first signal.",
-      "fewNote": "With fewer than 3 cuppers the score is only indicative: no spread is shown and no best sample is picked.",
-      "anchorTitleFree": "Reference",
-      "anchorHintFree": "Scored like any other sample · outside the ranking, the average and the best sample",
-      "anchorTitleDescriptive": "Reference",
-      "anchorHintDescriptive": "Point of comparison · outside the ranking, the average and the best sample"
+      "fewNote": "With fewer than 3 cuppers the score is only indicative: no spread is shown and no best sample is picked."
     },
     "table": {
       "sample": "Sample",
@@ -1370,7 +1363,6 @@
       "defectType": "{type}: {n}",
       "defectUnspecified": "not specified",
       "defectBy": "Cuppers who marked a defect: {k} of {n}",
-      "referenceScore": "{score}",
       "preliminary": "Preliminary results: only you see them. They update when you press “{button}”."
     },
     "cards": {

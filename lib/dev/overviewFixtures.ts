@@ -282,8 +282,8 @@ function build(plan: Plan): OverviewScenario {
   };
 }
 
-/** Seven cuppers, one excluded; an anchor reference; the first two coffees with
- *  no clear difference; one defective cup; a clear flavour and a flat one. */
+/** Seven cuppers, one excluded; an anchor reference; the first two coffees
+ *  close together; one defective cup; a clear flavour and a flat one. */
 const CLOSED: Plan = {
   id: "closed",
   title: { es: "Cata grupal cerrada, vista por un participante", en: "Closed group cupping, as a participant sees it" },

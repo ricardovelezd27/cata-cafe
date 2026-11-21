@@ -62,7 +62,6 @@ const render = (s: OverviewScenario, locale: Locale = "es") => {
       // "Comparar": drawn only for a closed cupping, as on the page
       compare: {
         closed: s.closed,
-        ground: "families",
         t: MESSAGES[locale].results.cards as unknown as Pick<
           CardsStrings,
           "compare" | "comparePick" | "compareHint" | "compareNeedTwo"

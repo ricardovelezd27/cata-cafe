@@ -100,7 +100,7 @@ export function PillTabs({
               >
                 {/* the number alone says nothing to a screen reader: read what it counts */}
                 <span aria-hidden={item.badgeLabel ? true : undefined}>{item.badge}</span>
-                {item.badgeLabel ? <span className="sr-only">{item.badgeLabel}</span> : null}
+                {item.badgeLabel ? <span className="sr-only">, {item.badgeLabel}</span> : null}
               </span>
             )}
           </button>
