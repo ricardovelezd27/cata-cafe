@@ -14,6 +14,7 @@ import { resolveDescriptor } from "@/lib/descriptors";
 import { searchFlavors, shouldOfferFileUnder, norm, type FlavorMatchType } from "@/lib/flavorSearch";
 import pillStyles from "@/components/ui/CATAPills.module.css";
 import { HIT_Y44 } from "@/components/ui/hitArea";
+import { Button } from "@/components/ui/Button";
 
 type Locale = "es" | "en";
 
@@ -653,13 +654,9 @@ export function FlavorPicker({
         </div>
 
         {fileUnder && (
-          <button
-            type="button"
-            onClick={() => pickFileTarget(OTHER_ID)}
-            className="mt-4 w-full rounded-pill border border-outline-variant px-4 py-2 text-caption text-on-surface-variant hover:text-on-surface"
-          >
+          <Button variant="secondary" size="sm" className="mt-4 w-full" onClick={() => pickFileTarget(OTHER_ID)}>
             {t.fileUnderOther}
-          </button>
+          </Button>
         )}
 
         <div className="mt-5 flex justify-end">

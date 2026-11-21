@@ -54,6 +54,7 @@ import { prepFromForm, prepToForm, type SamplePrep } from "@/lib/samplePrep";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { TextAction, TextActionLink } from "@/components/ui/TextAction";
 import { Notice } from "@/components/ui/Notice";
+import { Button } from "@/components/ui/Button";
 import { planFinish, soloCloseAsIsOffer } from "@/lib/closeRules";
 import { CoffeePicker, type UsableCoffee } from "@/components/coffees/CoffeePicker";
 import { canPickExistingCoffee } from "@/lib/cupCoffeePick";
@@ -3021,14 +3022,9 @@ export function CupClient({
           )}
           {canPickCoffee && translations.coffeePicker && (
             <div className="mb-4">
-              <button
-                type="button"
-                disabled={pickPending}
-                onClick={openCoffeePicker}
-                className="inline-flex min-h-[44px] items-center rounded-pill border border-outline-variant px-4 text-caption font-medium text-on-surface transition-colors hover:bg-surface-container disabled:opacity-50"
-              >
+              <Button variant="secondary" size="sm" disabled={pickPending} onClick={openCoffeePicker}>
                 {translations.coffeePicker.useExisting}
-              </button>
+              </Button>
             </div>
           )}
           <EditSampleMetadataForm

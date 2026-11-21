@@ -31,7 +31,11 @@ export function FormSection({
   const [open, setOpen] = useState(collapsible ? defaultOpen : true);
 
   return (
-    <section className={`${cardClasses({ tone: "quiet" })} mb-[12px] md:mb-[16px] ${styles.section}`}>
+    // Under 360 px the card gives way: it reaches 12 px into the page's side margin and keeps
+    // 12 px of padding, so the nine 34 px quality bubbles fit a 320 px phone (AffectiveBubbles).
+    <section
+      className={`${cardClasses({ tone: "quiet" })} mb-[12px] md:mb-[16px] max-[360px]:-mx-[12px] max-[360px]:px-[12px] ${styles.section}`}
+    >
       <div
         className={`${styles.header} ${collapsible ? styles.clickable : ""}`}
         onClick={() => collapsible && setOpen((v) => !v)}
