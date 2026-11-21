@@ -179,19 +179,6 @@ export type OverviewFirst<S> =
    *  `too_few`: scores exist, but none rests on enough cuppers to be "first". */
   | { status: "none"; reason: "descriptive" | "no_scores" | "too_few" };
 
-export type OverviewWheelItem<S> =
-  | { sample: S; status: "ok"; wheel: Extract<WheelData, { status: "ok" }>; headline: WheelHeadline | null }
-  | { sample: S; status: "too_few"; included: number };
-
-export type OverviewWheels<S> =
-  /** An affective session: no wheel, no words about descriptors. */
-  | { status: "no_wheel" }
-  /** Every coffee is under the wheel's minimum for this viewer. */
-  | { status: "too_few" }
-  /** Nothing to draw yet: no sent evaluation, or none of the viewer's own marks. */
-  | { status: "empty" }
-  | { status: "ok"; scope: "group" | "own"; items: OverviewWheelItem<S>[] };
-
 export type OverviewView<S> = {
   scope: "group" | "own";
   /** The list is a ranking (places are printed); false for a participant's own
@@ -205,7 +192,6 @@ export type OverviewView<S> = {
   referenceLine: { sample: S; score: number } | null;
   /** Every reference, in the order the organizer named them. */
   references: { sample: S; value: RankValue; active: boolean }[];
-  wheels: OverviewWheels<S>;
   /** The viewer against the panel; null under three cuppers or with no score of their own. */
   you: { above: number; of: number; meanDifference: number } | null;
   /** Coffees with a defective cup, the most flagged first. */
@@ -256,30 +242,6 @@ export function overviewView<S extends OverviewSample>(input: {
       : null;
 
   const inOrder = [...ranking.anchors.map((a) => a.sample), ...ordered.map((r) => r.sample)];
-  const wheels = ((): OverviewWheels<S> => {
-    const items: OverviewWheelItem<S>[] = [];
-    let hasWheel = false;
-    for (const sample of inOrder) {
-      const wheel = data.samples[sample.id]?.wheel;
-      if (!wheel || wheel.status === "no_wheel") continue;
-      hasWheel = true;
-      if (wheel.status === "too_few") {
-        items.push({ sample, status: "too_few", included: wheel.included });
-        continue;
-      }
-      // nobody has sent this coffee yet: there is nothing to draw for it
-      if (wheel.n === 0) continue;
-      const headline = wheelHeadline(wheel.rollup, wheel.n);
-      // the viewer's own marks: a coffee they marked nothing on is left out
-      if (data.scope === "own" && headline === null) continue;
-      items.push({ sample, status: "ok", wheel, headline });
-    }
-    if (!hasWheel) return { status: "no_wheel" };
-    if (items.length === 0) return { status: "empty" };
-    if (items.every((item) => item.status === "too_few")) return { status: "too_few" };
-    return { status: "ok", scope: data.scope, items };
-  })();
-
   const differences = entries
     .map((e) => e.context.difference)
     .filter((d): d is number => typeof d === "number");
@@ -308,7 +270,6 @@ export function overviewView<S extends OverviewSample>(input: {
       value: a.rank,
       active: ranking.referenceSample?.id === a.sample.id,
     })),
-    wheels,
     you,
     defects,
     who: data.who,

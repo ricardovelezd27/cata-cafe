@@ -4,12 +4,12 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { RESULTS_OVERVIEW_KEYS, buildOverviewStrings } from "@/components/results/overviewStrings";
+import type { CardsStrings } from "@/components/results/cardsStrings";
 import { buildResultsPartsStrings } from "@/components/results/partsStrings";
 import { SessionOverview } from "@/components/results/SessionOverview";
 import { OVERVIEW_SCENARIOS, overviewScenario, type OverviewScenario } from "@/lib/dev/overviewFixtures";
 import { wheelFamilyLabels } from "@/lib/flavorWheelLabels";
 import { WHEEL_FAMILY_ORDER } from "@/lib/flavorWheel";
-import { referenceCopySuffix, referenceExplanation } from "@/lib/referenceRules";
 import { overviewView } from "@/lib/reports/overview";
 import { FLAVOR_WHEEL_MIN_N } from "@/lib/scoreContext";
 import es from "@/messages/es.json";
@@ -28,12 +28,8 @@ const MESSAGES = { es, en } as const;
 const read = (...p: string[]) => readFileSync(path.join(process.cwd(), ...p), "utf8");
 const html = (el: ReactElement) => renderToStaticMarkup(el);
 
-/** The words as the page builds them: the reference's title and explanation are
- *  chosen by the session's format and reference mode (`referenceExplanation`). */
-function stringsOf(locale: Locale, s?: OverviewScenario) {
-  const suffix = s
-    ? referenceCopySuffix(referenceExplanation({ mode: s.referenceMode, moduleKey: s.ctx.format }))
-    : "";
+/** The words as the page builds them. */
+function stringsOf(locale: Locale) {
   const results = MESSAGES[locale].results as unknown as Record<string, Record<string, string>>;
   const raw = (key: string) => {
     const [block, name] = key.split(".");
@@ -44,9 +40,6 @@ function stringsOf(locale: Locale, s?: OverviewScenario) {
     t: buildOverviewStrings(
       { raw },
       {
-        referenceTitle: results.dashboard[`anchorTitle${suffix}`],
-        referenceHint: results.dashboard[`anchorHint${suffix}`],
-        notScored: results.dashboard.notScored,
         rankHelp: results.dashboard.rankHelp,
         communityPending: (MESSAGES[locale].results as unknown as Record<string, string>).communityPending,
         defectTypes: { moldy: "Mohoso", phenolic: "Fenólico", potato: "Papa" },
@@ -57,7 +50,7 @@ function stringsOf(locale: Locale, s?: OverviewScenario) {
 const viewOf = (s: OverviewScenario) =>
   overviewView({ samples: s.samples, referenceId: s.referenceId, ctx: s.ctx, data: s.data });
 const render = (s: OverviewScenario, locale: Locale = "es") => {
-  const { parts, t } = stringsOf(locale, s);
+  const { parts, t } = stringsOf(locale);
   return html(
     createElement(SessionOverview, {
       samples: s.samples,
@@ -66,11 +59,21 @@ const render = (s: OverviewScenario, locale: Locale = "es") => {
       data: s.data,
       myAlignment: s.myAlignment,
       preliminary: s.preliminary,
-      referencePinned: s.referencePinned,
+      // "Comparar": drawn only for a closed cupping, as on the page
+      compare: {
+        closed: s.closed,
+        ground: "families",
+        t: MESSAGES[locale].results.cards as unknown as Pick<
+          CardsStrings,
+          "compare" | "comparePick" | "compareHint" | "compareNeedTwo"
+        >,
+      },
       familyLabels: wheelFamilyLabels(locale),
       parts,
       t,
       onOpenSample: () => {},
+      // the coffees one by one (the cards) sit between the two boxes and "Comparar"
+      children: createElement("div", { "data-cards-slot": "" }),
     }),
   );
 };
@@ -177,24 +180,18 @@ describe("what each tile shows, state by state (RESULTS-DESIGN section 4)", () =
     expect(v.references.map((r) => r.sample.label)).toEqual(["Muestra E"]);
     expect(v.referenceLine?.score).toBe(79);
     expect(v.entries.map((e) => e.place)).toEqual([...v.entries.map((e) => e.place)].sort((a, b) => (a ?? 0) - (b ?? 0)));
-    expect(v.wheels.status).toBe("ok");
     expect(v.you).toMatchObject({ of: 5 });
     expect(v.defects.map((d) => d.sample.label)).toEqual(["Muestra D"]);
   });
 
-  it("the first two coffees with no clear difference say so, with the gap", () => {
-    const v = viewOf(overviewScenario("closed"));
-    if (v.first.status !== "ok") throw new Error("no first");
-    const [a, b] = v.entries;
-    const gap = Math.abs((a.context.score as number) - (b.context.score as number));
-    if (a.context.noClearGap && b.context.noClearGap && gap < 1) {
-      expect(v.first.tieWith?.sample.label).toBe(b.sample.label);
-      expect(v.first.tieWith?.gap).toBeCloseTo(gap, 2);
-      expect(text(render(overviewScenario("closed")))).toContain(`Sin diferencia clara con ${b.sample.label}`);
-    } else {
-      expect(v.first.tieWith).toBeNull();
+  it("says nothing about how close two neighbours are (owner, 2026-11-21): coffees are compared in Comparar", () => {
+    for (const locale of LOCALES) {
+      for (const scenario of OVERVIEW_SCENARIOS) {
+        expect(text(render(scenario, locale)), scenario.id).not.toMatch(/sin diferencia clara|no clear difference/i);
+      }
+      expect(JSON.stringify(MESSAGES[locale].results)).not.toMatch(/sin diferencia clara|no clear difference/i);
     }
-  });
+  }, HEAVY_TEST_TIMEOUT_MS);
 
   it("two cuppers: no first, no spread, no difference, no wheel for a participant, no 'you and the panel'", () => {
     const s = overviewScenario("two");
@@ -207,11 +204,11 @@ describe("what each tile shows, state by state (RESULTS-DESIGN section 4)", () =
       expect(e.context.suppressed).toBe(true);
     }
     expect(FLAVOR_WHEEL_MIN_N).toBe(3);
-    expect(v.wheels).toEqual({ status: "too_few" });
     expect(v.you).toBeNull();
     const markup = text(render(s));
     expect(markup).toContain(stringsOf("es").t.firstTooFew);
-    expect(markup).toContain(stringsOf("es").t.wheelsTooFew);
+    // under three cuppers nothing can be compared: no "Comparar" at all
+    expect(markup).not.toContain(MESSAGES.es.results.cards.compareHint);
     // "indicativo" is on every row: the ranking says once what it means
     expect(markup).toContain("Indicativo");
     expect(markup.split("hay menos de 6 catadores").length).toBe(2);
@@ -228,17 +225,17 @@ describe("what each tile shows, state by state (RESULTS-DESIGN section 4)", () =
     expect(v.entries.map((e) => e.sample.label)).toEqual(["Muestra A", "Muestra B"]);
     expect(v.referenceLine?.score).toBe(v.references[0].value.score);
     // an affective session: no wheel, and no word about descriptors
-    expect(v.wheels).toEqual({ status: "no_wheel" });
     const markup = render(s);
     expect(markup).not.toMatch(/_petal_|_ground_/);
     expect(text(markup)).not.toMatch(/sabor de cada café|marcaste/i);
   });
 
-  it("a fixed reference prints its number alone: no spread and no n for a rule", () => {
+  it("the reference has no tile of its own: its score is the ranking's dashed line, said once in its legend", () => {
     const markup = render(overviewScenario("closed"));
-    const tile = markup.slice(markup.indexOf("Referencia fija"));
-    expect(text(tile)).toContain("79.00");
-    expect(text(tile.slice(0, tile.indexOf("Quiénes cataron")))).not.toMatch(/±|incluidos/);
+    const titles = [...markup.matchAll(/<h2[^>]*>([^<]*)<\/h2>/g)].map((m) => m[1]);
+    expect(titles.join("|")).not.toMatch(/Referencia/);
+    expect(text(markup)).toContain("referencia: Muestra E, 79.00");
+    expect(text(markup).split("79.00").length - 1).toBe(1);
   });
 
   it("open group, participant: own scores in cupping order, no ranking, and no total for an unsent draft", () => {
@@ -256,7 +253,6 @@ describe("what each tile shows, state by state (RESULTS-DESIGN section 4)", () =
     expect(c.context.score, "a complete draft has no total (F2)").toBeNull();
     expect(d.context.score).toBeNull();
     expect(v.you).toBeNull();
-    expect(v.wheels.status === "ok" ? v.wheels.scope : null).toBe("own");
     // no aggregate of the group is in the samples the page would ship
     expect(s.samples.every((x) => x.aggregateScore === null)).toBe(true);
     const markup = text(render(s));
@@ -280,32 +276,77 @@ describe("what each tile shows, state by state (RESULTS-DESIGN section 4)", () =
     expect(markup).not.toMatch(/Catadores que marcaron/); // not "1 de 1 catadores"
   });
 
-  it("descriptive: no scores, so no ranking and no first; the wheels lead", () => {
+  it("descriptive: no scores, so no boxes; the coffees lead and Comparar follows", () => {
     const s = overviewScenario("descriptive");
     const v = viewOf(s);
     expect(v.entries).toEqual([]);
     expect(v.first).toEqual({ status: "none", reason: "descriptive" });
     expect(v.you).toBeNull();
     expect(v.defects).toEqual([]);
-    expect(v.wheels.status).toBe("ok");
     const markup = render(s);
     const titles = [...markup.matchAll(/<h2[^>]*>([^<]*)<\/h2>/g)].map((m) => m[1]);
-    expect(titles[0]).toBe(stringsOf("es").t.wheelsTitle);
+    expect(titles[0]).toBe(MESSAGES.es.results.cards.compare);
+    expect(markup.indexOf("data-cards-slot")).toBeLessThan(markup.indexOf(MESSAGES.es.results.cards.compareHint));
     expect(text(markup)).not.toMatch(/\b\d{2}\.\d{2}\b/); // no score anywhere
   });
+});
 
-  it("a coffee nobody has sent yet is not drawn as an empty wheel", () => {
-    const base = overviewScenario("closed");
-    const first = base.samples[1].id;
-    const data = {
-      ...base.data,
-      samples: {
-        ...base.data.samples,
-        [first]: { wheel: { status: "ok" as const, scope: "group" as const, n: 0, direct: {}, rollup: {}, mine: null }, defects: null },
-      },
+describe("the view's order, and nothing said twice in it (owner, 2026-11-21)", () => {
+  it("the two boxes, then the coffees, then Comparar, then the small facts", () => {
+    const markup = render(overviewScenario("closed"));
+    const t = stringsOf("es").t;
+    const at = (needle: string) => {
+      const i = markup.indexOf(needle);
+      expect(i, needle).toBeGreaterThanOrEqual(0);
+      return i;
     };
-    const v = overviewView({ samples: base.samples, referenceId: base.referenceId, ctx: base.ctx, data });
-    expect(v.wheels.status === "ok" ? v.wheels.items.map((i) => i.sample.id) : []).not.toContain(first);
+    const order = [
+      at(`>${t.firstTitle}<`),
+      at(`>${t.rankingTitle}<`),
+      at("data-cards-slot"),
+      at(`>${MESSAGES.es.results.cards.compare}<`),
+      at(`>${t.youTitle}<`),
+      at(`>${t.whoTitle}<`),
+      at(`>${t.defectsTitle}<`),
+    ];
+    expect(order).toEqual([...order].sort((a, b) => a - b));
+  });
+
+  it("the first box holds the coffee's name and its score, and no wheel (the wheel is on the card)", () => {
+    const markup = render(overviewScenario("closed"));
+    const box = markup.slice(markup.indexOf(`>${stringsOf("es").t.firstTitle}<`), markup.indexOf(`>${stringsOf("es").t.rankingTitle}<`));
+    expect(text(box)).toContain("Muestra G");
+    expect(box).toContain("data-overview-score");
+    expect(box).not.toMatch(/<svg|_petal_|_ground_/);
+    expect(text(box)).not.toMatch(/incluidos|±|Lo más encontrado/);
+  });
+
+  it("no wheel of one coffee is drawn by the view itself: only the territories of Comparar", () => {
+    const markup = render(overviewScenario("closed"));
+    const beforeCompare = markup.slice(0, markup.indexOf(`>${MESSAGES.es.results.cards.compare}<`));
+    expect(beforeCompare).not.toMatch(/_petal_|_ground_/);
+    // Comparar: the dim family shades under the territories, and its table
+    const compare = markup.slice(markup.indexOf(`>${MESSAGES.es.results.cards.compare}<`));
+    expect((compare.match(/_ground_/g) ?? []).length).toBe(9);
+    expect(compare).toMatch(/_territory_/);
+    expect(compare).toContain("<table");
+    expect(compare).toMatch(/_beside_/);
+    // every coffee carries its letter on the drawing: no line legend under it
+    expect(compare).not.toMatch(/_legend_/);
+  });
+
+  it("who cupped: how many joined and sent; the included count is on the ranking's rows, not here", () => {
+    const markup = render(overviewScenario("closed"));
+    const who = markup.slice(markup.indexOf(`>${stringsOf("es").t.whoTitle}<`));
+    const tile = text(who.slice(0, who.indexOf("</section>")));
+    expect(tile).toContain("Se unieron: 8");
+    expect(tile).toContain("Enviaron: 7");
+    expect(tile).not.toMatch(/incluidos|6 de 7/);
+    expect(text(markup)).toContain("6 de 7 incluidos");
+  });
+
+  it("an open cupping compares nothing yet: no Comparar before the close", () => {
+    expect(text(render(overviewScenario("open")))).not.toContain(MESSAGES.es.results.cards.compareHint);
   });
 });
 
@@ -385,50 +426,5 @@ describe("the overview holds no colour, threshold or gate of its own", () => {
     expect(Object.keys(labels)).toEqual([...WHEEL_FAMILY_ORDER]);
     expect(wheelFamilyLabels("en").fruity).toBe("Fruity");
     expect(labels.fruity).toBe("Frutal");
-  });
-});
-
-// Package R5: what waits for the organizer in the Panel is announced by one
-// tile, the first of the overview. Whether it exists is the page's (the counts
-// are lengths of lists only the organizer's page holds): the overview draws it.
-describe("the organizer's \"Pendiente en el panel\" tile", () => {
-  const draw = (pending: { title: string; text: string; action: string; onOpen: () => void } | null) => {
-    const s = overviewScenario("closed-owner");
-    const { parts, t } = stringsOf("es", s);
-    return html(
-      createElement(SessionOverview, {
-        samples: s.samples,
-        ctx: s.ctx,
-        referenceId: s.referenceId,
-        data: s.data,
-        myAlignment: s.myAlignment,
-        preliminary: s.preliminary,
-        referencePinned: s.referencePinned,
-        familyLabels: wheelFamilyLabels("es"),
-        parts,
-        t,
-        pending,
-        onOpenSample: () => {},
-      }),
-    );
-  };
-
-  it("is the first tile, with what waits and the way to the Panel", () => {
-    const markup = draw({
-      title: "Pendiente en el panel",
-      text: "1 evaluación tardía por decidir y 2 notas después del cierre",
-      action: "Abrir el panel",
-      onOpen: () => {},
-    });
-    const titles = [...markup.matchAll(/<h2[^>]*>([^<]*)</g)].map((m) => m[1]);
-    expect(titles[0]).toBe("Pendiente en el panel");
-    const tile = markup.slice(markup.indexOf("data-overview-pending"), markup.indexOf("</section>", markup.indexOf("data-overview-pending")));
-    expect(text(tile)).toContain("1 evaluación tardía por decidir y 2 notas después del cierre");
-    expect(tile).toMatch(/<button[^>]*type="button"[^>]*>Abrir el panel<\/button>/);
-  });
-
-  it("is absent when nothing waits, and for every viewer the page gives no tile", () => {
-    expect(draw(null)).not.toContain("data-overview-pending");
-    expect(render(overviewScenario("closed"))).not.toContain("data-overview-pending");
   });
 });

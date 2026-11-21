@@ -281,16 +281,21 @@ describe("what a card shows, state by state (RESULTS-DESIGN section 4)", () => {
     expect((markup.match(/<dl/g) ?? []).length).toBe(cards.length);
   });
 
-  it("a fixed reference prints its number alone, and is marked outside the ranking", () => {
+  it("a reference's card is first and marked outside the ranking", () => {
     const s = overviewScenario("closed");
     const markup = render(s);
     const first = markup.slice(markup.indexOf("<li"), markup.indexOf("</li>"));
-    const { cards: t, parts } = stringsOf("es");
-    expect(first).toContain("79.00");
+    const { cards: t } = stringsOf("es");
     expect(first).toContain(t.outsideRanking);
     expect(first).toContain(t.referenceBadge);
-    expect(first).not.toContain(parts.score.included.split("{")[0].trim() || "incluidos");
-    expect(first).not.toMatch(/±/);
+  });
+
+  it("no card prints a score: every score is in the ranking box, on one scale (owner, 2026-11-21)", () => {
+    for (const s of OVERVIEW_SCENARIOS) {
+      const markup = render(s).replace(/<[^>]+>/g, " ");
+      expect(markup, s.id).not.toMatch(/\d{2}\.\d{2}/);
+      expect(markup, s.id).not.toMatch(/\d de \d+ incluidos|±|sin diferencia clara/);
+    }
   });
 });
 
@@ -324,10 +329,9 @@ describe("\"Comparar\": only once closed, only what this viewer may see", () => 
     expect(options?.every((o) => /^[0-9]+$/.test(o.tag))).toBe(true);
   });
 
-  it("the ground under the territories is ONE prop, rings by default", () => {
+  it("the ground under the territories is ONE line: the dim family shades (owner, 2026-11-21)", () => {
     const client = read("app", "[locale]", "app", "sessions", "[id]", "results", "ResultsClient.tsx");
-    expect(client.match(/const COMPARE_GROUND: "rings" \| "families" = "rings";/g)).toHaveLength(1);
-    expect(read("components", "results", "OverviewCompare.tsx")).toMatch(/ground = "rings"/);
+    expect(client.match(/const COMPARE_GROUND: "rings" \| "families" = "families";/g)).toHaveLength(1);
   });
 });
 
@@ -427,7 +431,7 @@ describe("what the cards replace is gone", () => {
 
   it("the organizer keeps the matrix, on its own tab, and a viewer with one view gets no tab bar", () => {
     const client = read("app", "[locale]", "app", "sessions", "[id]", "results", "ResultsClient.tsx");
-    expect(client).toMatch(/\.\.\.\(canViewIndividual \? \[\{ id: "panel", label: overview\.cards\.tabPanel \}\] : \[\]\)/);
+    expect(client).toMatch(/\.\.\.\(canViewIndividual\s*\? \[\s*\{\s*id: "panel",\s*label: overview\.cards\.tabPanel,/);
     // since R5 the matrix is one part of the Panel's own view
     expect(client).toMatch(/<PanelView/);
     expect(read("components", "results", "PanelView.tsx")).toMatch(/<OwnerParticipantSection/);

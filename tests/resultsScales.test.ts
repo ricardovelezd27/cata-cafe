@@ -16,9 +16,6 @@ import {
   scalePct,
   scoreAxis,
   scorePct,
-  tieBars,
-  tiesWithNext,
-  type TieEntry,
 } from "@/lib/resultsScales";
 
 // Package R1a: the pure scales of the results page's small drawings
@@ -117,93 +114,6 @@ describe("the ranking strip", () => {
   });
 });
 
-describe("the single tie bar", () => {
-  const e = (score: number | null, sd: number | null = null, n: number | null = 7): TieEntry => ({ score, sd, n });
-
-  it("the floor: closer than one point is a tie, exactly one point is not", () => {
-    expect(tiesWithNext([e(88.75), e(88), e(87)])).toEqual([true, false, false]);
-    expect(tiesWithNext([e(85), e(84)])).toEqual([false, false]);
-    expect(tiesWithNext([e(85), e(85)])).toEqual([true, false]);
-  });
-
-  it("the spread: closer than half the larger sample SD is a tie too", () => {
-    // population SD 4.6 of 7 -> sample SD 4.97; half of it is 2.48 points
-    expect(tiesWithNext([e(88, 4.6), e(86, 2.1)])).toEqual([true, false]);
-    expect(tiesWithNext([e(88, 4.6), e(85.5, 2.1)])).toEqual([false, false]);
-    // the larger of the two counts, whichever row carries it
-    expect(tiesWithNext([e(88, 2.1), e(86, 4.6)])).toEqual([true, false]);
-  });
-
-  it("unscored rows never tie, and the last row has no next", () => {
-    expect(tiesWithNext([e(88), e(null), e(null)])).toEqual([false, false, false]);
-    expect(tiesWithNext([e(88)])).toEqual([false]);
-    expect(tiesWithNext([])).toEqual([]);
-  });
-
-  it("one bar per unbroken run of tied neighbours", () => {
-    // 88.75 ~ 88 ~ 87.5, then a clear gap, then 85.5 ~ 85, then a clear gap
-    const rows = [e(88.75), e(88), e(87.5), e(85.5), e(85), e(82)];
-    expect(tiesWithNext(rows)).toEqual([true, true, false, true, false, false]);
-    expect(tieBars(rows)).toEqual([
-      { from: 0, to: 2 },
-      { from: 3, to: 4 },
-    ]);
-    expect(tieBars([e(90), e(85), e(80)])).toEqual([]);
-    expect(tieBars([e(90)])).toEqual([]);
-    expect(tieBars([])).toEqual([]);
-  });
-
-  it("a bar covers every tied pair and nothing else", () => {
-    const rows = [e(88.75), e(88), e(87.5), e(85.5), e(85), e(82)];
-    const ties = tiesWithNext(rows);
-    const covered = new Set<number>();
-    for (const bar of tieBars(rows)) {
-      expect(bar.to).toBeGreaterThan(bar.from);
-      for (let i = bar.from; i < bar.to; i++) covered.add(i);
-    }
-    ties.forEach((t, i) => expect(covered.has(i)).toBe(t));
-  });
-
-  it("is the ranking's own rule: a row is flagged there exactly when it is tied with a neighbour here", () => {
-    // a small deterministic generator: the same lists on every run
-    let seed = 20261116;
-    const rnd = () => {
-      seed = (seed * 1664525 + 1013904223) % 4294967296;
-      return seed / 4294967296;
-    };
-    const ctx = { format: "affective" as const, isGroup: true, canViewGroup: true, cupsPerSample: 2 };
-    for (let run = 0; run < 150; run++) {
-      const samples: RankableSample[] = Array.from({ length: 2 + Math.floor(rnd() * 7) }, (_, i) => {
-        const n = 1 + Math.floor(rnd() * 8);
-        return {
-          id: `s${i}`,
-          descriptive: {},
-          affective: {},
-          combined: {},
-          aggregateScore: {
-            communityScore: rnd() < 0.1 ? null : 78 + Math.round(rnd() * 48) / 4,
-            scoreSd: n < 2 ? null : Math.round(rnd() * 60) / 10,
-            participantCount: n,
-            totalSubmitted: n + 1,
-            totalCups: n * 2,
-          },
-          myEvaluation: { status: "none", complete: false },
-        };
-      });
-      const { ranked } = rankSamples(samples, null, ctx);
-      const ties = tiesWithNext(ranked);
-      ranked.forEach((row, i) => {
-        expect(row.noClearGap, `run ${run}, row ${i}`).toBe(ties[i] || (i > 0 && ties[i - 1]));
-      });
-    }
-  });
-
-  it("with the rule switched off there is no bar", () => {
-    const off = { ...RANKING_POLICY, gapSdFactor: 0, gapFloor: 0 };
-    expect(tieBars([e(85, 5), e(85, 5), e(85, 5)], off)).toEqual([]);
-  });
-});
-
 describe("the dot plot", () => {
   it("quality: one fixed 1 to 9 scale", () => {
     expect(dotPlotRow(QUALITY_SCALE, { mine: 1, group: 9 })).toEqual({ mine: 0, group: 100 });
@@ -263,8 +173,6 @@ describe("the page and the PDF agree", () => {
   it("the same input gives byte-identical output", () => {
     const strip = () => JSON.stringify(rankStripRow({ group: 85.5, spread: 2.1, mine: 86.25, reference: 81.5 }));
     expect(strip()).toBe(strip());
-    const rows = [{ score: 88.75, sd: 2.9, n: 7 }, { score: 88, sd: 4.6, n: 7 }, { score: 85.5, sd: 2.1, n: 7 }];
-    expect(JSON.stringify(tieBars(rows))).toBe(JSON.stringify(tieBars(rows.map((r) => ({ ...r })))));
   });
 
   it("every position has at most two decimals", () => {

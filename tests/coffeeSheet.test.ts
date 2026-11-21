@@ -60,9 +60,6 @@ function words(locale: Locale) {
     overview: buildOverviewStrings(
       { raw },
       {
-        referenceTitle: r.dashboard.anchorTitle,
-        referenceHint: r.dashboard.anchorHint,
-        notScored: r.dashboard.notScored,
         rankHelp: r.dashboard.rankHelp,
         communityPending: flat.communityPending,
         defectTypes: { moldy: "mohoso", phenolic: "fenólico", potato: "papa" },
