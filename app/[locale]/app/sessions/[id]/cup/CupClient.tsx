@@ -2971,14 +2971,14 @@ export function CupClient({
         renderedUserId={userId}
       />
       {allReferencesStuck && translations.allReferencesNotice && (
-        <div role="status" className="mx-4 mt-2 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-body text-on-surface">
+        <div role="status" className="mx-4 mt-2 rounded-card bg-surface-container px-4 py-2 font-sans text-body text-on-surface">
           {translations.allReferencesNotice}
         </div>
       )}
       {closeAsIsApplies && translations.closeAsIs && (
         <div
           role="status"
-          className="mx-4 mt-2 flex flex-wrap items-center gap-2 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-body text-on-surface"
+          className="mx-4 mt-2 flex flex-wrap items-center gap-2 rounded-card bg-surface-container px-4 py-2 font-sans text-body text-on-surface"
         >
           <span className="flex-1 min-w-[200px]">{translations.closeAsIs.line}</span>
           <Link
@@ -2999,7 +2999,7 @@ export function CupClient({
       {terminalCount > 0 && translations.offline.terminalNotice && (
         <div
           role="status"
-          className="mx-4 mb-3 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-body text-on-surface lg:mx-6"
+          className="mx-4 mb-3 rounded-card bg-surface-container px-4 py-2 font-sans text-body text-on-surface lg:mx-6"
         >
           {translations.offline.terminalNotice.replace("{count}", String(terminalCount))}
         </div>
@@ -3151,7 +3151,7 @@ export function CupClient({
         <div
           role="status"
           aria-live="polite"
-          className="flex items-start gap-2 px-4 py-2 mb-3 rounded-card border border-secondary/30 bg-secondary-container/20 font-sans text-body text-on-surface"
+          className="flex items-start gap-2 px-4 py-2 mb-3 rounded-card bg-surface-container font-sans text-body text-on-surface"
         >
           <span className="flex-1">{translations.editSampleNotOwner}</span>
           <button
@@ -3435,7 +3435,7 @@ export function CupClient({
         {isEvaluationReadOnly({ revealed: isCurrentRevealed, activeTab }) && (
           <div
             role="note"
-            className="mb-4 rounded-card border border-secondary/30 bg-secondary-fixed px-4 py-3 font-sans text-body text-on-secondary-fixed-variant"
+            className="mb-4 rounded-card bg-surface-container px-4 py-3 font-sans text-body text-on-surface"
           >
             {translations.revealedNote ?? REVEALED_NOTE_FALLBACK[locale === "en" ? "en" : "es"]}
           </div>

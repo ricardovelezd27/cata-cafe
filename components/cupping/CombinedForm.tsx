@@ -142,7 +142,7 @@ export function CombinedForm({
     lockedAffective && lockedNote ? (
       <div
         role="note"
-        className="mb-4 rounded-card border border-secondary/30 bg-secondary-fixed px-4 py-3 font-sans text-body text-on-secondary-fixed-variant"
+        className="mb-4 rounded-card bg-surface-container px-4 py-3 font-sans text-body text-on-surface"
       >
         {lockedNote}
       </div>
