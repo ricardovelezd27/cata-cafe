@@ -2071,6 +2071,7 @@
     },
     "explorer": {
       "mode": {
+        "label": "Modo del explorador",
         "simple": "Simple",
         "pivot": "Tabla dinámica"
       },
@@ -2154,6 +2155,7 @@
       "empty": "Sin resultados para esta combinación",
       "running": "Calculando…",
       "error": "No se pudo calcular. Revisa la configuración.",
+      "viewLabel": "Vista",
       "viewTable": "Tabla",
       "viewGrouped": "Barras agrupadas",
       "viewStacked": "Barras apiladas",

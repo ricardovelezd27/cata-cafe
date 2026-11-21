@@ -546,7 +546,7 @@ export function EditSessionForm({
                 clearSaved();
               }}
               className={
-                "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 " +
+                "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:cursor-default disabled:opacity-60 " +
                 (warmupOn ? "bg-primary-container" : "bg-outline")
               }
             >
@@ -657,7 +657,7 @@ export function EditSessionForm({
                   title={hasEvals ? t.sampleHasEvals : undefined}
                   onClick={() => setRemoveTarget(sample)}
                   aria-label={t.removeSample}
-                  className="hover:text-error disabled:cursor-not-allowed disabled:opacity-40"
+                  className="hover:text-error disabled:cursor-default disabled:opacity-60"
                 >
                   <Trash2 size={16} />
                 </TextAction>

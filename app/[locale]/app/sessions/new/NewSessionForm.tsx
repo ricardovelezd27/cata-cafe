@@ -845,7 +845,7 @@ export function NewSessionForm({
                 router.push(`/${locale}/app/sessions/${sessionId}/cup`);
               });
             }}
-            className="w-full rounded-pill py-2.5 text-caption font-medium text-primary-container hover:bg-primary-fixed transition-colors disabled:opacity-50"
+            className="w-full rounded-pill py-2.5 text-caption font-medium text-primary-container hover:bg-primary-fixed transition-colors disabled:cursor-default disabled:opacity-60"
           >
             {t.newForm.startNow}
           </button>

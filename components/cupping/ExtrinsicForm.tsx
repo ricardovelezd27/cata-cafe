@@ -64,7 +64,7 @@ function PillButton({ active, onClick, children }: PillButtonProps) {
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`px-3 py-1.5 rounded-pill border text-caption font-medium transition-colors ${
+      className={`min-h-[44px] px-3 py-1.5 rounded-pill border text-caption font-medium transition-colors ${
         active
           ? "bg-primary-fixed text-on-primary-fixed border-primary-fixed"
           : "bg-transparent text-on-surface-variant border-outline hover:bg-surface-container hover:text-on-surface active:bg-surface-container active:text-on-surface"

@@ -21,6 +21,7 @@ import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
 import { cardClasses } from "@/components/ui/cardRecipe";
 import { Button } from "@/components/ui/Button";
 import { TextAction } from "@/components/ui/TextAction";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 
 export interface PivotTranslations {
   rows: string;
@@ -38,6 +39,7 @@ export interface PivotTranslations {
   empty: string;
   running: string;
   error: string;
+  viewLabel: string;
   viewTable: string;
   viewGrouped: string;
   viewStacked: string;
@@ -546,26 +548,18 @@ export function PivotBuilder({ locale, t, loadedConfig, loadKey, onConfigChange 
       <div className={cardClasses()}>
         <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <div className="inline-flex rounded-pill bg-surface-container-high p-1">
-              {viewOptions.map((opt) => (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => setView(opt.id)}
-                  className={`px-3 py-1 rounded-pill text-caption font-semibold transition-colors ${
-                    view === opt.id ? "bg-surface-container-lowest text-on-surface shadow-card" : "text-on-surface-variant hover:text-on-surface active:text-on-surface"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
+            <SegmentedControl
+              ariaLabel={t.viewLabel}
+              items={viewOptions}
+              value={view}
+              onChange={(id) => setView(id as View)}
+            />
             {view === "table" && (
               <button
                 type="button"
                 onClick={() => setHeatmap((h) => !h)}
                 aria-pressed={heatmap}
-                className={`px-3 py-1 rounded-pill text-caption font-semibold border transition-colors ${
+                className={`min-h-[44px] px-3 py-1 rounded-pill text-caption font-semibold border transition-colors ${
                   heatmap
                     ? "bg-primary-fixed text-on-primary-fixed border-primary-fixed"
                     : "border-outline text-on-surface-variant hover:bg-surface-container hover:text-on-surface active:bg-surface-container active:text-on-surface"

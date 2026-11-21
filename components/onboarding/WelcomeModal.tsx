@@ -253,7 +253,7 @@ export default function WelcomeModal({ locale, initialDisplayName, translations:
                     tabIndex={isSelected || (selectedPath === null && i === 0) ? 0 : -1}
                     onClick={() => setSelectedPath(path.id)}
                     onKeyDown={(e) => radioKeyDown(e, i, PATHS.length, (n) => setSelectedPath(PATHS[n].id))}
-                    className={`w-full text-left rounded-card border-2 p-4 flex items-start gap-3 transition-all ${
+                    className={`w-full text-left rounded-card border p-4 flex items-start gap-3 transition-colors ${
                       isSelected
                         ? "border-primary-fixed bg-primary-fixed"
                         : "border-outline hover:bg-surface-container active:bg-surface-container"

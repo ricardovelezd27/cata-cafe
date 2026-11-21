@@ -449,7 +449,7 @@ export function CoffeeForm({
                     <span
                       className={
                         "inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 " +
-                        (active ? "border-primary-container" : "border-outline-variant")
+                        (active ? "border-primary-container" : "border-outline")
                       }
                     >
                       {active && <span className="h-2 w-2 rounded-full bg-primary-container" />}
