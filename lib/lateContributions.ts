@@ -19,10 +19,6 @@ import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
 import { shouldApplyClientWrite } from "@/lib/offline/clientWrite";
 import { moduleKeyForFormat, tryComputeEvaluationDerived } from "@/lib/evaluation";
 import { pinReferenceAffective, shouldPinReference } from "@/lib/referenceRules";
-import * as v from "@/lib/validate";
-
-/** Max characters of the note a cupper can add after the close (C2). */
-export const POST_CLOSE_NOTE_MAX = 500;
 
 // ─── C1b: which drafts the owner may accept ─────────────────────────────────
 
@@ -241,27 +237,10 @@ export function isModuleSendable(moduleKey: string, data: Record<string, unknown
   );
 }
 
-// ─── C2: a text note after the close ────────────────────────────────────────
-
-/** The note text to store, or null for "clear it". Throws `invalid_input` for a
- *  non-string or a note over `POST_CLOSE_NOTE_MAX` characters. */
-export function normalizePostCloseNote(text: unknown): string | null {
-  return v.str(text, "text", { max: POST_CLOSE_NOTE_MAX, required: false });
-}
-
-/** The caller may write the note only on their OWN, SUBMITTED evaluation of a
- *  CLOSED session. */
-export function postCloseNoteAllowed(input: {
-  sessionStatus: string;
-  evaluation: { cupperId: string; isDraft: boolean };
-  userId: string;
-}): boolean {
-  return (
-    input.sessionStatus === "closed" &&
-    input.evaluation.cupperId === input.userId &&
-    !input.evaluation.isDraft
-  );
-}
+// ─── C2: the notes per coffee written after the close (read-only since OR-D) ──
+// They were written with `setPostCloseNote` until the reflection per tasting
+// replaced them (lib/sessionReflection.ts). They stay stored and are shown as
+// they are; nothing writes them any more.
 
 export type PostCloseNoteEval = {
   id: string;
@@ -272,7 +251,7 @@ export type PostCloseNoteEval = {
   postCloseNoteAt: Date | null;
 };
 
-export type MyPostCloseNote = { evaluationId: string; text: string | null; at: string | null };
+export type MyPostCloseNote = { text: string | null; at: string | null };
 export type CupperPostCloseNote = { text: string; at: string | null };
 
 export type PostCloseNotesPayload = {
@@ -300,7 +279,6 @@ export function buildPostCloseNotes(input: {
     if (e.isDraft) continue;
     if (e.cupperId === input.viewerId) {
       mine[e.sessionSampleId] = {
-        evaluationId: e.id,
         text: e.postCloseNote,
         at: e.postCloseNoteAt ? e.postCloseNoteAt.toISOString() : null,
       };

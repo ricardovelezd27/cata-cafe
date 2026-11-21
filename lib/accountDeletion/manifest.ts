@@ -167,6 +167,14 @@ export const PROFILE_MANIFEST: readonly ManifestEntry[] = [
     note: "Private warm-up notes (S10 WP7, Kim F2): readable only by their owner, never by an admin, export or AI prompt. Restrict FK: the account deletion erases them explicitly.",
   },
   {
+    model: "SessionReflection",
+    field: "userId",
+    kind: "relation",
+    merge: { kind: "move", delegate: "sessionReflection" },
+    onDelete: "erase",
+    note: "The reflection a person wrote about a tasting after it closed (OR-D): free text, read by them and the session's organizer. Erased with the account (as the per-coffee note is set NULL). One row per session and person: in a guest merge the account's own reflection of a session stays and the guest's goes. Restrict FK: the account deletion erases them explicitly.",
+  },
+  {
     model: "TastingGroup",
     field: "createdBy",
     kind: "relation",

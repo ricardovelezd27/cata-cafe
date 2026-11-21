@@ -325,6 +325,9 @@ export function ResultsPartsGallery({
                 parts={strings}
                 t={overviewStrings[scenario.id]}
                 cards={cardsStrings}
+                reflection={panelWords.reflection}
+                oldDated={panelWords.note.added}
+                closeLabel={panelWords.reflection.cancel}
               />
             </div>
           ))}

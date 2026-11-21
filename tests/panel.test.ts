@@ -197,9 +197,11 @@ describe("the matrix (buildPanelMatrix)", () => {
 
 describe("what waits for the organizer (panelPending)", () => {
   it("counts the late evaluations and the notes of other cuppers", () => {
-    expect(panelPending({ lateRows: [{}, {}], notesByCupper: { u1: { a: {}, b: {} }, u2: { a: {} } } })).toEqual({ late: 2, notes: 3 });
-    expect(panelPending({ lateRows: [{}], notesByCupper: null })).toEqual({ late: 1, notes: 0 });
-    expect(panelPending({ lateRows: [], notesByCupper: { u1: { a: {} } } })).toEqual({ late: 0, notes: 1 });
+    expect(panelPending({ lateRows: [{}, {}], notesByCupper: { u1: { a: {}, b: {} }, u2: { a: {} } } })).toEqual({ late: 2, notes: 3, reflections: 0 });
+    expect(panelPending({ lateRows: [{}], notesByCupper: null })).toEqual({ late: 1, notes: 0, reflections: 0 });
+    expect(panelPending({ lateRows: [], notesByCupper: { u1: { a: {} } } })).toEqual({ late: 0, notes: 1, reflections: 0 });
+    // a reflection about the tasting: one per person, counted and named as a reflection
+    expect(panelPending({ lateRows: [], notesByCupper: null, reflectionsByCupper: { u1: {}, u2: {} } })).toEqual({ late: 0, notes: 0, reflections: 2 });
   });
 
   it("is nothing when nothing waits, and nothing for a page that holds neither list", () => {
@@ -210,11 +212,13 @@ describe("what waits for the organizer (panelPending)", () => {
 
   it("is said in one sentence, in both languages", () => {
     const t = (locale: "es" | "en") => buildPanelStrings({ raw: (key: string) => block(locale)[key.split(".")[1]] });
-    expect(pendingSentence({ late: 1, notes: 1 }, t("es"))).toBe("1 evaluación tardía por decidir y 1 nota después del cierre");
-    expect(pendingSentence({ late: 3, notes: 0 }, t("es"))).toBe("3 evaluaciones tardías por decidir");
-    expect(pendingSentence({ late: 0, notes: 2 }, t("es"))).toBe("2 notas después del cierre");
-    expect(pendingSentence({ late: 2, notes: 5 }, t("en"))).toBe("2 late evaluations to decide and 5 notes after the close");
-    expect(pendingSentence({ late: 1, notes: 0 }, t("en"))).toBe("1 late evaluation to decide");
+    expect(pendingSentence({ late: 1, notes: 1, reflections: 0 }, t("es"))).toBe("1 evaluación tardía por decidir y 1 nota después del cierre");
+    expect(pendingSentence({ late: 3, notes: 0, reflections: 0 }, t("es"))).toBe("3 evaluaciones tardías por decidir");
+    expect(pendingSentence({ late: 0, notes: 2, reflections: 0 }, t("es"))).toBe("2 notas después del cierre");
+    expect(pendingSentence({ late: 2, notes: 5, reflections: 0 }, t("en"))).toBe("2 late evaluations to decide and 5 notes after the close");
+    expect(pendingSentence({ late: 1, notes: 0, reflections: 0 }, t("en"))).toBe("1 late evaluation to decide");
+    expect(pendingSentence({ late: 1, notes: 0, reflections: 2 }, t("es"))).toBe("1 evaluación tardía por decidir y 2 reflexiones sobre la cata");
+    expect(pendingSentence({ late: 0, notes: 0, reflections: 1 }, t("en"))).toBe("1 reflection on the tasting");
   });
 });
 
@@ -405,7 +409,7 @@ describe("what reaches a participant", () => {
     expect(client.match(/<PanelView/g)).toHaveLength(1);
     expect(client).toMatch(/canViewIndividual && participants \? \(\s*<PanelView/);
     // the count on the tab (what waits) is built from the same condition
-    expect(client).toMatch(/const panelWaiting = canViewIndividual\s*\? panelPending\(\{ lateRows: isAdminViewer \? null : lateRows,/);
+    expect(client).toMatch(/const panelWaiting = canViewIndividual\s*\? panelPending\(\{\s*lateRows: isAdminViewer \? null : lateRows,/);
     // a late evaluation can never become unreachable: without a Panel it stays on the page
     expect(client).toMatch(/lateRows && lateRows\.length > 0 && lateTranslations && !isAdminViewer && !canViewIndividual && \(\s*<LateEvaluationsPanel/);
   });

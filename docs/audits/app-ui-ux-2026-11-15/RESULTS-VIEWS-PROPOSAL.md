@@ -173,7 +173,7 @@ On a phone the matrix keeps today's layout: one coffee at a time with its picker
 - **Phone, 375 px:** one column. The only sideways row is the existing Coffee by coffee row, with numbered steps. The Compare table has at most three count columns, so it fits without sideways scroll. The organizer's view switch is one Tab stop with arrow keys (P5a).
 - **The view sits in the address:** the existing `?tab=` (P5a) names the view, so a reload, "back" and a language switch keep it. No new key.
 
-## 5. The general reflection: what it needs (nothing built)
+## 5. The general reflection: what it needs (built in OR-D PR 2)
 
 Today the note after the close is stored per evaluation (`Evaluation.postCloseNote`), so it is per coffee. One reflection per tasting and person needs **a schema change and a migration**:
 
@@ -183,7 +183,7 @@ Today the note after the close is stored per evaluation (`Evaluation.postCloseNo
   - a SQL phase keeping it private: read by the person and the session's organizer, never through the API roles, like PHASE 27;
   - entries in the account-deletion manifest and in the guest merge;
   - a test.
-- **The old per-coffee notes stay stored and are shown as they are** in the organizer's one notes block, for the tastings that have them. A tasting has either the old notes or the new reflection, never both: a session closed before the change keeps its per-coffee notes read-only and gets no reflection editor; a session closed after it has only the reflection. So the block never shows two lists.
+- **The old per-coffee notes stay stored and are shown as they are** in the organizer's one notes block, for the tastings that have them. A tasting has either the old notes or the new reflection, never both: a session closed before the change keeps its per-coffee notes read-only and gets no reflection editor; a session closed after it has only the reflection. So the block never shows two lists. **Built differently:** it is decided by the data, with no date. A tasting where any per-coffee note exists takes no reflection; every other closed tasting gets the editor, so an older closed tasting without per-coffee notes also gets it. The block still never shows two lists.
 
 ## 6. The critic's verdict
 

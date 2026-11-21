@@ -19,7 +19,7 @@
  * passed on while the organizer reads one cupper.
  */
 
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { Coffee, Pencil } from "lucide-react";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
 import { PillTabs, Button, type PillTabItem } from "@/components/ui";
@@ -110,7 +110,6 @@ export function SampleDetailDialog({
   onAssignCoffee,
   referenceBadge,
   referenceCount = 1,
-  extra,
   group,
   familyLabels,
   blockLabels,
@@ -145,7 +144,6 @@ export function SampleDetailDialog({
   referenceCount?: number;
   /** Extra content for the shown viewer ("me" or a participant id): the note
    *  after the close (S10 WP4b). A slot, so this dialog never knows about it. */
-  extra?: (viewerId: string) => ReactNode;
   group: SheetGroupProps;
   familyLabels: Record<WheelFamilyId, string>;
   blockLabels: Readonly<Record<string, string>>;
@@ -255,7 +253,6 @@ export function SampleDetailDialog({
           extrinsic={sample.extrinsic}
           extrinsicNote={sample.extrinsicEditedLabel ?? null}
           prep={sample.prep ?? null}
-          extra={extra?.(viewerId)}
           familyLabels={familyLabels}
           blockLabels={blockLabels}
           parts={parts}

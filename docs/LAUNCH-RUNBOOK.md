@@ -2544,3 +2544,76 @@ Run the first; if it says 0 rows, run the second. Then run the read query to con
 3. **A real home.** When the newsletter exists it should have its own table (address, language, consent, unsubscribed-at) and a one-click unsubscribe link in every email. That is a migration, which is yours to run; the rows above are moved then.
 4. **The sender.** The form's line says the responsible company is the one in `lib/legal/company.ts` and that unsubscribing is by writing to the support address. Check both are what you want.
 
+---
+
+## §38. The reflection about a tasting: the `session_reflections` migration and PHASE 30 (2026-11-21, OR-D)
+
+**STATUS: OWED. Nothing has been run.** The pull request that adds this section must NOT be merged
+before step 1. The code reads and writes the new table: without it the results page of every closed
+session fails, and so do a guest claim, an account deletion and the daily job's pass over never-used
+accounts.
+
+**What it does:** adds ONE new table, `session_reflections` (the reflection a person writes about a
+tasting after it closed: `sessionId` → `cupping_sessions` with `ON DELETE CASCADE`, `userId` →
+`profiles` with `ON DELETE RESTRICT`, `text` up to 500 characters, `writtenAt`; one row per session
+and person), and PHASE 30 closes it to the API roles. A reflection is read by **the person who wrote
+it and the session's organizer**, nobody else: not another cupper, an admin's lens, a report, the
+CSV, the analytics area or an AI prompt. The app reads and writes it only with Prisma as `postgres`.
+Account deletion erases a person's reflections; a guest claim moves them.
+
+It replaces the note per coffee. **The notes people already wrote per coffee are not touched:** they
+stay in `evaluations."postCloseNote"` and the page shows them read-only. A tasting that has such
+notes takes no reflection; every other closed tasting gets the one text box.
+
+**Order matters:** step 1 (the migration) FIRST, then step 6 (merge and deploy). Steps 2 to 5
+(PHASE 30) are written before step 6 because that is the safest order, but they may also be done
+after it: until PHASE 30 runs the table is only protected by Supabase's automatic RLS, which already
+denies the API roles; PHASE 30 makes that explicit and adds the revoke.
+
+1. **Migration.** On your machine, with `.env.local` pointing at the project (it is production):
+   ```bash
+   npx prisma migrate deploy
+   ```
+   Expected: `1 migration found … 20261121090000_session_reflections … applied`. Verify in the SQL
+   Editor:
+   ```sql
+   select column_name from information_schema.columns
+   where table_schema='public' and table_name='session_reflections' order by 1;
+   ```
+   Expected: `sessionId, text, userId, writtenAt`.
+2. **PHASE 30 pre-flight** (read-only): run queries (a) to (c) from the PHASE 30 header in
+   `prisma/sql/rls_and_triggers.sql`. Save the output of (b).
+3. **Dry run** (fail-safe: one statement, nothing is applied, nothing to replace). Open
+   `prisma/sql/dry-runs/phase30_dry_run.sql`, paste the whole file, run it. Expected: a red error
+   starting `PHASE 30 DRY RUN: NOTHING WAS APPLIED`. Compare each line with its `(expect ...)` text:
+   1a `t`; 1b `0`; every 1c line `f`; 2a, 2b and 3 `refused`; 4 a number and no error. **Any `NOT
+   REFUSED`, any `FAILED`, or any OTHER error: stop and report; nothing was applied either way.**
+4. **Apply** the `PHASE 30` block as written (`BEGIN … COMMIT`). Expected: `Success. No rows
+   returned`. An error starting `PHASE 30 aborted, nothing applied` means the self-check found the
+   table in the wrong state: report it.
+5. **Verify:**
+   ```sql
+   select relrowsecurity from pg_class where oid = 'public.session_reflections'::regclass;  -- t
+   select grantee, privilege_type from information_schema.role_table_grants
+   where table_schema='public' and table_name='session_reflections'
+     and grantee in ('anon','authenticated');                                                -- no rows
+   ```
+   Then Supabase **Advisors → Security**: nothing new.
+6. **Merge and deploy.** No environment variable.
+
+**Smoke test (5 minutes, two accounts in one closed group session, and one solo session):**
+1. As a cupper who sent an evaluation, open the closed session's results. Under the small facts there
+   is **Tu reflexión sobre esta cata** with one text box. Write a line, press **Guardar**: the text
+   stays with its date and "La leen tú y quien organizó."
+2. As the organizer of that session, open **Por catador**: the tab shows a count, and the block
+   **Reflexiones sobre la cata** lists that cupper's text. The organizer's own reflection says
+   "Solo la lees tú."
+3. As the cupper, **Editar** it, then **Borrar** it: it disappears, and the organizer's count goes.
+4. A coffee's sheet no longer has a note box.
+5. A closed session that has notes per coffee from before (if any exists): the writer sees **Tus
+   notas después del cierre**, read-only, and no text box; the organizer still sees **Notas añadidas
+   después del cierre**.
+
+**Rollback:** roll the code back first (the results page reads the table and would fail without it);
+the table itself can stay. Do not drop it: that erases people's reflections. PHASE 30's rollback is
+the commented block at its end (leaving RLS on is the safe state).

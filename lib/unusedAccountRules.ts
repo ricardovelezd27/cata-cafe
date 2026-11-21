@@ -144,6 +144,7 @@ export const UNUSED_ACCOUNT_RULES: Readonly<Record<string, UnusedRule>> = {
   "UserCoffeeHistory.userId": { rule: "blocks", table: "user_coffee_history", column: "userId", why: "has tasting history" },
   "SavedInsight.createdBy": { rule: "blocks", table: "saved_insights", column: "createdBy", why: "saved an insight" },
   "WarmupReflection.userId": { rule: "blocks", table: "warmup_reflections", column: "userId", why: "wrote a warm-up reflection" },
+  "SessionReflection.userId": { rule: "blocks", table: "session_reflections", column: "userId", why: "wrote a reflection about a tasting" },
   "TastingGroup.createdBy": { rule: "blocks", table: "tasting_groups", column: "createdBy", why: "owns a group" },
   "GroupPost.authorId": { rule: "blocks", table: "group_posts", column: "authorId", why: "wrote a group post" },
   "TastingGroupMember.userId": { rule: "unlink", table: "tasting_group_members", column: "userId", why: "the group owner's roster row keeps the address the owner typed and loses the link to the account (the FK is SET NULL)" },

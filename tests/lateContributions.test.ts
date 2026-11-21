@@ -2,16 +2,13 @@ import { describe, expect, it } from "vitest";
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
 import { calcIndividualScore } from "@/lib/scoring";
 import {
-  POST_CLOSE_NOTE_MAX,
   buildMyLateNotices,
   buildOwnerLateRows,
   buildPostCloseNotes,
   isAcceptableLate,
   isModuleSendable,
-  normalizePostCloseNote,
   planLateDraftWrite,
   totalAcceptanceWillStore,
-  postCloseNoteAllowed,
   type LateDraftForOwner,
   type LateDraftInput,
   type PostCloseNoteEval,
@@ -235,24 +232,6 @@ describe("isModuleSendable", () => {
   });
 });
 
-describe("post-close note", () => {
-  it("normalizes: trims, empty clears, max 500, text only", () => {
-    expect(normalizePostCloseNote("  hola  ")).toBe("hola");
-    expect(normalizePostCloseNote("")).toBeNull();
-    expect(normalizePostCloseNote("   ")).toBeNull();
-    expect(normalizePostCloseNote("x".repeat(POST_CLOSE_NOTE_MAX))).toHaveLength(POST_CLOSE_NOTE_MAX);
-    expect(() => normalizePostCloseNote("x".repeat(POST_CLOSE_NOTE_MAX + 1))).toThrow("invalid_input");
-    expect(() => normalizePostCloseNote(7)).toThrow("invalid_input");
-  });
-  it("only the owner of a SUBMITTED row in a CLOSED session may write", () => {
-    const e = { cupperId: "u1", isDraft: false };
-    expect(postCloseNoteAllowed({ sessionStatus: "closed", evaluation: e, userId: "u1" })).toBe(true);
-    expect(postCloseNoteAllowed({ sessionStatus: "closed", evaluation: e, userId: "u2" })).toBe(false);
-    expect(postCloseNoteAllowed({ sessionStatus: "closed", evaluation: { ...e, isDraft: true }, userId: "u1" })).toBe(false);
-    expect(postCloseNoteAllowed({ sessionStatus: "active", evaluation: e, userId: "u1" })).toBe(false);
-  });
-});
-
 describe("buildPostCloseNotes (privacy gate)", () => {
   const at = new Date("2026-11-15T12:00:00Z");
   const evals: PostCloseNoteEval[] = [
@@ -267,8 +246,8 @@ describe("buildPostCloseNotes (privacy gate)", () => {
     expect(Object.keys(p.mine).sort()).toEqual(["s1", "s2"]);
     expect(JSON.stringify(p)).not.toContain("secreto");
     expect(JSON.stringify(p)).not.toContain("other");
-    expect(p.mine.s1).toEqual({ evaluationId: "e1", text: "mi nota", at: at.toISOString() });
-    expect(p.mine.s2).toEqual({ evaluationId: "e3", text: null, at: null });
+    expect(p.mine.s1).toEqual({ text: "mi nota", at: at.toISOString() });
+    expect(p.mine.s2).toEqual({ text: null, at: null });
   });
   it("the owner lens also gets the other cuppers' notes (submitted rows with text only)", () => {
     const p = buildPostCloseNotes({ sessionStatus: "closed", ownerLens: true, viewerId: "me", evals });

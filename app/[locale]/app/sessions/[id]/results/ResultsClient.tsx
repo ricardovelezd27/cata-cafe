@@ -39,12 +39,9 @@ import {
   LateEvaluationsPanel,
   type LateEvaluationsTranslations,
 } from "@/components/results/LateEvaluationsPanel";
-import {
-  PostCloseNoteEditor,
-  PostCloseNoteReadOnly,
-  type PostCloseNoteTranslations,
-} from "@/components/results/PostCloseNote";
+import type { PostCloseNoteTranslations } from "@/components/results/PostCloseNote";
 import type { OwnerLateRow, PostCloseNotesPayload } from "@/lib/lateContributions";
+import { ownerNotesBlock, type ReflectionsPayload } from "@/lib/sessionReflection";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
 import {
   PillTabs,
@@ -167,6 +164,7 @@ export function ResultsClient({
   lateRows = null,
   myLateNotices = [],
   postCloseNotes = null,
+  reflections = null,
   lateTranslations,
   noteTranslations,
   finish = null,
@@ -237,7 +235,7 @@ export function ResultsClient({
     sheets: Record<string, SheetData | null>;
     sheet: SheetStrings;
     /** The reflection's words. */
-    reflectionT: ReflectionStrings;
+    reflectionT: ReflectionStrings & { ownerTitle: string; ownerIntro: string };
   };
   // Narrowed session format (mirrors session.format, typed) — feeds the
   // Resumen dashboard's score derivation and ranking gates.
@@ -261,6 +259,9 @@ export function ResultsClient({
   lateRows?: OwnerLateRow[] | null;
   myLateNotices?: string[];
   postCloseNotes?: PostCloseNotesPayload | null;
+  // OR-D: the reflection about the tasting (the viewer's own; the organizer also
+  // gets everyone's). Gated on the server; null in the admin's lens.
+  reflections?: ReflectionsPayload | null;
   lateTranslations?: LateEvaluationsTranslations;
   noteTranslations?: PostCloseNoteTranslations;
   // Solo owner of an open session with unscored samples: "Terminar cata"
@@ -732,7 +733,11 @@ export function ResultsClient({
   // The organizer's Panel (R5): the score each card shows for the GROUP, by sample
   // (the matrix's "Grupo" line), and what waits for them there.
   const panelWaiting = canViewIndividual
-    ? panelPending({ lateRows: isAdminViewer ? null : lateRows, notesByCupper: postCloseNotes?.byCupper ?? null })
+    ? panelPending({
+        lateRows: isAdminViewer ? null : lateRows,
+        notesByCupper: postCloseNotes?.byCupper ?? null,
+        reflectionsByCupper: reflections?.byCupper ?? null,
+      })
     : null;
   const panelGroupScores = Object.fromEntries(
     cards.map((c) => [c.sample.id, c.context && c.context.basis === "community" ? c.context.score : null]),
@@ -771,7 +776,7 @@ export function ResultsClient({
   // Two views of the same cupping (OR-D): "Por café" for everyone, "Por catador"
   // for the organizer and the admin's lens. A participant has ONE view: no tab
   // bar then. What waits for the organizer in "Por catador" is the count on its tab.
-  const waiting = panelWaiting ? panelWaiting.late + panelWaiting.notes : 0;
+  const waiting = panelWaiting ? panelWaiting.late + panelWaiting.notes + panelWaiting.reflections : 0;
   const tabItems = [
     { id: "resumen", label: translations.tabResultados },
     ...(canViewIndividual
@@ -1168,17 +1173,32 @@ export function ResultsClient({
             t={overview.cards}
           />
           </SessionOverview>
-          {/* The reflection: the existing note after the close, one per coffee the
-              reader sent an evaluation of. The same note is on each coffee's sheet. */}
-          {sessionClosed && !isAdminViewer && postCloseNotes && noteTranslations ? (
+          {/* The reflection: one text about the tasting. In a tasting from before it
+              existed, the reader's own notes per coffee instead, read-only. */}
+          {sessionClosed && !isAdminViewer ? (
             <Reflection
-              notes={postCloseNotes.mine}
-              samples={cards.map((c) => c.sample)}
-              // the organizer's own note has no other reader
+              sessionId={session.id}
+              mine={reflections?.mine ?? null}
+              oldNotes={cards.flatMap((c) => {
+                const note = postCloseNotes?.mine[c.sample.id];
+                return note?.text
+                  ? [
+                      {
+                        id: c.sample.id,
+                        label: c.sample.label,
+                        name: c.sample.revealed && c.sample.coffee ? c.sample.coffee.name.trim() || null : null,
+                        text: note.text,
+                        at: note.at,
+                      },
+                    ]
+                  : [];
+              })}
+              // the organizer's own reflection has no other reader
               onlyReader={!isGroup || isOwner}
               locale={locale}
               userId={currentUserId}
-              noteT={noteTranslations}
+              oldDated={noteTranslations?.added ?? ""}
+              closeLabel={translations.detail.close}
               t={overview.reflectionT}
             />
           ) : null}
@@ -1207,15 +1227,30 @@ export function ResultsClient({
             }
             matrixT={translations.matrix}
             late={lateRows && lateTranslations ? { rows: lateRows, t: lateTranslations } : null}
-            notes={
-              postCloseNotes?.byCupper && noteTranslations
-                ? {
-                    byCupper: postCloseNotes.byCupper,
-                    sampleLabels: Object.fromEntries(session.samples.map((sm) => [sm.id, sm.label])),
-                    t: noteTranslations,
-                  }
-                : null
-            }
+            notes={(() => {
+              const block = ownerNotesBlock({
+                coffeeNotes: postCloseNotes?.byCupper,
+                reflections: reflections?.byCupper,
+                cupperNames: Object.fromEntries((participants ?? []).map((p) => [p.id, p.name])),
+                sampleLabels: Object.fromEntries(session.samples.map((sm) => [sm.id, sm.label])),
+              });
+              if (!block) return null;
+              return block.kind === "coffee"
+                ? noteTranslations
+                  ? {
+                      title: noteTranslations.ownerTitle,
+                      intro: noteTranslations.ownerIntro,
+                      dated: noteTranslations.added,
+                      items: block.items,
+                    }
+                  : null
+                : {
+                    title: overview.reflectionT.ownerTitle,
+                    intro: overview.reflectionT.ownerIntro,
+                    dated: overview.reflectionT.written,
+                    items: block.items,
+                  };
+            })()}
             alignment={
               cupperAlignment && cupperAlignment.length > 0
                 ? {
@@ -1309,27 +1344,6 @@ export function ResultsClient({
           cards={overview.cards}
           overview={overview.t}
           s={overview.sheet}
-          // S10 WP4b (Kim C2): the cupper's own post-close note (editable) under their notes;
-          // the owner reads another cupper's note here, read-only. Never in the score area.
-          extra={(viewerId) => {
-            if (!sessionClosed || !noteTranslations || !postCloseNotes) return null;
-            if (viewerId === "me") {
-              const mine = postCloseNotes.mine[sheetSample.id];
-              return mine && !isAdminViewer ? (
-                <PostCloseNoteEditor
-                  key={`${sheetSample.id}|${mine.text ?? ""}|${mine.at ?? ""}`}
-                  note={mine}
-                  locale={locale}
-                  userId={currentUserId}
-                  translations={noteTranslations}
-                />
-              ) : null;
-            }
-            const theirs = postCloseNotes.byCupper?.[viewerId]?.[sheetSample.id];
-            return theirs ? (
-              <PostCloseNoteReadOnly text={theirs.text} at={theirs.at} locale={locale} translations={noteTranslations} />
-            ) : null;
-          }}
           // Closed = read-only: /cup redirects a closed session to results, so
           // "Editar" would be a dead button (F-resultados-10).
           onEdit={

@@ -1,20 +1,10 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
-// The reflection hosts the existing note editor, which needs the app router and
-// the toast provider: neither exists in a server render.
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: () => {} }) }));
-vi.mock("@/components/ui", async (original) => ({
-  ...(await original<typeof import("@/components/ui")>()),
-  useActionFeedback: () => ({ run: async () => {}, notifyError: () => {}, notifySuccess: () => {} }),
-}));
-vi.mock("@/app/actions/community", () => ({ setPostCloseNote: async () => ({ ok: true }) }));
-
 import { PillTabs } from "@/components/ui/PillTabs";
-import { Reflection } from "@/components/results/Reflection";
 import es from "@/messages/es.json";
 import en from "@/messages/en.json";
 
@@ -96,33 +86,5 @@ describe("what the owner removed is gone", () => {
     ]) {
       expect(read(...file), file.join("/")).not.toMatch(/noClearGap|tieWith|tieBars|tiesWithNext/);
     }
-  });
-});
-
-describe("the reflection keeps its per-coffee editors (until the general one replaces them)", () => {
-  it("lists the existing note editor once per coffee the reader may write on, and says who reads it", () => {
-    const t = { title: es.results.reflection.title, lead: es.results.reflection.lead, who: es.results.reflection.who, whoSolo: es.results.reflection.whoSolo };
-    const note = { evaluationId: "e1", text: null, at: null };
-    const base = {
-      notes: { a: note, b: { ...note, evaluationId: "e2" } },
-      samples: [
-        { id: "a", label: "Muestra A", revealed: true, coffee: { name: "Ámbar" } },
-        { id: "b", label: "Muestra B", revealed: false, coffee: null },
-        { id: "c", label: "Muestra C", revealed: false, coffee: null },
-      ],
-      locale: "es",
-      userId: "u1",
-      noteT: es.results.postCloseNote,
-      t,
-    };
-    const group = renderToStaticMarkup(createElement(Reflection, { ...base, onlyReader: false }));
-    expect((group.match(/<h3/g) ?? []).length).toBe(2);
-    expect(group).toContain(t.who);
-    const solo = renderToStaticMarkup(createElement(Reflection, { ...base, onlyReader: true }));
-    expect(solo).toContain(t.whoSolo);
-    expect(solo).not.toContain(t.who);
-    expect(renderToStaticMarkup(createElement(Reflection, { ...base, notes: {}, onlyReader: false }))).toBe("");
-    // never in the admin's lens, and only on a closed session
-    expect(client).toMatch(/\{sessionClosed && !isAdminViewer && postCloseNotes && noteTranslations \? \(\s*<Reflection/);
   });
 });

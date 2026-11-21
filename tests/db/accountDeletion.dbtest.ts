@@ -90,6 +90,9 @@ async function world() {
   await prisma.warmupReflection.create({ data: { userId: D, exerciseId: "eyes", feel: "tranquilo", discovery: "mis manos" } });
   await prisma.warmupReflection.create({ data: { userId: D, exerciseId: "arm-raise", feel: "bien" } });
   await prisma.warmupReflection.create({ data: { userId: P1, exerciseId: "eyes", feel: "de Pedro" } });
+  // reflections about a tasting (OR-D): D's is erased with the account, P1's stays
+  await prisma.sessionReflection.create({ data: { sessionId: otherSubmitted.id, userId: D, text: "de Daniela" } });
+  await prisma.sessionReflection.create({ data: { sessionId: otherSubmitted.id, userId: P1, text: "de Pedro" } });
 
   return { D, P1, P2, Q, c1, c2, solo, kept, emptyGroup, otherDraft, otherSubmitted, soloGroup, sharedGroup };
 }
@@ -197,6 +200,8 @@ describe("deleteAccountData", () => {
     expect(await prisma.warmupReflection.count({ where: { userId } })).toBe(0);
     expect(await prisma.warmupReflection.count({ where: { userId: out.placeholderId } })).toBe(0);
     expect((await prisma.warmupReflection.findMany()).map((r) => [r.userId, r.feel])).toEqual([[w.P1, "de Pedro"]]);
+    // the reflection about a tasting too: erased, never moved to the placeholder; P1's stays
+    expect((await prisma.sessionReflection.findMany()).map((r) => [r.userId, r.text])).toEqual([[w.P1, "de Pedro"]]);
     // P1's and P2's history/profiles are intact
     expect(await prisma.profile.count({ where: { id: { in: [w.P1, w.P2, w.Q] } } })).toBe(3);
   }, 120_000);

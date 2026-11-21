@@ -37,6 +37,7 @@ model Profile {
   coffeeInvites           CoffeeInvite[]
   groupPosts              GroupPost[]
   warmupReflections       WarmupReflection[]
+  sessionReflections      SessionReflection[]
 
   @@map("profiles")
 }
@@ -204,6 +205,7 @@ model CuppingSession {
   samples              SessionSample[]
   participants         SessionParticipant[]
   invites              SessionInvite[]
+  reflections          SessionReflection[]
   coffeeHistory        UserCoffeeHistory[]
   closeEmailDeliveries CloseEmailDelivery[]
   reminderDeliveries   SessionReminderDelivery[]
@@ -499,6 +501,23 @@ model WarmupReflection {
 
   @@index([userId, exerciseId, createdAt])
   @@map("warmup_reflections")
+}
+
+// OR-D (2026-11-21): the reflection a person writes about a tasting after it
+// closed. One row per session and person. Read by that person and the session's
+// organizer only; no API-role grant (PHASE 30).
+model SessionReflection {
+  sessionId String
+  session   CuppingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId    String
+  user      Profile        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  // Up to 500 characters, checked on write.
+  text      String         @db.VarChar(500)
+  writtenAt DateTime       @default(now())
+
+  @@id([sessionId, userId])
+  @@index([userId])
+  @@map("session_reflections")
 }
 
 model SavedInsight {

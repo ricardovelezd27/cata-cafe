@@ -140,6 +140,25 @@ describe("RLS as authenticated", () => {
     expect((await asUser(w.outsider, (q) => q("select * from coffee_shares"))).rows).toHaveLength(0);
   });
 
+  it("session_reflections is closed to the API roles: nobody reads or writes it over the API, not even its writer or the organizer (PHASE 30)", async () => {
+    const w = await world();
+    await prisma.sessionReflection.create({ data: { sessionId: w.s.id, userId: w.a, text: "para mí y quien organizó" } });
+    for (const who of [w.a, w.b, w.owner, w.outsider]) {
+      await expect(asUser(who, (q) => q("select * from session_reflections"))).rejects.toMatchObject({ code: "42501" });
+      await expect(asUser(who, (q) => q('select text from session_reflections where "userId" = $1', [who]))).rejects.toMatchObject({ code: "42501" });
+      await expect(
+        asUser(who, (q) => q('insert into session_reflections ("sessionId", "userId", "text") values ($1, $2, $3)', [w.s.id, who, "y"])),
+      ).rejects.toMatchObject({ code: "42501" });
+      await expect(asUser(who, (q) => q("delete from session_reflections"))).rejects.toMatchObject({ code: "42501" });
+    }
+    await expect(asRole("anon", null, (q) => q("select * from session_reflections"))).rejects.toMatchObject({ code: "42501" });
+    // the app (Prisma, as the table owner) still sees the row, untouched
+    expect((await prisma.sessionReflection.findMany()).map((r) => r.text)).toEqual(["para mí y quien organizó"]);
+    // RLS is on with no policy at all
+    const meta = await pg.query(`select c.relrowsecurity as rls, (select count(*)::int from pg_policies p where p.schemaname = 'public' and p.tablename = 'session_reflections') as policies from pg_class c where c.oid = 'public.session_reflections'::regclass`);
+    expect(meta.rows[0]).toEqual({ rls: true, policies: 0 });
+  });
+
   it("warmup_reflections is private: neither API role can read or write it, with or without a matching user (PHASE 27)", async () => {
     const w = await world();
     const mine = await prisma.warmupReflection.create({ data: { userId: w.a, exerciseId: "eyes", feel: "solo para mí" } });

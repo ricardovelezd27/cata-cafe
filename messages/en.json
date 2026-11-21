@@ -1068,6 +1068,8 @@
       "pendingLateMany": "{n} late evaluations to decide",
       "pendingNotesOne": "1 note after the close",
       "pendingNotesMany": "{n} notes after the close",
+      "pendingReflectionsOne": "1 reflection on the tasting",
+      "pendingReflectionsMany": "{n} reflections on the tasting",
       "pendingBoth": "{a} and {b}",
       "matrixCaption": "Each cupper's score for each coffee, with the group's score and the spread.",
       "matrixRegion": "Scores by cupper",
@@ -1224,17 +1226,9 @@
       "error": "The evaluation could not be included. Try again."
     },
     "postCloseNote": {
-      "add": "Add a note after the close",
-      "edit": "Edit note",
-      "remove": "Delete note",
-      "placeholder": "An observation you want to leave about this sample…",
-      "hint": "Text only. It does not change any score.",
-      "save": "Save",
-      "saving": "Saving…",
-      "cancel": "Cancel",
       "added": "Note added on {date}:",
       "ownerTitle": "Notes added after the close",
-      "ownerIntro": "Cuppers can leave a text note on their evaluation after the session closed. Only you and the person who wrote it can see it."
+      "ownerIntro": "Notes cuppers left on their evaluation after the session closed. Only you and the person who wrote it can see it."
     },
     "revealConfirm": {
       "title": "Reveal this sample?",
@@ -1406,10 +1400,22 @@
       "valuesOf": "{name}"
     },
     "reflection": {
-      "title": "Reflection",
-      "lead": "What do you take from each coffee? One note per coffee, up to 500 characters.",
-      "who": "You and the organizer of the cupping read it.",
-      "whoSolo": "Only you read it."
+      "title": "Your reflection on this tasting",
+      "who": "You and the organizer read it.",
+      "whoSolo": "Only you read it.",
+      "placeholder": "What do you take from this tasting?",
+      "hint": "Text only, up to 500 characters. It does not change any score.",
+      "save": "Save",
+      "saving": "Saving…",
+      "cancel": "Cancel",
+      "edit": "Edit",
+      "remove": "Delete",
+      "removeTitle": "Delete your reflection?",
+      "removeBody": "The text you wrote about this tasting is deleted. This cannot be undone.",
+      "written": "Written on {date}:",
+      "oldTitle": "Your notes after the close",
+      "ownerTitle": "Reflections on the tasting",
+      "ownerIntro": "After the close, each person can write a reflection on the tasting. Only you and the person who wrote it read it."
     }
   },
   "community": {

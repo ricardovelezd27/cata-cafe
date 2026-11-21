@@ -1,7 +1,7 @@
 // S10 WP4b (Kim C1 / C2) against real Postgres (real aggregate trigger, PHASE 26):
 //  - acceptLateEvaluation: the owner accepts ONE complete draft of a closed group session
 //  - submitLateDraft: a complete note left on a device reaches the server as a DRAFT only
-//  - setPostCloseNote: a text note on the cupper's own submitted evaluation, nothing else
+//  - setSessionReflection: a person's one reflection about a closed tasting, nothing else
 //  - announceClose / cancelAnnouncedClose: only the `closingAt` column moves
 // Only external boundaries are mocked (auth user, next cache/server, Supabase admin, close email).
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -23,7 +23,7 @@ import {
   announceClose,
   cancelAnnouncedClose,
   closeAnnounced,
-  setPostCloseNote,
+  setSessionReflection,
 } from "@/app/actions/community";
 import { submitLateDraft } from "@/app/actions/offline";
 import { closeSessionInternal } from "@/lib/closeSession";
@@ -450,62 +450,76 @@ describe("submitLateDraft", () => {
   });
 });
 
-describe("setPostCloseNote", () => {
-  it("writes ONLY its two columns: no trigger, no score, no JSON module, still submitted", async () => {
-    const { u1, A } = await closedScenario();
-    const row = await prisma.evaluation.findUniqueOrThrow({
-      where: { sessionSampleId_cupperId: { sessionSampleId: A.id, cupperId: u1 } },
-    });
+describe("setSessionReflection", () => {
+  it("writes ONLY the person's row: no evaluation changes, no trigger, no score", async () => {
+    const { u1, s, A } = await closedScenario();
+    const evalsBefore = await prisma.evaluation.findMany({ where: { sessionSample: { sessionId: s.id } }, orderBy: { id: "asc" } });
     const aggBefore = await storedAggregate(A.id);
 
     h.userId = u1;
-    const r = await setPostCloseNote(row.id, "  Me di cuenta tarde: más dulzor  ");
+    const r = await setSessionReflection(s.id, "  Me di cuenta tarde: más dulzor  ");
     expect(r.ok).toBe(true);
 
-    const after = await prisma.evaluation.findUniqueOrThrow({ where: { id: row.id } });
-    expect(after.postCloseNote).toBe("Me di cuenta tarde: más dulzor");
-    expect(after.postCloseNoteAt).toBeInstanceOf(Date);
-    const { postCloseNote, postCloseNoteAt, updatedAt, ...rest } = after;
-    const { postCloseNote: _n, postCloseNoteAt: _a, updatedAt: _u, ...restBefore } = row;
-    void postCloseNote; void postCloseNoteAt; void updatedAt; void _n; void _a; void _u;
-    expect(rest).toEqual(restBefore);
+    const rows = await prisma.sessionReflection.findMany();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ sessionId: s.id, userId: u1, text: "Me di cuenta tarde: más dulzor" });
+    expect(rows[0].writtenAt).toBeInstanceOf(Date);
 
+    expect(await prisma.evaluation.findMany({ where: { sessionSample: { sessionId: s.id } }, orderBy: { id: "asc" } })).toEqual(evalsBefore);
     const aggAfter = await storedAggregate(A.id);
     expect(aggAfter?.communityScore).toBe(aggBefore?.communityScore);
     expect(aggAfter?.computedAt.getTime()).toBe(aggBefore?.computedAt.getTime());
 
+    // writing again replaces the same row (one per session and person)
+    expect((await setSessionReflection(s.id, "otra")).ok).toBe(true);
+    expect((await prisma.sessionReflection.findMany()).map((x) => x.text)).toEqual(["otra"]);
+
     // "" clears
-    const cleared = await setPostCloseNote(row.id, "");
-    expect(cleared).toEqual({ ok: true, data: { text: null, at: null } });
-    const after2 = await prisma.evaluation.findUniqueOrThrow({ where: { id: row.id } });
-    expect(after2.postCloseNote).toBeNull();
-    expect(after2.postCloseNoteAt).toBeNull();
+    expect(await setSessionReflection(s.id, "")).toEqual({ ok: true, data: { text: null, at: null } });
+    expect(await prisma.sessionReflection.count()).toBe(0);
   });
 
-  it("refuses someone else's evaluation, a draft, an open session and a note over 500 characters", async () => {
-    const { u1, u2, owner, A, draft } = await closedScenario();
-    const row = await prisma.evaluation.findUniqueOrThrow({
-      where: { sessionSampleId_cupperId: { sessionSampleId: A.id, cupperId: u1 } },
-    });
-    // another cupper (and the owner) cannot write on u1's evaluation
-    for (const who of [u2, owner]) {
+  it("refuses a person who sent nothing, an open session, a text over 500 characters and a tasting with notes per coffee", async () => {
+    const { u1, u2, owner, s, A } = await closedScenario();
+    // u2 only has a draft, the owner sent nothing, an outsider is not in the session: all read as missing
+    for (const who of [u2, owner, await makeUser()]) {
       h.userId = who;
-      expect(await setPostCloseNote(row.id, "intruso")).toEqual({ ok: false, error: "not_found_or_forbidden" });
+      expect(await setSessionReflection(s.id, "intruso")).toEqual({ ok: false, error: "not_found_or_forbidden" });
     }
-    // u2's own row is still a draft
-    h.userId = u2;
-    expect(await setPostCloseNote(draft.id, "nota")).toEqual({ ok: false, error: "invalid_input" });
-    // too long
     h.userId = u1;
-    expect(await setPostCloseNote(row.id, "x".repeat(501))).toEqual({ ok: false, error: "invalid_input" });
-    expect((await prisma.evaluation.findUniqueOrThrow({ where: { id: row.id } })).postCloseNote).toBeNull();
+    expect(await setSessionReflection("no-such-session", "x")).toEqual({ ok: false, error: "not_found_or_forbidden" });
+    // too long
+    expect(await setSessionReflection(s.id, "x".repeat(501))).toEqual({ ok: false, error: "invalid_input" });
+    expect(await prisma.sessionReflection.count()).toBe(0);
 
     // an open session
     const o = await makeUser();
     const open = await makeSession({ ownerId: o, isGroup: true });
-    const e = await makeEvaluation({ sampleId: open.samples[0].id, sessionId: open.id, cupperId: o });
+    await makeEvaluation({ sampleId: open.samples[0].id, sessionId: open.id, cupperId: o });
     h.userId = o;
-    expect(await setPostCloseNote(e.id, "pronto")).toEqual({ ok: false, error: "invalid_input" });
+    expect(await setSessionReflection(open.id, "pronto")).toEqual({ ok: false, error: "invalid_input" });
+
+    // a tasting from before the reflection: someone's note per coffee is stored, so nobody writes a reflection
+    await prisma.evaluation.update({
+      where: { sessionSampleId_cupperId: { sessionSampleId: A.id, cupperId: u1 } },
+      data: { postCloseNote: "nota vieja", postCloseNoteAt: new Date() },
+    });
+    h.userId = u1;
+    expect(await setSessionReflection(s.id, "nueva")).toEqual({ ok: false, error: "invalid_input" });
+    expect(await prisma.sessionReflection.count()).toBe(0);
+    // and the old note is untouched
+    expect(
+      (await prisma.evaluation.findUniqueOrThrow({ where: { sessionSampleId_cupperId: { sessionSampleId: A.id, cupperId: u1 } } })).postCloseNote,
+    ).toBe("nota vieja");
+  });
+
+  it("goes with its session (cascade)", async () => {
+    const { u1, s } = await closedScenario();
+    h.userId = u1;
+    expect((await setSessionReflection(s.id, "se va con la cata")).ok).toBe(true);
+    await prisma.userCoffeeHistory.deleteMany({ where: { sessionId: s.id } });
+    await prisma.cuppingSession.delete({ where: { id: s.id } });
+    expect(await prisma.sessionReflection.count()).toBe(0);
   });
 });
 

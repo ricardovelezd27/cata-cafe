@@ -9,9 +9,9 @@ import {
   type OwnerMatrixTranslations,
   type ParticipantResult,
 } from "@/components/results/OwnerParticipantSection";
-import { PostCloseNotesOwnerList, type PostCloseNoteTranslations } from "@/components/results/PostCloseNote";
+import { PostCloseNotesOwnerList, type OwnerNoteItem } from "@/components/results/PostCloseNote";
 import type { SessionFormat } from "@/lib/constants";
-import type { CupperPostCloseNote, OwnerLateRow } from "@/lib/lateContributions";
+import type { OwnerLateRow } from "@/lib/lateContributions";
 import type { PanelStrings } from "./panelStrings";
 
 /**
@@ -21,7 +21,8 @@ import type { PanelStrings } from "./panelStrings";
  *   2. every cupper's total for every coffee, beside the group's, with a mark on
  *      the cells far from the group, and under it who counts in the group's
  *      numbers (the exclusion switches);
- *   3. the notes the cuppers added after the close;
+ *   3. what the cuppers wrote after the close (their reflections about the
+ *      tasting or, in an older tasting, their notes per coffee: one block);
  *   4. how many of the panel's most chosen descriptors each cupper chose too.
  *
  * It arranges; it does not decide and it changes no control. Every part keeps
@@ -69,12 +70,8 @@ export function PanelView({
   matrixT: OwnerMatrixTranslations;
   /** The organizer's late rows; null for anyone else (and in the admin's lens). */
   late: { rows: OwnerLateRow[]; t: LateEvaluationsTranslations } | null;
-  /** Other cuppers' notes after the close; null when the page holds none. */
-  notes: {
-    byCupper: Record<string, Record<string, CupperPostCloseNote>>;
-    sampleLabels: Record<string, string>;
-    t: PostCloseNoteTranslations;
-  } | null;
+  /** What the other cuppers wrote after the close; null when the page holds nothing. */
+  notes: { title: string; intro: string; dated: string; items: OwnerNoteItem[] } | null;
   alignment: {
     rows: CupperAlignmentRow[];
     samples: { id: string; label: string }[];
@@ -109,11 +106,11 @@ export function PanelView({
 
       {notes ? (
         <PostCloseNotesOwnerList
-          byCupper={notes.byCupper}
-          cupperNames={Object.fromEntries(participants.map((p) => [p.id, p.name]))}
-          sampleLabels={notes.sampleLabels}
+          title={notes.title}
+          intro={notes.intro}
+          dated={notes.dated}
+          items={notes.items}
           locale={locale}
-          translations={notes.t}
         />
       ) : null}
 
