@@ -97,7 +97,7 @@ function bothSides(cuppers: Cupper[], sessionCups: number) {
 }
 
 describe("trigger arithmetic == TypeScript, per cup count", () => {
-  it("2 cuppers x 5 cups, one non-uniform-only cup: -2 x 5/10 = -1 (CLAUDE.md verification)", () => {
+  it("2 cuppers x 5 cups, one non-uniform-only cup: -2 x 5/10 = -1 (docs/guide/cupping-form-and-scoring.md verification)", () => {
     const { ts, sql } = bothSides(
       [
         { value: 5, cups: 5, nu: 1, df: 0 },
