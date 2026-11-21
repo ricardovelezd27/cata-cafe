@@ -21,7 +21,7 @@
 // the trigger and AggregateScore never read this file. Nothing is stored.
 
 import { wheelHeadline, type WheelHeadline } from "@/lib/flavorWheelLayout";
-import { buildDefectSummary, type DefectSummary } from "@/lib/reports/learnings";
+import { buildDefectSummary, type DefectSummary } from "@/lib/reports/defectSummary";
 import {
   myScoreFor,
   rankSamples,

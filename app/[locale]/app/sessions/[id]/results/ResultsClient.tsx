@@ -65,9 +65,7 @@ import { ArrowLeft, RefreshCw } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SessionOverview } from "@/components/results/SessionOverview";
 import { CoffeeCards } from "@/components/results/CoffeeCards";
-import { Learnings, Reflection } from "@/components/results/Learnings";
-import type { LearningsStrings } from "@/components/results/learningsStrings";
-import type { LearningsPayload } from "@/lib/reports/learningsInput";
+import { Reflection, type ReflectionStrings } from "@/components/results/Reflection";
 import type { CardsStrings } from "@/components/results/cardsStrings";
 import type { SheetStrings } from "@/components/results/sheetStrings";
 import type { SheetData } from "@/lib/reports/coffeeSheet";
@@ -243,9 +241,8 @@ export function ResultsClient({
      *  viewer may not read them), and the words of the sheet. */
     sheets: Record<string, SheetData | null>;
     sheet: SheetStrings;
-    /** R4b: the learnings of a CLOSED session (null before the close) and their words. */
-    learnings: LearningsPayload | null;
-    learningsT: LearningsStrings;
+    /** The reflection's words. */
+    reflectionT: ReflectionStrings;
   };
   // Narrowed session format (mirrors session.format, typed) — feeds the
   // Resumen dashboard's score derivation and ranking gates.
@@ -1174,20 +1171,6 @@ export function ResultsClient({
             parts={overview.parts}
             t={overview.cards}
           />
-          {/* What the cupping taught: only once it is closed (the server sends null before). */}
-          {overview.learnings ? (
-            <Learnings
-              learnings={overview.learnings}
-              samples={session.samples}
-              isGroup={isGroup}
-              showMine={!isAdminViewer}
-              viewerSent={cards.some((c) => c.state === "submitted")}
-              locale={locale}
-              attributes={overview.cards.attributes}
-              defectTypes={overview.t.defectTypes}
-              t={overview.learningsT}
-            />
-          ) : null}
           {/* The reflection: the existing note after the close, one per coffee the
               reader sent an evaluation of. The same note is on each coffee's sheet. */}
           {sessionClosed && !isAdminViewer && postCloseNotes && noteTranslations ? (
@@ -1199,7 +1182,7 @@ export function ResultsClient({
               locale={locale}
               userId={currentUserId}
               noteT={noteTranslations}
-              t={overview.learningsT}
+              t={overview.reflectionT}
             />
           ) : null}
         </div>

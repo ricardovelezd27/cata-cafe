@@ -22,8 +22,6 @@ import { buildCardsStrings } from "@/components/results/cardsStrings";
 import { buildPanelStrings } from "@/components/results/panelStrings";
 import { buildSheetStrings } from "@/components/results/sheetStrings";
 import { buildSheetData } from "@/lib/reports/coffeeSheet";
-import { buildLearningsInput, learningsPayload, type RepeatPair } from "@/lib/reports/learningsInput";
-import { buildLearningsStrings } from "@/components/results/learningsStrings";
 import { isSessionExpired, viewerMayReadGroupResults } from "@/lib/sessionState";
 import { wasClosedSilently } from "@/lib/repairClose";
 import { resultsUpdatedAfterClose } from "@/lib/exclusionReasons";
@@ -833,8 +831,6 @@ export default async function ResultsPage({
   // partner's blind label travels. Never for the admin read view (it holds the
   // owner's rows, not the viewer's).
   const repeatDiffsBySample = new Map<string, RepeatDiff[]>();
-  // The same pairs with the viewer's own two TOTALS, for the learnings (R4b, P6).
-  const repeatPairs: RepeatPair[] = [];
   if (mayBuildRepeatedDiffs({ status: session.status, isAdminViewer })) {
     const partners = repeatedSamplePartners(
       session.samples.map((s) => ({
@@ -863,7 +859,6 @@ export default async function ResultsPage({
           other: ownEval(pid),
           locale: localeStr,
         });
-        if (cmp?.total) repeatPairs.push({ a: sampleId, b: pid, scoreA: cmp.total.mine, scoreB: cmp.total.other });
         if (cmp) {
           diffs.push({
             partnerLabel: session.samples.find((s) => s.id === pid)?.label ?? "",
@@ -1218,27 +1213,6 @@ export default async function ResultsPage({
           };
         });
 
-  // R4b: "Aprendizajes". Sentences computed by fixed rules (lib/reports/learnings.ts)
-  // from values this page ALREADY has: nothing new is queried, nothing is stored.
-  // Null while the session is not closed. The group's part needs the page's own
-  // gate (`canViewGroup`) and three included cuppers; the viewer's own part is
-  // built from their own rows and travels only in their page (never in the
-  // admin's lens, whose "mine" slots hold the organizer's evaluations).
-  const learnings = learningsPayload(
-    buildLearningsInput({
-      closed: session.status === "closed",
-      ownerLens: ownerRead,
-      referencePinned: refExplanation === "pinned",
-      samples: sampleResults,
-      referenceId: session.referenceSampleId,
-      ctx: { format, isGroup: session.isGroup, canViewGroup, cupsPerSample: session.cupsPerSample },
-      data: overviewData,
-      alignment: myAlignment,
-      repeats: repeatPairs,
-    }),
-    { ownOnes: !isAdminViewer },
-  );
-
   return (
     <ResultsClient
       locale={locale}
@@ -1314,9 +1288,13 @@ export default async function ResultsPage({
         sheet: buildSheetStrings(tResults),
         // R5: the words the organizer's Panel added (the matrix, what waits).
         panelT: buildPanelStrings(tResults),
-        // R4b: the learnings (null until the close) and their words.
-        learnings,
-        learningsT: buildLearningsStrings(tResults),
+        // The reflection's words (the note after the close, listed once per coffee).
+        reflectionT: {
+          title: tResults("reflection.title"),
+          lead: tResults("reflection.lead"),
+          who: tResults("reflection.who"),
+          whoSolo: tResults("reflection.whoSolo"),
+        },
       }}
       format={format}
       myAlignment={myAlignment}

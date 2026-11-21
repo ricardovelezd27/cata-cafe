@@ -53,7 +53,7 @@ import { wheelFamilyOf, type WheelFamilyId } from "@/lib/flavorWheel";
 import { MARKET_KEY, MARKET_NOTE_KEY, readMarketNote } from "@/lib/marketNote";
 import type { CoffeeCard, CompareOption } from "@/lib/reports/coffeeCards";
 import { SHEET_GENERAL, type SheetData } from "@/lib/reports/coffeeSheet";
-import type { DefectSummary } from "@/lib/reports/learnings";
+import type { DefectSummary } from "@/lib/reports/defectSummary";
 import type { PersonalComparison } from "@/lib/reports/personalComparison";
 import type { WheelData } from "@/lib/reports/wheelData";
 import { INTENSITY_SCALE, QUALITY_SCALE, countBar } from "@/lib/resultsScales";

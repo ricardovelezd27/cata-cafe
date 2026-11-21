@@ -13,7 +13,6 @@ import { AFFECTIVE_ATTRIBUTES, type SessionFormat } from "@/lib/constants";
 import type { MyEvaluation } from "@/lib/evaluationState";
 import { buildSheetData, type SheetData } from "@/lib/reports/coffeeSheet";
 import { myScoreFor } from "@/lib/reports/ranking";
-import { buildLearningsInput, learningsPayload, type LearningsPayload, type RepeatPair } from "@/lib/reports/learningsInput";
 import { buildOverviewData, type OverviewData, type OverviewRow } from "@/lib/reports/overview";
 import { buildPersonalComparison, type PersonalComparison } from "@/lib/reports/personalComparison";
 import { computeSampleBlockFrequencies } from "@/lib/resultsAggregation";
@@ -53,10 +52,6 @@ export type OverviewScenario = {
   data: OverviewData;
   /** R3: per coffee, the panel's descriptors stage by stage (the sheet). */
   sheets: Record<string, SheetData | null>;
-  /** R4b: the learnings, built by the real rules (null while the cupping is open). */
-  learnings: LearningsPayload | null;
-  /** The same with the personal ones in the approved table's order (the model's switch off). */
-  learningsApprovedOrder: LearningsPayload | null;
   myAlignment: { matches: number; opportunities: number } | null;
   preliminary: boolean;
   referencePinned: boolean;
@@ -101,8 +96,6 @@ type Plan = {
   /** False for a cupping that is still open (default: closed). */
   closed?: boolean;
   myAlignment?: { matches: number; opportunities: number } | null;
-  /** Two samples (by index) that were the same coffee, for the viewer's own difference (B6, learning P6). */
-  repeat?: [number, number];
   samples: SamplePlan[];
 };
 
@@ -272,27 +265,6 @@ function build(plan: Plan): OverviewScenario {
   const reference = samples.find((s) => s.referenceRank !== null) ?? null;
   const ctx = { format: plan.format, isGroup: plan.isGroup, canViewGroup: plan.canViewGroup, cupsPerSample: plan.cups };
   const referencePinned = plan.samples.some((s) => s.reference === "anchor") && plan.format !== "descriptive";
-  // The viewer's own two totals of a repeated coffee, as the page pairs them.
-  const repeats: RepeatPair[] = [];
-  if (plan.repeat) {
-    const [a, b] = plan.repeat.map((i) => samples[i]);
-    const scoreA = myScoreFor(a, plan.format, plan.cups);
-    const scoreB = myScoreFor(b, plan.format, plan.cups);
-    if (scoreA !== null && scoreB !== null) repeats.push({ a: a.id, b: b.id, scoreA, scoreB });
-  }
-  const learningsInput = buildLearningsInput({
-    closed: plan.closed ?? true,
-    ownerLens: plan.ownerLens,
-    referencePinned,
-    samples,
-    referenceId: reference?.id ?? null,
-    ctx,
-    data,
-    alignment: plan.myAlignment ?? null,
-    repeats,
-  });
-  const learnings = learningsPayload(learningsInput, { ownOnes: true });
-  const learningsApprovedOrder = learningsPayload(learningsInput, { ownOnes: true, repeatedFirst: false });
   return {
     id: plan.id,
     title: plan.title,
@@ -301,8 +273,6 @@ function build(plan: Plan): OverviewScenario {
     referenceId: reference?.id ?? null,
     data,
     sheets,
-    learnings,
-    learningsApprovedOrder,
     myAlignment: plan.myAlignment ?? null,
     preliminary: plan.preliminary ?? false,
     referencePinned: plan.samples.some((s) => s.reference === "anchor") && plan.format !== "descriptive",
@@ -435,21 +405,6 @@ const DESCRIPTIVE: Plan = {
 };
 
 export const OVERVIEW_SCENARIOS: OverviewScenario[] = [CLOSED, CLOSED_OWNER, TWO, FREE, OPEN, SOLO, DESCRIPTIVE].map(build);
-
-/** The closed cupping again, where two of its coffees were the same one: the
- *  viewer has six sentences of their own and the page shows five. Not in
- *  OVERVIEW_SCENARIOS (it is the specimen of the cap's switch, for the review
- *  board and the tests): `learnings` is the built default (the repeated coffee
- *  first), `learningsApprovedOrder` the approved table's order. */
-export const LEARNINGS_REPEAT_SCENARIO: OverviewScenario = build({
-  ...CLOSED,
-  id: "closed-repeat",
-  title: {
-    es: "La misma cata, con un café repetido (Muestra G y Muestra C eran el mismo)",
-    en: "The same cupping, with a repeated coffee (Muestra G and Muestra C were the same)",
-  },
-  repeat: [1, 2],
-});
 
 export const overviewScenario = (id: string): OverviewScenario => {
   const found = OVERVIEW_SCENARIOS.find((s) => s.id === id);

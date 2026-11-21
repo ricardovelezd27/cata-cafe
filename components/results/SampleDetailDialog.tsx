@@ -33,7 +33,7 @@ import type { SessionFormat } from "@/lib/constants";
 import type { WheelFamilyId } from "@/lib/flavorWheel";
 import type { CoffeeCard, CompareOption } from "@/lib/reports/coffeeCards";
 import type { SheetData } from "@/lib/reports/coffeeSheet";
-import type { DefectSummary } from "@/lib/reports/learnings";
+import type { DefectSummary } from "@/lib/reports/defectSummary";
 import type { WheelData } from "@/lib/reports/wheelData";
 import { referenceBadgeText } from "@/lib/referenceRules";
 import type { ScoreRule } from "@/lib/scoreRule";
