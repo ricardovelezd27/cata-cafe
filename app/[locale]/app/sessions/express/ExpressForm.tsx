@@ -62,7 +62,7 @@ const inputClass =
   "w-full min-h-[48px] border border-outline-variant rounded-input px-3.5 py-2.5 text-body text-on-surface bg-surface-container-lowest focus:border-primary-container transition-colors";
 
 const stepperButtonClass =
-  "h-12 w-12 min-h-[44px] min-w-[44px] shrink-0 inline-flex items-center justify-center rounded-full border border-outline-variant text-on-surface bg-surface-container-lowest transition-colors hover:bg-primary-fixed disabled:opacity-40 disabled:cursor-default disabled:hover:bg-surface-container-lowest";
+  "h-12 w-12 min-h-[44px] min-w-[44px] shrink-0 inline-flex items-center justify-center rounded-full border border-outline-variant text-on-surface bg-surface-container-lowest transition-colors hover:bg-primary-fixed active:bg-primary-fixed disabled:opacity-60 disabled:cursor-default disabled:hover:bg-surface-container-lowest";
 
 export function ExpressForm({
   locale,

@@ -606,7 +606,7 @@ support it); only use it for always-available links.
 
 **(rule, owner's review 2026-11-21)** Every action is one of three kinds, and a person can tell which by looking, without hovering. A secondary action that offers another way forward is a secondary button with a visible boundary, never bare text. Text is only for the quietest action beside a button that has a boundary (Cancelar next to Guardar) or for a small link-like action (`TextAction`).
 
-Pressed shows the hover tone, also on touch, where there is no hover. Focus is the same for every kind: the one indicator under "Accessibility". `TextAction` is a text action too: its hover is an underline (`link`) or `on-surface` (`quiet`).
+Pressed shows the hover tone, also on touch, where there is no hover. Focus is the same for every kind: the one indicator under "Accessibility".
 
 **Selected and not selected** (tabs, chips, choice cards, segments, switches):
 
@@ -614,7 +614,7 @@ Pressed shows the hover tone, also on touch, where there is no hover. Focus is t
 |---|---|---|---|
 | Tab, chip, choice card (`PillTabs`, a choose-one row of cards; a disabled item is at 45 % opacity) | 1 px `outline-variant` border, `on-surface-variant` text, medium | `surface-container` fill, `on-surface` text | `primary-fixed` fill and border, `on-primary-fixed` text, semibold; `aria-selected` / `aria-checked` |
 | Segment (`SegmentedControl`) | `on-surface-variant` text on its `surface-container-high` track | `on-surface` text | raised on the track: `surface-container-lowest`, `shadow-card`, `on-surface` text; `aria-checked` |
-| Switch (on / off) | `outline-variant` track | — | `primary-container` track (a switch is not a button: its track is not a filled label) |
+| Switch (on / off) | `outline-variant` track | | `primary-container` track |
 
 #### Interactive control vocabulary
 
