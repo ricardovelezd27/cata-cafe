@@ -110,7 +110,6 @@ import { EXPRESS_NOTE_KEY, EXPRESS_NOTE_MAX } from "@/lib/expressSession";
 import { moduleKeyForFormat } from "@/lib/evaluation";
 import { useKeyboardOpen } from "@/hooks/useKeyboardOpen";
 import { isEvaluationReadOnly, isModuleFrozenForRevealed } from "@/lib/revealFreeze";
-import type { MarketCopy } from "@/components/cupping/MarketNote";
 import { PARTIAL_COPY_FALLBACK, type PartialCopy } from "@/components/cupping/AttributeExtras";
 import { CuppingTimer, TIMER_COPY_FALLBACK, useCuppingTimerRunning, type TimerCopy } from "@/components/cupping/CuppingTimer";
 import { isAffectiveDeclaredPartial } from "@/lib/affectivePartial";
@@ -517,8 +516,6 @@ export function CupClient({
     referenceCupsLocked?: string;
     /** One line shown on a revealed sample, which can no longer be evaluated (S10 WP3a, X3). */
     revealedNote?: string;
-    /** Optional "market" line copy (S10 WP3a, A10); fallback in components/cupping/MarketNote.tsx. */
-    market?: MarketCopy;
     /** "No evaluado" / "as it cooled" copy (S10 WP3b, C4/A5); fallback in components/cupping/AttributeExtras.tsx. */
     partial?: PartialCopy;
     /** The 1-9 scale's words (P5b, H-08); fallback in components/ui/AffectiveBubbles.tsx. */
@@ -3576,7 +3573,6 @@ export function CupClient({
             isGroup={isGroup}
             locale={locale === "en" ? "en" : "es"}
             cupCopy={translations.cups}
-            marketCopy={translations.market}
             partialCopy={translations.partial}
             scaleCopy={translations.scale}
           />
@@ -3596,7 +3592,6 @@ export function CupClient({
               lockedCupsNote={translations.referenceCupsLocked}
               isGroup={isGroup}
               cupCopy={translations.cups}
-              marketCopy={translations.market}
               partialCopy={translations.partial}
             scaleCopy={translations.scale}
             />

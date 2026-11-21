@@ -445,14 +445,6 @@
     "referenceLockedAffective": "Referencia fija: la calidad queda fijada en 5 (ni alto ni bajo) en todos los atributos y no hay nada que puntuar aquí. Pruébala con calma, anota lo que percibas y continúa con la siguiente muestra.",
     "referenceCupsLocked": "Las tazas de la referencia no se marcan: su puntaje se mantiene fijo en 79.00.",
     "revealedNote": "Muestra revelada: ya no se puede evaluar.",
-    "market": {
-      "title": "¿Desde qué punto de vista calificaste?",
-      "optional": "Opcional",
-      "own": "Mi preferencia",
-      "known": "Un mercado que conozco",
-      "noteLabel": "¿Qué mercado?",
-      "notePlaceholder": "Ej. cafeterías de especialidad en Madrid"
-    },
     "partial": {
       "notEvaluated": "No evaluado",
       "notEvaluatedOn": "Esta sección quedó sin evaluar.",
@@ -1271,10 +1263,6 @@
       "body": "Todos verán qué café es y nadie podrá seguir evaluando esta muestra. Las evaluaciones en borrador de esta muestra quedarán como están. Si todavía no la evaluaste, ya no podrás hacerlo.",
       "confirm": "Revelar muestra",
       "cancel": "Cancelar"
-    },
-    "market": {
-      "label": "Punto de vista",
-      "known": "Un mercado que conozco"
     },
     "partial": {
       "label": "Parcial · sin puntaje",

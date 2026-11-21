@@ -445,14 +445,6 @@
     "referenceLockedAffective": "Fixed reference: quality is pinned at 5 (neither high nor low) on every attribute, so there is nothing to score here. Taste it calmly, note what you perceive and move on to the next sample.",
     "referenceCupsLocked": "Cups are not marked on the reference: its score stays fixed at 79.00.",
     "revealedNote": "Sample revealed: it can no longer be evaluated.",
-    "market": {
-      "title": "Which point of view did you rate from?",
-      "optional": "Optional",
-      "own": "My preference",
-      "known": "A market I know",
-      "noteLabel": "Which market?",
-      "notePlaceholder": "E.g. specialty cafés in Madrid"
-    },
     "partial": {
       "notEvaluated": "Not evaluated",
       "notEvaluatedOn": "This section was left unevaluated.",
@@ -1271,10 +1263,6 @@
       "body": "Everyone will see which coffee it is and nobody will be able to keep evaluating this sample. Draft evaluations of this sample will stay as they are. If you have not evaluated it yet, you will not be able to.",
       "confirm": "Reveal sample",
       "cancel": "Cancel"
-    },
-    "market": {
-      "label": "Point of view",
-      "known": "A market I know"
     },
     "partial": {
       "label": "Partial · no score",

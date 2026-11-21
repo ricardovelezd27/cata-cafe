@@ -424,14 +424,6 @@ export default async function CupPage({
         referenceLockedAffective: t("cupping.referenceLockedAffective"),
         referenceCupsLocked: t("cupping.referenceCupsLocked"),
         revealedNote: t("cupping.revealedNote"),
-        market: {
-          title: t("cupping.market.title"),
-          optional: t("cupping.market.optional"),
-          own: t("cupping.market.own"),
-          known: t("cupping.market.known"),
-          noteLabel: t("cupping.market.noteLabel"),
-          notePlaceholder: t("cupping.market.notePlaceholder"),
-        },
         // P5b: the 1-9 scale's words and the place copy ({n}/{total} replaced client-side).
         scale: t.raw("cupping.scale") as ScaleCopy,
         place: t.raw("cupping.place") as CupPlaceCopy,
