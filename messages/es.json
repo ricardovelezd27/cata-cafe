@@ -777,6 +777,7 @@
     "masterControls": "Panel del organizador",
     "masterRole": "Organizador",
     "participantRole": "Catador",
+    "participantsCount": "{count, plural, one {# participante} other {# participantes}}",
     "copyImage": "Copiar QR",
     "downloadQr": "Descargar QR",
     "inviteMissing": "Esta cata no tiene un enlace de invitación activo. Genera uno desde el panel de la cata.",

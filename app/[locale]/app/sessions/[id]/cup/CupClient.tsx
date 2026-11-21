@@ -387,9 +387,10 @@ export function CupClient({
     startGroupNoticePartial: string;
     masterRole: string;
     participantRole: string;
+    /** "3 participantes" (I-03). Optional: an older cached prop blob has none. */
+    participantsCount?: string;
     // Shell (Phase 3)
     samplesHeader: string;
-    /** aria-label of the phone chevron that reveals session details. */
     evaluationHeader: string;
     phaseTitle: string;
     cuppingModule: string;
@@ -2799,9 +2800,9 @@ export function CupClient({
       <span className="font-mono text-card font-semibold tabular-nums text-primary-container leading-none">
         {clockTime}
       </span>
-      {isGroup && (
+      {isGroup && translations.participantsCount && (
         <span className="font-mono text-caption text-on-surface-variant mt-0.5">
-          {participantCount} {participantCount === 1 ? "participante" : "participantes"}
+          {translations.participantsCount}
         </span>
       )}
       {userCountry && (
@@ -3041,21 +3042,6 @@ export function CupClient({
             zone={session.closesAtZone ?? null}
             locale={locale}
             translations={translations.deadline}
-          />
-        </div>
-      )}
-      {/* A4: the letters are drawn at random, so the owner (only) gets a
-          collapsed letter -> coffee key. Participants never receive coffee
-          names (cup/page.tsx ships `coffee` to the owner only). */}
-      {isOwner && translations.sampleKey && (
-        <div className="mx-4 mt-3 hidden min-[641px]:block lg:hidden">
-          <SampleKey
-            rows={viewSamples.map((s) => ({
-              id: s.id,
-              label: s.label,
-              coffee: s.coffee?.name?.trim() || null,
-            }))}
-            translations={translations.sampleKey}
           />
         </div>
       )}

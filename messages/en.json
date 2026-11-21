@@ -777,6 +777,7 @@
     "masterControls": "Organizer controls",
     "masterRole": "Organizer",
     "participantRole": "Cupper",
+    "participantsCount": "{count, plural, one {# participant} other {# participants}}",
     "copyImage": "Copy QR",
     "downloadQr": "Download QR",
     "inviteMissing": "This tasting has no active invite link. Generate one from the tasting panel.",
