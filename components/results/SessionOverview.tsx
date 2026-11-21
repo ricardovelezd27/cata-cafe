@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, type ReactNode } from "react";
+import { Notice, PaperSectionHeading } from "@/components/ui";
 import { formatScore, formatSigned } from "@/components/ui/ScoreWithContext";
 import { fillPattern } from "@/lib/fillPattern";
 import type { WheelFamilyId } from "@/lib/flavorWheel";
@@ -55,6 +56,7 @@ export function SessionOverview<S extends OverviewSampleProps>({
   data,
   myAlignment,
   preliminary,
+  own = true,
   compareSelector,
   compare,
   familyLabels,
@@ -72,6 +74,10 @@ export function SessionOverview<S extends OverviewSampleProps>({
   myAlignment: { matches: number; opportunities: number } | null;
   /** The organizer's view of an OPEN group session: the numbers are preliminary. */
   preliminary: boolean;
+  /** False in the admin's read-only lens: the "you" of the page is the organizer,
+   *  not the reader, so nothing is drawn as "tú" (no ring in the ranking, no
+   *  "Tú y el panel"). */
+  own?: boolean;
   /** "Comparar con", when the session has several references: under the ranking,
    *  where the reference's line is drawn. */
   compareSelector?: ReactNode;
@@ -89,6 +95,7 @@ export function SessionOverview<S extends OverviewSampleProps>({
   children?: ReactNode;
 }) {
   const view = overviewView({ samples, referenceId, ctx, data });
+  const compareId = useId();
   const nameOf = (s: S) => (s.revealed && s.coffee ? s.coffee.name : null);
   // the coffees "Comparar" may draw, in the order of the ranking; null = no section
   const toCompare = compare
@@ -109,29 +116,25 @@ export function SessionOverview<S extends OverviewSampleProps>({
   const hasScores = view.entries.some((e) => e.context.score !== null);
   // "First" is a place in a ranking: not in a descriptive session (no scores),
   // and not for a participant's own scores while the group's results are hidden.
-  // With no score at all the ranking box already says so: no second box for it.
-  const showFirst =
-    ctx.format !== "descriptive" && view.ranked && !(view.first.status === "none" && view.first.reason === "no_scores");
-  const smallTiles = (view.you ? 1 : 0) + (view.who ? 1 : 0) + (view.defects.length > 0 ? 1 : 0);
+  // With nothing to name (no score, or fewer than three cuppers) there is no box:
+  // the ranking says why, in one sentence.
+  const showFirst = ctx.format !== "descriptive" && view.ranked && view.first.status === "ok";
+  const you = own ? view.you : null;
+  const defectCups = view.defects.reduce((sum, d) => sum + d.summary.cups, 0);
+  const smallTiles = (you ? 1 : 0) + (view.who ? 1 : 0) + (view.defects.length > 0 ? 1 : 0);
+  const showBoxes = ctx.format !== "descriptive";
 
   return (
     <div className={styles.overview}>
-      {preliminary ? (
-        <p role="status" className={styles.notice}>
-          {t.preliminary}
-        </p>
-      ) : null}
-      {groupOpenPending ? (
-        <p role="status" className={styles.notice}>
-          {t.communityPending}
-        </p>
-      ) : null}
+      {preliminary || groupOpenPending || showBoxes ? (
+        <div className={styles.lead}>
+          {preliminary ? <Notice tone="info">{t.preliminary}</Notice> : null}
+          {groupOpenPending ? <Notice tone="info">{t.communityPending}</Notice> : null}
 
-      {ctx.format !== "descriptive" ? (
-        <div className={styles.grid}>
+          {showBoxes ? (
+            <div className={styles.grid}>
           {/* 1. The coffee that came first: its name and its score. Its wheel is on its card. */}
-          {showFirst ? (
-            view.first.status === "ok" ? (
+          {showFirst && view.first.status === "ok" ? (
               <Tile title={view.scope === "group" ? t.firstTitle : t.firstTitleOwn} area={styles.aFirst}>
                 {(() => {
                   const { entry } = view.first;
@@ -159,11 +162,6 @@ export function SessionOverview<S extends OverviewSampleProps>({
                   );
                 })()}
               </Tile>
-            ) : (
-              <Tile title={view.scope === "group" ? t.firstTitle : t.firstTitleOwn} area={styles.aFirst}>
-                <p className={styles.context}>{view.first.reason === "too_few" ? t.firstTooFew : t.firstNoScores}</p>
-              </Tile>
-            )
           ) : null}
 
           {/* 2. Every coffee on one fixed scale. */}
@@ -182,7 +180,8 @@ export function SessionOverview<S extends OverviewSampleProps>({
                   place: e.place === null ? null : String(e.place),
                   label: e.sample.label,
                   name: nameOf(e.sample),
-                  context: e.context,
+                  // not the reader's own in the admin's lens: no "tú" ring
+                  context: own ? e.context : { ...e.context, mine: null, difference: null },
                 }))}
                 reference={
                   view.referenceLine
@@ -201,8 +200,14 @@ export function SessionOverview<S extends OverviewSampleProps>({
             {view.entries.some((e) => e.context.indicative || e.context.suppressed) ? (
               <p className={styles.context}>{t.rankHelp}</p>
             ) : null}
+            {/* fewer than three included cuppers: no coffee is named first */}
+            {view.ranked && view.first.status === "none" && view.first.reason === "too_few" ? (
+              <p className={styles.context}>{t.firstTooFew}</p>
+            ) : null}
             {view.references.length > 1 ? compareSelector : null}
           </Tile>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -211,8 +216,12 @@ export function SessionOverview<S extends OverviewSampleProps>({
 
       {/* 4. Where coffees are compared: their territories on one wheel, the counts beside it. */}
       {toCompare && compare ? (
-        <div className={styles.grid}>
-          <Tile title={compare.t.compare} area={styles.aWide}>
+        <section className={styles.section} aria-labelledby={compareId}>
+          <div className={styles.sectionIntro}>
+            <PaperSectionHeading id={compareId} title={compare.t.compare} flush />
+            <p className={styles.context}>{compare.t.compareHint}</p>
+          </div>
+          <div className={styles.tile}>
             <OverviewCompare
               options={toCompare}
               names={Object.fromEntries(samples.map((s) => [s.id, nameOf(s) ? `${s.label} ${nameOf(s)}` : s.label]))}
@@ -221,19 +230,19 @@ export function SessionOverview<S extends OverviewSampleProps>({
               strings={parts.compare}
               t={compare.t}
             />
-          </Tile>
-        </div>
+          </div>
+        </section>
       ) : null}
 
       {/* 5. The small facts: each said once, here. */}
       {smallTiles > 0 ? (
         <div className={styles.grid} data-small-tiles={smallTiles}>
           {/* The reader against the panel: differences in ink, never a grade. */}
-          {view.you ? (
+          {you ? (
             <Tile title={t.youTitle} area={styles.aSmall}>
-              <p className={styles.fact}>{fillPattern(t.youAbove, { k: view.you.above, m: view.you.of })}</p>
+              <p className={styles.fact}>{fillPattern(t.youAbove, { k: you.above, m: you.of })}</p>
               <p className={styles.context}>{t.youAboveNote}</p>
-              <p className={styles.line}>{fillPattern(t.youMean, { d: formatSigned(view.you.meanDifference) })}</p>
+              <p className={styles.line}>{fillPattern(t.youMean, { d: formatSigned(you.meanDifference) })}</p>
               {myAlignment && myAlignment.opportunities > 0 ? (
                 <div className={styles.alignment}>
                   <p className={styles.line}>
@@ -259,21 +268,23 @@ export function SessionOverview<S extends OverviewSampleProps>({
             </Tile>
           ) : null}
 
-          {/* How many joined and how many sent. "n de N incluidos" is on every ranking row. */}
+          {/* How many of those who joined sent. "n de N incluidos" is on every ranking row. */}
           {view.who ? (
             <Tile title={t.whoTitle} area={styles.aSmall}>
-              <p className={styles.line}>
-                {fillPattern(t.whoJoined, { n: view.who.joined })} · {fillPattern(t.whoSent, { n: view.who.sent })}
-                {view.who.excluded !== null && view.who.excluded > 0
-                  ? ` · ${fillPattern(t.whoExcluded, { n: view.who.excluded })}`
-                  : null}
-              </p>
+              <p className={styles.fact}>{fillPattern(t.whoSentOf, { k: view.who.sent, n: view.who.joined })}</p>
+              <p className={styles.context}>{t.whoSentNote}</p>
+              {view.who.excluded !== null && view.who.excluded > 0 ? (
+                <p className={styles.line}>{fillPattern(t.whoExcluded, { n: view.who.excluded })}</p>
+              ) : null}
             </Tile>
           ) : null}
 
           {/* Only when a cup was marked defective. The one place the error red appears. */}
           {view.defects.length > 0 ? (
             <Tile title={t.defectsTitle} area={styles.aSmall}>
+              <p className={styles.fact}>
+                {defectCups === 1 ? t.defectCupsOne : fillPattern(t.defectCupsMany, { n: defectCups })}
+              </p>
               <ul className={styles.defects}>
                 {view.defects.map(({ sample, summary }) => (
                   <li key={sample.id} className={styles.defect}>

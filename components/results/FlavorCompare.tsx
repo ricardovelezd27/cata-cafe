@@ -93,8 +93,10 @@ export function FlavorCompare({
         { line: styles.lineO1, fill: null },
       ]
     : [
-        { line: styles.lineA0, fill: styles.fillA0 },
-        { line: styles.lineA1, fill: styles.fillA1 },
+        // a fill only while ONE territory is drawn: two fills stacked over the
+        // family shades turn into one wash that hides each family's hue
+        { line: styles.lineA0, fill: g.territories.length < 2 ? styles.fillA0 : null },
+        { line: styles.lineA1, fill: null },
         { line: styles.lineA2, fill: null },
       ];
   const styleOf = (order: number) => lineStyles[order % lineStyles.length];

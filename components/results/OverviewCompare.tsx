@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Notice } from "@/components/ui";
 import type { WheelFamilyId } from "@/lib/flavorWheel";
 import type { CompareOption } from "@/lib/reports/coffeeCards";
 import type { CardsStrings } from "./cardsStrings";
@@ -10,7 +11,7 @@ import styles from "./SessionOverview.module.css";
 /** How many coffees one comparison draws (`compareGeometry`'s own limit). */
 const MAX_COMPARED = 3;
 
-export type OverviewCompareStrings = Pick<CardsStrings, "comparePick" | "compareHint" | "compareNeedTwo">;
+export type OverviewCompareStrings = Pick<CardsStrings, "comparePick" | "compareNeedTwo">;
 
 /**
  * "Comparar" of the "Por café" view: chips for the coffees and, for the two or
@@ -50,7 +51,6 @@ export function OverviewCompare({
 
   return (
     <div className={styles.compare}>
-      <p className={styles.context}>{t.compareHint}</p>
       <div className={styles.chips} role="group" aria-label={t.comparePick}>
         {options.map((option) => {
           const on = picked.includes(option.id);
@@ -61,8 +61,8 @@ export function OverviewCompare({
               className={styles.pick}
               aria-pressed={on}
               aria-label={names[option.id] ?? option.tag}
-              // a fourth coffee cannot be added: the chip says so instead of ignoring the tap
-              aria-disabled={!on && full ? true : undefined}
+              // three are chosen: a fourth cannot be added
+              disabled={!on && full}
               onClick={() => toggle(option.id)}
             >
               <span className={styles.pickTag} aria-hidden="true">
@@ -87,9 +87,7 @@ export function OverviewCompare({
           beside
         />
       ) : (
-        <p role="status" className={styles.notice}>
-          {t.compareNeedTwo}
-        </p>
+        <Notice tone="info">{t.compareNeedTwo}</Notice>
       )}
     </div>
   );

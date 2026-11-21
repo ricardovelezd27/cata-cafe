@@ -112,7 +112,6 @@
 /* ── The comparison ───────────────────────────────────────────────────────── */
 /* Alone: colour AND line style AND the letter tell the coffees apart. */
 .fillA0 { fill: var(--color-primary-container); fill-opacity: 0.16; }
-.fillA1 { fill: var(--color-secondary); fill-opacity: 0.13; }
 .centre { fill: var(--color-surface-container-lowest); }
 /* A paper-coloured line under each outline keeps it legible over petals and rings. */
 .under { stroke: var(--color-surface-container-lowest); stroke-width: 4.5; }
@@ -178,7 +177,7 @@
 .table td {
   padding: 6px 8px;
   border-bottom: 1px solid var(--color-surface-container-highest);
-  text-align: center;
+  text-align: right;
   font-weight: 400;
 }
 .table thead th {

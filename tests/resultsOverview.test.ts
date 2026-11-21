@@ -49,7 +49,7 @@ function stringsOf(locale: Locale) {
 }
 const viewOf = (s: OverviewScenario) =>
   overviewView({ samples: s.samples, referenceId: s.referenceId, ctx: s.ctx, data: s.data });
-const render = (s: OverviewScenario, locale: Locale = "es") => {
+const render = (s: OverviewScenario, locale: Locale = "es", own = true) => {
   const { parts, t } = stringsOf(locale);
   return html(
     createElement(
@@ -61,6 +61,7 @@ const render = (s: OverviewScenario, locale: Locale = "es") => {
         data: s.data,
         myAlignment: s.myAlignment,
         preliminary: s.preliminary,
+        own,
         // "Comparar": drawn only for a closed cupping, as on the page
         compare: {
           closed: s.closed,
@@ -208,7 +209,9 @@ describe("what each tile shows, state by state (RESULTS-DESIGN section 4)", () =
     expect(FLAVOR_WHEEL_MIN_N).toBe(3);
     expect(v.you).toBeNull();
     const markup = text(render(s));
+    // no coffee can be named first: no "Primera del ranking" box, the ranking says why
     expect(markup).toContain(stringsOf("es").t.firstTooFew);
+    expect(render(s)).not.toContain(`>${stringsOf("es").t.firstTitle}<`);
     // under three cuppers nothing can be compared: no "Comparar" at all
     expect(markup).not.toContain(MESSAGES.es.results.cards.compareHint);
     // "indicativo" is on every row: the ranking says once what it means
@@ -337,14 +340,51 @@ describe("the view's order, and nothing said twice in it (owner, 2026-11-21)", (
     expect(compare).not.toMatch(/_legend_/);
   });
 
-  it("who cupped: how many joined and sent; the included count is on the ranking's rows, not here", () => {
+  it("who cupped: how many of those who joined sent; the included count is on the ranking's rows, not here", () => {
     const markup = render(overviewScenario("closed"));
     const who = markup.slice(markup.indexOf(`>${stringsOf("es").t.whoTitle}<`));
     const tile = text(who.slice(0, who.indexOf("</section>")));
-    expect(tile).toContain("Se unieron: 8");
-    expect(tile).toContain("Enviaron: 7");
+    expect(tile).toContain("7 de 8");
+    expect(tile).toContain("personas que se unieron enviaron su evaluación");
     expect(tile).not.toMatch(/incluidos|6 de 7/);
     expect(text(markup)).toContain("6 de 7 incluidos");
+  });
+
+  it("every fact box opens with its own headline number, from data it already had", () => {
+    const markup = render(overviewScenario("closed"));
+    const boxes = markup.slice(markup.indexOf("data-small-tiles"));
+    const facts = [...boxes.matchAll(/class="[^"]*_fact_[^"]*"[^>]*>([^<]*)</g)].map((m) => m[1]);
+    expect(facts).toHaveLength(3);
+    expect(facts[1]).toBe("7 de 8");
+    expect(facts[2]).toMatch(/^\d+ tazas?$/);
+  });
+
+  it("the admin's lens draws nothing as \"tú\": no ring in the ranking, no \"Tú y el panel\"", () => {
+    const s = overviewScenario("closed");
+    const mine = render(s);
+    const lens = render(s, "es", false);
+    const t = stringsOf("es");
+    expect(mine).toContain(`>${t.t.youTitle}<`);
+    expect(mine).toContain(t.parts.rank.legendMine);
+    expect(lens).not.toContain(`>${t.t.youTitle}<`);
+    expect(lens).not.toContain(t.parts.rank.legendMine);
+    // the group's numbers are still all there
+    expect(text(lens)).toContain("6 de 7 incluidos");
+    const client = readFileSync(
+      path.join(process.cwd(), "app", "[locale]", "app", "sessions", "[id]", "results", "ResultsClient.tsx"),
+      "utf8",
+    );
+    expect(client).toMatch(/own=\{!isAdminViewer\}/);
+  });
+
+  it("Comparar opens like its sibling sections (the page's section heading), and a fourth coffee cannot be added", () => {
+    const markup = render(overviewScenario("closed"));
+    expect(markup).toMatch(new RegExp(`<h2[^>]*class="[^"]*section-title[^"]*"[^>]*>${MESSAGES.es.results.cards.compare}<`));
+    const chips = [...markup.matchAll(/<button[^>]*aria-pressed="(true|false)"[^>]*>/g)].map((m) => m[0]);
+    expect(chips.filter((c) => c.includes('aria-pressed="true"'))).toHaveLength(3);
+    // three are chosen: the others take the one disabled look (the native attribute)
+    for (const chip of chips.filter((c) => c.includes('aria-pressed="false"'))) expect(chip).toMatch(/ disabled=""/);
+    expect(markup).not.toContain("aria-disabled");
   });
 
   it("an open cupping compares nothing yet: no Comparar before the close", () => {

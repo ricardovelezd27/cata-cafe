@@ -997,8 +997,8 @@ export function ResultsClient({
           {line}
         </Notice>
       ))}
-      {/* The late evaluations live in the Panel (R5), announced by the overview's
-          "Pendiente" tile. Kept here only for a page that holds them and has no
+      {/* The late evaluations live in "Por catador" (R5), announced by the count on
+          its tab. Kept here only for a page that holds them and has no
           Panel to show them in, so they can never become unreachable. */}
       {lateRows && lateRows.length > 0 && lateTranslations && !isAdminViewer && !canViewIndividual && (
         <LateEvaluationsPanel rows={lateRows} locale={locale} translations={lateTranslations} />
@@ -1134,7 +1134,7 @@ export function ResultsClient({
         <GuestSaveCta sessionId={session.id} locale={locale} translations={guestSave} />
       )}
       {effectiveTab === "resumen" ? (
-        <div className="p-4 lg:p-6 flex flex-col gap-6">
+        <div className="flex flex-col gap-[32px] p-4 md:gap-[40px] lg:p-6">
           <SessionOverview
             samples={session.samples}
             ctx={rankCtx}
@@ -1142,6 +1142,8 @@ export function ResultsClient({
             data={overview.data}
             myAlignment={myAlignment ?? null}
             preliminary={overview.preliminary}
+            // the admin's lens reads the organizer's page: nothing there is the reader's own
+            own={!isAdminViewer}
             compareSelector={compareSelector}
             familyLabels={overview.familyLabels}
             parts={overview.parts}

@@ -56,7 +56,7 @@ export type OverviewScenario = {
   referencePinned: boolean;
   /** The session is closed: "Comparar" exists only then. */
   closed: boolean;
-  /** The session's reference mode (the words of the reference tile depend on it). */
+  /** The session's reference mode (what is said about the reference depends on it). */
   referenceMode: "anchor" | "free";
   /** The secret strings a participant's payload must never contain. */
   secrets: string[];
