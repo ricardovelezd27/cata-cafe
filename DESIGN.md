@@ -490,7 +490,7 @@ The landing was the place to find the rules; the app is where most of them apply
 
 | Lesson from the landing | On a paper screen it means |
 |---|---|
-| **One action per fold** | Each screen has one primary button (`Button variant="primary"`). Everything else is `secondary` or `ghost`. Two primaries in one view, or a primary that is not the screen's main job, is a finding. |
+| **One action per fold** | Each screen has one Primary-kind button (`primary`, `accent` or `destructive`). Everything else is `secondary` or `ghost`. Two Primary-kind buttons in one view, or one that is not the screen's main job, is a finding. |
 | **One header for every section** | A screen's sections open the same way, with the same component, the same alignment and the same step in size. Per-screen heading styles are a finding. Paper has `PageHeader` for the page and the paper `SectionHeading` for a section (under "Component Patterns"). |
 | **Idea, then assertion** | A title says in plain words what the thing is; the line under it says what is true about it. A clever title that hides what the section is, is a finding. |
 | **One anatomy per kind of card** | All cards of one kind have the same parts in the same order (for a feature: name, explanation, drawing). A list where one card has an extra part, or lacks one, is a finding. |
@@ -614,7 +614,7 @@ Pressed shows the hover tone, also on touch, where there is no hover. Focus is t
 | Control | Not selected | Hover / pressed | Selected |
 |---|---|---|---|
 | Pill tab, chip, choice card (`PillTabs`, a choose-one row of cards) | 1 px `outline` border, no fill, `on-surface-variant` text, medium | `surface-container` fill, `on-surface` text | `primary-fixed` fill and border, `on-primary-fixed` text, semibold; `aria-selected` / `aria-checked` |
-| Underline or list tab (`SampleTabs`, `ModuleSwitcher`, `RouteTabs`) | `on-surface-variant` text, no marker | `surface-container` wash (`RouteTabs`: `on-surface` text) | `primary-container` text, semibold, with its marker (side bar or underline); `aria-selected` / `aria-current` |
+| Underline or list tab (`SampleTabs`, `ModuleSwitcher`, `RouteTabs`) | list row: `on-surface` text; `RouteTabs`: `on-surface-variant` text; no marker | list row: `surface-container` wash; `RouteTabs`: `on-surface` text | list row: `primary-container` text, semibold, `primary-fixed-dim` 18 % wash and a side bar; `RouteTabs`: `on-surface` text, semibold, `primary-container` underline; `aria-selected` / `aria-current` |
 | Segment (`SegmentedControl`) | `on-surface-variant` text on its `surface-container-high` track | `on-surface` text | raised on the track: `surface-container-lowest`, `shadow-card`, `on-surface` text; `aria-checked` |
 | Toggle (one button with `aria-pressed`, as in `MasterControls`) | as a chip | as a chip | as a chip, `aria-pressed` |
 | Switch (on / off) | `outline` track, `surface-container-lowest` thumb | none: pressing it is the change | `primary-container` track, same thumb |
@@ -749,7 +749,7 @@ A tablet is a small desktop, in the app as on the landing. **(rule)**
 
 ### `PillTabs` / `SegmentedControl` / `InfoHint` (2026-08 results redesign — `components/ui/`)
 
-- **`PillTabs`** — tabs INSIDE a page (package P5a, audit D-02 / H-08): a horizontally-scrollable `role="tablist"` row of outlined pills (44 px min hit target). ONE Tab stop (the selected tab, a roving tabindex); the arrow keys, Home and End move and select (`lib/rovingFocus.ts`, shared with `SegmentedControl`). Selected: `primary-fixed` with `on-primary-fixed` and a heavier weight, never the action fill. With `idBase` each tab names its panel (`aria-controls`) and the caller wraps the shown content in `TabPanel` (or a `role="tabpanel"` element with `tabIds(idBase, value)`), as the results page and the alignment filter do. Disabled items sit at `opacity-45` and are skipped by the arrows. Optional numeric `badge` per item. Two densities via `size`.
+- **`PillTabs`** — tabs INSIDE a page (package P5a, audit D-02 / H-08): a horizontally-scrollable `role="tablist"` row of outlined pills (44 px min hit target). ONE Tab stop (the selected tab, a roving tabindex); the arrow keys, Home and End move and select (`lib/rovingFocus.ts`, shared with `SegmentedControl`). Selected: `primary-fixed` with `on-primary-fixed` and a heavier weight, never the action fill. With `idBase` each tab names its panel (`aria-controls`) and the caller wraps the shown content in `TabPanel` (or a `role="tabpanel"` element with `tabIds(idBase, value)`), as the results page and the alignment filter do. Disabled items take the one disabled look (under "Buttons") and are skipped by the arrows. Optional numeric `badge` per item. Two densities via `size`.
 - **`SegmentedControl`** — a small, fixed set of ways to draw the same data, so it is a RADIO GROUP (`role="radiogroup"`, `role="radio"` + `aria-checked`), one Tab stop, the same arrow keys. A single pill track (`surface-container-high`); the checked segment is raised (`surface-container-lowest` + `shadow-card`). Use `PillTabs` when the choice shows other content.
 - **`RouteTabs`** — tabs BETWEEN pages (Insights' row is the reference): links, not a tablist; the current one carries `aria-current="page"` and a `primary-container` underline with ink text; each link is 44 px tall. When the row is wider than its box (a phone), a fade with a chevron at each edge that has more says so, and the current link is scrolled into view (`edgeHint`, `lib/viewAddress.ts`).
 - **Place in the address (P5a, audit D-01)**: the results tab is `?tab=panel` (the results view has no key), beside R3's `?sample=`; every `DataTable` keeps its search, filters, sort and page as `q`, `f-<facet>`, `sort=<column>.<asc|desc>`, `page` (a page with two tables gives one an `addressKey`, which prefixes its keys; `addressKey={false}` keeps a table out of the address). Written with `history.replaceState` (no step of its own in "back"; typing after 300 ms), read once at mount; a value that is not the page's own is ignored and removed. Rules: `lib/viewAddress.ts`.
@@ -779,7 +779,7 @@ A tablet is a small desktop, in the app as on the landing. **(rule)**
 
 - Unselected: `outline-variant` border, transparent fill, pill shape
 - Selected, as built: solid `primary-container` fill, `on-primary` text (the action fill: see "A selection never looks like an action")
-- At-limit: unselected at `opacity: 0.45`
+- At-limit: unselected take the one disabled look (under "Buttons")
 - A flavour's family is shown as a coloured dot in the pill, never as the pill's fill or its text colour ("Flavor Family Colors")
 
 ### `FlavorPicker`
