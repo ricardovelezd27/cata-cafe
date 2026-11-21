@@ -62,7 +62,7 @@ export function SegmentedControl({
             className={`${HIT_Y44} flex-1 rounded-pill px-3 py-1.5 text-caption font-medium transition-colors ${
               active
                 ? "bg-surface-container-lowest text-on-surface shadow-card"
-                : "text-on-surface-variant hover:text-on-surface"
+                : "text-on-surface-variant hover:text-on-surface active:text-on-surface"
             }`}
           >
             {item.label}

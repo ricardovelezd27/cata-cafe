@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Minus, Plus } from "lucide-react";
 import { Button, PageHeader, useActionFeedback } from "@/components/ui";
+import { buttonClasses } from "@/components/ui/Button";
+import { radioKeyDown } from "@/components/radioKeys";
 import { createExpressSession } from "@/app/actions/sessions";
 import { useConnectivity } from "@/hooks/useConnectivity";
 import { sampleCountWarning, type SampleCountWarning } from "@/lib/sampleCount";
@@ -52,7 +54,7 @@ const inputClass =
   "w-full min-h-[48px] border border-outline-variant rounded-input px-3.5 py-2.5 text-body text-on-surface bg-surface-container-lowest focus:border-primary-container transition-colors";
 
 const stepperButtonClass =
-  "h-12 w-12 min-h-[44px] min-w-[44px] shrink-0 inline-flex items-center justify-center rounded-full border border-outline-variant text-on-surface bg-surface-container-lowest transition-colors hover:bg-primary-fixed disabled:opacity-40 disabled:cursor-default disabled:hover:bg-surface-container-lowest";
+  "h-12 w-12 min-h-[44px] min-w-[44px] shrink-0 inline-flex items-center justify-center rounded-full border border-outline text-on-surface bg-surface-container-lowest transition-colors hover:bg-primary-fixed active:bg-primary-fixed disabled:opacity-60 disabled:cursor-default disabled:hover:bg-surface-container-lowest";
 
 export function ExpressForm({
   locale,
@@ -160,7 +162,7 @@ export function ExpressForm({
           aria-describedby="express-format-hint"
           className="grid grid-cols-3 gap-2"
         >
-          {EXPRESS_FORMATS.map((f) => {
+          {EXPRESS_FORMATS.map((f, i) => {
             const active = f === format;
             return (
               <button
@@ -168,11 +170,13 @@ export function ExpressForm({
                 type="button"
                 role="radio"
                 aria-checked={active}
+                tabIndex={active ? 0 : -1}
                 onClick={() => setFormat(f)}
-                className={`min-h-[48px] rounded-pill px-2 text-caption font-medium transition-colors ${
+                onKeyDown={(e) => radioKeyDown(e, i, EXPRESS_FORMATS.length, (n) => setFormat(EXPRESS_FORMATS[n]))}
+                className={`min-h-[48px] rounded-pill px-2 text-caption transition-colors ${
                   active
-                    ? "bg-primary-container text-on-primary border border-primary-container"
-                    : "border border-outline-variant text-on-surface bg-surface-container-lowest hover:bg-primary-fixed"
+                    ? "border border-primary-fixed bg-primary-fixed font-semibold text-on-primary-fixed"
+                    : "border border-outline font-medium text-on-surface-variant hover:bg-surface-container hover:text-on-surface active:bg-surface-container active:text-on-surface"
                 }`}
               >
                 {formatLabels[f]}
@@ -243,7 +247,7 @@ export function ExpressForm({
         </Button>
         <Link
           href={`/${locale}/app/sessions/new${wizardHandoffQuery({ name, format, sampleCount })}`}
-          className="flex min-h-[44px] items-center justify-center text-caption text-on-surface-variant underline-offset-4 hover:underline text-center"
+          className={`${buttonClasses("secondary")} w-full`}
         >
           {t.fullWizard}
         </Link>

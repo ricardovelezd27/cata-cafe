@@ -490,7 +490,7 @@ The landing was the place to find the rules; the app is where most of them apply
 
 | Lesson from the landing | On a paper screen it means |
 |---|---|
-| **One action per fold** | Each screen has one primary button (`Button variant="primary"`). Everything else is `secondary` or `ghost`. Two primaries in one view, or a primary that is not the screen's main job, is a finding. |
+| **One action per fold** | Each screen has one Primary-kind button (`primary`, `accent` or `destructive`). Everything else is `secondary` or `ghost`. Two Primary-kind buttons in one view, or one that is not the screen's main job, is a finding. |
 | **One header for every section** | A screen's sections open the same way, with the same component, the same alignment and the same step in size. Per-screen heading styles are a finding. Paper has `PageHeader` for the page and the paper `SectionHeading` for a section (under "Component Patterns"). |
 | **Idea, then assertion** | A title says in plain words what the thing is; the line under it says what is true about it. A clever title that hides what the section is, is a finding. |
 | **One anatomy per kind of card** | All cards of one kind have the same parts in the same order (for a feature: name, explanation, drawing). A list where one card has an extra part, or lacks one, is a finding. |
@@ -585,22 +585,39 @@ font-medium transition-colors min-h-[44px] whitespace-nowrap`.
 
 | Prop | Values | Notes |
 |---|---|---|
-| `variant` | `primary` \| `secondary` \| `ghost` \| `accent` \| `accentOutline` \| `danger` | see classes below |
+| `variant` | `primary` \| `secondary` \| `ghost` \| `accent` \| `accentOutline` \| `danger` \| `destructive` | see classes below |
 | `size` | `md` (default) \| `sm` | `md` = `px-5 text-sm`, `sm` = `px-3.5 text-xs` — height stays 44px at both |
 | `icon` | `ReactNode` | leading icon, sized/`aria-hidden` by the caller |
 
-| Variant | Classes | Use |
-|---|---|---|
-| `primary` | `bg-primary-container text-on-primary hover:bg-primary` | main CTA (Descargar PDF, Guardar) |
-| `secondary` | `border border-primary-container text-primary-container hover:bg-primary-fixed` | secondary action alongside a primary (Ver formulario, Editar) |
-| `ghost` | `text-on-surface-variant hover:text-on-surface` | lowest-emphasis action (Cancelar, metadata edit) |
-| `accent` | `bg-secondary text-on-secondary hover:opacity-90` | terracotta emphasis when something needs attention (e.g. "Actualizar" with new submissions pending) |
-| `accentOutline` | `border border-secondary text-secondary hover:bg-secondary-fixed` | the same action's resting/no-news state |
-| `danger` | `border border-error text-error hover:bg-error-container` | destructive page action that opens a `ConfirmDialog` (Eliminar café, Eliminar seleccionados) |
+| Kind | Variant | Classes | Use |
+|---|---|---|---|
+| Primary | `primary` | `bg-primary-container text-on-primary not-disabled:hover:bg-primary not-disabled:active:bg-primary` | main CTA (Descargar PDF, Guardar) |
+| Secondary | `secondary` | `border border-primary-container text-primary-container not-disabled:hover:bg-primary-fixed not-disabled:active:bg-primary-fixed` | secondary action alongside a primary (Ver formulario, Editar) |
+| Text | `ghost` | `text-on-surface-variant not-disabled:hover:bg-surface-container not-disabled:hover:text-on-surface` (and the same on `active:`) | lowest-emphasis action (Cancelar, metadata edit) |
+| Primary | `accent` | `bg-secondary text-on-secondary not-disabled:hover:opacity-90 not-disabled:active:opacity-90` | terracotta emphasis when something needs attention (e.g. "Actualizar" with new submissions pending) |
+| Secondary | `accentOutline` | `border border-secondary text-secondary not-disabled:hover:bg-secondary-fixed not-disabled:active:bg-secondary-fixed` | the same action's resting/no-news state |
+| Secondary | `danger` | `border border-error text-error not-disabled:hover:bg-error-container not-disabled:active:bg-error-container` | destructive page action that opens a `ConfirmDialog` (Eliminar café, Eliminar seleccionados) |
+| Primary | `destructive` | `bg-error text-on-error not-disabled:hover:bg-error/90 not-disabled:active:bg-error/90` | the confirm button of a destructive `ConfirmDialog` (filled: it is that dialog's one Primary-kind action) |
 
-Disabled state (native `disabled` attribute): `opacity-60 cursor-default`.
+Disabled state (native `disabled` attribute), for every control of this section, a tab or a chip included: `opacity-60 cursor-default`, and no hover or pressed tone.
 `ButtonLink` renders an `<a>` and takes `href` — no `disabled` (anchors don't
 support it); only use it for always-available links.
+
+#### Button kinds and their states
+
+**(rule, owner's review 2026-11-21)** Every action is one of three kinds, and a person can tell which by looking, without hovering. A secondary action that offers another way forward is a secondary button with a visible boundary, never bare text. Text is only for the quietest action beside a button that has a boundary (Cancelar next to Guardar) or for a small link-like action (`TextAction`).
+
+Pressed shows the hover tone, also on touch, where there is no hover. Focus is the same for every kind: the one indicator under "Accessibility".
+
+**Selected and not selected** (tabs, chips, choice cards, segments, toggles, switches). The boundary of a control that is not selected is `outline` (3 : 1 on `surface`), never `outline-variant`, which is for dividers and card frames.
+
+| Control | Not selected | Hover / pressed | Selected |
+|---|---|---|---|
+| Pill tab, chip, choice card (`PillTabs`, a choose-one row of cards) | 1 px `outline` border, no fill, `on-surface-variant` text, medium | `surface-container` fill, `on-surface` text | `primary-fixed` fill and border, `on-primary-fixed` text, semibold; `aria-selected` / `aria-checked` |
+| Underline or list tab (`SampleTabs`, `ModuleSwitcher`, `RouteTabs`) | list row: `on-surface` text; `RouteTabs`: `on-surface-variant` text; no marker | list row: `surface-container` wash; `RouteTabs`: `on-surface` text | list row: `primary-container` text, semibold, `primary-fixed-dim` 18 % wash and a side bar; `RouteTabs`: `on-surface` text, semibold, `primary-container` underline; `aria-selected` / `aria-current` |
+| Segment (`SegmentedControl`) | `on-surface-variant` text on its `surface-container-high` track | `on-surface` text | raised on the track: `surface-container-lowest`, `shadow-card`, `on-surface` text; `aria-checked` |
+| Toggle (one button with `aria-pressed`, as in `MasterControls`) | as a chip | as a chip | as a chip, `aria-pressed` |
+| Switch (on / off) | `outline` track, `surface-container-lowest` thumb | none: pressing it is the change | `primary-container` track, same thumb |
 
 #### Interactive control vocabulary
 
@@ -622,8 +639,8 @@ counts the buttons. A selected item is marked with a tone
 (`primary-fixed` or `surface-container-lowest` on its track), a weight, an
 underline or a check, and with `aria-selected` / `aria-pressed`.
 
-**(rule) One green primary per fold.** One `Button variant="primary"` in
-view at a time. A "next" button keeps one colour whatever comes next (the
+**(rule) One Primary-kind button per fold.** One Primary-kind button
+(`primary`, `accent`, `destructive`) in view at a time. A "next" button keeps one colour whatever comes next (the
 next sample or the next stage of the form): its label says where it goes
 ("Siguiente: Aroma"), not its colour.
 
@@ -732,7 +749,7 @@ A tablet is a small desktop, in the app as on the landing. **(rule)**
 
 ### `PillTabs` / `SegmentedControl` / `InfoHint` (2026-08 results redesign — `components/ui/`)
 
-- **`PillTabs`** — tabs INSIDE a page (package P5a, audit D-02 / H-08): a horizontally-scrollable `role="tablist"` row of outlined pills (44 px min hit target). ONE Tab stop (the selected tab, a roving tabindex); the arrow keys, Home and End move and select (`lib/rovingFocus.ts`, shared with `SegmentedControl`). Selected: `primary-fixed` with `on-primary-fixed` and a heavier weight, never the action fill. With `idBase` each tab names its panel (`aria-controls`) and the caller wraps the shown content in `TabPanel` (or a `role="tabpanel"` element with `tabIds(idBase, value)`), as the results page and the alignment filter do. Disabled items sit at `opacity-45` and are skipped by the arrows. Optional numeric `badge` per item. Two densities via `size`.
+- **`PillTabs`** — tabs INSIDE a page (package P5a, audit D-02 / H-08): a horizontally-scrollable `role="tablist"` row of outlined pills (44 px min hit target). ONE Tab stop (the selected tab, a roving tabindex); the arrow keys, Home and End move and select (`lib/rovingFocus.ts`, shared with `SegmentedControl`). Selected: `primary-fixed` with `on-primary-fixed` and a heavier weight, never the action fill. With `idBase` each tab names its panel (`aria-controls`) and the caller wraps the shown content in `TabPanel` (or a `role="tabpanel"` element with `tabIds(idBase, value)`), as the results page and the alignment filter do. Disabled items take the one disabled look (under "Buttons") and are skipped by the arrows. Optional numeric `badge` per item. Two densities via `size`.
 - **`SegmentedControl`** — a small, fixed set of ways to draw the same data, so it is a RADIO GROUP (`role="radiogroup"`, `role="radio"` + `aria-checked`), one Tab stop, the same arrow keys. A single pill track (`surface-container-high`); the checked segment is raised (`surface-container-lowest` + `shadow-card`). Use `PillTabs` when the choice shows other content.
 - **`RouteTabs`** — tabs BETWEEN pages (Insights' row is the reference): links, not a tablist; the current one carries `aria-current="page"` and a `primary-container` underline with ink text; each link is 44 px tall. When the row is wider than its box (a phone), a fade with a chevron at each edge that has more says so, and the current link is scrolled into view (`edgeHint`, `lib/viewAddress.ts`).
 - **Place in the address (P5a, audit D-01)**: the results tab is `?tab=panel` (the results view has no key), beside R3's `?sample=`; every `DataTable` keeps its search, filters, sort and page as `q`, `f-<facet>`, `sort=<column>.<asc|desc>`, `page` (a page with two tables gives one an `addressKey`, which prefixes its keys; `addressKey={false}` keeps a table out of the address). Written with `history.replaceState` (no step of its own in "back"; typing after 300 ms), read once at mount; a value that is not the page's own is ignored and removed. Rules: `lib/viewAddress.ts`.
@@ -762,7 +779,7 @@ A tablet is a small desktop, in the app as on the landing. **(rule)**
 
 - Unselected: `outline-variant` border, transparent fill, pill shape
 - Selected, as built: solid `primary-container` fill, `on-primary` text (the action fill: see "A selection never looks like an action")
-- At-limit: unselected at `opacity: 0.45`
+- At-limit: unselected take the one disabled look (under "Buttons")
 - A flavour's family is shown as a coloured dot in the pill, never as the pill's fill or its text colour ("Flavor Family Colors")
 
 ### `FlavorPicker`
