@@ -87,7 +87,7 @@ export function CoffeeVisibilityToggle({
     <>
     <div
       role="radiogroup"
-      className="inline-flex rounded-pill border border-outline-variant overflow-hidden"
+      className="inline-flex rounded-pill border border-outline overflow-hidden"
     >
       {options.map((opt, i) => {
         const active = visibility === opt.value;
@@ -99,12 +99,12 @@ export function CoffeeVisibilityToggle({
             aria-checked={active}
             onClick={() => handleSelect(opt.value)}
             disabled={isPending}
-            className={`inline-flex min-h-[44px] items-center text-caption font-semibold px-3 py-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-              i > 0 ? "border-l border-outline-variant" : ""
+            className={`inline-flex min-h-[44px] items-center text-caption px-3 py-1.5 transition-colors disabled:opacity-60 disabled:cursor-default ${
+              i > 0 ? "border-l border-outline" : ""
             } ${
               active
-                ? "bg-primary-container text-on-primary"
-                : "bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container"
+                ? "bg-primary-fixed font-semibold text-on-primary-fixed"
+                : "font-medium text-on-surface-variant not-disabled:hover:bg-surface-container not-disabled:hover:text-on-surface not-disabled:active:bg-surface-container not-disabled:active:text-on-surface"
             }`}
           >
             {opt.label}

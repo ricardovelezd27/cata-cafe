@@ -65,7 +65,7 @@ export type SelectionConfig<T> = {
 };
 
 const CHECKBOX_CLASS =
-  "h-4 w-4 cursor-pointer rounded border-outline-variant accent-primary-container disabled:cursor-default disabled:opacity-40";
+  "h-4 w-4 cursor-pointer rounded border-outline-variant accent-primary-container disabled:cursor-default disabled:opacity-60";
 /** The checkbox is the row's control, so its label is a 44 px box (DESIGN.md
  *  "Accessibility"). The negative margin keeps the cell's layout as it was. */
 const CHECKBOX_BOX =

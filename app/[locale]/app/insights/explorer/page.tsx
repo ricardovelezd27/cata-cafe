@@ -53,7 +53,7 @@ export default async function InsightsExplorerPage({
       initialSaved={saved}
       citationLines={citationLines(["cqi_arabica", "owid_fao"], loc)}
       t={{
-        mode: { simple: t("mode.simple"), pivot: t("mode.pivot") },
+        mode: { label: t("mode.label"), simple: t("mode.simple"), pivot: t("mode.pivot") },
         save: t("save"),
         saveName: t("saveName"),
         saveConfirm: t("saveConfirm"),
@@ -136,6 +136,7 @@ export default async function InsightsExplorerPage({
         empty: tp("empty"),
         running: tp("running"),
         error: tp("error"),
+        viewLabel: tp("viewLabel"),
         viewTable: tp("viewTable"),
         viewGrouped: tp("viewGrouped"),
         viewStacked: tp("viewStacked"),

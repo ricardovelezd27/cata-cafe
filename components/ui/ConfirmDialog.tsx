@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, type ReactNode } from "react";
+import { Button } from "./Button";
 import { ResponsiveDialog } from "./ResponsiveDialog";
 import type { ActionResult } from "@/lib/actionResult";
 
@@ -90,26 +91,16 @@ export function ConfirmDialog({
         <div className="text-caption text-on-surface">{body}</div>
         {showError && <p className="text-caption text-error">{resolvedError ?? error}</p>}
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-          <button
-            type="button"
-            disabled={isPending}
-            onClick={() => handleOpenChange(false)}
-            className="min-h-[44px] px-5 py-2.5 text-caption font-medium text-on-surface-variant transition-colors hover:text-on-surface disabled:opacity-50"
-          >
+          <Button variant="ghost" disabled={isPending} onClick={() => handleOpenChange(false)}>
             {cancelLabel}
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            variant={destructive ? "destructive" : "primary"}
             disabled={isPending || confirmDisabled}
             onClick={handleConfirm}
-            className={
-              destructive
-                ? "min-h-[44px] rounded-pill bg-error px-5 py-2.5 text-caption font-medium text-on-error transition-colors hover:bg-error/90 disabled:opacity-50"
-                : "min-h-[44px] rounded-pill bg-primary-container px-5 py-2.5 text-caption font-medium text-on-primary transition-colors hover:bg-primary disabled:opacity-50"
-            }
           >
             {confirmLabel}
-          </button>
+          </Button>
         </div>
       </div>
     </ResponsiveDialog>

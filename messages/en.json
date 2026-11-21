@@ -2052,6 +2052,7 @@
     },
     "explorer": {
       "mode": {
+        "label": "Explorer mode",
         "simple": "Simple",
         "pivot": "Pivot table"
       },
@@ -2135,6 +2136,7 @@
       "empty": "No results for this combination",
       "running": "Calculating…",
       "error": "Could not calculate. Check the configuration.",
+      "viewLabel": "View",
       "viewTable": "Table",
       "viewGrouped": "Grouped bars",
       "viewStacked": "Stacked bars",

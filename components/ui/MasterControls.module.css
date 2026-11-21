@@ -80,8 +80,23 @@
   background: color-mix(in oklch, var(--color-primary-fixed-dim) 25%, transparent);
 }
 
-/* The "entries closed" toggle (aria-pressed): the selection tone, never the action fill. */
-.invite[aria-pressed="true"] {
+/* The "entries closed" toggle (aria-pressed) has the chip's states (DESIGN.md "Selected and
+   not selected"): the selection tone when pressed, which hover and tap do not replace. */
+.toggle {
+  background: transparent;
+  color: var(--color-on-surface-variant);
+  border-color: var(--color-outline);
+}
+
+.toggle:hover:not(:disabled),
+.toggle:active:not(:disabled) {
+  background: var(--color-surface-container);
+  color: var(--color-on-surface);
+}
+
+.toggle[aria-pressed="true"],
+.toggle[aria-pressed="true"]:hover:not(:disabled),
+.toggle[aria-pressed="true"]:active:not(:disabled) {
   background: var(--color-primary-fixed);
   color: var(--color-on-primary-fixed);
   border-color: var(--color-primary-fixed);
@@ -198,7 +213,7 @@
   color: var(--color-on-surface-variant);
 }
 
-.referenceField:has(select:disabled) { opacity: 0.5; }
+.referenceField:has(select:disabled) { opacity: 0.6; }
 
 .referenceSummary {
   font-family: var(--font-sans);

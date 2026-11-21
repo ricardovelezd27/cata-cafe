@@ -140,7 +140,9 @@ describe("N2: the group pages' controls paint 44 px or carry a 44 px hit area", 
     const page = read("app/[locale]/app/groups/[id]/page.tsx");
     // P1a (D-06): the back link is the shared PageBackLink, which paints 44 px.
     expect(page).toMatch(/<PageBackLink\b/);
-    expect(read("components/ui/PageHeader.tsx")).toContain('className="-my-[6px] inline-flex min-h-[44px] w-fit items-center gap-1 text-caption text-on-surface-variant');
+    // OR-B2: PageBackLink is the kit's quiet TextActionLink, whose box paints 44 px.
+    expect(read("components/ui/PageHeader.tsx")).toContain('<TextActionLink href={href} tone="quiet" className="-my-[6px] w-fit">');
+    expect(read("components/ui/TextAction.tsx")).toContain("min-h-[44px]");
     // P3b: the "create a session" link is the kit's ButtonLink, which carries min-h-[44px] itself.
     expect(page).toContain("<ButtonLink href={`/${locale}/app/sessions/new?groupId=${id}`}");
     expect(read("components/ui/Button.tsx")).toContain("min-h-[44px]");
