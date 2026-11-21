@@ -81,7 +81,7 @@ export function PillTabs({
             className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-pill border py-1.5 transition-colors min-h-[44px] ${SIZE_CLASSES[size]} ${
               active
                 ? "border-primary-fixed bg-primary-fixed font-semibold text-on-primary-fixed"
-                : "border-outline-variant font-medium text-on-surface-variant hover:text-on-surface"
+                : "border-outline-variant font-medium text-on-surface-variant hover:bg-surface-container hover:text-on-surface active:bg-surface-container active:text-on-surface"
             } ${item.disabled ? "opacity-45 cursor-not-allowed" : ""}`}
           >
             {item.label}

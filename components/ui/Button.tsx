@@ -24,15 +24,19 @@ const SIZE_CLASSES: Record<ButtonSize, string> = {
   sm: "px-3.5 text-caption",
 };
 
+// The states of each kind are DESIGN.md "Button kinds and their states":
+// pressed (`active:`) shows the hover tone, so a touch screen, which has no
+// hover, still answers the tap.
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
-  primary: "bg-primary-container text-on-primary hover:bg-primary",
-  secondary: "border border-primary-container text-primary-container hover:bg-primary-fixed",
-  ghost: "text-on-surface-variant hover:text-on-surface",
-  accent: "bg-secondary text-on-secondary hover:opacity-90",
-  accentOutline: "border border-secondary text-secondary hover:bg-secondary-fixed",
+  primary: "bg-primary-container text-on-primary hover:bg-primary active:bg-primary",
+  secondary: "border border-primary-container text-primary-container hover:bg-primary-fixed active:bg-primary-fixed",
+  ghost:
+    "text-on-surface-variant hover:bg-surface-container hover:text-on-surface active:bg-surface-container active:text-on-surface",
+  accent: "bg-secondary text-on-secondary hover:opacity-90 active:opacity-90",
+  accentOutline: "border border-secondary text-secondary hover:bg-secondary-fixed active:bg-secondary-fixed",
   // Destructive page-level action (Eliminar). Outline, never filled: the
   // ConfirmDialog that follows carries the filled error button.
-  danger: "border border-error text-error hover:bg-error-container",
+  danger: "border border-error text-error hover:bg-error-container active:bg-error-container",
 };
 
 /** Class string of a Button, for wrappers that must render their own element

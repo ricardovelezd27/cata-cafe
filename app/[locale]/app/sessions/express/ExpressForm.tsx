@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Minus, Plus } from "lucide-react";
 import { Button, PageHeader, useActionFeedback } from "@/components/ui";
+import { buttonClasses } from "@/components/ui/Button";
 import { createExpressSession } from "@/app/actions/sessions";
 import { warmupById, lw } from "@/lib/warmup/exercises";
 import { WarmupPlayer, type WarmupPlayerStrings } from "@/components/warmup/WarmupPlayer";
@@ -185,10 +186,10 @@ export function ExpressForm({
                 role="radio"
                 aria-checked={active}
                 onClick={() => setFormat(f)}
-                className={`min-h-[48px] rounded-pill px-2 text-caption font-medium transition-colors ${
+                className={`min-h-[48px] rounded-pill px-2 text-caption transition-colors ${
                   active
-                    ? "bg-primary-container text-on-primary border border-primary-container"
-                    : "border border-outline-variant text-on-surface bg-surface-container-lowest hover:bg-primary-fixed"
+                    ? "border border-primary-fixed bg-primary-fixed font-semibold text-on-primary-fixed"
+                    : "border border-outline-variant bg-surface-container-lowest font-medium text-on-surface-variant hover:bg-surface-container hover:text-on-surface active:bg-surface-container active:text-on-surface"
                 }`}
               >
                 {formatLabels[f]}
@@ -268,7 +269,7 @@ export function ExpressForm({
         )}
         <Link
           href={`/${locale}/app/sessions/new${wizardHandoffQuery({ name, format, sampleCount })}`}
-          className="flex min-h-[44px] items-center justify-center text-caption text-on-surface-variant underline-offset-4 hover:underline text-center"
+          className={`${buttonClasses("secondary")} w-full`}
         >
           {t.fullWizard}
         </Link>

@@ -589,18 +589,32 @@ font-medium transition-colors min-h-[44px] whitespace-nowrap`.
 | `size` | `md` (default) \| `sm` | `md` = `px-5 text-sm`, `sm` = `px-3.5 text-xs` — height stays 44px at both |
 | `icon` | `ReactNode` | leading icon, sized/`aria-hidden` by the caller |
 
-| Variant | Classes | Use |
-|---|---|---|
-| `primary` | `bg-primary-container text-on-primary hover:bg-primary` | main CTA (Descargar PDF, Guardar) |
-| `secondary` | `border border-primary-container text-primary-container hover:bg-primary-fixed` | secondary action alongside a primary (Ver formulario, Editar) |
-| `ghost` | `text-on-surface-variant hover:text-on-surface` | lowest-emphasis action (Cancelar, metadata edit) |
-| `accent` | `bg-secondary text-on-secondary hover:opacity-90` | terracotta emphasis when something needs attention (e.g. "Actualizar" with new submissions pending) |
-| `accentOutline` | `border border-secondary text-secondary hover:bg-secondary-fixed` | the same action's resting/no-news state |
-| `danger` | `border border-error text-error hover:bg-error-container` | destructive page action that opens a `ConfirmDialog` (Eliminar café, Eliminar seleccionados) |
+| Kind | Variant | Classes | Use |
+|---|---|---|---|
+| Primary | `primary` | `bg-primary-container text-on-primary hover:bg-primary active:bg-primary` | main CTA (Descargar PDF, Guardar) |
+| Secondary | `secondary` | `border border-primary-container text-primary-container hover:bg-primary-fixed active:bg-primary-fixed` | secondary action alongside a primary (Ver formulario, Editar) |
+| Text | `ghost` | `text-on-surface-variant hover:bg-surface-container hover:text-on-surface` (and the same on `active:`) | lowest-emphasis action (Cancelar, metadata edit) |
+| Primary | `accent` | `bg-secondary text-on-secondary hover:opacity-90 active:opacity-90` | terracotta emphasis when something needs attention (e.g. "Actualizar" with new submissions pending) |
+| Secondary | `accentOutline` | `border border-secondary text-secondary hover:bg-secondary-fixed active:bg-secondary-fixed` | the same action's resting/no-news state |
+| Secondary | `danger` | `border border-error text-error hover:bg-error-container active:bg-error-container` | destructive page action that opens a `ConfirmDialog` (Eliminar café, Eliminar seleccionados) |
 
 Disabled state (native `disabled` attribute): `opacity-60 cursor-default`.
 `ButtonLink` renders an `<a>` and takes `href` — no `disabled` (anchors don't
 support it); only use it for always-available links.
+
+#### Button kinds and their states
+
+**(rule, owner's review 2026-11-21)** Every action is one of three kinds, and a person can tell which by looking, without hovering. A secondary action that offers another way forward is a secondary button with a visible boundary, never bare text. Text is only for the quietest action beside a button that has a boundary (Cancelar next to Guardar) or for a small link-like action (`TextAction`).
+
+Pressed shows the hover tone, also on touch, where there is no hover. Focus is the same for every kind: the one indicator under "Accessibility". `TextAction` is a text action too: its hover is an underline (`link`) or `on-surface` (`quiet`).
+
+**Selected and not selected** (tabs, chips, choice cards, segments, switches):
+
+| Control | Not selected | Hover / pressed | Selected |
+|---|---|---|---|
+| Tab, chip, choice card (`PillTabs`, a choose-one row of cards; a disabled item is at 45 % opacity) | 1 px `outline-variant` border, `on-surface-variant` text, medium | `surface-container` fill, `on-surface` text | `primary-fixed` fill and border, `on-primary-fixed` text, semibold; `aria-selected` / `aria-checked` |
+| Segment (`SegmentedControl`) | `on-surface-variant` text on its `surface-container-high` track | `on-surface` text | raised on the track: `surface-container-lowest`, `shadow-card`, `on-surface` text; `aria-checked` |
+| Switch (on / off) | `outline-variant` track | — | `primary-container` track (a switch is not a button: its track is not a filled label) |
 
 #### Interactive control vocabulary
 
