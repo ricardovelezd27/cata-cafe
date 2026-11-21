@@ -15,7 +15,7 @@ Binding rules: `docs/design-system/OVERENGINEERING-LOG.md` (2026-11-21 entries),
 3. **"Each coffee" and its switch are removed.** "Compare" stays.
 4. **Compare:** the wheel sits over the same dim family shades as the small wheels (picture 19), with the territories laid over it. On desktop the table sits **beside** the wheel, in two columns like the two top boxes (picture 20).
 5. **Order:** the two boxes of picture 20, then "Coffee by coffee", then Compare.
-6. **"No clear difference":** the **bar and its legend entry go**, because the log already holds that rule ("no 'joins samples with no clear difference' bar"). **The chips and the sentence are left as they are, waiting on Ricardo** (question 2).
+6. **"No clear difference" is removed everywhere** (Ricardo, 2026-11-21): the bar, its legend and its explanation in the ranking box, the chips on the cards, and the sentence in the first box. In his words: "two neighbors in the tasting table don't really or necessarily mean they are close in tasting profile … The comparison comes from the terrain diagram we have built." **Nothing replaces it: coffees are compared in Compare** (the terrain diagram).
 
 ## 1. Inventory: what the Results tab shows today, and where the same data appears again
 
@@ -167,7 +167,8 @@ On a phone the matrix keeps today's layout: one coffee at a time with its picker
 - **What goes first:** the answer to "which coffee came first, and how far ahead" (box A), then all scores on **one shared, fixed scale** (box B, 58 to 100, 79 marked).
 - **One number per question:** each box has one headline number. The cards carry no score; box B gives every score on one scale.
 - **Comparison on a shared scale:** Compare draws every territory over the same shaded wheel and gives the exact counts in the table beside it. The letters sit on the drawing (direct labels), so the line legend under today's wheel is not needed. **It is removed:** the table's header carries the same letter and name.
-- **No legend nobody reads:** the only legend left is the ranking's "tú" ring. The no-clear-difference bar and its legend entry go (log rule).
+- **No legend nobody reads:** the only legend left is the ranking's "tú" ring. "No clear difference" is gone from every place (item 6).
+- **Where coffees are compared:** only in Compare, the terrain diagram. The ranking orders the scores; it no longer claims that neighbours are close.
 - **Distinguishable buttons:** every "(i)" (`InfoHint`) follows the button and state rule that OR-B is writing into `DESIGN.md`. Nothing else is added to it.
 - **Phone, 375 px:** one column. The only sideways row is the existing Coffee by coffee row, with numbered steps. The Compare table has at most three count columns, so it fits without sideways scroll. The organizer's view switch is one Tab stop with arrow keys (P5a).
 - **The view sits in the address:** the existing `?tab=` (P5a) names the view, so a reload, "back" and a language switch keep it. No new key.
@@ -194,4 +195,3 @@ The `overengineering-critic` (Opus) reviewed this proposal against REVIEW.md, th
 ## 7. Questions for Ricardo (one word each, recommendation first)
 
 1. **Box A's wheel?** Box A repeats card 1's wheel and "Lo más encontrado". "Yes, remove them from box A" (recommended): the box keeps the coffee's name and score. "No" keeps them, and then card 1 should lose its wheel.
-2. **The "no clear difference" chips and sentence?** "Remove" (recommended), like the bar; or "Keep".
